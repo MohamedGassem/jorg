@@ -120,6 +120,9 @@ Thumbs.db
 
 # Storage dev
 storage/
+
+# Claude Code (project-level settings)
+.claude/
 ```
 
 - [ ] **Step 2: Créer `docker-compose.yml` à la racine**
