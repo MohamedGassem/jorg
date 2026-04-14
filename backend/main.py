@@ -1,11 +1,13 @@
 # backend/main.py
 from fastapi import FastAPI
 
+from api.routes.auth import router as auth_router
 from core.config import get_settings
 
 settings = get_settings()
 
 app = FastAPI(title="Jorg API", version="0.1.0")
+app.include_router(auth_router)
 
 
 @app.get("/health")
