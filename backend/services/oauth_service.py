@@ -157,7 +157,10 @@ _clients: dict[OAuthProvider, OAuthClient] = {}
 
 def get_oauth_client(provider: OAuthProvider) -> OAuthClient:
     if provider not in _clients:
-        _clients[provider] = GoogleOAuthClient() if provider == OAuthProvider.GOOGLE else _build_linkedin()
+        if provider == OAuthProvider.GOOGLE:
+            _clients[provider] = GoogleOAuthClient()
+        else:
+            _clients[provider] = _build_linkedin()
     return _clients[provider]
 
 

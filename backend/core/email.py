@@ -65,7 +65,10 @@ def get_email_backend() -> EmailBackend:
     global _backend
     if _backend is None:
         settings = get_settings()
-        _backend = ConsoleEmailBackend() if settings.email_backend == "console" else SmtpEmailBackend()
+        if settings.email_backend == "console":
+            _backend = ConsoleEmailBackend()
+        else:
+            _backend = SmtpEmailBackend()
     return _backend
 
 

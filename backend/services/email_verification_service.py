@@ -32,7 +32,10 @@ def send_verification_email(user: User) -> str:
     message = EmailMessage(
         to=user.email,
         subject="Verifiez votre email Jorg",
-        body=f"Bonjour,\n\nCliquez pour vérifier votre email : {link}\n\nCe lien expire dans {EMAIL_VERIFY_EXPIRE_HOURS}h.",
+        body=(
+            f"Bonjour,\n\nCliquez pour vérifier votre email : {link}\n\n"
+            f"Ce lien expire dans {EMAIL_VERIFY_EXPIRE_HOURS}h."
+        ),
     )
     get_email_backend().send(message)
     return token
@@ -43,7 +46,7 @@ def decode_verification_token(token: str) -> str:
     payload = decode_token(token, expected_type=TokenType.ACCESS)
     if payload.get("purpose") != "email_verification":
         raise ValueError("wrong token purpose")
-    return payload["sub"]
+    return str(payload["sub"])
 
 
 async def confirm_email(db: AsyncSession, token: str) -> User:

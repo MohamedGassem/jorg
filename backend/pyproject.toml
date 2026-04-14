@@ -42,6 +42,15 @@ python_version = "3.14"
 strict = true
 plugins = ["pydantic.mypy"]
 
+[[tool.mypy.overrides]]
+module = ["jose", "jose.exceptions", "testcontainers.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "tests.unit.*", "tests.integration.*", "alembic.*", "alembic.versions.*"]
+disallow_untyped_defs = false
+disallow_any_generics = false
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

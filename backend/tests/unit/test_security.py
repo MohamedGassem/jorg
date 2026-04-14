@@ -59,12 +59,12 @@ def test_decode_token_rejects_expired_token() -> None:
         subject=str(uuid4()),
         expires_delta=timedelta(seconds=-1),
     )
-    with pytest.raises(ValueError, match="expired|invalid"):
+    with pytest.raises(ValueError, match=r"expired|invalid"):
         decode_token(token, expected_type=TokenType.ACCESS)
 
 
 def test_decode_token_rejects_tampered_token() -> None:
     token = create_access_token(subject=str(uuid4()))
     tampered = token[:-5] + "XXXXX"
-    with pytest.raises(ValueError, match="invalid|signature"):
+    with pytest.raises(ValueError, match=r"invalid|signature"):
         decode_token(tampered, expected_type=TokenType.ACCESS)

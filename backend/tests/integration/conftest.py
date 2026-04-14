@@ -1,5 +1,6 @@
 # backend/tests/integration/conftest.py
 from collections.abc import AsyncGenerator, Generator
+from typing import Any
 
 import pytest
 import pytest_asyncio
@@ -18,13 +19,13 @@ from models import Base
 
 
 @pytest.fixture(scope="session")
-def postgres_container() -> Generator[PostgresContainer, None, None]:
+def postgres_container() -> Generator[PostgresContainer]:
     with PostgresContainer("postgres:18.3", driver="asyncpg") as pg:
         yield pg
 
 
 @pytest_asyncio.fixture
-async def db_engine(postgres_container: PostgresContainer):  # noqa: ANN201
+async def db_engine(postgres_container: PostgresContainer) -> AsyncGenerator[Any, None]:
     url = postgres_container.get_connection_url()
     engine = create_async_engine(url, echo=False)
     async with engine.begin() as conn:
@@ -35,15 +36,15 @@ async def db_engine(postgres_container: PostgresContainer):  # noqa: ANN201
 
 
 @pytest_asyncio.fixture
-async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:  # noqa: ANN001
+async def db_session(db_engine: Any) -> AsyncGenerator[AsyncSession]:
     session_factory = async_sessionmaker(bind=db_engine, expire_on_commit=False)
     async with session_factory() as session:
         yield session
 
 
 @pytest_asyncio.fixture
-async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
+    async def override_get_db() -> AsyncGenerator[AsyncSession]:
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db

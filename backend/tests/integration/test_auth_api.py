@@ -2,15 +2,14 @@
 import pytest
 from httpx import AsyncClient
 
-from models.user import OAuthProvider, UserRole
+from models.user import OAuthProvider
 from services.oauth_service import (
-    OAuthClient,
     OAuthUserInfo,
     override_oauth_client,
 )
 
-
 # ---- Register tests --------------------------------------------------------
+
 
 async def test_register_candidate_returns_201_and_user(client: AsyncClient) -> None:
     response = await client.post(
@@ -57,10 +56,11 @@ async def test_register_sends_verification_email(client: AsyncClient) -> None:
         json={"email": "ver@ex.com", "password": "securepass123", "role": "candidate"},
     )
     sent = client.email_backend.sent  # type: ignore[attr-defined]
-    assert any("ver@ex.com" == m.to and "verif" in m.subject.lower() for m in sent)
+    assert any(m.to == "ver@ex.com" and "verif" in m.subject.lower() for m in sent)
 
 
 # ---- Login tests -----------------------------------------------------------
+
 
 async def test_login_with_valid_credentials_returns_tokens(client: AsyncClient) -> None:
     await client.post(
@@ -99,6 +99,7 @@ async def test_login_with_unknown_email_returns_401(client: AsyncClient) -> None
 
 
 # ---- Refresh tests ---------------------------------------------------------
+
 
 async def test_refresh_with_valid_token_returns_new_pair(client: AsyncClient) -> None:
     await client.post(
@@ -140,6 +141,7 @@ async def test_refresh_with_malformed_token_returns_401(client: AsyncClient) -> 
 
 # ---- Email verification tests ----------------------------------------------
 
+
 async def test_verify_email_marks_user_as_verified(client: AsyncClient) -> None:
     await client.post(
         "/auth/register",
@@ -166,6 +168,7 @@ async def test_verify_email_with_invalid_token_returns_400(client: AsyncClient) 
 
 
 # ---- Password reset tests --------------------------------------------------
+
 
 async def test_request_password_reset_sends_email(client: AsyncClient) -> None:
     await client.post(
@@ -201,9 +204,7 @@ async def test_reset_password_with_valid_token_changes_password(client: AsyncCli
     )
     assert r.status_code == 204
 
-    old = await client.post(
-        "/auth/login", json={"email": "cp@ex.com", "password": "securepass123"}
-    )
+    old = await client.post("/auth/login", json={"email": "cp@ex.com", "password": "securepass123"})
     assert old.status_code == 401
 
     new = await client.post(
@@ -213,6 +214,7 @@ async def test_reset_password_with_valid_token_changes_password(client: AsyncCli
 
 
 # ---- OAuth Google tests ----------------------------------------------------
+
 
 class FakeGoogleClient:
     provider = OAuthProvider.GOOGLE
@@ -228,19 +230,19 @@ class FakeGoogleClient:
 
 
 @pytest.fixture
-def fake_google():  # noqa: ANN201
+def fake_google():
     info = OAuthUserInfo(
         provider=OAuthProvider.GOOGLE,
         subject="google-123",
         email="gauth@ex.com",
     )
     client = FakeGoogleClient(info)
-    override_oauth_client(OAuthProvider.GOOGLE, client)  # type: ignore[arg-type]
+    override_oauth_client(OAuthProvider.GOOGLE, client)
     yield client
     override_oauth_client(OAuthProvider.GOOGLE, None)
 
 
-async def test_oauth_google_login_redirects(client: AsyncClient, fake_google) -> None:  # noqa: ANN001
+async def test_oauth_google_login_redirects(client: AsyncClient, fake_google: FakeGoogleClient) -> None:
     r = await client.get(
         "/auth/oauth/google/login?role=candidate",
         follow_redirects=False,
@@ -250,7 +252,7 @@ async def test_oauth_google_login_redirects(client: AsyncClient, fake_google) ->
 
 
 async def test_oauth_google_callback_creates_user_and_returns_tokens(
-    client: AsyncClient, fake_google  # noqa: ANN001
+    client: AsyncClient, fake_google: FakeGoogleClient
 ) -> None:
     login = await client.get(
         "/auth/oauth/google/login?role=candidate",
@@ -269,6 +271,7 @@ async def test_oauth_google_callback_creates_user_and_returns_tokens(
 
 # ---- OAuth LinkedIn tests --------------------------------------------------
 
+
 class FakeLinkedInClient:
     provider = OAuthProvider.LINKEDIN
 
@@ -283,21 +286,19 @@ class FakeLinkedInClient:
 
 
 @pytest.fixture
-def fake_linkedin():  # noqa: ANN201
+def fake_linkedin():
     info = OAuthUserInfo(
         provider=OAuthProvider.LINKEDIN,
         subject="li-456",
         email="liauth@ex.com",
     )
     client = FakeLinkedInClient(info)
-    override_oauth_client(OAuthProvider.LINKEDIN, client)  # type: ignore[arg-type]
+    override_oauth_client(OAuthProvider.LINKEDIN, client)
     yield client
     override_oauth_client(OAuthProvider.LINKEDIN, None)
 
 
-async def test_oauth_linkedin_full_flow(
-    client: AsyncClient, fake_linkedin  # noqa: ANN001
-) -> None:
+async def test_oauth_linkedin_full_flow(client: AsyncClient, fake_linkedin: FakeLinkedInClient) -> None:
     login = await client.get(
         "/auth/oauth/linkedin/login?role=recruiter",
         follow_redirects=False,

@@ -1,5 +1,5 @@
 # backend/api/deps.py
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.database import get_db
+from core.database import get_db as get_db
 from core.security import TokenType, decode_token
 from models.user import User, UserRole
 
@@ -46,7 +46,7 @@ async def get_current_user(
     return user
 
 
-def require_role(role: UserRole):  # noqa: ANN201
+def require_role(role: UserRole) -> Any:
     async def _dep(current_user: Annotated[User, Depends(get_current_user)]) -> User:
         if current_user.role != role:
             raise HTTPException(
