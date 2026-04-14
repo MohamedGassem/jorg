@@ -1,0 +1,356 @@
+# backend/tests/integration/test_candidate_api.py
+from httpx import AsyncClient
+
+
+# ---- Auth & role guards -----------------------------------------------------
+
+
+async def test_get_profile_requires_auth(client: AsyncClient) -> None:
+    r = await client.get("/candidates/me/profile")
+    assert r.status_code == 401
+
+
+async def test_recruiter_cannot_get_candidate_profile(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    r = await client.get("/candidates/me/profile", headers=recruiter_headers)
+    assert r.status_code == 403
+
+
+# ---- CandidateProfile -------------------------------------------------------
+
+
+async def test_get_profile_auto_creates_empty_profile(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.get("/candidates/me/profile", headers=candidate_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["first_name"] is None
+    assert data["last_name"] is None
+    assert "id" in data
+    assert "user_id" in data
+
+
+async def test_get_profile_returns_same_profile_on_subsequent_calls(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r1 = await client.get("/candidates/me/profile", headers=candidate_headers)
+    r2 = await client.get("/candidates/me/profile", headers=candidate_headers)
+    assert r1.json()["id"] == r2.json()["id"]
+
+
+async def test_update_profile(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={
+            "first_name": "Alice",
+            "last_name": "Dupont",
+            "title": "Full Stack Developer",
+            "years_of_experience": 5,
+            "daily_rate": 600,
+        },
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["first_name"] == "Alice"
+    assert data["last_name"] == "Dupont"
+    assert data["title"] == "Full Stack Developer"
+    assert data["years_of_experience"] == 5
+    assert data["daily_rate"] == 600
+
+
+async def test_update_profile_partial_does_not_overwrite_other_fields(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"first_name": "Alice", "last_name": "Dupont"},
+    )
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"title": "Tech Lead"},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["first_name"] == "Alice"   # non écrasé
+    assert data["last_name"] == "Dupont"   # non écrasé
+    assert data["title"] == "Tech Lead"    # mis à jour
+
+
+async def test_update_profile_extra_fields(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"extra_fields": {"github": "alice", "portfolio": "https://alice.dev"}},
+    )
+    assert r.status_code == 200
+    assert r.json()["extra_fields"]["github"] == "alice"
+
+
+# ---- Experience -------------------------------------------------------------
+
+
+async def test_create_experience(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={
+            "client_name": "Acme Corp",
+            "role": "Backend Developer",
+            "start_date": "2023-01-01",
+            "is_current": True,
+            "technologies": ["Python", "FastAPI", "PostgreSQL"],
+        },
+    )
+    assert r.status_code == 201
+    data = r.json()
+    assert data["client_name"] == "Acme Corp"
+    assert data["role"] == "Backend Developer"
+    assert data["is_current"] is True
+    assert data["technologies"] == ["Python", "FastAPI", "PostgreSQL"]
+    assert "id" in data
+
+
+async def test_list_experiences(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={"client_name": "Corp A", "role": "Dev", "start_date": "2022-01-01"},
+    )
+    await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={"client_name": "Corp B", "role": "Lead", "start_date": "2023-06-01"},
+    )
+    r = await client.get("/candidates/me/experiences", headers=candidate_headers)
+    assert r.status_code == 200
+    assert len(r.json()) == 2
+
+
+async def test_update_experience(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    create = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={"client_name": "Old Corp", "role": "Junior Dev", "start_date": "2021-01-01"},
+    )
+    exp_id = create.json()["id"]
+
+    r = await client.put(
+        f"/candidates/me/experiences/{exp_id}",
+        headers=candidate_headers,
+        json={"client_name": "New Corp", "technologies": ["Go"]},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["client_name"] == "New Corp"
+    assert data["role"] == "Junior Dev"         # non écrasé
+    assert data["technologies"] == ["Go"]
+
+
+async def test_delete_experience(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    create = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={"client_name": "Corp", "role": "Dev", "start_date": "2022-01-01"},
+    )
+    exp_id = create.json()["id"]
+
+    r = await client.delete(
+        f"/candidates/me/experiences/{exp_id}", headers=candidate_headers
+    )
+    assert r.status_code == 204
+
+    list_r = await client.get("/candidates/me/experiences", headers=candidate_headers)
+    assert len(list_r.json()) == 0
+
+
+async def test_update_experience_not_found_returns_404(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/experiences/00000000-0000-0000-0000-000000000000",
+        headers=candidate_headers,
+        json={"client_name": "Corp"},
+    )
+    assert r.status_code == 404
+
+
+# ---- Skill ------------------------------------------------------------------
+
+
+async def test_create_and_list_skills(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/skills",
+        headers=candidate_headers,
+        json={"name": "Python", "category": "language", "level": "expert"},
+    )
+    assert r.status_code == 201
+    assert r.json()["name"] == "Python"
+    assert r.json()["category"] == "language"
+
+    list_r = await client.get("/candidates/me/skills", headers=candidate_headers)
+    assert len(list_r.json()) == 1
+
+
+async def test_update_and_delete_skill(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    create = await client.post(
+        "/candidates/me/skills",
+        headers=candidate_headers,
+        json={"name": "Docker", "category": "tool"},
+    )
+    skill_id = create.json()["id"]
+
+    upd = await client.put(
+        f"/candidates/me/skills/{skill_id}",
+        headers=candidate_headers,
+        json={"level": "intermediate"},
+    )
+    assert upd.status_code == 200
+    assert upd.json()["level"] == "intermediate"
+    assert upd.json()["name"] == "Docker"  # non écrasé
+
+    del_r = await client.delete(
+        f"/candidates/me/skills/{skill_id}", headers=candidate_headers
+    )
+    assert del_r.status_code == 204
+
+
+# ---- Education --------------------------------------------------------------
+
+
+async def test_create_and_list_education(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/education",
+        headers=candidate_headers,
+        json={
+            "school": "Université Paris VI",
+            "degree": "Master",
+            "field_of_study": "Informatique",
+            "start_date": "2015-09-01",
+            "end_date": "2017-06-30",
+        },
+    )
+    assert r.status_code == 201
+    assert r.json()["school"] == "Université Paris VI"
+
+    list_r = await client.get("/candidates/me/education", headers=candidate_headers)
+    assert len(list_r.json()) == 1
+
+
+async def test_delete_education(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    create = await client.post(
+        "/candidates/me/education",
+        headers=candidate_headers,
+        json={"school": "École Polytechnique"},
+    )
+    edu_id = create.json()["id"]
+
+    r = await client.delete(
+        f"/candidates/me/education/{edu_id}", headers=candidate_headers
+    )
+    assert r.status_code == 204
+
+
+# ---- Certification ----------------------------------------------------------
+
+
+async def test_create_and_list_certifications(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/certifications",
+        headers=candidate_headers,
+        json={
+            "name": "AWS Solutions Architect",
+            "issuer": "Amazon",
+            "issue_date": "2024-03-15",
+            "credential_url": "https://aws.amazon.com/verify/ABC123",
+        },
+    )
+    assert r.status_code == 201
+    assert r.json()["name"] == "AWS Solutions Architect"
+
+    list_r = await client.get("/candidates/me/certifications", headers=candidate_headers)
+    assert len(list_r.json()) == 1
+
+
+async def test_delete_certification(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    create = await client.post(
+        "/candidates/me/certifications",
+        headers=candidate_headers,
+        json={"name": "GCP Associate", "issuer": "Google", "issue_date": "2023-10-01"},
+    )
+    cert_id = create.json()["id"]
+
+    r = await client.delete(
+        f"/candidates/me/certifications/{cert_id}", headers=candidate_headers
+    )
+    assert r.status_code == 204
+
+
+# ---- Language ---------------------------------------------------------------
+
+
+async def test_create_and_list_languages(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/languages",
+        headers=candidate_headers,
+        json={"name": "Français", "level": "native"},
+    )
+    assert r.status_code == 201
+    assert r.json()["name"] == "Français"
+    assert r.json()["level"] == "native"
+
+    r2 = await client.post(
+        "/candidates/me/languages",
+        headers=candidate_headers,
+        json={"name": "English", "level": "C1"},
+    )
+    assert r2.status_code == 201
+
+    list_r = await client.get("/candidates/me/languages", headers=candidate_headers)
+    assert len(list_r.json()) == 2
+
+
+async def test_delete_language(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    create = await client.post(
+        "/candidates/me/languages",
+        headers=candidate_headers,
+        json={"name": "Espagnol", "level": "B2"},
+    )
+    lang_id = create.json()["id"]
+
+    r = await client.delete(
+        f"/candidates/me/languages/{lang_id}", headers=candidate_headers
+    )
+    assert r.status_code == 204

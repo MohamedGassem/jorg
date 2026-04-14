@@ -59,3 +59,39 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
 
     app.dependency_overrides.clear()
     override_email_backend(None)
+
+
+@pytest_asyncio.fixture
+async def candidate_headers(client: AsyncClient) -> dict[str, str]:
+    await client.post(
+        "/auth/register",
+        json={
+            "email": "candidate@test.com",
+            "password": "testpass123",
+            "role": "candidate",
+        },
+    )
+    login = await client.post(
+        "/auth/login",
+        json={"email": "candidate@test.com", "password": "testpass123"},
+    )
+    token = login.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+async def recruiter_headers(client: AsyncClient) -> dict[str, str]:
+    await client.post(
+        "/auth/register",
+        json={
+            "email": "recruiter@test.com",
+            "password": "testpass123",
+            "role": "recruiter",
+        },
+    )
+    login = await client.post(
+        "/auth/login",
+        json={"email": "recruiter@test.com", "password": "testpass123"},
+    )
+    token = login.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
