@@ -9,7 +9,6 @@ from pydantic import BaseModel, ConfigDict
 
 from models.candidate_profile import LanguageLevel, SkillCategory
 
-
 # ---- CandidateProfile -------------------------------------------------------
 
 

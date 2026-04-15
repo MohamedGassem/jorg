@@ -6,7 +6,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Boolean, Date, Enum, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, Date, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin

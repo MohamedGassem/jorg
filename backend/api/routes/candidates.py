@@ -64,16 +64,12 @@ async def update_my_profile(
 
 
 @router.get("/me/experiences", response_model=list[ExperienceRead])
-async def list_my_experiences(
-    current_user: CandidateUser, db: DB
-) -> list[Experience]:
+async def list_my_experiences(current_user: CandidateUser, db: DB) -> list[Experience]:
     profile = await candidate_service.get_or_create_profile(db, current_user.id)
     return await candidate_service.list_experiences(db, profile.id)
 
 
-@router.post(
-    "/me/experiences", response_model=ExperienceRead, status_code=status.HTTP_201_CREATED
-)
+@router.post("/me/experiences", response_model=ExperienceRead, status_code=status.HTTP_201_CREATED)
 async def create_my_experience(
     data: ExperienceCreate,
     current_user: CandidateUser,
@@ -119,12 +115,8 @@ async def list_my_skills(current_user: CandidateUser, db: DB) -> list[Skill]:
     return await candidate_service.list_skills(db, profile.id)
 
 
-@router.post(
-    "/me/skills", response_model=SkillRead, status_code=status.HTTP_201_CREATED
-)
-async def create_my_skill(
-    data: SkillCreate, current_user: CandidateUser, db: DB
-) -> Skill:
+@router.post("/me/skills", response_model=SkillRead, status_code=status.HTTP_201_CREATED)
+async def create_my_skill(data: SkillCreate, current_user: CandidateUser, db: DB) -> Skill:
     profile = await candidate_service.get_or_create_profile(db, current_user.id)
     return await candidate_service.create_skill(db, profile.id, data)
 
@@ -141,9 +133,7 @@ async def update_my_skill(
 
 
 @router.delete("/me/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_my_skill(
-    skill_id: UUID, current_user: CandidateUser, db: DB
-) -> None:
+async def delete_my_skill(skill_id: UUID, current_user: CandidateUser, db: DB) -> None:
     profile = await candidate_service.get_or_create_profile(db, current_user.id)
     skill = await candidate_service.get_skill(db, skill_id, profile.id)
     if skill is None:
@@ -160,9 +150,7 @@ async def list_my_education(current_user: CandidateUser, db: DB) -> list[Educati
     return await candidate_service.list_education(db, profile.id)
 
 
-@router.post(
-    "/me/education", response_model=EducationRead, status_code=status.HTTP_201_CREATED
-)
+@router.post("/me/education", response_model=EducationRead, status_code=status.HTTP_201_CREATED)
 async def create_my_education(
     data: EducationCreate, current_user: CandidateUser, db: DB
 ) -> Education:
@@ -185,9 +173,7 @@ async def update_my_education(
 
 
 @router.delete("/me/education/{education_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_my_education(
-    education_id: UUID, current_user: CandidateUser, db: DB
-) -> None:
+async def delete_my_education(education_id: UUID, current_user: CandidateUser, db: DB) -> None:
     profile = await candidate_service.get_or_create_profile(db, current_user.id)
     edu = await candidate_service.get_education_item(db, education_id, profile.id)
     if edu is None:
@@ -199,9 +185,7 @@ async def delete_my_education(
 
 
 @router.get("/me/certifications", response_model=list[CertificationRead])
-async def list_my_certifications(
-    current_user: CandidateUser, db: DB
-) -> list[Certification]:
+async def list_my_certifications(current_user: CandidateUser, db: DB) -> list[Certification]:
     profile = await candidate_service.get_or_create_profile(db, current_user.id)
     return await candidate_service.list_certifications(db, profile.id)
 
@@ -228,24 +212,18 @@ async def update_my_certification(
     profile = await candidate_service.get_or_create_profile(db, current_user.id)
     cert = await candidate_service.get_certification(db, certification_id, profile.id)
     if cert is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="certification not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="certification not found")
     return await candidate_service.update_certification(db, cert, data)
 
 
-@router.delete(
-    "/me/certifications/{certification_id}", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/me/certifications/{certification_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_my_certification(
     certification_id: UUID, current_user: CandidateUser, db: DB
 ) -> None:
     profile = await candidate_service.get_or_create_profile(db, current_user.id)
     cert = await candidate_service.get_certification(db, certification_id, profile.id)
     if cert is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="certification not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="certification not found")
     await candidate_service.delete_certification(db, cert)
 
 
@@ -258,12 +236,8 @@ async def list_my_languages(current_user: CandidateUser, db: DB) -> list[Languag
     return await candidate_service.list_languages(db, profile.id)
 
 
-@router.post(
-    "/me/languages", response_model=LanguageRead, status_code=status.HTTP_201_CREATED
-)
-async def create_my_language(
-    data: LanguageCreate, current_user: CandidateUser, db: DB
-) -> Language:
+@router.post("/me/languages", response_model=LanguageRead, status_code=status.HTTP_201_CREATED)
+async def create_my_language(data: LanguageCreate, current_user: CandidateUser, db: DB) -> Language:
     profile = await candidate_service.get_or_create_profile(db, current_user.id)
     return await candidate_service.create_language(db, profile.id, data)
 
@@ -280,9 +254,7 @@ async def update_my_language(
 
 
 @router.delete("/me/languages/{language_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_my_language(
-    language_id: UUID, current_user: CandidateUser, db: DB
-) -> None:
+async def delete_my_language(language_id: UUID, current_user: CandidateUser, db: DB) -> None:
     profile = await candidate_service.get_or_create_profile(db, current_user.id)
     lang = await candidate_service.get_language(db, language_id, profile.id)
     if lang is None:

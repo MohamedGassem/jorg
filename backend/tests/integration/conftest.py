@@ -25,7 +25,7 @@ def postgres_container() -> Generator[PostgresContainer]:
 
 
 @pytest_asyncio.fixture
-async def db_engine(postgres_container: PostgresContainer) -> AsyncGenerator[Any, None]:
+async def db_engine(postgres_container: PostgresContainer) -> AsyncGenerator[Any]:
     url = postgres_container.get_connection_url()
     engine = create_async_engine(url, echo=False)
     async with engine.begin() as conn:

@@ -242,7 +242,9 @@ def fake_google():
     override_oauth_client(OAuthProvider.GOOGLE, None)
 
 
-async def test_oauth_google_login_redirects(client: AsyncClient, fake_google: FakeGoogleClient) -> None:
+async def test_oauth_google_login_redirects(
+    client: AsyncClient, fake_google: FakeGoogleClient
+) -> None:
     r = await client.get(
         "/auth/oauth/google/login?role=candidate",
         follow_redirects=False,
@@ -298,7 +300,9 @@ def fake_linkedin():
     override_oauth_client(OAuthProvider.LINKEDIN, None)
 
 
-async def test_oauth_linkedin_full_flow(client: AsyncClient, fake_linkedin: FakeLinkedInClient) -> None:
+async def test_oauth_linkedin_full_flow(
+    client: AsyncClient, fake_linkedin: FakeLinkedInClient
+) -> None:
     login = await client.get(
         "/auth/oauth/linkedin/login?role=recruiter",
         follow_redirects=False,

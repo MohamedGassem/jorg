@@ -1,7 +1,6 @@
 # backend/tests/integration/test_candidate_api.py
 from httpx import AsyncClient
 
-
 # ---- Auth & role guards -----------------------------------------------------
 
 
@@ -40,9 +39,7 @@ async def test_get_profile_returns_same_profile_on_subsequent_calls(
     assert r1.json()["id"] == r2.json()["id"]
 
 
-async def test_update_profile(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
+async def test_update_profile(client: AsyncClient, candidate_headers: dict[str, str]) -> None:
     r = await client.put(
         "/candidates/me/profile",
         headers=candidate_headers,
@@ -78,9 +75,9 @@ async def test_update_profile_partial_does_not_overwrite_other_fields(
     )
     assert r.status_code == 200
     data = r.json()
-    assert data["first_name"] == "Alice"   # non écrasé
-    assert data["last_name"] == "Dupont"   # non écrasé
-    assert data["title"] == "Tech Lead"    # mis à jour
+    assert data["first_name"] == "Alice"  # non écrasé
+    assert data["last_name"] == "Dupont"  # non écrasé
+    assert data["title"] == "Tech Lead"  # mis à jour
 
 
 async def test_update_profile_extra_fields(
@@ -98,9 +95,7 @@ async def test_update_profile_extra_fields(
 # ---- Experience -------------------------------------------------------------
 
 
-async def test_create_experience(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
+async def test_create_experience(client: AsyncClient, candidate_headers: dict[str, str]) -> None:
     r = await client.post(
         "/candidates/me/experiences",
         headers=candidate_headers,
@@ -121,9 +116,7 @@ async def test_create_experience(
     assert "id" in data
 
 
-async def test_list_experiences(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
+async def test_list_experiences(client: AsyncClient, candidate_headers: dict[str, str]) -> None:
     await client.post(
         "/candidates/me/experiences",
         headers=candidate_headers,
@@ -139,9 +132,7 @@ async def test_list_experiences(
     assert len(r.json()) == 2
 
 
-async def test_update_experience(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
+async def test_update_experience(client: AsyncClient, candidate_headers: dict[str, str]) -> None:
     create = await client.post(
         "/candidates/me/experiences",
         headers=candidate_headers,
@@ -157,13 +148,11 @@ async def test_update_experience(
     assert r.status_code == 200
     data = r.json()
     assert data["client_name"] == "New Corp"
-    assert data["role"] == "Junior Dev"         # non écrasé
+    assert data["role"] == "Junior Dev"  # non écrasé
     assert data["technologies"] == ["Go"]
 
 
-async def test_delete_experience(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
+async def test_delete_experience(client: AsyncClient, candidate_headers: dict[str, str]) -> None:
     create = await client.post(
         "/candidates/me/experiences",
         headers=candidate_headers,
@@ -171,9 +160,7 @@ async def test_delete_experience(
     )
     exp_id = create.json()["id"]
 
-    r = await client.delete(
-        f"/candidates/me/experiences/{exp_id}", headers=candidate_headers
-    )
+    r = await client.delete(f"/candidates/me/experiences/{exp_id}", headers=candidate_headers)
     assert r.status_code == 204
 
     list_r = await client.get("/candidates/me/experiences", headers=candidate_headers)
@@ -229,9 +216,7 @@ async def test_update_and_delete_skill(
     assert upd.json()["level"] == "intermediate"
     assert upd.json()["name"] == "Docker"  # non écrasé
 
-    del_r = await client.delete(
-        f"/candidates/me/skills/{skill_id}", headers=candidate_headers
-    )
+    del_r = await client.delete(f"/candidates/me/skills/{skill_id}", headers=candidate_headers)
     assert del_r.status_code == 204
 
 
@@ -259,9 +244,7 @@ async def test_create_and_list_education(
     assert len(list_r.json()) == 1
 
 
-async def test_delete_education(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
+async def test_delete_education(client: AsyncClient, candidate_headers: dict[str, str]) -> None:
     create = await client.post(
         "/candidates/me/education",
         headers=candidate_headers,
@@ -269,9 +252,7 @@ async def test_delete_education(
     )
     edu_id = create.json()["id"]
 
-    r = await client.delete(
-        f"/candidates/me/education/{edu_id}", headers=candidate_headers
-    )
+    r = await client.delete(f"/candidates/me/education/{edu_id}", headers=candidate_headers)
     assert r.status_code == 204
 
 
@@ -298,9 +279,7 @@ async def test_create_and_list_certifications(
     assert len(list_r.json()) == 1
 
 
-async def test_delete_certification(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
+async def test_delete_certification(client: AsyncClient, candidate_headers: dict[str, str]) -> None:
     create = await client.post(
         "/candidates/me/certifications",
         headers=candidate_headers,
@@ -308,9 +287,7 @@ async def test_delete_certification(
     )
     cert_id = create.json()["id"]
 
-    r = await client.delete(
-        f"/candidates/me/certifications/{cert_id}", headers=candidate_headers
-    )
+    r = await client.delete(f"/candidates/me/certifications/{cert_id}", headers=candidate_headers)
     assert r.status_code == 204
 
 
@@ -340,9 +317,7 @@ async def test_create_and_list_languages(
     assert len(list_r.json()) == 2
 
 
-async def test_delete_language(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
+async def test_delete_language(client: AsyncClient, candidate_headers: dict[str, str]) -> None:
     create = await client.post(
         "/candidates/me/languages",
         headers=candidate_headers,
@@ -350,7 +325,5 @@ async def test_delete_language(
     )
     lang_id = create.json()["id"]
 
-    r = await client.delete(
-        f"/candidates/me/languages/{lang_id}", headers=candidate_headers
-    )
+    r = await client.delete(f"/candidates/me/languages/{lang_id}", headers=candidate_headers)
     assert r.status_code == 204

@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.candidate_profile import (
-    Certification,
     CandidateProfile,
+    Certification,
     Education,
     Experience,
     Language,
@@ -26,14 +26,11 @@ from schemas.candidate import (
     SkillUpdate,
 )
 
-
 # ---- CandidateProfile -------------------------------------------------------
 
 
 async def get_or_create_profile(db: AsyncSession, user_id: UUID) -> CandidateProfile:
-    result = await db.execute(
-        select(CandidateProfile).where(CandidateProfile.user_id == user_id)
-    )
+    result = await db.execute(select(CandidateProfile).where(CandidateProfile.user_id == user_id))
     profile = result.scalar_one_or_none()
     if profile is None:
         profile = CandidateProfile(user_id=user_id)
@@ -60,9 +57,7 @@ async def update_profile(
 
 
 async def list_experiences(db: AsyncSession, profile_id: UUID) -> list[Experience]:
-    result = await db.execute(
-        select(Experience).where(Experience.profile_id == profile_id)
-    )
+    result = await db.execute(select(Experience).where(Experience.profile_id == profile_id))
     return list(result.scalars().all())
 
 
@@ -107,15 +102,11 @@ async def delete_experience(db: AsyncSession, exp: Experience) -> None:
 
 
 async def list_skills(db: AsyncSession, profile_id: UUID) -> list[Skill]:
-    result = await db.execute(
-        select(Skill).where(Skill.profile_id == profile_id)
-    )
+    result = await db.execute(select(Skill).where(Skill.profile_id == profile_id))
     return list(result.scalars().all())
 
 
-async def create_skill(
-    db: AsyncSession, profile_id: UUID, data: SkillCreate
-) -> Skill:
+async def create_skill(db: AsyncSession, profile_id: UUID, data: SkillCreate) -> Skill:
     skill = Skill(profile_id=profile_id, **data.model_dump())
     db.add(skill)
     await db.commit()
@@ -123,18 +114,14 @@ async def create_skill(
     return skill
 
 
-async def get_skill(
-    db: AsyncSession, skill_id: UUID, profile_id: UUID
-) -> Skill | None:
+async def get_skill(db: AsyncSession, skill_id: UUID, profile_id: UUID) -> Skill | None:
     result = await db.execute(
         select(Skill).where(Skill.id == skill_id, Skill.profile_id == profile_id)
     )
     return result.scalar_one_or_none()
 
 
-async def update_skill(
-    db: AsyncSession, skill: Skill, data: SkillUpdate
-) -> Skill:
+async def update_skill(db: AsyncSession, skill: Skill, data: SkillUpdate) -> Skill:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(skill, field, value)
     await db.commit()
@@ -151,15 +138,11 @@ async def delete_skill(db: AsyncSession, skill: Skill) -> None:
 
 
 async def list_education(db: AsyncSession, profile_id: UUID) -> list[Education]:
-    result = await db.execute(
-        select(Education).where(Education.profile_id == profile_id)
-    )
+    result = await db.execute(select(Education).where(Education.profile_id == profile_id))
     return list(result.scalars().all())
 
 
-async def create_education(
-    db: AsyncSession, profile_id: UUID, data: EducationCreate
-) -> Education:
+async def create_education(db: AsyncSession, profile_id: UUID, data: EducationCreate) -> Education:
     edu = Education(profile_id=profile_id, **data.model_dump())
     db.add(edu)
     await db.commit()
@@ -179,9 +162,7 @@ async def get_education_item(
     return result.scalar_one_or_none()
 
 
-async def update_education(
-    db: AsyncSession, edu: Education, data: EducationUpdate
-) -> Education:
+async def update_education(db: AsyncSession, edu: Education, data: EducationUpdate) -> Education:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(edu, field, value)
     await db.commit()
@@ -198,9 +179,7 @@ async def delete_education(db: AsyncSession, edu: Education) -> None:
 
 
 async def list_certifications(db: AsyncSession, profile_id: UUID) -> list[Certification]:
-    result = await db.execute(
-        select(Certification).where(Certification.profile_id == profile_id)
-    )
+    result = await db.execute(select(Certification).where(Certification.profile_id == profile_id))
     return list(result.scalars().all())
 
 
@@ -245,15 +224,11 @@ async def delete_certification(db: AsyncSession, cert: Certification) -> None:
 
 
 async def list_languages(db: AsyncSession, profile_id: UUID) -> list[Language]:
-    result = await db.execute(
-        select(Language).where(Language.profile_id == profile_id)
-    )
+    result = await db.execute(select(Language).where(Language.profile_id == profile_id))
     return list(result.scalars().all())
 
 
-async def create_language(
-    db: AsyncSession, profile_id: UUID, data: LanguageCreate
-) -> Language:
+async def create_language(db: AsyncSession, profile_id: UUID, data: LanguageCreate) -> Language:
     lang = Language(profile_id=profile_id, **data.model_dump())
     db.add(lang)
     await db.commit()
@@ -261,9 +236,7 @@ async def create_language(
     return lang
 
 
-async def get_language(
-    db: AsyncSession, language_id: UUID, profile_id: UUID
-) -> Language | None:
+async def get_language(db: AsyncSession, language_id: UUID, profile_id: UUID) -> Language | None:
     result = await db.execute(
         select(Language).where(
             Language.id == language_id,
@@ -273,9 +246,7 @@ async def get_language(
     return result.scalar_one_or_none()
 
 
-async def update_language(
-    db: AsyncSession, lang: Language, data: LanguageUpdate
-) -> Language:
+async def update_language(db: AsyncSession, lang: Language, data: LanguageUpdate) -> Language:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(lang, field, value)
     await db.commit()
