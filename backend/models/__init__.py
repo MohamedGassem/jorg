@@ -1,8 +1,8 @@
 # backend/models/__init__.py
 from models.base import Base
 from models.candidate_profile import (
-    Certification,
     CandidateProfile,
+    Certification,
     Education,
     Experience,
     Language,
@@ -19,8 +19,8 @@ __all__ = [
     "AccessGrant",
     "AccessGrantStatus",
     "Base",
-    "Certification",
     "CandidateProfile",
+    "Certification",
     "Education",
     "Experience",
     "Invitation",

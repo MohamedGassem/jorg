@@ -118,12 +118,8 @@ async def reject_invitation(db: AsyncSession, invitation: Invitation) -> Invitat
     return invitation
 
 
-async def list_candidate_grants(
-    db: AsyncSession, candidate_id: UUID
-) -> list[AccessGrant]:
-    result = await db.execute(
-        select(AccessGrant).where(AccessGrant.candidate_id == candidate_id)
-    )
+async def list_candidate_grants(db: AsyncSession, candidate_id: UUID) -> list[AccessGrant]:
+    result = await db.execute(select(AccessGrant).where(AccessGrant.candidate_id == candidate_id))
     return list(result.scalars().all())
 
 

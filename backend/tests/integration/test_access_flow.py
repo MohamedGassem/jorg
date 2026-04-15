@@ -1,13 +1,10 @@
 # backend/tests/integration/test_access_flow.py
 from httpx import AsyncClient
 
-
 # ---- helpers ----------------------------------------------------------------
 
 
-async def _create_org_and_link(
-    client: AsyncClient, recruiter_headers: dict[str, str]
-) -> str:
+async def _create_org_and_link(client: AsyncClient, recruiter_headers: dict[str, str]) -> str:
     org = await client.post(
         "/organizations", headers=recruiter_headers, json={"name": "Invite Corp"}
     )
@@ -70,9 +67,7 @@ async def test_unlinked_recruiter_cannot_invite(
     client: AsyncClient, recruiter_headers: dict[str, str]
 ) -> None:
     # recruiter not linked to org → 403
-    org = await client.post(
-        "/organizations", headers=recruiter_headers, json={"name": "Other Org"}
-    )
+    org = await client.post("/organizations", headers=recruiter_headers, json={"name": "Other Org"})
     org_id = org.json()["id"]
     # recruiter did NOT link to this org
     r = await client.post(

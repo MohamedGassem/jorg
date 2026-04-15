@@ -49,9 +49,7 @@ async def create_invitation(
 
 
 @router.get("/invitations/me", response_model=list[InvitationRead])
-async def list_my_invitations(
-    current_user: CandidateUser, db: DB
-) -> list[Invitation]:
+async def list_my_invitations(current_user: CandidateUser, db: DB) -> list[Invitation]:
     return await invitation_service.list_candidate_invitations(
         db, current_user.email, current_user.id
     )
@@ -62,14 +60,10 @@ async def list_my_invitations(
     response_model=AccessGrantRead,
     status_code=status.HTTP_201_CREATED,
 )
-async def accept_invitation(
-    token: str, current_user: CandidateUser, db: DB
-) -> AccessGrant:
+async def accept_invitation(token: str, current_user: CandidateUser, db: DB) -> AccessGrant:
     invitation = await invitation_service.get_invitation_by_token(db, token)
     if invitation is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="invitation not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="invitation not found")
     if invitation.status != InvitationStatus.PENDING:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -86,14 +80,10 @@ async def accept_invitation(
 
 
 @router.post("/invitations/{token}/reject", response_model=InvitationRead)
-async def reject_invitation(
-    token: str, current_user: CandidateUser, db: DB
-) -> Invitation:
+async def reject_invitation(token: str, current_user: CandidateUser, db: DB) -> Invitation:
     invitation = await invitation_service.get_invitation_by_token(db, token)
     if invitation is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="invitation not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="invitation not found")
     if invitation.status != InvitationStatus.PENDING:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -106,16 +96,12 @@ async def reject_invitation(
 
 
 @router.get("/access/me", response_model=list[AccessGrantRead])
-async def list_my_grants(
-    current_user: CandidateUser, db: DB
-) -> list[AccessGrant]:
+async def list_my_grants(current_user: CandidateUser, db: DB) -> list[AccessGrant]:
     return await invitation_service.list_candidate_grants(db, current_user.id)
 
 
 @router.delete("/access/me/{grant_id}", response_model=AccessGrantRead)
-async def revoke_grant(
-    grant_id: UUID, current_user: CandidateUser, db: DB
-) -> AccessGrant:
+async def revoke_grant(grant_id: UUID, current_user: CandidateUser, db: DB) -> AccessGrant:
     result = await db.execute(
         select(AccessGrant).where(
             AccessGrant.id == grant_id,
@@ -124,7 +110,5 @@ async def revoke_grant(
     )
     grant = result.scalar_one_or_none()
     if grant is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="access grant not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="access grant not found")
     return await invitation_service.revoke_grant(db, grant)
