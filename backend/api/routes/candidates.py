@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import services.candidate_service as candidate_service
 from api.deps import get_db, require_role
 from models.candidate_profile import (
-    Certification,
     CandidateProfile,
+    Certification,
     Education,
     Experience,
     Language,
