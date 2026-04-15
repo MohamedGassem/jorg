@@ -35,7 +35,7 @@ async def test_recruiter_creates_invitation(
     assert r.status_code == 201
     data = r.json()
     assert data["candidate_email"] == "newcandidate@test.com"
-    assert data["status"] == "PENDING"
+    assert data["status"] == "pending"
     assert "token" in data
     assert "id" in data
 
@@ -129,7 +129,7 @@ async def test_candidate_accepts_invitation(
     r = await client.post(f"/invitations/{token}/accept", headers=candidate_headers)
     assert r.status_code == 201
     data = r.json()
-    assert data["status"] == "ACTIVE"
+    assert data["status"] == "active"
     assert data["organization_id"] == org_id
 
 
@@ -156,7 +156,7 @@ async def test_candidate_rejects_invitation(
     token = await _create_invite_token(client, recruiter_headers, org_id)
     r = await client.post(f"/invitations/{token}/reject", headers=candidate_headers)
     assert r.status_code == 200
-    assert r.json()["status"] == "REJECTED"
+    assert r.json()["status"] == "rejected"
 
 
 async def test_cannot_accept_already_rejected(
@@ -206,5 +206,5 @@ async def test_candidate_revokes_grant(
     grant_id = grant.json()["id"]
     r = await client.delete(f"/access/me/{grant_id}", headers=candidate_headers)
     assert r.status_code == 200
-    assert r.json()["status"] == "REVOKED"
+    assert r.json()["status"] == "revoked"
     assert r.json()["revoked_at"] is not None
