@@ -1,9 +1,8 @@
 # backend/tests/integration/test_recruiter_api.py
 import io
 
-from docx import Document  # type: ignore[import-untyped]
+from docx import Document  # type: ignore[import-untyped,unused-ignore]
 from httpx import AsyncClient
-
 
 # ---- Auth & role guards -----------------------------------------------------
 
@@ -51,9 +50,7 @@ async def test_update_recruiter_profile(
 # ---- Organization -----------------------------------------------------------
 
 
-async def test_create_organization(
-    client: AsyncClient, recruiter_headers: dict[str, str]
-) -> None:
+async def test_create_organization(client: AsyncClient, recruiter_headers: dict[str, str]) -> None:
     r = await client.post(
         "/organizations",
         headers=recruiter_headers,
@@ -70,16 +67,12 @@ async def test_create_organization_slug_is_unique(
     client: AsyncClient, recruiter_headers: dict[str, str]
 ) -> None:
     await client.post("/organizations", headers=recruiter_headers, json={"name": "Dupont SA"})
-    r2 = await client.post(
-        "/organizations", headers=recruiter_headers, json={"name": "Dupont SA"}
-    )
+    r2 = await client.post("/organizations", headers=recruiter_headers, json={"name": "Dupont SA"})
     assert r2.status_code == 201
     assert r2.json()["slug"] == "dupont-sa-1"
 
 
-async def test_get_organization(
-    client: AsyncClient, recruiter_headers: dict[str, str]
-) -> None:
+async def test_get_organization(client: AsyncClient, recruiter_headers: dict[str, str]) -> None:
     create = await client.post(
         "/organizations", headers=recruiter_headers, json={"name": "Test Inc"}
     )
@@ -102,9 +95,7 @@ async def test_get_organization_not_found(
 async def test_recruiter_can_link_to_organization(
     client: AsyncClient, recruiter_headers: dict[str, str]
 ) -> None:
-    org = await client.post(
-        "/organizations", headers=recruiter_headers, json={"name": "My Firm"}
-    )
+    org = await client.post("/organizations", headers=recruiter_headers, json={"name": "My Firm"})
     org_id = org.json()["id"]
     r = await client.put(
         "/recruiters/me/profile",
@@ -139,14 +130,12 @@ def _make_docx_bytes(paragraphs: list[str]) -> bytes:
     return buf.getvalue()
 
 
-async def _setup_org_and_link(
-    client: AsyncClient, recruiter_headers: dict[str, str]
-) -> str:
+async def _setup_org_and_link(client: AsyncClient, recruiter_headers: dict[str, str]) -> str:
     """Helper: create an org and link the recruiter to it. Returns org_id."""
     org = await client.post(
         "/organizations", headers=recruiter_headers, json={"name": "Template Corp"}
     )
-    org_id = org.json()["id"]
+    org_id: str = org.json()["id"]
     await client.put(
         "/recruiters/me/profile",
         headers=recruiter_headers,
@@ -159,14 +148,18 @@ async def test_upload_template_detects_placeholders(
     client: AsyncClient, recruiter_headers: dict[str, str]
 ) -> None:
     org_id = await _setup_org_and_link(client, recruiter_headers)
-    docx_bytes = _make_docx_bytes(
-        ["Nom: {{NOM}}", "Prénom: {{PRENOM}}", "Titre: {{TITRE}}"]
-    )
+    docx_bytes = _make_docx_bytes(["Nom: {{NOM}}", "Prénom: {{PRENOM}}", "Titre: {{TITRE}}"])
     r = await client.post(
         f"/organizations/{org_id}/templates",
         headers=recruiter_headers,
         data={"name": "Mon Template"},
-        files={"file": ("template.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        files={
+            "file": (
+                "template.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
     )
     assert r.status_code == 201
     data = r.json()
@@ -178,9 +171,7 @@ async def test_upload_template_detects_placeholders(
     assert data["mappings"] == {}
 
 
-async def test_list_templates(
-    client: AsyncClient, recruiter_headers: dict[str, str]
-) -> None:
+async def test_list_templates(client: AsyncClient, recruiter_headers: dict[str, str]) -> None:
     org_id = await _setup_org_and_link(client, recruiter_headers)
     docx_bytes = _make_docx_bytes(["{{NOM}}"])
     for name in ["T1", "T2"]:
@@ -188,7 +179,13 @@ async def test_list_templates(
             f"/organizations/{org_id}/templates",
             headers=recruiter_headers,
             data={"name": name},
-            files={"file": ("t.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "t.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
         )
     r = await client.get(f"/organizations/{org_id}/templates", headers=recruiter_headers)
     assert r.status_code == 200
@@ -204,7 +201,13 @@ async def test_update_mappings_sets_is_valid(
         f"/organizations/{org_id}/templates",
         headers=recruiter_headers,
         data={"name": "T"},
-        files={"file": ("t.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
     )
     template_id = upload.json()["id"]
 
@@ -227,16 +230,20 @@ async def test_update_mappings_sets_is_valid(
     assert r2.json()["is_valid"] is True
 
 
-async def test_delete_template(
-    client: AsyncClient, recruiter_headers: dict[str, str]
-) -> None:
+async def test_delete_template(client: AsyncClient, recruiter_headers: dict[str, str]) -> None:
     org_id = await _setup_org_and_link(client, recruiter_headers)
     docx_bytes = _make_docx_bytes(["{{NOM}}"])
     upload = await client.post(
         f"/organizations/{org_id}/templates",
         headers=recruiter_headers,
         data={"name": "ToDelete"},
-        files={"file": ("t.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
     )
     template_id = upload.json()["id"]
 
@@ -246,9 +253,7 @@ async def test_delete_template(
     )
     assert r.status_code == 204
 
-    list_r = await client.get(
-        f"/organizations/{org_id}/templates", headers=recruiter_headers
-    )
+    list_r = await client.get(f"/organizations/{org_id}/templates", headers=recruiter_headers)
     assert len(list_r.json()) == 0
 
 
@@ -262,7 +267,5 @@ async def test_recruiter_cannot_access_other_org_templates(
     )
     org_id = org.json()["id"]
     # recruiter is not linked to this org
-    r = await client.get(
-        f"/organizations/{org_id}/templates", headers=recruiter_headers
-    )
+    r = await client.get(f"/organizations/{org_id}/templates", headers=recruiter_headers)
     assert r.status_code == 403

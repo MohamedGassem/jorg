@@ -1,5 +1,6 @@
 # backend/core/storage.py
 """Local file storage for dev. Replace with S3 adapter in production."""
+
 from __future__ import annotations
 
 import uuid

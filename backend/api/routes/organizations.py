@@ -29,9 +29,7 @@ async def _get_org_or_404(db: AsyncSession, org_id: UUID) -> Organization:
     return org
 
 
-async def _require_org_membership(
-    db: AsyncSession, user_id: UUID, org_id: UUID
-) -> None:
+async def _require_org_membership(db: AsyncSession, user_id: UUID, org_id: UUID) -> None:
     """Raise 403 if the recruiter is not linked to the given organization."""
     profile = await recruiter_service.get_or_create_profile(db, user_id)
     if profile.organization_id != org_id:
@@ -52,9 +50,7 @@ async def create_organization(
 
 
 @router.get("/{org_id}", response_model=OrganizationRead)
-async def get_organization(
-    org_id: UUID, current_user: RecruiterUser, db: DB
-) -> Organization:
+async def get_organization(org_id: UUID, current_user: RecruiterUser, db: DB) -> Organization:
     return await _get_org_or_404(db, org_id)
 
 
@@ -62,9 +58,7 @@ async def get_organization(
 
 
 @router.get("/{org_id}/templates", response_model=list[TemplateRead])
-async def list_templates(
-    org_id: UUID, current_user: RecruiterUser, db: DB
-) -> list[Template]:
+async def list_templates(org_id: UUID, current_user: RecruiterUser, db: DB) -> list[Template]:
     await _get_org_or_404(db, org_id)
     await _require_org_membership(db, current_user.id, org_id)
     return await template_service.list_templates(db, org_id)
@@ -113,9 +107,7 @@ async def get_template(
     return tmpl
 
 
-@router.put(
-    "/{org_id}/templates/{template_id}/mappings", response_model=TemplateRead
-)
+@router.put("/{org_id}/templates/{template_id}/mappings", response_model=TemplateRead)
 async def update_template_mappings(
     org_id: UUID,
     template_id: UUID,
@@ -131,9 +123,7 @@ async def update_template_mappings(
     return await template_service.update_mappings(db, tmpl, data.mappings)
 
 
-@router.delete(
-    "/{org_id}/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/{org_id}/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_template(
     org_id: UUID, template_id: UUID, current_user: RecruiterUser, db: DB
 ) -> None:

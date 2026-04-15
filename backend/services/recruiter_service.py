@@ -22,9 +22,7 @@ async def _unique_slug(db: AsyncSession, base: str) -> str:
     candidate = base
     suffix = 1
     while True:
-        result = await db.execute(
-            select(Organization).where(Organization.slug == candidate)
-        )
+        result = await db.execute(select(Organization).where(Organization.slug == candidate))
         if result.scalar_one_or_none() is None:
             return candidate
         candidate = f"{base}-{suffix}"
@@ -34,9 +32,7 @@ async def _unique_slug(db: AsyncSession, base: str) -> str:
 # ---- Organization -----------------------------------------------------------
 
 
-async def create_organization(
-    db: AsyncSession, data: OrganizationCreate
-) -> Organization:
+async def create_organization(db: AsyncSession, data: OrganizationCreate) -> Organization:
     slug = await _unique_slug(db, _slugify(data.name))
     org = Organization(name=data.name, slug=slug, logo_url=data.logo_url)
     db.add(org)
@@ -46,9 +42,7 @@ async def create_organization(
 
 
 async def get_organization(db: AsyncSession, org_id: UUID) -> Organization | None:
-    result = await db.execute(
-        select(Organization).where(Organization.id == org_id)
-    )
+    result = await db.execute(select(Organization).where(Organization.id == org_id))
     return result.scalar_one_or_none()
 
 
@@ -56,9 +50,7 @@ async def get_organization(db: AsyncSession, org_id: UUID) -> Organization | Non
 
 
 async def get_or_create_profile(db: AsyncSession, user_id: UUID) -> RecruiterProfile:
-    result = await db.execute(
-        select(RecruiterProfile).where(RecruiterProfile.user_id == user_id)
-    )
+    result = await db.execute(select(RecruiterProfile).where(RecruiterProfile.user_id == user_id))
     profile = result.scalar_one_or_none()
     if profile is None:
         profile = RecruiterProfile(user_id=user_id)

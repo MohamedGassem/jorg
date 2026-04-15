@@ -1,7 +1,7 @@
 # backend/tests/unit/test_docx_parser.py
 import tempfile
 
-from docx import Document  # type: ignore[import-untyped]
+from docx import Document  # type: ignore[import-untyped,unused-ignore]
 
 from services.docx_parser import extract_placeholders
 
@@ -11,9 +11,9 @@ def _make_docx(paragraphs: list[str]) -> str:
     doc = Document()
     for text in paragraphs:
         doc.add_paragraph(text)
-    tmp = tempfile.NamedTemporaryFile(suffix=".docx", delete=False)
-    doc.save(tmp.name)
-    return tmp.name
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        return tmp.name
 
 
 def test_extract_simple_placeholders() -> None:

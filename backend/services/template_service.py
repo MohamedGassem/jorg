@@ -8,13 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.template import Template
 
 
-def _compute_is_valid(
-    detected_placeholders: list[str], mappings: dict[str, Any]
-) -> bool:
+def _compute_is_valid(detected_placeholders: list[str], mappings: dict[str, Any]) -> bool:
     """A template is valid when every detected placeholder has a mapping."""
-    return bool(detected_placeholders) and all(
-        ph in mappings for ph in detected_placeholders
-    )
+    return bool(detected_placeholders) and all(ph in mappings for ph in detected_placeholders)
 
 
 async def create_template(
@@ -43,9 +39,7 @@ async def create_template(
 
 
 async def list_templates(db: AsyncSession, organization_id: UUID) -> list[Template]:
-    result = await db.execute(
-        select(Template).where(Template.organization_id == organization_id)
-    )
+    result = await db.execute(select(Template).where(Template.organization_id == organization_id))
     return list(result.scalars().all())
 
 
@@ -66,7 +60,7 @@ async def update_mappings(
     template: Template,
     mappings: dict[str, str],
 ) -> Template:
-    template.mappings = mappings  # type: ignore[assignment]
+    template.mappings = mappings
     template.is_valid = _compute_is_valid(template.detected_placeholders, mappings)
     await db.commit()
     await db.refresh(template)

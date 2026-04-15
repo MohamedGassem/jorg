@@ -1,16 +1,17 @@
 # backend/services/docx_parser.py
 """Extract {{...}} placeholders from a Word .docx file."""
+
 from __future__ import annotations
 
 import re
+from typing import Any
 
-from docx import Document  # type: ignore[import-untyped]
-
+from docx import Document  # type: ignore[import-untyped,unused-ignore]
 
 _PLACEHOLDER_RE = re.compile(r"\{\{[^}]+\}\}")
 
 
-def _iter_paragraphs(doc: Document) -> list[str]:  # type: ignore[type-arg]
+def _iter_paragraphs(doc: Any) -> list[str]:
     """Collect all text blocks from paragraphs and table cells."""
     texts: list[str] = [p.text for p in doc.paragraphs]
     for table in doc.tables:
