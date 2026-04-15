@@ -4,7 +4,6 @@ import io
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
 from httpx import AsyncClient
 
-
 # ---- helpers ----------------------------------------------------------------
 
 
@@ -23,9 +22,7 @@ async def _setup_org_with_grant(
     candidate_headers: dict[str, str],
 ) -> tuple[str, str]:
     """Create org, link recruiter, invite+accept candidate. Returns (org_id, candidate_id)."""
-    org = await client.post(
-        "/organizations", headers=recruiter_headers, json={"name": "GenCorp"}
-    )
+    org = await client.post("/organizations", headers=recruiter_headers, json={"name": "GenCorp"})
     org_id: str = org.json()["id"]
     await client.put(
         "/recruiters/me/profile",
@@ -57,7 +54,13 @@ async def _upload_valid_template(
         f"/organizations/{org_id}/templates",
         headers=recruiter_headers,
         data={"name": "CV Template"},
-        files={"file": ("t.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
     )
     template_id: str = r.json()["id"]
     await client.put(
@@ -76,9 +79,7 @@ async def test_recruiter_generates_document(
     recruiter_headers: dict[str, str],
     candidate_headers: dict[str, str],
 ) -> None:
-    org_id, candidate_id = await _setup_org_with_grant(
-        client, recruiter_headers, candidate_headers
-    )
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
     template_id = await _upload_valid_template(client, recruiter_headers, org_id)
 
     r = await client.post(
@@ -125,16 +126,20 @@ async def test_cannot_generate_with_invalid_template(
     recruiter_headers: dict[str, str],
     candidate_headers: dict[str, str],
 ) -> None:
-    org_id, candidate_id = await _setup_org_with_grant(
-        client, recruiter_headers, candidate_headers
-    )
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
     # Upload template but do NOT map all placeholders → is_valid=False
     docx_bytes = _make_docx_bytes(["{{NOM}} {{UNMAPPED}}"])
     r = await client.post(
         f"/organizations/{org_id}/templates",
         headers=recruiter_headers,
         data={"name": "Bad Template"},
-        files={"file": ("t.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
     )
     template_id = r.json()["id"]
     # Only map one of two placeholders
@@ -159,9 +164,11 @@ async def test_candidate_cannot_trigger_generation(
     r = await client.post(
         "/organizations/00000000-0000-0000-0000-000000000000/generate",
         headers=candidate_headers,
-        json={"candidate_id": "00000000-0000-0000-0000-000000000001",
-              "template_id": "00000000-0000-0000-0000-000000000002",
-              "format": "docx"},
+        json={
+            "candidate_id": "00000000-0000-0000-0000-000000000001",
+            "template_id": "00000000-0000-0000-0000-000000000002",
+            "format": "docx",
+        },
     )
     assert r.status_code == 403
 
@@ -174,9 +181,7 @@ async def test_candidate_history_lists_generated_docs(
     recruiter_headers: dict[str, str],
     candidate_headers: dict[str, str],
 ) -> None:
-    org_id, candidate_id = await _setup_org_with_grant(
-        client, recruiter_headers, candidate_headers
-    )
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
     template_id = await _upload_valid_template(client, recruiter_headers, org_id)
     await client.post(
         f"/organizations/{org_id}/generate",
@@ -194,9 +199,7 @@ async def test_recruiter_org_history(
     recruiter_headers: dict[str, str],
     candidate_headers: dict[str, str],
 ) -> None:
-    org_id, candidate_id = await _setup_org_with_grant(
-        client, recruiter_headers, candidate_headers
-    )
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
     template_id = await _upload_valid_template(client, recruiter_headers, org_id)
     await client.post(
         f"/organizations/{org_id}/generate",
@@ -204,9 +207,7 @@ async def test_recruiter_org_history(
         json={"candidate_id": candidate_id, "template_id": template_id, "format": "docx"},
     )
 
-    r = await client.get(
-        f"/organizations/{org_id}/documents", headers=recruiter_headers
-    )
+    r = await client.get(f"/organizations/{org_id}/documents", headers=recruiter_headers)
     assert r.status_code == 200
     assert len(r.json()) >= 1
 
@@ -219,9 +220,7 @@ async def test_download_generated_document(
     recruiter_headers: dict[str, str],
     candidate_headers: dict[str, str],
 ) -> None:
-    org_id, candidate_id = await _setup_org_with_grant(
-        client, recruiter_headers, candidate_headers
-    )
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
     template_id = await _upload_valid_template(client, recruiter_headers, org_id)
     gen = await client.post(
         f"/organizations/{org_id}/generate",
@@ -232,6 +231,4 @@ async def test_download_generated_document(
 
     r = await client.get(f"/documents/{doc_id}/download", headers=recruiter_headers)
     assert r.status_code == 200
-    assert r.headers["content-type"].startswith(
-        "application/vnd.openxmlformats-officedocument"
-    )
+    assert r.headers["content-type"].startswith("application/vnd.openxmlformats-officedocument")

@@ -72,9 +72,7 @@ def test_simple_placeholder_replaced() -> None:
 
 def test_unknown_field_replaced_with_empty() -> None:
     path = _make_docx_path(["Data: {{GHOST}}"])
-    result = generate_document(
-        path, _mock_profile(), [], {"{{GHOST}}": "nonexistent_field"}
-    )
+    result = generate_document(path, _mock_profile(), [], {"{{GHOST}}": "nonexistent_field"})
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "{{GHOST}}" not in texts
@@ -82,11 +80,13 @@ def test_unknown_field_replaced_with_empty() -> None:
 
 
 def test_experience_block_repeated_per_item() -> None:
-    path = _make_docx_path([
-        "{{#EXPERIENCES}}",
-        "{{EXP_CLIENT}} — {{EXP_ROLE}}",
-        "{{/EXPERIENCES}}",
-    ])
+    path = _make_docx_path(
+        [
+            "{{#EXPERIENCES}}",
+            "{{EXP_CLIENT}} — {{EXP_ROLE}}",
+            "{{/EXPERIENCES}}",
+        ]
+    )
     exp1 = _mock_exp(client_name="Alpha", role="Dev")
     exp2 = _mock_exp(client_name="Beta", role="Lead")
     mappings = {
@@ -103,13 +103,15 @@ def test_experience_block_repeated_per_item() -> None:
 
 
 def test_no_experiences_removes_block_markers() -> None:
-    path = _make_docx_path([
-        "Header",
-        "{{#EXPERIENCES}}",
-        "{{EXP_CLIENT}}",
-        "{{/EXPERIENCES}}",
-        "Footer",
-    ])
+    path = _make_docx_path(
+        [
+            "Header",
+            "{{#EXPERIENCES}}",
+            "{{EXP_CLIENT}}",
+            "{{/EXPERIENCES}}",
+            "Footer",
+        ]
+    )
     result = generate_document(
         path, _mock_profile(), [], {"{{EXP_CLIENT}}": "experience.client_name"}
     )
@@ -122,11 +124,13 @@ def test_no_experiences_removes_block_markers() -> None:
 
 
 def test_experience_current_end_date_shows_present() -> None:
-    path = _make_docx_path([
-        "{{#EXPERIENCES}}",
-        "{{EXP_START}} - {{EXP_END}}",
-        "{{/EXPERIENCES}}",
-    ])
+    path = _make_docx_path(
+        [
+            "{{#EXPERIENCES}}",
+            "{{EXP_START}} - {{EXP_END}}",
+            "{{/EXPERIENCES}}",
+        ]
+    )
     exp = _mock_exp(start_date=date(2022, 6, 1), end_date=None, is_current=True)
     mappings = {
         "{{EXP_START}}": "experience.start_date",
@@ -140,11 +144,13 @@ def test_experience_current_end_date_shows_present() -> None:
 
 
 def test_date_formatted_mm_yyyy() -> None:
-    path = _make_docx_path([
-        "{{#EXPERIENCES}}",
-        "{{EXP_START}} to {{EXP_END}}",
-        "{{/EXPERIENCES}}",
-    ])
+    path = _make_docx_path(
+        [
+            "{{#EXPERIENCES}}",
+            "{{EXP_START}} to {{EXP_END}}",
+            "{{/EXPERIENCES}}",
+        ]
+    )
     exp = _mock_exp(
         start_date=date(2021, 3, 15),
         end_date=date(2023, 11, 1),
@@ -162,11 +168,13 @@ def test_date_formatted_mm_yyyy() -> None:
 
 
 def test_technologies_joined_as_string() -> None:
-    path = _make_docx_path([
-        "{{#EXPERIENCES}}",
-        "Stack: {{EXP_TECH}}",
-        "{{/EXPERIENCES}}",
-    ])
+    path = _make_docx_path(
+        [
+            "{{#EXPERIENCES}}",
+            "Stack: {{EXP_TECH}}",
+            "{{/EXPERIENCES}}",
+        ]
+    )
     exp = _mock_exp(technologies=["Python", "FastAPI", "Redis"])
     result = generate_document(
         path, _mock_profile(), [exp], {"{{EXP_TECH}}": "experience.technologies"}

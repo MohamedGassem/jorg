@@ -95,9 +95,7 @@ async def list_org_documents(
     "/candidates/me/documents",
     response_model=list[GeneratedDocumentRead],
 )
-async def list_my_documents(
-    current_user: CandidateUser, db: DB
-) -> list[GeneratedDocument]:
+async def list_my_documents(current_user: CandidateUser, db: DB) -> list[GeneratedDocument]:
     return await generation_service.list_candidate_documents(db, current_user.id)
 
 
@@ -107,17 +105,14 @@ async def download_document(
     current_user: CurrentUser,
     db: DB,
 ) -> FileResponse:
-    result = await db.execute(
-        select(GeneratedDocument).where(GeneratedDocument.id == doc_id)
-    )
+    result = await db.execute(select(GeneratedDocument).where(GeneratedDocument.id == doc_id))
     doc = result.scalar_one_or_none()
     if doc is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="document not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="document not found")
 
     # Authorization: recruiter from org OR the candidate themselves
     from models.invitation import AccessGrant
+
     grant_result = await db.execute(
         select(AccessGrant).where(AccessGrant.id == doc.access_grant_id)
     )
@@ -132,15 +127,11 @@ async def download_document(
         is_recruiter_of_org = profile.organization_id == grant.organization_id
 
     if not is_candidate and not is_recruiter_of_org:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="access denied"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="access denied")
 
     file_path = Path(doc.file_path)
     if not file_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_410_GONE, detail="file no longer available"
-        )
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
 
     mime = (
         "application/pdf"
