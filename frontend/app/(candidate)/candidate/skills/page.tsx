@@ -51,6 +51,16 @@ function errMsg(err: unknown, fallback: string): string {
   return fallback;
 }
 
+function safeUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 function Textarea({
   id,
   value,
@@ -615,8 +625,8 @@ function CertificationSection() {
                 {cert.issuer} · {cert.issue_date}
                 {cert.expiry_date ? ` → ${cert.expiry_date}` : ""}
               </p>
-              {cert.credential_url && (
-                <a href={cert.credential_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+              {safeUrl(cert.credential_url) && (
+                <a href={safeUrl(cert.credential_url)!} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
                   Voir le certificat
                 </a>
               )}

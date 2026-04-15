@@ -1,4 +1,4 @@
-// frontend/proxy.ts
+// frontend/middleware.ts
 import { jwtDecode } from "jwt-decode";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -8,7 +8,7 @@ interface JwtPayload {
   exp: number;
 }
 
-export function proxy(request: NextRequest): NextResponse {
+export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("access_token")?.value;
 

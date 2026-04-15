@@ -71,6 +71,7 @@ export default function TemplatesPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [name, setName] = useState("");
 
   useEffect(() => {
@@ -83,7 +84,7 @@ export default function TemplatesPage() {
         return [];
       })
       .then(setTemplates)
-      .catch(console.error)
+      .catch((err) => setLoadError(err instanceof ApiError ? err.detail : "Erreur de chargement"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -114,6 +115,7 @@ export default function TemplatesPage() {
   }
 
   if (loading) return <p className="text-muted-foreground">Chargement…</p>;
+  if (loadError) return <p role="alert" className="text-sm text-destructive">{loadError}</p>;
   if (!orgId) return <CreateOrgPrompt onCreated={setOrgId} />;
 
   return (
