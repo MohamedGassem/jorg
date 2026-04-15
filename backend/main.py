@@ -31,4 +31,4 @@ app.include_router(generation_router)
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok", "env": settings.env}
+    return {"status": "ok", "env": settings.env, "cors": "active"}

@@ -9,7 +9,61 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
-import type { RecruiterProfile, Template } from "@/types/api";
+import type { Organization, RecruiterProfile, Template } from "@/types/api";
+
+function CreateOrgPrompt({ onCreated }: { onCreated: (orgId: string) => void }) {
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      const org = await api.post<Organization>("/organizations", { name: name.trim() });
+      await api.put("/recruiters/me/profile", { organization_id: org.id });
+      onCreated(org.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Erreur lors de la création");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="max-w-md space-y-6">
+      <h1 className="text-2xl font-bold">Templates</h1>
+      <Card>
+        <CardHeader>
+          <CardTitle>Créer votre organisation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Votre compte n&apos;est pas encore associé à une organisation. Créez-en une pour
+            commencer à gérer des templates et inviter des candidats.
+          </p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="org-name">Nom de l&apos;organisation</Label>
+              <Input
+                id="org-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="ex: Acme Consulting"
+                required
+              />
+            </div>
+            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" disabled={saving || !name.trim()}>
+              {saving ? "Création…" : "Créer et continuer"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function TemplatesPage() {
   const [orgId, setOrgId] = useState<string | null>(null);
@@ -60,7 +114,7 @@ export default function TemplatesPage() {
   }
 
   if (loading) return <p className="text-muted-foreground">Chargement…</p>;
-  if (!orgId) return <p className="text-muted-foreground">Associez votre compte à une organisation pour gérer les templates.</p>;
+  if (!orgId) return <CreateOrgPrompt onCreated={setOrgId} />;
 
   return (
     <div className="max-w-3xl space-y-8">

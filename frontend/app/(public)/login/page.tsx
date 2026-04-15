@@ -34,7 +34,16 @@ export default function LoginPage() {
       const { role } = jwtDecode<JwtPayload>(data.access_token);
       router.push(role === "candidate" ? "/candidate/profile" : "/recruiter/templates");
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : "Login failed");
+      console.error("[login]", err);
+      if (err instanceof ApiError) {
+        setError(err.detail);
+      } else if (err instanceof TypeError && err.message.includes("fetch")) {
+        setError("Impossible de contacter le serveur — vérifiez que le backend est démarré");
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Erreur inconnue");
+      }
     } finally {
       setLoading(false);
     }

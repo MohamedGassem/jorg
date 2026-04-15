@@ -1,4 +1,4 @@
-// frontend/middleware.ts
+// frontend/proxy.ts
 import { jwtDecode } from "jwt-decode";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -8,7 +8,7 @@ interface JwtPayload {
   exp: number;
 }
 
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("access_token")?.value;
 
@@ -17,24 +17,23 @@ export function middleware(request: NextRequest): NextResponse {
 
   if (!isProtected) return NextResponse.next();
 
-  if (!token) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  function redirectToLogin() {
+    const res = NextResponse.redirect(new URL("/login", request.url));
+    res.cookies.delete("access_token");
+    res.cookies.delete("refresh_token");
+    return res;
   }
+
+  if (!token) return redirectToLogin();
 
   try {
     const payload = jwtDecode<JwtPayload>(token);
     const now = Math.floor(Date.now() / 1000);
-    if (payload.exp < now) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-    if (pathname.startsWith("/candidate") && payload.role !== "candidate") {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-    if (pathname.startsWith("/recruiter") && payload.role !== "recruiter") {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
+    if (payload.exp < now) return redirectToLogin();
+    if (pathname.startsWith("/candidate") && payload.role !== "candidate") return redirectToLogin();
+    if (pathname.startsWith("/recruiter") && payload.role !== "recruiter") return redirectToLogin();
   } catch {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return redirectToLogin();
   }
 
   return NextResponse.next();
