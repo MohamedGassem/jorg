@@ -1,8 +1,8 @@
 # backend/models/__init__.py
 from models.base import Base
 from models.candidate_profile import (
-    CandidateProfile,
     Certification,
+    CandidateProfile,
     Education,
     Experience,
     Language,
@@ -10,6 +10,7 @@ from models.candidate_profile import (
     Skill,
     SkillCategory,
 )
+from models.generated_document import GeneratedDocument
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
 from models.recruiter import Organization, RecruiterProfile
 from models.template import Template
@@ -19,10 +20,11 @@ __all__ = [
     "AccessGrant",
     "AccessGrantStatus",
     "Base",
-    "CandidateProfile",
     "Certification",
+    "CandidateProfile",
     "Education",
     "Experience",
+    "GeneratedDocument",
     "Invitation",
     "InvitationStatus",
     "Language",
