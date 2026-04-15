@@ -28,6 +28,7 @@ Thumbs.db
 
 # Storage dev
 storage/
+backend/uploads/
 
 # Claude Code (project-level settings)
 .claude/
