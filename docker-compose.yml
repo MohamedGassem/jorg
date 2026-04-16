@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:18.3
+    container_name: jorg-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jorg
+      POSTGRES_PASSWORD: jorg_dev_password
+      POSTGRES_DB: jorg
+    ports:
+      - "5432:5432"
+    volumes:
+      - jorg_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jorg"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  jorg_pgdata:

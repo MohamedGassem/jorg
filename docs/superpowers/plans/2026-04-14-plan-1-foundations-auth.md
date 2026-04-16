@@ -85,7 +85,7 @@ Avant de démarrer :
 - Create: `docker-compose.yml`
 - Create: `.env.example`
 
-- [ ] **Step 1: Créer `.gitignore`**
+- [X] **Step 1: Créer `.gitignore`**
 
 Fichier `.gitignore` à la racine :
 
@@ -120,9 +120,12 @@ Thumbs.db
 
 # Storage dev
 storage/
+
+# Claude Code (project-level settings)
+.claude/
 ```
 
-- [ ] **Step 2: Créer `docker-compose.yml` à la racine**
+- [X] **Step 2: Créer `docker-compose.yml` à la racine**
 
 ```yaml
 services:
@@ -148,7 +151,7 @@ volumes:
   jorg_pgdata:
 ```
 
-- [ ] **Step 3: Créer `.env.example`**
+- [X] **Step 3: Créer `.env.example`**
 
 ```
 # Database
@@ -192,7 +195,7 @@ Expected: `Container jorg-postgres Started`
 Run: `docker compose ps`
 Expected: statut `running (healthy)` pour `jorg-postgres`.
 
-- [ ] **Step 5: Commit**
+- [X] **Step 5: Commit**
 
 ```bash
 git add .gitignore docker-compose.yml .env.example
@@ -215,7 +218,7 @@ git commit -m "chore: initial repo scaffold with postgres dev container"
 - Create: `backend/tests/unit/__init__.py`
 - Create: `backend/tests/integration/__init__.py`
 
-- [ ] **Step 1: Créer `backend/pyproject.toml`**
+- [X] **Step 1: Créer `backend/pyproject.toml`**
 
 ```toml
 [project]
@@ -272,7 +275,7 @@ source = ["."]
 omit = ["tests/*", "alembic/*"]
 ```
 
-- [ ] **Step 2: Créer les `__init__.py` vides**
+- [X] **Step 2: Créer les `__init__.py` vides**
 
 Créer chaque fichier listé dans **Files** avec un contenu vide.
 
