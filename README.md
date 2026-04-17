@@ -1,6 +1,6 @@
 # Jorg
 
-Jorg is a platform that lets **freelance consultants** build a structured skill profile (experiences, skills, education, certifications, languages) that recruiting firms can use to generate tailored Word/PDF documents — without ever giving them direct access to a CV file.
+Jorg is a platform that lets **candidates** build a structured skill profile (experiences, skills, education, certifications, languages) that recruiting firms can use to generate tailored Word/PDF documents without ever giving them direct access to a CV file.
 
 ## How it works
 
