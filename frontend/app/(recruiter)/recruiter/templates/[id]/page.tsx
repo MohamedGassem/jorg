@@ -37,6 +37,8 @@ const PROFILE_FIELDS = [
   { value: "experience.start_date", label: "Expérience — Début" },
   { value: "experience.end_date", label: "Expérience — Fin" },
   { value: "experience.description", label: "Expérience — Description" },
+  { value: "experience.context", label: "Expérience — Contexte" },
+  { value: "experience.achievements", label: "Expérience — Réalisations" },
   { value: "experience.technologies", label: "Expérience — Technologies" },
 ];
 
