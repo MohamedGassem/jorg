@@ -111,10 +111,20 @@ export default function GeneratePage() {
         <Card>
           <CardContent className="pt-6">
             <p className="mb-4 text-sm text-green-600 font-medium">Dossier généré avec succès !</p>
-            <Button asChild variant="outline">
-              <a href={api.downloadUrl(`/documents/${result.id}/download`)} download>
-                Télécharger ({result.file_format.toUpperCase()})
-              </a>
+            <Button
+              variant="outline"
+              onClick={() =>
+                api
+                  .download(
+                    `/documents/${result.id}/download`,
+                    `dossier.${result.file_format}`
+                  )
+                  .catch((err) =>
+                    setError(err instanceof ApiError ? err.detail : "Erreur de téléchargement")
+                  )
+              }
+            >
+              Télécharger ({result.file_format.toUpperCase()})
             </Button>
           </CardContent>
         </Card>
