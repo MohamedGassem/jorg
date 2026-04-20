@@ -5,17 +5,19 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import type { GeneratedDocument } from "@/types/api";
 
 export default function HistoryPage() {
   const [docs, setDocs] = useState<GeneratedDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [downloadErrors, setDownloadErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     api.get<GeneratedDocument[]>("/candidates/me/documents")
       .then(setDocs)
-      .catch(console.error)
+      .catch((err) => setFetchError(err instanceof ApiError ? err.detail : "Impossible de charger les dossiers"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -24,6 +26,9 @@ export default function HistoryPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-bold">Dossiers générés</h1>
+      {fetchError && (
+        <p role="alert" className="text-sm text-destructive">{fetchError}</p>
+      )}
       {docs.length === 0 ? (
         <p className="text-muted-foreground">Aucun dossier généré pour l&apos;instant.</p>
       ) : (
@@ -43,17 +48,26 @@ export default function HistoryPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() =>
+                    onClick={() => {
+                      setDownloadErrors((prev) => { const n = { ...prev }; delete n[doc.id]; return n; });
                       api
                         .download(
                           `/documents/${doc.id}/download`,
                           `dossier.${doc.file_format}`
                         )
-                        .catch(console.error)
-                    }
+                        .catch((err) =>
+                          setDownloadErrors((prev) => ({
+                            ...prev,
+                            [doc.id]: err instanceof ApiError ? err.detail : "Erreur de téléchargement",
+                          }))
+                        );
+                    }}
                   >
                     Télécharger
                   </Button>
+                  {downloadErrors[doc.id] && (
+                    <p role="alert" className="mt-2 text-sm text-destructive">{downloadErrors[doc.id]}</p>
+                  )}
                 </CardContent>
               </Card>
             </li>
