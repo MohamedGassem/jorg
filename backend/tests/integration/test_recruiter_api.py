@@ -269,3 +269,40 @@ async def test_recruiter_cannot_access_other_org_templates(
     # recruiter is not linked to this org
     r = await client.get(f"/organizations/{org_id}/templates", headers=recruiter_headers)
     assert r.status_code == 403
+
+
+async def test_upload_template_excludes_block_markers_from_detected(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+) -> None:
+    """Uploading a template with mustache block markers must not list them
+    as mappable placeholders — they are control syntax, not fields."""
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    docx_bytes = _make_docx_bytes([
+        "Candidat : {{NOM}}",
+        "{{#EXPERIENCES}}",
+        "{{EXP_CLIENT}} — {{EXP_ROLE}}",
+        "{{/EXPERIENCES}}",
+    ])
+
+    r = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "With block"},
+        files={
+            "file": (
+                "with_block.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert "{{NOM}}" in body["detected_placeholders"]
+    assert "{{EXP_CLIENT}}" in body["detected_placeholders"]
+    assert "{{EXP_ROLE}}" in body["detected_placeholders"]
+    assert "{{#EXPERIENCES}}" not in body["detected_placeholders"]
+    assert "{{/EXPERIENCES}}" not in body["detected_placeholders"]
+    assert body["is_valid"] is False  # no mappings yet

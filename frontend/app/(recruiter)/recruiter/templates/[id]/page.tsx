@@ -16,6 +16,12 @@ import {
 import { api, ApiError } from "@/lib/api";
 import type { RecruiterProfile, Template } from "@/types/api";
 
+function isBlockMarker(placeholder: string): boolean {
+  // Matches {{#NAME}} or {{/NAME}} — mustache-style control syntax handled
+  // by the backend generator, not a user-mappable field.
+  return /^\{\{[#/]/.test(placeholder);
+}
+
 const PROFILE_FIELDS = [
   { value: "first_name", label: "Prénom" },
   { value: "last_name", label: "Nom" },
@@ -81,7 +87,7 @@ export default function TemplateMappingPage() {
       <Card>
         <CardHeader><CardTitle>Mappings des placeholders</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          {template.detected_placeholders.map((ph) => (
+          {template.detected_placeholders.filter((ph) => !isBlockMarker(ph)).map((ph) => (
             <div key={ph} className="space-y-2">
               <Label htmlFor={ph}>
                 <code className="rounded bg-muted px-1 py-0.5 text-sm">{ph}</code>
