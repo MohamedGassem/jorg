@@ -13,25 +13,18 @@ definition of "block marker".
 from __future__ import annotations
 
 import json
-import re
 from collections.abc import Sequence
 
 import sqlalchemy as sa
 
 from alembic import op
+from services.docx_parser import is_block_marker as _is_block_marker
 
 # revision identifiers, used by Alembic.
 revision: str = "95a63251072c"
 down_revision: str | Sequence[str] | None = "36e251d219a0"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
-
-
-_BLOCK_MARKER_RE = re.compile(r"^\{\{[#/]")
-
-
-def _is_block_marker(ph: str) -> bool:
-    return bool(_BLOCK_MARKER_RE.match(ph))
 
 
 def _compute_is_valid(detected: list[str], mappings: dict) -> bool:
