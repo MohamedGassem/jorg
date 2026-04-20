@@ -31,12 +31,22 @@ def test_extract_deduplicates_repeated_placeholders() -> None:
     assert result.count("{{NOM}}") == 1
 
 
-def test_extract_block_markers() -> None:
+def test_extract_block_markers_are_excluded() -> None:
+    """Block markers like {{#EXPERIENCES}} / {{/EXPERIENCES}} are mustache
+    control syntax, not data placeholders — they must not be returned."""
     path = _make_docx(["{{#EXPERIENCES}}", "{{EXP_CLIENT}}", "{{/EXPERIENCES}}"])
     result = extract_placeholders(path)
-    assert "{{#EXPERIENCES}}" in result
+    assert "{{#EXPERIENCES}}" not in result
+    assert "{{/EXPERIENCES}}" not in result
     assert "{{EXP_CLIENT}}" in result
-    assert "{{/EXPERIENCES}}" in result
+    assert result == ["{{EXP_CLIENT}}"]
+
+
+def test_extract_block_markers_excluded_for_any_block_name() -> None:
+    """The filter must apply to any {{#NAME}} / {{/NAME}} pair, not just EXPERIENCES."""
+    path = _make_docx(["{{#SKILLS}}", "{{SKILL_NAME}}", "{{/SKILLS}}"])
+    result = extract_placeholders(path)
+    assert result == ["{{SKILL_NAME}}"]
 
 
 def test_extract_empty_document_returns_empty_list() -> None:
