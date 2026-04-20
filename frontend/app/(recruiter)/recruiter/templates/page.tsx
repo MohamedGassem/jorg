@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -161,9 +161,12 @@ export default function TemplatesPage() {
                   <p className="mb-3 text-sm text-muted-foreground">
                     {tmpl.detected_placeholders.length} placeholder(s) détecté(s)
                   </p>
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={`/recruiter/templates/${tmpl.id}`}>Configurer les mappings</Link>
-                  </Button>
+                  <Link
+                    href={`/recruiter/templates/${tmpl.id}`}
+                    className={buttonVariants({ size: "sm", variant: "outline" })}
+                  >
+                    Configurer les mappings
+                  </Link>
                 </CardContent>
               </Card>
             </li>

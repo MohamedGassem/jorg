@@ -45,10 +45,19 @@ export default function RecruiterHistoryPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Button size="sm" variant="outline" asChild>
-                    <a href={api.downloadUrl(`/documents/${doc.id}/download`)} download>
-                      Télécharger
-                    </a>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      api
+                        .download(
+                          `/documents/${doc.id}/download`,
+                          `dossier.${doc.file_format}`
+                        )
+                        .catch(console.error)
+                    }
+                  >
+                    Télécharger
                   </Button>
                 </CardContent>
               </Card>

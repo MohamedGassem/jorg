@@ -85,9 +85,35 @@ export const api = {
   put: <T>(path: string, body?: unknown) => request<T>("PUT", path, body),
   delete: <T>(path: string) => request<T>("DELETE", path),
   upload: <T>(path: string, formData: FormData) => upload<T>(path, formData),
-  downloadUrl: (path: string) => {
+  download: async (path: string, filename: string, isRetry = false): Promise<void> => {
     const token = getAccessToken();
-    return `${BASE_URL}${path}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+    const res = await fetch(`${BASE_URL}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    if (res.status === 401 && !isRetry) {
+      const newToken = await refreshAccessToken();
+      if (newToken) return api.download(path, filename, true);
+      if (typeof window !== "undefined") window.location.href = "/login";
+      throw new ApiError(401, "session expired");
+    }
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const detail =
+        typeof data === "object" && data !== null && "detail" in data
+          ? String((data as { detail: unknown }).detail)
+          : "Download failed";
+      throw new ApiError(res.status, detail);
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   },
 };
 

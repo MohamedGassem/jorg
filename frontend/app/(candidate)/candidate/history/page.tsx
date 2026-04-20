@@ -40,11 +40,20 @@ export default function HistoryPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <a href={api.downloadUrl(`/documents/${doc.id}/download`)} download>
-                    <Button size="sm" variant="outline">
-                      Télécharger
-                    </Button>
-                  </a>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      api
+                        .download(
+                          `/documents/${doc.id}/download`,
+                          `dossier.${doc.file_format}`
+                        )
+                        .catch(console.error)
+                    }
+                  >
+                    Télécharger
+                  </Button>
                 </CardContent>
               </Card>
             </li>
