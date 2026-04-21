@@ -155,6 +155,13 @@ export interface GeneratedDocument {
   generated_at: string;
 }
 
+export interface AccessibleCandidate {
+  user_id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+}
+
 export interface ApiError {
   detail: string;
 }

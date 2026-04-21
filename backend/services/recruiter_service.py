@@ -1,5 +1,6 @@
 # backend/services/recruiter_service.py
 import re
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -70,3 +71,41 @@ async def update_profile(
     await db.commit()
     await db.refresh(profile)
     return profile
+
+
+# ---- Accessible candidates --------------------------------------------------
+
+
+async def list_accessible_candidates(
+    db: AsyncSession, organization_id: UUID
+) -> list[dict[str, Any]]:
+    """Return minimal info for all candidates with an active AccessGrant on this org."""
+    from models.candidate_profile import CandidateProfile
+    from models.invitation import AccessGrant, AccessGrantStatus
+    from models.user import User
+
+    stmt = (
+        select(
+            User.id.label("user_id"),
+            User.email,
+            CandidateProfile.first_name,
+            CandidateProfile.last_name,
+        )
+        .join(AccessGrant, AccessGrant.candidate_id == User.id)
+        .outerjoin(CandidateProfile, CandidateProfile.user_id == User.id)
+        .where(
+            AccessGrant.organization_id == organization_id,
+            AccessGrant.status == AccessGrantStatus.ACTIVE,
+        )
+        .order_by(CandidateProfile.last_name.nulls_last(), CandidateProfile.first_name.nulls_last())
+    )
+    result = await db.execute(stmt)
+    return [
+        {
+            "user_id": row.user_id,
+            "email": row.email,
+            "first_name": row.first_name,
+            "last_name": row.last_name,
+        }
+        for row in result.all()
+    ]

@@ -12,7 +12,7 @@ from api.deps import get_db, require_role
 from models.recruiter import Organization
 from models.template import Template
 from models.user import User, UserRole
-from schemas.recruiter import OrganizationCreate, OrganizationRead
+from schemas.recruiter import AccessibleCandidateRead, OrganizationCreate, OrganizationRead
 from schemas.template import TemplateMappingsUpdate, TemplateRead
 from services.docx_parser import extract_placeholders
 
@@ -52,6 +52,18 @@ async def create_organization(
 @router.get("/{org_id}", response_model=OrganizationRead)
 async def get_organization(org_id: UUID, current_user: RecruiterUser, db: DB) -> Organization:
     return await _get_org_or_404(db, org_id)
+
+
+# ---- Candidates -------------------------------------------------------------
+
+
+@router.get("/{org_id}/candidates", response_model=list[AccessibleCandidateRead])
+async def list_accessible_candidates(
+    org_id: UUID, current_user: RecruiterUser, db: DB
+) -> list[dict[str, object]]:
+    await _get_org_or_404(db, org_id)
+    await _require_org_membership(db, current_user.id, org_id)
+    return await recruiter_service.list_accessible_candidates(db, org_id)
 
 
 # ---- Templates --------------------------------------------------------------

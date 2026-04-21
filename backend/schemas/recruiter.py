@@ -47,3 +47,17 @@ class RecruiterProfileRead(BaseModel):
     job_title: str | None
     created_at: datetime
     updated_at: datetime
+
+
+# ---- AccessibleCandidate ----------------------------------------------------
+
+
+class AccessibleCandidateRead(BaseModel):
+    """Candidate exposed to a recruiter via an active AccessGrant."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: UUID
+    email: str
+    first_name: str | None
+    last_name: str | None

@@ -34,7 +34,7 @@ def _is_block_marker(ph: str) -> bool:
     return bool(_BLOCK_MARKER_RE.match(ph))
 
 
-def _compute_is_valid(detected: list[str], mappings: dict) -> bool:
+def _compute_is_valid(detected: list[str], mappings: dict[str, object]) -> bool:
     return bool(detected) and all(ph in mappings for ph in detected)
 
 

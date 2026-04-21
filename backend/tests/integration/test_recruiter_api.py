@@ -306,3 +306,112 @@ async def test_upload_template_excludes_block_markers_from_detected(
     assert "{{#EXPERIENCES}}" not in body["detected_placeholders"]
     assert "{{/EXPERIENCES}}" not in body["detected_placeholders"]
     assert body["is_valid"] is False  # no mappings yet
+
+
+# ---- Accessible candidates --------------------------------------------------
+
+
+async def test_list_accessible_candidates_empty(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    org = await client.post(
+        "/organizations", headers=recruiter_headers, json={"name": "Access Corp"}
+    )
+    org_id = org.json()["id"]
+    await client.put(
+        "/recruiters/me/profile",
+        headers=recruiter_headers,
+        json={"organization_id": org_id},
+    )
+    r = await client.get(f"/organizations/{org_id}/candidates", headers=recruiter_headers)
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+async def test_list_accessible_candidates_returns_granted(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> None:
+    org = await client.post(
+        "/organizations", headers=recruiter_headers, json={"name": "Access Corp"}
+    )
+    org_id = org.json()["id"]
+    await client.put(
+        "/recruiters/me/profile",
+        headers=recruiter_headers,
+        json={"organization_id": org_id},
+    )
+    await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"first_name": "Alice", "last_name": "Dupont"},
+    )
+    inv = await client.post(
+        f"/organizations/{org_id}/invitations",
+        headers=recruiter_headers,
+        json={"candidate_email": "candidate@test.com"},
+    )
+    token = inv.json()["token"]
+    r = await client.post(f"/invitations/{token}/accept", headers=candidate_headers)
+    assert r.status_code == 201
+
+    r = await client.get(f"/organizations/{org_id}/candidates", headers=recruiter_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data) == 1
+    assert data[0]["email"] == "candidate@test.com"
+    assert data[0]["first_name"] == "Alice"
+    assert data[0]["last_name"] == "Dupont"
+    assert "user_id" in data[0]
+
+
+async def test_list_accessible_candidates_excludes_revoked(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> None:
+    org = await client.post(
+        "/organizations", headers=recruiter_headers, json={"name": "Access Corp"}
+    )
+    org_id = org.json()["id"]
+    await client.put(
+        "/recruiters/me/profile",
+        headers=recruiter_headers,
+        json={"organization_id": org_id},
+    )
+    inv = await client.post(
+        f"/organizations/{org_id}/invitations",
+        headers=recruiter_headers,
+        json={"candidate_email": "candidate@test.com"},
+    )
+    accepted = await client.post(
+        f"/invitations/{inv.json()['token']}/accept", headers=candidate_headers
+    )
+    grant_id = accepted.json()["id"]
+    await client.delete(f"/access/me/{grant_id}", headers=candidate_headers)
+
+    r = await client.get(f"/organizations/{org_id}/candidates", headers=recruiter_headers)
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+async def test_list_accessible_candidates_requires_membership(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    org = await client.post(
+        "/organizations", headers=recruiter_headers, json={"name": "Other Org"}
+    )
+    org_id = org.json()["id"]
+    r = await client.get(f"/organizations/{org_id}/candidates", headers=recruiter_headers)
+    assert r.status_code == 403
+
+
+async def test_list_accessible_candidates_forbids_candidate_role(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.get(
+        "/organizations/00000000-0000-0000-0000-000000000000/candidates",
+        headers=candidate_headers,
+    )
+    assert r.status_code == 403
