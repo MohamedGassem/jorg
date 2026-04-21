@@ -5,9 +5,9 @@ from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from models.candidate_profile import LanguageLevel, SkillCategory
+from models.candidate_profile import ContractType, LanguageLevel, SkillCategory
 
 # ---- CandidateProfile -------------------------------------------------------
 
@@ -26,6 +26,8 @@ class CandidateProfileUpdate(BaseModel):
     avatar_url: str | None = None
     years_of_experience: int | None = None
     daily_rate: int | None = None
+    contract_type: ContractType | None = None
+    annual_salary: int | None = None
     extra_fields: dict[str, Any] | None = None
 
 
@@ -45,6 +47,8 @@ class CandidateProfileRead(BaseModel):
     avatar_url: str | None
     years_of_experience: int | None
     daily_rate: int | None
+    contract_type: ContractType
+    annual_salary: int | None
     extra_fields: dict[str, Any] | None
     created_at: datetime
     updated_at: datetime
@@ -102,6 +106,7 @@ class SkillCreate(BaseModel):
     name: str
     category: SkillCategory
     level: str | None = None
+    level_rating: int | None = Field(default=None, ge=1, le=5)
     years_of_experience: int | None = None
 
 
@@ -109,6 +114,7 @@ class SkillUpdate(BaseModel):
     name: str | None = None
     category: SkillCategory | None = None
     level: str | None = None
+    level_rating: int | None = Field(default=None, ge=1, le=5)
     years_of_experience: int | None = None
 
 
@@ -120,6 +126,7 @@ class SkillRead(BaseModel):
     name: str
     category: SkillCategory
     level: str | None
+    level_rating: int | None
     years_of_experience: int | None
     created_at: datetime
     updated_at: datetime

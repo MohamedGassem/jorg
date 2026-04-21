@@ -268,10 +268,25 @@ type SkillForm = {
   name: string;
   category: SkillCategory;
   level: string;
+  level_rating: string;
   years_of_experience: string;
 };
 
-const EMPTY_SKILL: SkillForm = { name: "", category: "language", level: "", years_of_experience: "" };
+const EMPTY_SKILL: SkillForm = {
+  name: "",
+  category: "language",
+  level: "",
+  level_rating: "",
+  years_of_experience: "",
+};
+
+const SKILL_RATING_OPTIONS: { value: string; label: string }[] = [
+  { value: "1", label: "1/5 — Notions" },
+  { value: "2", label: "2/5 — Débutant" },
+  { value: "3", label: "3/5 — Intermédiaire" },
+  { value: "4", label: "4/5 — Confirmé" },
+  { value: "5", label: "5/5 — Expert" },
+];
 
 function SkillSection() {
   const [items, setItems] = useState<Skill[]>([]);
@@ -302,6 +317,7 @@ function SkillSection() {
         name: form.name,
         category: form.category,
         level: form.level || null,
+        level_rating: form.level_rating ? Number(form.level_rating) : null,
         years_of_experience: form.years_of_experience ? Number(form.years_of_experience) : null,
       };
       const created = await api.post<Skill>("/candidates/me/skills", body);
@@ -347,6 +363,7 @@ function SkillSection() {
               <p className="font-medium">{skill.name}</p>
               <p className="text-sm text-muted-foreground">
                 {categoryLabel(skill.category)}
+                {skill.level_rating ? ` · ${skill.level_rating}/5` : ""}
                 {skill.level ? ` · ${skill.level}` : ""}
                 {skill.years_of_experience ? ` · ${skill.years_of_experience} an(s)` : ""}
               </p>
@@ -381,10 +398,26 @@ function SkillSection() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="skill-level">Niveau</Label>
-                <Input id="skill-level" value={form.level} onChange={(e) => set("level", e.target.value)} placeholder="ex: Senior, Expert…" />
+                <Label htmlFor="skill-rating">Niveau (1→5)</Label>
+                <Select
+                  value={form.level_rating}
+                  onValueChange={(v) => v && set("level_rating", v)}
+                >
+                  <SelectTrigger id="skill-rating" className="w-full">
+                    <SelectValue placeholder="–" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SKILL_RATING_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="skill-level">Nuance (libre)</Label>
+                <Input id="skill-level" value={form.level} onChange={(e) => set("level", e.target.value)} placeholder="ex: autonome, Senior…" />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="skill-years">{"Années d'expérience"}</Label>

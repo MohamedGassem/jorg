@@ -6,8 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { api, ApiError } from "@/lib/api";
-import type { CandidateProfile } from "@/types/api";
+import type { CandidateProfile, ContractType } from "@/types/api";
 
 type FormFields = {
   first_name: string;
@@ -18,11 +25,15 @@ type FormFields = {
   email_contact: string;
   linkedin_url: string;
   location: string;
+  contract_type: ContractType;
+  daily_rate: string;
+  annual_salary: string;
 };
 
-const FIELD_KEYS: Array<keyof FormFields> = [
-  "first_name", "last_name", "title", "summary",
-  "phone", "email_contact", "linkedin_url", "location",
+const CONTRACT_OPTIONS: { value: ContractType; label: string }[] = [
+  { value: "freelance", label: "Freelance (TJM)" },
+  { value: "cdi", label: "CDI (salaire annuel)" },
+  { value: "both", label: "Les deux" },
 ];
 
 function profileToForm(p: CandidateProfile): FormFields {
@@ -35,19 +46,29 @@ function profileToForm(p: CandidateProfile): FormFields {
     email_contact: p.email_contact ?? "",
     linkedin_url: p.linkedin_url ?? "",
     location: p.location ?? "",
+    contract_type: p.contract_type,
+    daily_rate: p.daily_rate !== null ? String(p.daily_rate) : "",
+    annual_salary: p.annual_salary !== null ? String(p.annual_salary) : "",
   };
 }
 
-const FIELD_META: Array<{ name: keyof FormFields; label: string; type?: string }> = [
-  { name: "first_name", label: "Prénom" },
-  { name: "last_name", label: "Nom" },
-  { name: "title", label: "Titre" },
-  { name: "summary", label: "Résumé" },
-  { name: "phone", label: "Téléphone", type: "tel" },
-  { name: "email_contact", label: "Email de contact", type: "email" },
-  { name: "linkedin_url", label: "LinkedIn URL", type: "url" },
-  { name: "location", label: "Localisation" },
-];
+function formToPayload(f: FormFields): Record<string, unknown> {
+  const showDaily = f.contract_type === "freelance" || f.contract_type === "both";
+  const showSalary = f.contract_type === "cdi" || f.contract_type === "both";
+  return {
+    first_name: f.first_name || null,
+    last_name: f.last_name || null,
+    title: f.title || null,
+    summary: f.summary || null,
+    phone: f.phone || null,
+    email_contact: f.email_contact || null,
+    linkedin_url: f.linkedin_url || null,
+    location: f.location || null,
+    contract_type: f.contract_type,
+    daily_rate: showDaily && f.daily_rate ? Number(f.daily_rate) : null,
+    annual_salary: showSalary && f.annual_salary ? Number(f.annual_salary) : null,
+  };
+}
 
 export default function ProfilePage() {
   const [form, setForm] = useState<FormFields | null>(null);
@@ -55,13 +76,14 @@ export default function ProfilePage() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<CandidateProfile>("/candidates/me/profile")
+    api
+      .get<CandidateProfile>("/candidates/me/profile")
       .then((p) => setForm(profileToForm(p)))
       .catch(console.error);
   }, []);
 
-  function handleChange(name: keyof FormFields, value: string) {
-    setForm((prev) => prev ? { ...prev, [name]: value } : prev);
+  function setField<K extends keyof FormFields>(k: K, v: FormFields[K]) {
+    setForm((prev) => (prev ? { ...prev, [k]: v } : prev));
   }
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
@@ -69,21 +91,26 @@ export default function ProfilePage() {
     if (!form) return;
     setSaving(true);
     setMessage(null);
-    const data = Object.fromEntries(
-      FIELD_KEYS.map((k) => [k, form[k] || null])
-    );
     try {
-      const updated = await api.put<CandidateProfile>("/candidates/me/profile", data);
+      const updated = await api.put<CandidateProfile>(
+        "/candidates/me/profile",
+        formToPayload(form)
+      );
       setForm(profileToForm(updated));
       setMessage("Profil mis à jour");
     } catch (err) {
-      setMessage(err instanceof ApiError ? err.detail : "Erreur lors de la sauvegarde");
+      setMessage(
+        err instanceof ApiError ? err.detail : "Erreur lors de la sauvegarde"
+      );
     } finally {
       setSaving(false);
     }
   }
 
   if (!form) return <p className="text-muted-foreground">Chargement…</p>;
+
+  const showDaily = form.contract_type === "freelance" || form.contract_type === "both";
+  const showSalary = form.contract_type === "cdi" || form.contract_type === "both";
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -94,19 +121,130 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSave} className="space-y-4">
-            {FIELD_META.map(({ name, label, type }) => (
-              <div key={name} className="space-y-2">
-                <Label htmlFor={name}>{label}</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="first_name">Prénom</Label>
                 <Input
-                  id={name}
-                  type={type ?? "text"}
-                  value={form[name]}
-                  onChange={(e) => handleChange(name, e.target.value)}
+                  id="first_name"
+                  value={form.first_name}
+                  onChange={(e) => setField("first_name", e.target.value)}
                 />
               </div>
-            ))}
+              <div className="space-y-2">
+                <Label htmlFor="last_name">Nom</Label>
+                <Input
+                  id="last_name"
+                  value={form.last_name}
+                  onChange={(e) => setField("last_name", e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="title">Titre</Label>
+              <Input
+                id="title"
+                value={form.title}
+                onChange={(e) => setField("title", e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="summary">Résumé</Label>
+              <Input
+                id="summary"
+                value={form.summary}
+                onChange={(e) => setField("summary", e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="phone">Téléphone</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setField("phone", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email_contact">Email de contact</Label>
+                <Input
+                  id="email_contact"
+                  type="email"
+                  value={form.email_contact}
+                  onChange={(e) => setField("email_contact", e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="linkedin_url">LinkedIn URL</Label>
+              <Input
+                id="linkedin_url"
+                type="url"
+                value={form.linkedin_url}
+                onChange={(e) => setField("linkedin_url", e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="location">Localisation</Label>
+              <Input
+                id="location"
+                value={form.location}
+                onChange={(e) => setField("location", e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="contract_type">Type de contrat recherché</Label>
+              <Select
+                value={form.contract_type}
+                onValueChange={(v) => v && setField("contract_type", v as ContractType)}
+              >
+                <SelectTrigger id="contract_type" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONTRACT_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(showDaily || showSalary) && (
+              <div className="grid grid-cols-2 gap-3">
+                {showDaily && (
+                  <div className="space-y-2">
+                    <Label htmlFor="daily_rate">TJM (€)</Label>
+                    <Input
+                      id="daily_rate"
+                      type="number"
+                      min={0}
+                      value={form.daily_rate}
+                      onChange={(e) => setField("daily_rate", e.target.value)}
+                    />
+                  </div>
+                )}
+                {showSalary && (
+                  <div className="space-y-2">
+                    <Label htmlFor="annual_salary">Salaire annuel brut (€)</Label>
+                    <Input
+                      id="annual_salary"
+                      type="number"
+                      min={0}
+                      value={form.annual_salary}
+                      onChange={(e) => setField("annual_salary", e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             {message && (
-              <p role="status" className="text-sm text-muted-foreground">{message}</p>
+              <p role="status" className="text-sm text-muted-foreground">
+                {message}
+              </p>
             )}
             <Button type="submit" disabled={saving}>
               {saving ? "Sauvegarde…" : "Sauvegarder"}

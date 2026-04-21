@@ -6,6 +6,7 @@ export type AccessGrantStatus = "active" | "revoked";
 export type FileFormat = "docx" | "pdf";
 export type SkillCategory = "language" | "framework" | "database" | "tool" | "methodology" | "other";
 export type LanguageLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | "native";
+export type ContractType = "freelance" | "cdi" | "both";
 
 export interface Experience {
   id: string;
@@ -29,6 +30,7 @@ export interface Skill {
   name: string;
   category: SkillCategory;
   level: string | null;
+  level_rating: number | null;
   years_of_experience: number | null;
   created_at: string;
   updated_at: string;
@@ -86,6 +88,8 @@ export interface CandidateProfile {
   location: string | null;
   years_of_experience: number | null;
   daily_rate: number | null;
+  contract_type: ContractType;
+  annual_salary: number | null;
   created_at: string;
   updated_at: string;
 }

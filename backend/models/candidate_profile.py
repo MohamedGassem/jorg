@@ -6,7 +6,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import JSON, Boolean, Date, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, CheckConstraint, Date, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -31,6 +31,12 @@ class LanguageLevel(StrEnum):
     NATIVE = "native"
 
 
+class ContractType(StrEnum):
+    FREELANCE = "freelance"
+    CDI = "cdi"
+    BOTH = "both"
+
+
 class CandidateProfile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "candidate_profiles"
 
@@ -51,6 +57,12 @@ class CandidateProfile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     years_of_experience: Mapped[int | None] = mapped_column(Integer, nullable=True)
     daily_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    contract_type: Mapped[ContractType] = mapped_column(
+        Enum(ContractType, name="contract_type"),
+        default=ContractType.FREELANCE,
+        nullable=False,
+    )
+    annual_salary: Mapped[int | None] = mapped_column(Integer, nullable=True)
     extra_fields: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
 
@@ -86,6 +98,11 @@ class Skill(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         Enum(SkillCategory, name="skill_category"), nullable=False
     )
     level: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    level_rating: Mapped[int | None] = mapped_column(
+        Integer,
+        CheckConstraint("level_rating BETWEEN 1 AND 5", name="ck_skills_level_rating_range"),
+        nullable=True,
+    )
     years_of_experience: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 

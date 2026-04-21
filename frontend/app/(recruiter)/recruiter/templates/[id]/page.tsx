@@ -32,6 +32,7 @@ const PROFILE_FIELDS = [
   { value: "location", label: "Localisation" },
   { value: "years_of_experience", label: "Années d'expérience" },
   { value: "daily_rate", label: "TJM" },
+  { value: "annual_salary", label: "Salaire annuel" },
   { value: "experience.client_name", label: "Expérience — Client" },
   { value: "experience.role", label: "Expérience — Rôle" },
   { value: "experience.start_date", label: "Expérience — Début" },

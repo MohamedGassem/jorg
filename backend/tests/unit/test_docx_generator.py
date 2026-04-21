@@ -30,6 +30,7 @@ def _mock_profile(**kwargs: object) -> MagicMock:
         "location": "Paris",
         "years_of_experience": 8,
         "daily_rate": 600,
+        "annual_salary": None,
     }
     profile = MagicMock()
     for k, v in {**defaults, **kwargs}.items():
@@ -182,3 +183,25 @@ def test_technologies_joined_as_string() -> None:
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "Python, FastAPI, Redis" in texts
+
+
+def test_generate_replaces_annual_salary_placeholder(tmp_path: object) -> None:
+    from pathlib import Path
+
+    assert isinstance(tmp_path, Path)
+    doc = Document()
+    doc.add_paragraph("Salaire annuel souhaité : {{SALAIRE}} €")
+    template_path = tmp_path / "tmpl.docx"
+    doc.save(str(template_path))
+
+    profile = _mock_profile(annual_salary=55000)
+    result = generate_document(
+        str(template_path),
+        profile,
+        [],
+        {"{{SALAIRE}}": "annual_salary"},
+    )
+    out_doc = Document(io.BytesIO(result))
+    text = "\n".join(p.text for p in out_doc.paragraphs)
+    assert "55000" in text
+    assert "{{SALAIRE}}" not in text

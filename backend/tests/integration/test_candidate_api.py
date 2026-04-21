@@ -92,6 +92,55 @@ async def test_update_profile_extra_fields(
     assert r.json()["extra_fields"]["github"] == "alice"
 
 
+async def test_profile_defaults_contract_type_to_freelance(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.get("/candidates/me/profile", headers=candidate_headers)
+    assert r.status_code == 200
+    assert r.json()["contract_type"] == "freelance"
+    assert r.json()["annual_salary"] is None
+
+
+async def test_update_profile_contract_type_cdi(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"contract_type": "cdi", "annual_salary": 55000, "daily_rate": None},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["contract_type"] == "cdi"
+    assert data["annual_salary"] == 55000
+
+
+async def test_update_profile_contract_type_both(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"contract_type": "both", "annual_salary": 60000, "daily_rate": 700},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["contract_type"] == "both"
+    assert data["annual_salary"] == 60000
+    assert data["daily_rate"] == 700
+
+
+async def test_update_profile_rejects_invalid_contract_type(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"contract_type": "gig"},
+    )
+    assert r.status_code == 422
+
+
 # ---- Experience -------------------------------------------------------------
 
 
@@ -327,3 +376,88 @@ async def test_delete_language(client: AsyncClient, candidate_headers: dict[str,
 
     r = await client.delete(f"/candidates/me/languages/{lang_id}", headers=candidate_headers)
     assert r.status_code == 204
+
+
+# ---- Skill level_rating -----------------------------------------------------
+
+
+async def test_create_skill_with_level_rating(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/skills",
+        headers=candidate_headers,
+        json={"name": "Python", "category": "language", "level_rating": 4},
+    )
+    assert r.status_code == 201
+    data = r.json()
+    assert data["level_rating"] == 4
+    assert data["level"] is None
+
+
+async def test_create_skill_level_rating_is_optional(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/skills",
+        headers=candidate_headers,
+        json={"name": "Python", "category": "language"},
+    )
+    assert r.status_code == 201
+    assert r.json()["level_rating"] is None
+
+
+async def test_create_skill_rejects_rating_outside_range(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r_low = await client.post(
+        "/candidates/me/skills",
+        headers=candidate_headers,
+        json={"name": "Python", "category": "language", "level_rating": 0},
+    )
+    assert r_low.status_code == 422
+
+    r_high = await client.post(
+        "/candidates/me/skills",
+        headers=candidate_headers,
+        json={"name": "Python", "category": "language", "level_rating": 6},
+    )
+    assert r_high.status_code == 422
+
+
+async def test_update_skill_level_rating(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    created = await client.post(
+        "/candidates/me/skills",
+        headers=candidate_headers,
+        json={"name": "Python", "category": "language", "level_rating": 2},
+    )
+    skill_id = created.json()["id"]
+
+    r = await client.put(
+        f"/candidates/me/skills/{skill_id}",
+        headers=candidate_headers,
+        json={"level_rating": 5},
+    )
+    assert r.status_code == 200
+    assert r.json()["level_rating"] == 5
+
+
+async def test_create_skill_with_level_text_and_rating_coexist(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/skills",
+        headers=candidate_headers,
+        json={
+            "name": "Python",
+            "category": "language",
+            "level": "autonome",
+            "level_rating": 3,
+        },
+    )
+    assert r.status_code == 201
+    data = r.json()
+    assert data["level"] == "autonome"
+    assert data["level_rating"] == 3

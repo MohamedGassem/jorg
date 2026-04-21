@@ -3,6 +3,7 @@ from models.base import Base
 from models.candidate_profile import (
     CandidateProfile,
     Certification,
+    ContractType,
     Education,
     Experience,
     Language,
@@ -22,6 +23,7 @@ __all__ = [
     "Base",
     "CandidateProfile",
     "Certification",
+    "ContractType",
     "Education",
     "Experience",
     "GeneratedDocument",

@@ -43,6 +43,7 @@ def _profile_flat(profile: CandidateProfile) -> dict[str, str]:
         "location": profile.location or "",
         "years_of_experience": str(profile.years_of_experience or ""),
         "daily_rate": str(profile.daily_rate or ""),
+        "annual_salary": str(profile.annual_salary or ""),
     }
 
 
