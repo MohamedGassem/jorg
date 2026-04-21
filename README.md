@@ -127,3 +127,28 @@ Copy `.env.example` to `.env` in the project root. The defaults are configured f
 | `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token lifetime (default: 30) |
 | `EMAIL_BACKEND` | `console` (prints to stdout) or `smtp` |
 | `FRONTEND_URL` | Used in invitation email links |
+
+---
+
+## Licensing
+
+This project is dual-licensed:
+
+- **Open Source**: GNU Affero General Public License v3.0 (AGPL-3.0) — see [LICENSE](LICENSE)
+- **Commercial License**: required for proprietary use — see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md)
+
+### Which license applies to you?
+
+**If you comply with AGPL-3.0**, you may use this software for free. The AGPL-3.0
+requires that if you distribute the software or run it as a network service, you
+must make the complete source code of your application available to users under
+the same license. If that is acceptable for your use case, no purchase is needed.
+
+**If you want to keep your code closed**, use the software in a SaaS product
+without releasing your source code, or integrate it into internal business tools
+without AGPL compliance, you must obtain a commercial license.
+
+To purchase a commercial license or ask about your specific use case, contact:
+
+**Mohamed Gassem**
+mohamed.gassem@gmail.com
