@@ -270,3 +270,8 @@ async def delete_my_language(language_id: UUID, current_user: CandidateUser, db:
 @router.get("/me/export", response_model=CandidateExport)
 async def export_my_data(current_user: CandidateUser, db: DB) -> CandidateExport:
     return await rgpd_service.export_candidate_data(db, current_user)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_account(current_user: CandidateUser, db: DB) -> None:
+    await rgpd_service.delete_candidate_account(db, current_user)
