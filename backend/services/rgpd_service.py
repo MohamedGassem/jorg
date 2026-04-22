@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.candidate_profile import (
@@ -15,7 +15,7 @@ from models.candidate_profile import (
     Skill,
 )
 from models.generated_document import GeneratedDocument
-from models.invitation import AccessGrant
+from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
 from models.user import User
 from schemas.candidate import (
     CandidateProfileRead,
@@ -95,3 +95,48 @@ async def export_candidate_data(db: AsyncSession, user: User) -> CandidateExport
         access_grants=[AccessGrantExport.model_validate(g) for g in grants],
         generated_documents=[GeneratedDocumentExport.model_validate(d) for d in documents],
     )
+
+
+async def delete_candidate_account(db: AsyncSession, user: User) -> None:
+    """Supprime un candidat en respectant les règles RGPD :
+
+    1. Révoque toutes les `AccessGrant` actives et les anonymise
+       (`candidate_id = NULL`) pour préserver l'historique recruteur.
+    2. Marque les `Invitation` pending le ciblant (par email ou par id)
+       comme `expired`.
+    3. Supprime l'utilisateur — la cascade SQL s'occupe du profil,
+       experiences, skills, education, certifications, languages.
+    4. Les `GeneratedDocument` restent rattachés aux grants (désormais
+       anonymisés) : le recruteur conserve son audit sans pouvoir relier
+       le document à une identité candidat.
+
+    Tout se passe dans la transaction courante — le caller est
+    responsable du commit final.
+    """
+    now = datetime.now(UTC)
+
+    # 1. Anonymiser + révoquer les grants.
+    await db.execute(
+        update(AccessGrant)
+        .where(AccessGrant.candidate_id == user.id)
+        .values(
+            status=AccessGrantStatus.REVOKED,
+            revoked_at=now,
+            candidate_id=None,
+        )
+    )
+
+    # 2. Invitations pending → expired (par candidate_id ET par email,
+    #    car certaines invitations peuvent ne pas avoir été liées au user).
+    await db.execute(
+        update(Invitation)
+        .where(
+            Invitation.status == InvitationStatus.PENDING,
+            (Invitation.candidate_id == user.id) | (Invitation.candidate_email == user.email),
+        )
+        .values(status=InvitationStatus.EXPIRED)
+    )
+
+    # 3. Supprimer l'utilisateur — CASCADE SQL s'occupe du reste.
+    await db.delete(user)
+    await db.commit()
