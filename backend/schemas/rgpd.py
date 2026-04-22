@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from models.invitation import AccessGrantStatus
 from schemas.candidate import (
     CandidateProfileRead,
     CertificationRead,
@@ -21,7 +22,7 @@ class AccessGrantExport(BaseModel):
 
     id: UUID
     organization_id: UUID
-    status: str
+    status: AccessGrantStatus
     granted_at: datetime
     revoked_at: datetime | None
 
@@ -30,7 +31,7 @@ class GeneratedDocumentExport(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    access_grant_id: UUID | None
+    access_grant_id: UUID
     template_id: UUID | None
     generated_by_user_id: UUID | None
     file_format: str
