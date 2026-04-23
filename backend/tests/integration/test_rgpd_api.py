@@ -117,9 +117,7 @@ async def test_delete_anonymizes_access_grants_and_preserves_documents(
     db_session.add(org)
     await db_session.flush()
 
-    user_q = await db_session.execute(
-        select(User).where(User.email == "candidate@test.com")
-    )
+    user_q = await db_session.execute(select(User).where(User.email == "candidate@test.com"))
     candidate_user = user_q.scalar_one()
 
     grant = AccessGrant(
@@ -154,7 +152,9 @@ async def test_delete_anonymizes_access_grants_and_preserves_documents(
     assert refreshed.status == AccessGrantStatus.REVOKED
     assert refreshed.revoked_at is not None
 
-    doc_q = await db_session.execute(select(GeneratedDocument).where(GeneratedDocument.id == doc_id))
+    doc_q = await db_session.execute(
+        select(GeneratedDocument).where(GeneratedDocument.id == doc_id)
+    )
     refreshed_doc = doc_q.scalar_one()
     assert refreshed_doc.access_grant_id == grant_id
     assert refreshed_doc.file_path == "generated/old-doc.docx"

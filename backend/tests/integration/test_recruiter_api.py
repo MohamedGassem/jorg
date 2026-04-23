@@ -278,12 +278,14 @@ async def test_upload_template_excludes_block_markers_from_detected(
     """Uploading a template with mustache block markers must not list them
     as mappable placeholders — they are control syntax, not fields."""
     org_id = await _setup_org_and_link(client, recruiter_headers)
-    docx_bytes = _make_docx_bytes([
-        "Candidat : {{NOM}}",
-        "{{#EXPERIENCES}}",
-        "{{EXP_CLIENT}} — {{EXP_ROLE}}",
-        "{{/EXPERIENCES}}",
-    ])
+    docx_bytes = _make_docx_bytes(
+        [
+            "Candidat : {{NOM}}",
+            "{{#EXPERIENCES}}",
+            "{{EXP_CLIENT}} — {{EXP_ROLE}}",
+            "{{/EXPERIENCES}}",
+        ]
+    )
 
     r = await client.post(
         f"/organizations/{org_id}/templates",
@@ -399,9 +401,7 @@ async def test_list_accessible_candidates_excludes_revoked(
 async def test_list_accessible_candidates_requires_membership(
     client: AsyncClient, recruiter_headers: dict[str, str]
 ) -> None:
-    org = await client.post(
-        "/organizations", headers=recruiter_headers, json={"name": "Other Org"}
-    )
+    org = await client.post("/organizations", headers=recruiter_headers, json={"name": "Other Org"})
     org_id = org.json()["id"]
     r = await client.get(f"/organizations/{org_id}/candidates", headers=recruiter_headers)
     assert r.status_code == 403

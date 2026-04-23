@@ -5,17 +5,18 @@ Revises: 0262dfeed461
 Create Date: 2026-04-22 08:28:45.497827
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '8ac7cd2e1874'
-down_revision: Union[str, Sequence[str], None] = '0262dfeed461'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+revision: str = "8ac7cd2e1874"
+down_revision: str | Sequence[str] | None = "0262dfeed461"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -27,9 +28,7 @@ def upgrade() -> None:
         existing_type=sa.Uuid(),
         nullable=True,
     )
-    op.drop_constraint(
-        "access_grants_candidate_id_fkey", "access_grants", type_="foreignkey"
-    )
+    op.drop_constraint("access_grants_candidate_id_fkey", "access_grants", type_="foreignkey")
     op.create_foreign_key(
         "access_grants_candidate_id_fkey",
         "access_grants",
@@ -48,9 +47,7 @@ def downgrade() -> None:
     deletion).  This migration is not safely reversible in production once
     any candidate account has been deleted.
     """
-    op.drop_constraint(
-        "access_grants_candidate_id_fkey", "access_grants", type_="foreignkey"
-    )
+    op.drop_constraint("access_grants_candidate_id_fkey", "access_grants", type_="foreignkey")
     op.create_foreign_key(
         "access_grants_candidate_id_fkey",
         "access_grants",

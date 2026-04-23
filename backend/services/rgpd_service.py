@@ -43,19 +43,13 @@ async def export_candidate_data(db: AsyncSession, user: User) -> CandidateExport
     profile = profile_q.scalar_one_or_none()
 
     if profile is not None:
-        exp_q = await db.execute(
-            select(Experience).where(Experience.profile_id == profile.id)
-        )
+        exp_q = await db.execute(select(Experience).where(Experience.profile_id == profile.id))
         skill_q = await db.execute(select(Skill).where(Skill.profile_id == profile.id))
-        edu_q = await db.execute(
-            select(Education).where(Education.profile_id == profile.id)
-        )
+        edu_q = await db.execute(select(Education).where(Education.profile_id == profile.id))
         cert_q = await db.execute(
             select(Certification).where(Certification.profile_id == profile.id)
         )
-        lang_q = await db.execute(
-            select(Language).where(Language.profile_id == profile.id)
-        )
+        lang_q = await db.execute(select(Language).where(Language.profile_id == profile.id))
         experiences = list(exp_q.scalars().all())
         skills = list(skill_q.scalars().all())
         education = list(edu_q.scalars().all())
@@ -68,9 +62,7 @@ async def export_candidate_data(db: AsyncSession, user: User) -> CandidateExport
         certifications = []
         languages = []
 
-    grant_q = await db.execute(
-        select(AccessGrant).where(AccessGrant.candidate_id == user.id)
-    )
+    grant_q = await db.execute(select(AccessGrant).where(AccessGrant.candidate_id == user.id))
     grants = list(grant_q.scalars().all())
 
     doc_q = await db.execute(
