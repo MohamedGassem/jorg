@@ -7,6 +7,7 @@ const candidateNav = [
   { href: "/candidate/requests", label: "Invitations" },
   { href: "/candidate/access", label: "Accès accordés" },
   { href: "/candidate/history", label: "Historique" },
+  { href: "/candidate/settings", label: "Paramètres" },
 ];
 
 export default function CandidateLayout({ children }: { children: React.ReactNode }) {

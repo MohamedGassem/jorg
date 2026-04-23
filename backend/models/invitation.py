@@ -48,8 +48,8 @@ class Invitation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 class AccessGrant(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "access_grants"
 
-    candidate_id: Mapped[UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    candidate_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True
     )
     organization_id: Mapped[UUID] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=False

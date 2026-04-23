@@ -169,3 +169,32 @@ export interface AccessibleCandidate {
 export interface ApiError {
   detail: string;
 }
+
+export interface CandidateExport {
+  exported_at: string;
+  user_id: string;
+  email: string;
+  role: UserRole;
+  created_at: string;
+  profile: CandidateProfile | null;
+  experiences: Experience[];
+  skills: Skill[];
+  education: Education[];
+  certifications: Certification[];
+  languages: Language[];
+  access_grants: Array<{
+    id: string;
+    organization_id: string;
+    status: AccessGrantStatus;
+    granted_at: string;
+    revoked_at: string | null;
+  }>;
+  generated_documents: Array<{
+    id: string;
+    access_grant_id: string | null;
+    template_id: string | null;
+    generated_by_user_id: string | null;
+    file_format: FileFormat;
+    generated_at: string;
+  }>;
+}

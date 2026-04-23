@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import services.candidate_service as candidate_service
+import services.rgpd_service as rgpd_service
 from api.deps import get_db, require_role
 from models.candidate_profile import (
     CandidateProfile,
@@ -16,6 +17,7 @@ from models.candidate_profile import (
     Skill,
 )
 from models.user import User, UserRole
+from schemas.rgpd import CandidateExport
 from schemas.candidate import (
     CandidateProfileRead,
     CandidateProfileUpdate,
@@ -260,3 +262,16 @@ async def delete_my_language(language_id: UUID, current_user: CandidateUser, db:
     if lang is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="language not found")
     await candidate_service.delete_language(db, lang)
+
+
+# ---- RGPD -------------------------------------------------------------------
+
+
+@router.get("/me/export", response_model=CandidateExport)
+async def export_my_data(current_user: CandidateUser, db: DB) -> CandidateExport:
+    return await rgpd_service.export_candidate_data(db, current_user)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_account(current_user: CandidateUser, db: DB) -> None:
+    await rgpd_service.delete_candidate_account(db, current_user)
