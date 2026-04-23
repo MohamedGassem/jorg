@@ -110,8 +110,7 @@ async def delete_candidate_account(db: AsyncSession, user: User) -> None:
        anonymisés) : le recruteur conserve son audit sans pouvoir relier
        le document à une identité candidat.
 
-    Tout se passe dans la transaction courante — le caller est
-    responsable du commit final.
+    Tout se passe dans une transaction interne qui est commitée à la fin.
     """
     now = datetime.now(UTC)
 

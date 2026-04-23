@@ -41,7 +41,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
+    """Downgrade schema.
+
+    WARNING: will fail at the ALTER COLUMN step if any access_grants row has
+    candidate_id = NULL (i.e. an account was already anonymised via RGPD
+    deletion).  This migration is not safely reversible in production once
+    any candidate account has been deleted.
+    """
     op.drop_constraint(
         "access_grants_candidate_id_fkey", "access_grants", type_="foreignkey"
     )

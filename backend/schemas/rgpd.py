@@ -31,7 +31,7 @@ class GeneratedDocumentExport(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    access_grant_id: UUID
+    access_grant_id: UUID | None
     template_id: UUID | None
     generated_by_user_id: UUID | None
     file_format: str

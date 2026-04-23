@@ -1,4 +1,6 @@
 # backend/tests/integration/test_rgpd_api.py
+from datetime import UTC, datetime, timedelta
+
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,19 +77,34 @@ async def test_delete_removes_user_and_profile_cascade(
         },
     )
 
+    # Capture IDs before deletion so assertions are scoped to this candidate.
+    user_q = await db_session.execute(select(User).where(User.email == "candidate@test.com"))
+    candidate_user = user_q.scalar_one()
+    candidate_user_id = candidate_user.id
+
+    profile_q = await db_session.execute(
+        select(CandidateProfile).where(CandidateProfile.user_id == candidate_user_id)
+    )
+    profile_before = profile_q.scalar_one()
+    profile_id = profile_before.id
+
     r = await client.delete("/candidates/me", headers=candidate_headers)
     assert r.status_code == 204
 
-    user_q = await db_session.execute(
-        select(User).where(User.email == "candidate@test.com")
+    db_session.expire_all()
+
+    user_check = await db_session.execute(select(User).where(User.email == "candidate@test.com"))
+    assert user_check.scalar_one_or_none() is None
+
+    profile_check = await db_session.execute(
+        select(CandidateProfile).where(CandidateProfile.user_id == candidate_user_id)
     )
-    assert user_q.scalar_one_or_none() is None
+    assert profile_check.scalar_one_or_none() is None
 
-    profile_q = await db_session.execute(select(CandidateProfile))
-    assert profile_q.scalar_one_or_none() is None
-
-    exp_q = await db_session.execute(select(Experience))
-    assert exp_q.scalar_one_or_none() is None
+    exp_check = await db_session.execute(
+        select(Experience).where(Experience.profile_id == profile_id)
+    )
+    assert exp_check.scalar_one_or_none() is None
 
 
 async def test_delete_anonymizes_access_grants_and_preserves_documents(
@@ -105,13 +122,11 @@ async def test_delete_anonymizes_access_grants_and_preserves_documents(
     )
     candidate_user = user_q.scalar_one()
 
-    from datetime import UTC, datetime as _dt
-
     grant = AccessGrant(
         candidate_id=candidate_user.id,
         organization_id=org.id,
         status=AccessGrantStatus.ACTIVE,
-        granted_at=_dt.now(UTC),
+        granted_at=datetime.now(UTC),
     )
     db_session.add(grant)
     await db_session.flush()
@@ -155,8 +170,6 @@ async def test_delete_expires_pending_invitations(
     db_session.add(org)
     await db_session.flush()
 
-    from datetime import UTC, datetime as _dt, timedelta
-
     recruiter = User(email="rec@test.com", role="recruiter", hashed_password="x")
     db_session.add(recruiter)
     await db_session.flush()
@@ -168,7 +181,7 @@ async def test_delete_expires_pending_invitations(
         candidate_id=None,
         token="tok-pending",
         status=InvitationStatus.PENDING,
-        expires_at=_dt.now(UTC) + timedelta(days=30),
+        expires_at=datetime.now(UTC) + timedelta(days=30),
     )
     db_session.add(inv)
     await db_session.commit()
@@ -182,3 +195,56 @@ async def test_delete_expires_pending_invitations(
     inv_q = await db_session.execute(select(Invitation).where(Invitation.id == inv_id))
     refreshed_inv = inv_q.scalar_one()
     assert refreshed_inv.status == InvitationStatus.EXPIRED
+
+
+async def test_delete_does_not_expire_accepted_or_rejected_invitations(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    org = Organization(name="Fixed Co", slug="fixed-co")
+    db_session.add(org)
+    await db_session.flush()
+
+    user_q = await db_session.execute(select(User).where(User.email == "candidate@test.com"))
+    candidate_user = user_q.scalar_one()
+
+    recruiter = User(email="rec-fixed@test.com", role="recruiter", hashed_password="x")
+    db_session.add(recruiter)
+    await db_session.flush()
+
+    accepted_inv = Invitation(
+        recruiter_id=recruiter.id,
+        organization_id=org.id,
+        candidate_email="candidate@test.com",
+        candidate_id=candidate_user.id,
+        token="tok-accepted",
+        status=InvitationStatus.ACCEPTED,
+        expires_at=datetime.now(UTC) + timedelta(days=30),
+    )
+    rejected_inv = Invitation(
+        recruiter_id=recruiter.id,
+        organization_id=org.id,
+        candidate_email="candidate@test.com",
+        candidate_id=candidate_user.id,
+        token="tok-rejected",
+        status=InvitationStatus.REJECTED,
+        expires_at=datetime.now(UTC) + timedelta(days=30),
+    )
+    db_session.add(accepted_inv)
+    db_session.add(rejected_inv)
+    await db_session.commit()
+
+    accepted_id = accepted_inv.id
+    rejected_id = rejected_inv.id
+
+    r = await client.delete("/candidates/me", headers=candidate_headers)
+    assert r.status_code == 204
+
+    db_session.expire_all()
+
+    accepted_q = await db_session.execute(select(Invitation).where(Invitation.id == accepted_id))
+    assert accepted_q.scalar_one().status == InvitationStatus.ACCEPTED
+
+    rejected_q = await db_session.execute(select(Invitation).where(Invitation.id == rejected_id))
+    assert rejected_q.scalar_one().status == InvitationStatus.REJECTED
