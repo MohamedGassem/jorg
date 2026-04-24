@@ -415,3 +415,88 @@ async def test_list_accessible_candidates_forbids_candidate_role(
         headers=candidate_headers,
     )
     assert r.status_code == 403
+
+
+# ---- Template file download -------------------------------------------------
+
+
+async def test_download_template_file_ok(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    """Recruiter can download the .docx file of a template they own."""
+    org_r = await client.post("/organizations", json={"name": "DL Org"}, headers=recruiter_headers)
+    org_id = org_r.json()["id"]
+    await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
+
+    import io
+    from docx import Document
+    buf = io.BytesIO()
+    Document().save(buf)
+    buf.seek(0)
+    upload_r = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        files={"file": ("test.docx", buf, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        data={"name": "Test Template"},
+    )
+    assert upload_r.status_code == 201
+    template_id = upload_r.json()["id"]
+
+    r = await client.get(
+        f"/organizations/{org_id}/templates/{template_id}/file",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 200
+    assert "application/vnd.openxmlformats" in r.headers["content-type"]
+    assert "attachment" in r.headers.get("content-disposition", "")
+
+
+async def test_download_template_file_wrong_org_returns_403(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    """A recruiter cannot download a template from another organization."""
+    org_a = await client.post("/organizations", json={"name": "Org A"}, headers=recruiter_headers)
+    org_a_id = org_a.json()["id"]
+    await client.put("/recruiters/me/profile", json={"organization_id": org_a_id}, headers=recruiter_headers)
+
+    r2 = await client.post("/auth/register", json={"email": "rec2@test.com", "password": "pass1234", "role": "recruiter"})
+    login2 = await client.post("/auth/login", json={"email": "rec2@test.com", "password": "pass1234"})
+    headers2 = {"Authorization": f"Bearer {login2.json()['access_token']}"}
+
+    org_b = await client.post("/organizations", json={"name": "Org B"}, headers=headers2)
+    org_b_id = org_b.json()["id"]
+    await client.put("/recruiters/me/profile", json={"organization_id": org_b_id}, headers=headers2)
+
+    import io
+    from docx import Document
+    buf = io.BytesIO()
+    Document().save(buf)
+    buf.seek(0)
+    upload_r = await client.post(
+        f"/organizations/{org_b_id}/templates",
+        headers=headers2,
+        files={"file": ("test.docx", buf, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        data={"name": "Org B Template"},
+    )
+    template_id = upload_r.json()["id"]
+
+    r = await client.get(
+        f"/organizations/{org_b_id}/templates/{template_id}/file",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 403
+
+
+async def test_download_template_file_not_found_returns_404(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    org_r = await client.post("/organizations", json={"name": "NF Org"}, headers=recruiter_headers)
+    org_id = org_r.json()["id"]
+    await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
+
+    import uuid
+    r = await client.get(
+        f"/organizations/{org_id}/templates/{uuid.uuid4()}/file",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 404

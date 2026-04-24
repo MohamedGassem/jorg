@@ -1,8 +1,10 @@
 # backend/api/routes/organizations.py
+from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import core.storage as storage
@@ -146,3 +148,25 @@ async def delete_template(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
     storage.delete_file(tmpl.word_file_path)
     await template_service.delete_template(db, tmpl)
+
+
+@router.get("/{org_id}/templates/{template_id}/file")
+async def download_template_file(
+    org_id: UUID, template_id: UUID, current_user: RecruiterUser, db: DB
+) -> FileResponse:
+    await _get_org_or_404(db, org_id)
+    await _require_org_membership(db, current_user.id, org_id)
+    tmpl = await template_service.get_template(db, template_id, org_id)
+    if tmpl is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
+
+    file_path = Path(tmpl.word_file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
+
+    safe_name = f"{tmpl.name}.docx".replace("/", "_").replace("..", "_")
+    return FileResponse(
+        path=str(file_path),
+        filename=safe_name,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
