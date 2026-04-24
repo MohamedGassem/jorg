@@ -120,7 +120,20 @@ export default function TemplatesPage() {
 
   return (
     <div className="max-w-3xl space-y-8">
-      <h1 className="text-2xl font-bold">Templates</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">Templates</h1>
+        <a
+          href="/api/templates/sample"
+          onClick={async (e) => {
+            e.preventDefault();
+            const { api } = await import("@/lib/api");
+            await api.download("/templates/sample", "jorg-sample-template.docx");
+          }}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          Télécharger un exemple
+        </a>
+      </div>
 
       <Card>
         <CardHeader><CardTitle>Uploader un nouveau template</CardTitle></CardHeader>
