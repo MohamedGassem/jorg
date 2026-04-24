@@ -3,7 +3,6 @@ from typing import Any
 from uuid import UUID
 
 import structlog
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,7 +38,12 @@ async def create_template(
     db.add(template)
     await db.commit()
     await db.refresh(template)
-    logger.info("template.uploaded", organization_id=str(template.organization_id), template_id=str(template.id), placeholder_count=len(template.detected_placeholders))
+    logger.info(
+        "template.uploaded",
+        organization_id=str(template.organization_id),
+        template_id=str(template.id),
+        placeholder_count=len(template.detected_placeholders),
+    )
     return template
 
 

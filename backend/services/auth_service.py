@@ -3,8 +3,6 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = structlog.get_logger()
-
 from core.security import (
     create_access_token,
     create_refresh_token,
@@ -12,6 +10,8 @@ from core.security import (
     verify_password,
 )
 from models.user import User, UserRole
+
+logger = structlog.get_logger()
 
 
 class EmailAlreadyRegisteredError(Exception):

@@ -32,8 +32,6 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         return response
 
 
-app.add_middleware(RequestIDMiddleware)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -41,6 +39,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RequestIDMiddleware)
 app.include_router(auth_router)
 app.include_router(candidates_router)
 app.include_router(organizations_router)
