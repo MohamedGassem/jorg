@@ -32,3 +32,6 @@ backend/uploads/
 
 # Claude Code (project-level settings)
 .claude/
+
+# Git worktrees
+.worktrees/
