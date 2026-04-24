@@ -7,6 +7,8 @@ import copy
 import io
 import re
 import subprocess
+
+import structlog
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal
@@ -22,6 +24,8 @@ from models.generated_document import GeneratedDocument
 from services import invitation_service, template_service
 
 _PH = re.compile(r"\{\{[^}]+\}\}")
+
+logger = structlog.get_logger()
 
 
 # ---------- helpers ----------------------------------------------------------
@@ -276,6 +280,7 @@ async def generate_for_candidate(
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
+    logger.info("document.generated", template_id=str(template_id), candidate_id=str(candidate_id), format=fmt, access_grant_id=str(doc.access_grant_id))
     return doc
 
 

@@ -1,6 +1,9 @@
 # backend/services/auth_service.py
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = structlog.get_logger()
 
 from core.security import (
     create_access_token,
@@ -49,6 +52,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
         raise InvalidCredentialsError()
     if not user.is_active:
         raise InvalidCredentialsError()
+    logger.info("auth.login", user_id=str(user.id), role=user.role)
     return user
 
 
