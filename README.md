@@ -115,6 +115,28 @@ Integration tests spin up a temporary PostgreSQL container via Testcontainers â€
 
 ---
 
+## Pre-commit hooks
+
+Install [pre-commit](https://pre-commit.com/) then run:
+
+```bash
+pre-commit install
+```
+
+Hooks run automatically on `git commit`. To run manually on all files:
+
+```bash
+pre-commit run --all-files
+```
+
+TypeScript typecheck (slow) runs only manually:
+
+```bash
+pre-commit run tsc --hook-stage manual
+```
+
+---
+
 ## Environment variables
 
 Copy `.env.example` to `.env` in the project root. The defaults are configured for local development and require no changes to get started.
