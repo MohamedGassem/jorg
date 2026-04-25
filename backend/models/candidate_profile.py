@@ -6,7 +6,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, Date, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import ARRAY, JSON, Boolean, CheckConstraint, Date, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -37,6 +37,25 @@ class ContractType(StrEnum):
     BOTH = "both"
 
 
+class AvailabilityStatus(StrEnum):
+    AVAILABLE_NOW = "available_now"
+    AVAILABLE_FROM = "available_from"
+    NOT_AVAILABLE = "not_available"
+
+
+class WorkMode(StrEnum):
+    REMOTE = "remote"
+    ONSITE = "onsite"
+    HYBRID = "hybrid"
+
+
+class MissionDuration(StrEnum):
+    SHORT = "short"      # < 3 mois
+    MEDIUM = "medium"    # 3–6 mois
+    LONG = "long"        # 6 mois+
+    PERMANENT = "permanent"
+
+
 class CandidateProfile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "candidate_profiles"
 
@@ -64,6 +83,21 @@ class CandidateProfile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     annual_salary: Mapped[int | None] = mapped_column(Integer, nullable=True)
     extra_fields: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    availability_status: Mapped[AvailabilityStatus] = mapped_column(
+        Enum(AvailabilityStatus, name="availability_status"),
+        default=AvailabilityStatus.NOT_AVAILABLE,
+        nullable=False,
+        server_default="not_available",
+    )
+    availability_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    work_mode: Mapped[WorkMode | None] = mapped_column(
+        Enum(WorkMode, name="work_mode"), nullable=True
+    )
+    location_preference: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    preferred_domains: Mapped[list[str] | None] = mapped_column(ARRAY(String(50)), nullable=True)
+    mission_duration: Mapped[MissionDuration | None] = mapped_column(
+        Enum(MissionDuration, name="mission_duration"), nullable=True
+    )
 
 
 class Experience(Base, UUIDPrimaryKeyMixin, TimestampMixin):
