@@ -16,6 +16,7 @@ from models.candidate_profile import (
 )
 from models.generated_document import GeneratedDocument
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
+from models.opportunity import Opportunity, OpportunityStatus, ShortlistEntry
 from models.recruiter import Organization, RecruiterProfile
 from models.template import Template
 from models.user import OAuthProvider, User, UserRole
@@ -37,8 +38,11 @@ __all__ = [
     "LanguageLevel",
     "MissionDuration",
     "OAuthProvider",
+    "Opportunity",
+    "OpportunityStatus",
     "Organization",
     "RecruiterProfile",
+    "ShortlistEntry",
     "Skill",
     "SkillCategory",
     "Template",
