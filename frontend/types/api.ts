@@ -186,6 +186,28 @@ export interface ApiError {
   detail: string;
 }
 
+export type OrganizationStatus = "invited" | "active" | "revoked" | "expired";
+export type InteractionEventType =
+  | "invitation_sent" | "invitation_accepted" | "invitation_rejected"
+  | "invitation_expired" | "access_granted" | "access_revoked" | "document_generated";
+
+export interface InteractionEvent {
+  type: InteractionEventType;
+  occurred_at: string;
+  metadata: {
+    template_name?: string | null;
+    file_format?: string | null;
+  };
+}
+
+export interface OrganizationInteractionCard {
+  organization_id: string;
+  organization_name: string;
+  logo_url: string | null;
+  current_status: OrganizationStatus;
+  events: InteractionEvent[];
+}
+
 export interface CandidateExport {
   exported_at: string;
   user_id: string;
