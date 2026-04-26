@@ -1,4 +1,5 @@
 # backend/api/routes/organizations.py
+import re
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID
@@ -11,6 +12,7 @@ import core.storage as storage
 import services.recruiter_service as recruiter_service
 import services.template_service as template_service
 from api.deps import get_db, require_role
+from models.candidate_profile import AvailabilityStatus, ContractType, MissionDuration, WorkMode
 from models.recruiter import Organization
 from models.template import Template
 from models.user import User, UserRole
@@ -64,9 +66,10 @@ async def list_accessible_candidates(
     org_id: UUID,
     current_user: RecruiterUser,
     db: DB,
-    availability_status: str | None = Query(default=None),
-    work_mode: str | None = Query(default=None),
-    contract_type: str | None = Query(default=None),
+    availability_status: AvailabilityStatus | None = Query(default=None),
+    work_mode: WorkMode | None = Query(default=None),
+    contract_type: ContractType | None = Query(default=None),
+    mission_duration: MissionDuration | None = Query(default=None),
     max_daily_rate: int | None = Query(default=None),
     skill: str | None = Query(default=None),
     location: str | None = Query(default=None),
@@ -81,6 +84,7 @@ async def list_accessible_candidates(
         availability_status=availability_status,
         work_mode=work_mode,
         contract_type=contract_type,
+        mission_duration=mission_duration,
         max_daily_rate=max_daily_rate,
         skill=skill,
         location=location,
@@ -185,7 +189,8 @@ async def download_template_file(
     if not file_path.exists():
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
 
-    safe_name = f"{tmpl.name}.docx".replace("/", "_").replace("..", "_")
+    safe_stem = re.sub(r"[^\w\-. ]", "_", tmpl.name).strip() or "template"
+    safe_name = f"{safe_stem}.docx"
     return FileResponse(
         path=str(file_path),
         filename=safe_name,

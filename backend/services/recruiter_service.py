@@ -83,6 +83,7 @@ async def list_accessible_candidates(
     availability_status: str | None = None,
     work_mode: str | None = None,
     contract_type: str | None = None,
+    mission_duration: str | None = None,
     max_daily_rate: int | None = None,
     skill: str | None = None,
     location: str | None = None,
@@ -123,6 +124,8 @@ async def list_accessible_candidates(
         stmt = stmt.where(CandidateProfile.work_mode == work_mode)
     if contract_type:
         stmt = stmt.where(CandidateProfile.contract_type == contract_type)
+    if mission_duration:
+        stmt = stmt.where(CandidateProfile.mission_duration == mission_duration)
     if max_daily_rate is not None:
         stmt = stmt.where(
             or_(CandidateProfile.daily_rate.is_(None), CandidateProfile.daily_rate <= max_daily_rate)

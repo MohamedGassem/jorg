@@ -1,13 +1,17 @@
 from uuid import UUID
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = structlog.get_logger()
 
 from models.candidate_profile import CandidateProfile
 from models.invitation import AccessGrant, AccessGrantStatus
 from models.opportunity import Opportunity, OpportunityStatus, ShortlistEntry
 from models.user import User
+from services import generation_service
 from schemas.opportunity import (
     BulkGenerateResult,
     OpportunityCreate,
@@ -149,8 +153,6 @@ async def bulk_generate(
     generated_by_user_id: UUID,
     fmt: str,
 ) -> list[BulkGenerateResult]:
-    from services import generation_service
-
     entries_result = await db.execute(
         select(ShortlistEntry).where(ShortlistEntry.opportunity_id == opportunity_id)
     )
@@ -167,15 +169,20 @@ async def bulk_generate(
                 generated_by_user_id=generated_by_user_id,
                 fmt=fmt,
             )
-            results.append(BulkGenerateResult(
-                candidate_id=entry.candidate_id,
-                status="ok",
-                doc_id=doc.id,
-            ))
-        except Exception as e:
-            results.append(BulkGenerateResult(
-                candidate_id=entry.candidate_id,
-                status="error",
-                error=str(e),
-            ))
+            results.append(
+                BulkGenerateResult(candidate_id=entry.candidate_id, status="ok", doc_id=doc.id)
+            )
+        except (FileNotFoundError, ValueError, KeyError) as e:
+            results.append(
+                BulkGenerateResult(
+                    candidate_id=entry.candidate_id, status="error", error=str(e)
+                )
+            )
+        except Exception:
+            logger.exception(
+                "bulk_generate.unexpected_error",
+                opportunity_id=str(opportunity_id),
+                candidate_id=str(entry.candidate_id),
+            )
+            raise
     return results

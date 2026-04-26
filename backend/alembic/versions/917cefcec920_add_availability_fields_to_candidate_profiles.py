@@ -1,7 +1,7 @@
 """add_availability_fields_to_candidate_profiles
 
-Revision ID: c1d2e3f4a5b6
-Revises: 0262dfeed461
+Revision ID: 917cefcec920
+Revises: 8ac7cd2e1874
 Create Date: 2026-04-26
 
 """
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "c1d2e3f4a5b6"
+revision: str = "917cefcec920"
 down_revision: str | Sequence[str] | None = "8ac7cd2e1874"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
