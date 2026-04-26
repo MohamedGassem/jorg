@@ -47,6 +47,10 @@ def _profile_flat(profile: CandidateProfile) -> dict[str, str]:
         "years_of_experience": str(profile.years_of_experience or ""),
         "daily_rate": str(profile.daily_rate or ""),
         "annual_salary": str(profile.annual_salary or ""),
+        "availability_status": str(profile.availability_status.value) if profile.availability_status else "",
+        "work_mode": str(profile.work_mode.value) if profile.work_mode else "",
+        "location_preference": profile.location_preference or "",
+        "mission_duration": str(profile.mission_duration.value) if profile.mission_duration else "",
     }
 
 
