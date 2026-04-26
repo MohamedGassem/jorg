@@ -500,3 +500,116 @@ async def test_download_template_file_not_found_returns_404(
         headers=recruiter_headers,
     )
     assert r.status_code == 404
+
+
+# ---- Candidate filters (C3) -------------------------------------------------
+
+
+async def test_filter_candidates_by_availability(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    recruiter_headers: dict[str, str],
+) -> None:
+    org_r = await client.post("/organizations", json={"name": "Filter Org"}, headers=recruiter_headers)
+    org_id = org_r.json()["id"]
+    await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
+
+    await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"availability_status": "available_now"},
+    )
+
+    inv = await client.post(
+        f"/organizations/{org_id}/invitations",
+        json={"candidate_email": "candidate@test.com"},
+        headers=recruiter_headers,
+    )
+    token = inv.json()["token"]
+    await client.post(f"/invitations/{token}/accept", headers=candidate_headers)
+
+    r = await client.get(
+        f"/organizations/{org_id}/candidates?availability_status=available_now",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 200
+    assert len(r.json()) == 1
+
+    r2 = await client.get(
+        f"/organizations/{org_id}/candidates?availability_status=not_available",
+        headers=recruiter_headers,
+    )
+    assert r2.status_code == 200
+    assert len(r2.json()) == 0
+
+
+async def test_filter_candidates_by_skill(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    recruiter_headers: dict[str, str],
+) -> None:
+    org_r = await client.post("/organizations", json={"name": "Skill Org"}, headers=recruiter_headers)
+    org_id = org_r.json()["id"]
+    await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
+
+    await client.post(
+        "/candidates/me/skills",
+        headers=candidate_headers,
+        json={"name": "Python", "category": "language"},
+    )
+
+    inv = await client.post(
+        f"/organizations/{org_id}/invitations",
+        json={"candidate_email": "candidate@test.com"},
+        headers=recruiter_headers,
+    )
+    token = inv.json()["token"]
+    await client.post(f"/invitations/{token}/accept", headers=candidate_headers)
+
+    r = await client.get(
+        f"/organizations/{org_id}/candidates?skill=python",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 200
+    assert len(r.json()) == 1
+
+    r2 = await client.get(
+        f"/organizations/{org_id}/candidates?skill=java",
+        headers=recruiter_headers,
+    )
+    assert r2.status_code == 200
+    assert len(r2.json()) == 0
+
+
+async def test_filter_candidates_by_max_daily_rate(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    recruiter_headers: dict[str, str],
+) -> None:
+    org_r = await client.post("/organizations", json={"name": "Rate Org"}, headers=recruiter_headers)
+    org_id = org_r.json()["id"]
+    await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
+
+    await client.put("/candidates/me/profile", headers=candidate_headers, json={"daily_rate": 700})
+
+    inv = await client.post(
+        f"/organizations/{org_id}/invitations",
+        json={"candidate_email": "candidate@test.com"},
+        headers=recruiter_headers,
+    )
+    token = inv.json()["token"]
+    await client.post(f"/invitations/{token}/accept", headers=candidate_headers)
+
+    r = await client.get(
+        f"/organizations/{org_id}/candidates?max_daily_rate=800",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 200
+    assert len(r.json()) == 1
+
+    r2 = await client.get(
+        f"/organizations/{org_id}/candidates?max_daily_rate=600",
+        headers=recruiter_headers,
+    )
+    assert r2.status_code == 200
+    assert len(r2.json()) == 0

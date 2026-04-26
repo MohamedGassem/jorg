@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,11 +61,32 @@ async def get_organization(org_id: UUID, current_user: RecruiterUser, db: DB) ->
 
 @router.get("/{org_id}/candidates", response_model=list[AccessibleCandidateRead])
 async def list_accessible_candidates(
-    org_id: UUID, current_user: RecruiterUser, db: DB
+    org_id: UUID,
+    current_user: RecruiterUser,
+    db: DB,
+    availability_status: str | None = Query(default=None),
+    work_mode: str | None = Query(default=None),
+    contract_type: str | None = Query(default=None),
+    max_daily_rate: int | None = Query(default=None),
+    skill: str | None = Query(default=None),
+    location: str | None = Query(default=None),
+    domain: str | None = Query(default=None),
+    q: str | None = Query(default=None),
 ) -> list[dict[str, object]]:
     await _get_org_or_404(db, org_id)
     await _require_org_membership(db, current_user.id, org_id)
-    return await recruiter_service.list_accessible_candidates(db, org_id)
+    return await recruiter_service.list_accessible_candidates(
+        db,
+        org_id,
+        availability_status=availability_status,
+        work_mode=work_mode,
+        contract_type=contract_type,
+        max_daily_rate=max_daily_rate,
+        skill=skill,
+        location=location,
+        domain=domain,
+        q=q,
+    )
 
 
 # ---- Templates --------------------------------------------------------------
