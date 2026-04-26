@@ -10,6 +10,7 @@ from starlette.requests import Request
 from api.routes.auth import router as auth_router
 from api.routes.candidates import router as candidates_router
 from api.routes.generation import router as generation_router
+from api.routes.opportunities import router as opportunities_router
 from api.routes.templates import router as templates_router
 from api.routes.invitations import router as invitations_router
 from api.routes.organizations import router as organizations_router
@@ -47,6 +48,7 @@ app.include_router(organizations_router)
 app.include_router(recruiters_router)
 app.include_router(invitations_router)
 app.include_router(generation_router)
+app.include_router(opportunities_router)
 app.include_router(templates_router)
 
 
