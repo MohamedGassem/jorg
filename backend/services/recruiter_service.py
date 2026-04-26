@@ -91,10 +91,11 @@ async def list_accessible_candidates(
     q: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return candidates with an active AccessGrant on this org, with optional filters."""
+    from sqlalchemy import exists, func, or_
+
     from models.candidate_profile import CandidateProfile, Skill
     from models.invitation import AccessGrant, AccessGrantStatus
     from models.user import User
-    from sqlalchemy import and_, exists, func, or_
 
     stmt = (
         select(
@@ -128,7 +129,10 @@ async def list_accessible_candidates(
         stmt = stmt.where(CandidateProfile.mission_duration == mission_duration)
     if max_daily_rate is not None:
         stmt = stmt.where(
-            or_(CandidateProfile.daily_rate.is_(None), CandidateProfile.daily_rate <= max_daily_rate)
+            or_(
+                CandidateProfile.daily_rate.is_(None),
+                CandidateProfile.daily_rate <= max_daily_rate,
+            )
         )
     if skill:
         stmt = stmt.where(

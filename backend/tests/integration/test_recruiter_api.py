@@ -429,6 +429,7 @@ async def test_download_template_file_ok(
     await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
 
     import io
+
     from docx import Document
     buf = io.BytesIO()
     Document().save(buf)
@@ -459,7 +460,7 @@ async def test_download_template_file_wrong_org_returns_403(
     org_a_id = org_a.json()["id"]
     await client.put("/recruiters/me/profile", json={"organization_id": org_a_id}, headers=recruiter_headers)
 
-    r2 = await client.post("/auth/register", json={"email": "rec2@test.com", "password": "pass1234", "role": "recruiter"})
+    await client.post("/auth/register", json={"email": "rec2@test.com", "password": "pass1234", "role": "recruiter"})
     login2 = await client.post("/auth/login", json={"email": "rec2@test.com", "password": "pass1234"})
     headers2 = {"Authorization": f"Bearer {login2.json()['access_token']}"}
 
@@ -468,6 +469,7 @@ async def test_download_template_file_wrong_org_returns_403(
     await client.put("/recruiters/me/profile", json={"organization_id": org_b_id}, headers=headers2)
 
     import io
+
     from docx import Document
     buf = io.BytesIO()
     Document().save(buf)

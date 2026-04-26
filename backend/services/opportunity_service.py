@@ -5,13 +5,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = structlog.get_logger()
-
 from models.candidate_profile import CandidateProfile
 from models.invitation import AccessGrant, AccessGrantStatus
-from models.opportunity import Opportunity, OpportunityStatus, ShortlistEntry
+from models.opportunity import Opportunity, ShortlistEntry
 from models.user import User
-from services import generation_service
 from schemas.opportunity import (
     BulkGenerateResult,
     OpportunityCreate,
@@ -19,6 +16,9 @@ from schemas.opportunity import (
     OpportunityUpdate,
     ShortlistCandidateInfo,
 )
+from services import generation_service
+
+logger = structlog.get_logger()
 
 
 async def create_opportunity(
@@ -121,9 +121,9 @@ async def add_to_shortlist(
     db.add(entry)
     try:
         await db.commit()
-    except IntegrityError:
+    except IntegrityError as err:
         await db.rollback()
-        raise ValueError("duplicate_entry")
+        raise ValueError("duplicate_entry") from err
     await db.refresh(entry)
     return entry
 

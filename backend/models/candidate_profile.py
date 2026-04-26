@@ -6,7 +6,18 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ARRAY, JSON, Boolean, CheckConstraint, Date, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    ARRAY,
+    JSON,
+    Boolean,
+    CheckConstraint,
+    Date,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -51,7 +62,7 @@ class WorkMode(StrEnum):
 
 class MissionDuration(StrEnum):
     SHORT = "short"      # < 3 mois
-    MEDIUM = "medium"    # 3–6 mois
+    MEDIUM = "medium"    # 3-6 mois
     LONG = "long"        # 6 mois+
     PERMANENT = "permanent"
 

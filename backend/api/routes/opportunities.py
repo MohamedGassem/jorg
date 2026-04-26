@@ -38,20 +38,33 @@ async def _get_opp_or_404(db: AsyncSession, opp_id: UUID, org_id: UUID) -> Oppor
     return opp
 
 
-@router.post("/{org_id}/opportunities", response_model=OpportunityRead, status_code=status.HTTP_201_CREATED)
-async def create_opportunity(org_id: UUID, data: OpportunityCreate, current_user: RecruiterUser, db: DB) -> Opportunity:
+@router.post(
+    "/{org_id}/opportunities",
+    response_model=OpportunityRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_opportunity(
+    org_id: UUID,
+    data: OpportunityCreate,
+    current_user: RecruiterUser,
+    db: DB,
+) -> Opportunity:
     await _require_membership(db, current_user.id, org_id)
     return await opportunity_service.create_opportunity(db, org_id, current_user.id, data)
 
 
 @router.get("/{org_id}/opportunities", response_model=list[OpportunityRead])
-async def list_opportunities(org_id: UUID, current_user: RecruiterUser, db: DB) -> list[Opportunity]:
+async def list_opportunities(
+    org_id: UUID, current_user: RecruiterUser, db: DB
+) -> list[Opportunity]:
     await _require_membership(db, current_user.id, org_id)
     return await opportunity_service.list_opportunities(db, org_id)
 
 
 @router.get("/{org_id}/opportunities/{opp_id}", response_model=OpportunityDetail)
-async def get_opportunity(org_id: UUID, opp_id: UUID, current_user: RecruiterUser, db: DB) -> OpportunityDetail:
+async def get_opportunity(
+    org_id: UUID, opp_id: UUID, current_user: RecruiterUser, db: DB
+) -> OpportunityDetail:
     await _require_membership(db, current_user.id, org_id)
     detail = await opportunity_service.get_opportunity_detail(db, opp_id, org_id)
     if detail is None:
@@ -60,14 +73,29 @@ async def get_opportunity(org_id: UUID, opp_id: UUID, current_user: RecruiterUse
 
 
 @router.patch("/{org_id}/opportunities/{opp_id}", response_model=OpportunityRead)
-async def update_opportunity(org_id: UUID, opp_id: UUID, data: OpportunityUpdate, current_user: RecruiterUser, db: DB) -> Opportunity:
+async def update_opportunity(
+    org_id: UUID,
+    opp_id: UUID,
+    data: OpportunityUpdate,
+    current_user: RecruiterUser,
+    db: DB,
+) -> Opportunity:
     await _require_membership(db, current_user.id, org_id)
     opp = await _get_opp_or_404(db, opp_id, org_id)
     return await opportunity_service.update_opportunity(db, opp, data)
 
 
-@router.post("/{org_id}/opportunities/{opp_id}/candidates", status_code=status.HTTP_201_CREATED)
-async def add_to_shortlist(org_id: UUID, opp_id: UUID, data: ShortlistAddRequest, current_user: RecruiterUser, db: DB) -> dict:
+@router.post(
+    "/{org_id}/opportunities/{opp_id}/candidates",
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_to_shortlist(
+    org_id: UUID,
+    opp_id: UUID,
+    data: ShortlistAddRequest,
+    current_user: RecruiterUser,
+    db: DB,
+) -> dict:
     await _require_membership(db, current_user.id, org_id)
     await _get_opp_or_404(db, opp_id, org_id)
     try:
@@ -75,14 +103,28 @@ async def add_to_shortlist(org_id: UUID, opp_id: UUID, data: ShortlistAddRequest
         return {"status": "added"}
     except ValueError as e:
         if str(e) == "no_active_grant":
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="no active access grant")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="no active access grant"
+            ) from e
         if str(e) == "duplicate_entry":
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="candidate already in shortlist")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="candidate already in shortlist",
+            ) from e
         raise
 
 
-@router.delete("/{org_id}/opportunities/{opp_id}/candidates/{candidate_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_from_shortlist(org_id: UUID, opp_id: UUID, candidate_id: UUID, current_user: RecruiterUser, db: DB) -> None:
+@router.delete(
+    "/{org_id}/opportunities/{opp_id}/candidates/{candidate_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def remove_from_shortlist(
+    org_id: UUID,
+    opp_id: UUID,
+    candidate_id: UUID,
+    current_user: RecruiterUser,
+    db: DB,
+) -> None:
     await _require_membership(db, current_user.id, org_id)
     await _get_opp_or_404(db, opp_id, org_id)
     removed = await opportunity_service.remove_from_shortlist(db, opp_id, candidate_id)
@@ -90,8 +132,17 @@ async def remove_from_shortlist(org_id: UUID, opp_id: UUID, candidate_id: UUID, 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="entry not found")
 
 
-@router.post("/{org_id}/opportunities/{opp_id}/generate", response_model=list[BulkGenerateResult])
-async def bulk_generate(org_id: UUID, opp_id: UUID, data: BulkGenerateRequest, current_user: RecruiterUser, db: DB) -> list[BulkGenerateResult]:
+@router.post(
+    "/{org_id}/opportunities/{opp_id}/generate",
+    response_model=list[BulkGenerateResult],
+)
+async def bulk_generate(
+    org_id: UUID,
+    opp_id: UUID,
+    data: BulkGenerateRequest,
+    current_user: RecruiterUser,
+    db: DB,
+) -> list[BulkGenerateResult]:
     await _require_membership(db, current_user.id, org_id)
     await _get_opp_or_404(db, opp_id, org_id)
     return await opportunity_service.bulk_generate(

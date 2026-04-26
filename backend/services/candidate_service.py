@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.candidate_profile import (
     AvailabilityStatus as _AvailabilityStatus,
+)
+from models.candidate_profile import (
     CandidateProfile,
     Certification,
     Education,
@@ -14,6 +16,10 @@ from models.candidate_profile import (
     Language,
     Skill,
 )
+from models.generated_document import GeneratedDocument
+from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
+from models.recruiter import Organization
+from models.template import Template
 from schemas.candidate import (
     CandidateProfileUpdate,
     CertificationCreate,
@@ -22,8 +28,11 @@ from schemas.candidate import (
     EducationUpdate,
     ExperienceCreate,
     ExperienceUpdate,
+    InteractionEvent,
+    InteractionEventMetadata,
     LanguageCreate,
     LanguageUpdate,
+    OrganizationInteractionCard,
     SkillCreate,
     SkillUpdate,
 )
@@ -266,17 +275,6 @@ async def delete_language(db: AsyncSession, lang: Language) -> None:
 
 
 # ---- Interaction timeline ---------------------------------------------------
-
-from models.generated_document import GeneratedDocument
-from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
-from models.recruiter import Organization
-from models.template import Template
-from models.user import User
-from schemas.candidate import (
-    InteractionEvent,
-    InteractionEventMetadata,
-    OrganizationInteractionCard,
-)
 
 _INVITATION_EVENT_TYPE = {
     InvitationStatus.PENDING: "invitation_sent",

@@ -29,7 +29,11 @@ class Opportunity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     title: Mapped[str] = mapped_column(String(300), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[OpportunityStatus] = mapped_column(
-        Enum(OpportunityStatus, name="opportunity_status", values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            OpportunityStatus,
+            name="opportunity_status",
+            values_callable=lambda x: [e.value for e in x],
+        ),
         default=OpportunityStatus.OPEN,
         nullable=False,
         server_default="open",

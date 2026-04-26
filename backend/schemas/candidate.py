@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -260,8 +260,6 @@ class LanguageRead(BaseModel):
 
 
 # ---- Interaction timeline ----------------------------------------------------
-
-from typing import Literal
 
 InteractionEventType = Literal[
     "invitation_sent",

@@ -17,7 +17,6 @@ from models.candidate_profile import (
     Skill,
 )
 from models.user import User, UserRole
-from schemas.rgpd import CandidateExport
 from schemas.candidate import (
     CandidateProfileRead,
     CandidateProfileUpdate,
@@ -38,6 +37,7 @@ from schemas.candidate import (
     SkillRead,
     SkillUpdate,
 )
+from schemas.rgpd import CandidateExport
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -67,7 +67,7 @@ async def update_my_profile(
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="availability_date is required when availability_status is 'available_from'",
-            )
+            ) from e
         raise
 
 

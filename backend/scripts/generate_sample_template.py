@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """One-shot script to generate backend/static/sample_template.docx."""
 from pathlib import Path
+
 from docx import Document
-from docx.shared import Pt
 
 
 def main() -> None:
@@ -31,7 +31,7 @@ def main() -> None:
     p = doc.add_paragraph()
     run = p.add_run("{{EXP_CLIENT}} — {{EXP_ROLE}}")
     run.bold = True
-    doc.add_paragraph("Période : {{EXP_DEBUT}} – {{EXP_FIN}}")
+    doc.add_paragraph("Période : {{EXP_DEBUT}} - {{EXP_FIN}}")
     doc.add_paragraph("Description : {{EXP_DESCRIPTION}}")
     doc.add_paragraph("Technologies : {{EXP_TECHNOLOGIES}}")
     doc.add_paragraph("{{/EXPERIENCES}}")
@@ -43,7 +43,9 @@ def main() -> None:
 
     doc.add_heading("Formations", level=2)
     doc.add_paragraph("{{#FORMATIONS}}")
-    doc.add_paragraph("{{FORMATION_ECOLE}} — {{FORMATION_DIPLOME}} ({{FORMATION_DEBUT}}–{{FORMATION_FIN}})")
+    doc.add_paragraph(
+        "{{FORMATION_ECOLE}} - {{FORMATION_DIPLOME}} ({{FORMATION_DEBUT}}-{{FORMATION_FIN}})"
+    )
     doc.add_paragraph("{{/FORMATIONS}}")
 
     out = Path(__file__).parent.parent / "static" / "sample_template.docx"
