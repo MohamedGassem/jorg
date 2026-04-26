@@ -5,9 +5,21 @@ from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from models.candidate_profile import ContractType, LanguageLevel, SkillCategory
+from models.candidate_profile import (
+    AvailabilityStatus,
+    ContractType,
+    LanguageLevel,
+    MissionDuration,
+    SkillCategory,
+    WorkMode,
+)
+
+VALID_DOMAINS = {
+    "finance", "retail", "industry", "public",
+    "health", "tech", "telecom", "energy", "other",
+}
 
 # ---- CandidateProfile -------------------------------------------------------
 
@@ -29,6 +41,22 @@ class CandidateProfileUpdate(BaseModel):
     contract_type: ContractType | None = None
     annual_salary: int | None = None
     extra_fields: dict[str, Any] | None = None
+    availability_status: AvailabilityStatus | None = None
+    availability_date: date | None = None
+    work_mode: WorkMode | None = None
+    location_preference: str | None = None
+    preferred_domains: list[str] | None = None
+    mission_duration: MissionDuration | None = None
+
+    @field_validator("preferred_domains")
+    @classmethod
+    def validate_domains(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        invalid = set(v) - VALID_DOMAINS
+        if invalid:
+            raise ValueError(f"invalid domains: {invalid}")
+        return v
 
 
 class CandidateProfileRead(BaseModel):
@@ -50,6 +78,12 @@ class CandidateProfileRead(BaseModel):
     contract_type: ContractType
     annual_salary: int | None
     extra_fields: dict[str, Any] | None
+    availability_status: AvailabilityStatus = AvailabilityStatus.NOT_AVAILABLE
+    availability_date: date | None = None
+    work_mode: WorkMode | None = None
+    location_preference: str | None = None
+    preferred_domains: list[str] | None = None
+    mission_duration: MissionDuration | None = None
     created_at: datetime
     updated_at: datetime
 

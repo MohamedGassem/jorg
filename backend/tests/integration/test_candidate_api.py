@@ -461,3 +461,60 @@ async def test_create_skill_with_level_text_and_rating_coexist(
     data = r.json()
     assert data["level"] == "autonome"
     assert data["level_rating"] == 3
+
+
+async def test_update_profile_availability_fields(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={
+            "availability_status": "available_now",
+            "work_mode": "remote",
+            "location_preference": "Paris",
+            "preferred_domains": ["finance", "tech"],
+            "mission_duration": "medium",
+        },
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["availability_status"] == "available_now"
+    assert data["work_mode"] == "remote"
+    assert data["location_preference"] == "Paris"
+    assert data["preferred_domains"] == ["finance", "tech"]
+    assert data["mission_duration"] == "medium"
+
+
+async def test_availability_date_required_when_status_is_available_from(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"availability_status": "available_from", "availability_date": None},
+    )
+    assert r.status_code == 422
+
+
+async def test_availability_date_accepted_with_available_from(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"availability_status": "available_from", "availability_date": "2026-06-01"},
+    )
+    assert r.status_code == 200
+    assert r.json()["availability_date"] == "2026-06-01"
+
+
+async def test_preferred_domains_invalid_value_rejected(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"preferred_domains": ["invalid_domain"]},
+    )
+    assert r.status_code == 422

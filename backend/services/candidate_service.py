@@ -4,7 +4,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi import HTTPException, status as http_status
+
 from models.candidate_profile import (
+    AvailabilityStatus as _AvailabilityStatus,
     CandidateProfile,
     Certification,
     Education,
@@ -46,6 +49,13 @@ async def update_profile(
     data: CandidateProfileUpdate,
 ) -> CandidateProfile:
     updates = data.model_dump(exclude_unset=True)
+    new_status = updates.get("availability_status", profile.availability_status)
+    new_date = updates.get("availability_date", profile.availability_date)
+    if new_status == _AvailabilityStatus.AVAILABLE_FROM and new_date is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="availability_date is required when availability_status is 'available_from'",
+        )
     for field, value in updates.items():
         setattr(profile, field, value)
     await db.commit()

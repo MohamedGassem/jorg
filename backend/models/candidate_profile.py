@@ -87,7 +87,6 @@ class CandidateProfile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         Enum(AvailabilityStatus, name="availability_status"),
         default=AvailabilityStatus.NOT_AVAILABLE,
         nullable=False,
-        server_default="not_available",
     )
     availability_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     work_mode: Mapped[WorkMode | None] = mapped_column(
