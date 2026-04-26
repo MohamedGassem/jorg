@@ -257,3 +257,39 @@ class LanguageRead(BaseModel):
     level: LanguageLevel
     created_at: datetime
     updated_at: datetime
+
+
+# ---- Interaction timeline ----------------------------------------------------
+
+from typing import Literal
+
+InteractionEventType = Literal[
+    "invitation_sent",
+    "invitation_accepted",
+    "invitation_rejected",
+    "invitation_expired",
+    "access_granted",
+    "access_revoked",
+    "document_generated",
+]
+
+OrganizationStatus = Literal["invited", "active", "revoked", "expired"]
+
+
+class InteractionEventMetadata(BaseModel):
+    template_name: str | None = None
+    file_format: str | None = None
+
+
+class InteractionEvent(BaseModel):
+    type: InteractionEventType
+    occurred_at: datetime
+    metadata: InteractionEventMetadata = InteractionEventMetadata()
+
+
+class OrganizationInteractionCard(BaseModel):
+    organization_id: UUID
+    organization_name: str
+    logo_url: str | None
+    current_status: OrganizationStatus
+    events: list[InteractionEvent]
