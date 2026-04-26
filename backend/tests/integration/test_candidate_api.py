@@ -518,3 +518,47 @@ async def test_preferred_domains_invalid_value_rejected(
         json={"preferred_domains": ["invalid_domain"]},
     )
     assert r.status_code == 422
+
+
+# ---- Interaction timeline ---------------------------------------------------
+
+
+async def test_organizations_empty_for_new_candidate(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.get("/candidates/me/organizations", headers=candidate_headers)
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+async def test_organizations_shows_org_after_invitation(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    recruiter_headers: dict[str, str],
+) -> None:
+    org_r = await client.post("/organizations", json={"name": "Acme"}, headers=recruiter_headers)
+    org_id = org_r.json()["id"]
+    await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
+
+    cand_email = "candidate@test.com"
+    await client.post(
+        f"/organizations/{org_id}/invitations",
+        json={"candidate_email": cand_email},
+        headers=recruiter_headers,
+    )
+
+    r = await client.get("/candidates/me/organizations", headers=candidate_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data) == 1
+    card = data[0]
+    assert card["organization_name"] == "Acme"
+    assert card["current_status"] == "invited"
+    assert any(e["type"] == "invitation_sent" for e in card["events"])
+
+
+async def test_organizations_requires_candidate_role(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    r = await client.get("/candidates/me/organizations", headers=recruiter_headers)
+    assert r.status_code == 403

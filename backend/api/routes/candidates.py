@@ -3,6 +3,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import services.candidate_service as candidate_service
@@ -33,6 +34,7 @@ from schemas.candidate import (
     LanguageCreate,
     LanguageRead,
     LanguageUpdate,
+    OrganizationInteractionCard,
     SkillCreate,
     SkillRead,
     SkillUpdate,
@@ -275,3 +277,142 @@ async def export_my_data(current_user: CandidateUser, db: DB) -> CandidateExport
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_my_account(current_user: CandidateUser, db: DB) -> None:
     await rgpd_service.delete_candidate_account(db, current_user)
+
+
+# ---- Interaction timeline ---------------------------------------------------
+
+
+@router.get("/me/organizations", response_model=list[OrganizationInteractionCard])
+async def list_my_organizations(
+    current_user: CandidateUser, db: DB
+) -> list[OrganizationInteractionCard]:
+    from datetime import UTC, datetime
+    from sqlalchemy import or_
+    from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
+    from models.generated_document import GeneratedDocument
+    from models.recruiter import Organization
+    from models.template import Template
+    from schemas.candidate import (
+        InteractionEvent,
+        InteractionEventMetadata,
+        OrganizationInteractionCard,
+    )
+
+    # 1. Fetch all invitations for this candidate (by id or email)
+    inv_result = await db.execute(
+        select(Invitation, Organization)
+        .join(Organization, Organization.id == Invitation.organization_id)
+        .where(
+            or_(
+                Invitation.candidate_id == current_user.id,
+                Invitation.candidate_email == current_user.email,
+            )
+        )
+    )
+    invitations = inv_result.all()
+
+    # 2. Fetch all access grants
+    grant_result = await db.execute(
+        select(AccessGrant, Organization)
+        .join(Organization, Organization.id == AccessGrant.organization_id)
+        .where(AccessGrant.candidate_id == current_user.id)
+    )
+    grants = grant_result.all()
+
+    # 3. Fetch generated documents linked to these grants
+    grant_ids = [g.AccessGrant.id for g in grants]
+    doc_rows = []
+    if grant_ids:
+        doc_result = await db.execute(
+            select(GeneratedDocument, Template)
+            .join(Template, Template.id == GeneratedDocument.template_id)
+            .where(GeneratedDocument.access_grant_id.in_(grant_ids))
+        )
+        doc_rows = doc_result.all()
+
+    # 4. Build org map
+    orgs: dict[str, dict] = {}
+
+    for inv, org in invitations:
+        oid = str(org.id)
+        if oid not in orgs:
+            orgs[oid] = {"org": org, "events": [], "grants": []}
+        event_type_map = {
+            InvitationStatus.PENDING: "invitation_sent",
+            InvitationStatus.ACCEPTED: "invitation_accepted",
+            InvitationStatus.REJECTED: "invitation_rejected",
+            InvitationStatus.EXPIRED: "invitation_expired",
+        }
+        orgs[oid]["events"].append(
+            InteractionEvent(
+                type=event_type_map[inv.status],
+                occurred_at=inv.created_at,
+            )
+        )
+
+    for grant, org in grants:
+        oid = str(org.id)
+        if oid not in orgs:
+            orgs[oid] = {"org": org, "events": [], "grants": []}
+        orgs[oid]["grants"].append(grant)
+        orgs[oid]["events"].append(
+            InteractionEvent(type="access_granted", occurred_at=grant.granted_at)
+        )
+        if grant.status == AccessGrantStatus.REVOKED and grant.revoked_at:
+            orgs[oid]["events"].append(
+                InteractionEvent(type="access_revoked", occurred_at=grant.revoked_at)
+            )
+
+    grant_org_map = {str(g.AccessGrant.id): str(org.id) for g, org in grants}
+    for doc, tmpl in doc_rows:
+        oid = grant_org_map.get(str(doc.access_grant_id))
+        if oid and oid in orgs:
+            orgs[oid]["events"].append(
+                InteractionEvent(
+                    type="document_generated",
+                    occurred_at=doc.generated_at,
+                    metadata=InteractionEventMetadata(
+                        template_name=tmpl.name,
+                        file_format=doc.file_format,
+                    ),
+                )
+            )
+
+    # 5. Compute current_status and sort
+    result: list[OrganizationInteractionCard] = []
+    for oid, data in orgs.items():
+        org = data["org"]
+        org_grants: list[AccessGrant] = data["grants"]
+        events: list[InteractionEvent] = sorted(data["events"], key=lambda e: e.occurred_at)
+
+        active_grant = next(
+            (g for g in org_grants if g.status == AccessGrantStatus.ACTIVE), None
+        )
+        revoked_grant = next(
+            (g for g in org_grants if g.status == AccessGrantStatus.REVOKED), None
+        )
+
+        if active_grant:
+            status_val = "active"
+        elif revoked_grant:
+            status_val = "revoked"
+        else:
+            org_invs = [inv for inv, o in invitations if str(o.id) == oid]
+            has_pending = any(i.status == InvitationStatus.PENDING for i in org_invs)
+            status_val = "invited" if has_pending else "expired"
+
+        result.append(
+            OrganizationInteractionCard(
+                organization_id=org.id,
+                organization_name=org.name,
+                logo_url=getattr(org, "logo_url", None),
+                current_status=status_val,
+                events=events,
+            )
+        )
+
+    result.sort(
+        key=lambda c: c.events[-1].occurred_at if c.events else datetime.min.replace(tzinfo=UTC),
+        reverse=True,
+    )
+    return result
