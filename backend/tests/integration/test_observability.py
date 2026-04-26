@@ -1,5 +1,4 @@
 # backend/tests/integration/test_observability.py
-import pytest
 from httpx import AsyncClient
 
 

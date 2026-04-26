@@ -10,11 +10,11 @@ from starlette.requests import Request
 from api.routes.auth import router as auth_router
 from api.routes.candidates import router as candidates_router
 from api.routes.generation import router as generation_router
-from api.routes.opportunities import router as opportunities_router
-from api.routes.templates import router as templates_router
 from api.routes.invitations import router as invitations_router
+from api.routes.opportunities import router as opportunities_router
 from api.routes.organizations import router as organizations_router
 from api.routes.recruiters import router as recruiters_router
+from api.routes.templates import router as templates_router
 from core.config import get_settings
 from core.logging import configure_logging
 
