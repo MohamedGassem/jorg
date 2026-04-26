@@ -182,6 +182,20 @@ export interface AccessibleCandidate {
   last_name: string | null;
 }
 
+export interface AccessibleCandidateRead {
+  user_id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  title: string | null;
+  daily_rate: number | null;
+  contract_type: ContractType | null;
+  availability_status: AvailabilityStatus | null;
+  work_mode: WorkMode | null;
+  location_preference: string | null;
+  preferred_domains: string[] | null;
+}
+
 export interface ApiError {
   detail: string;
 }
