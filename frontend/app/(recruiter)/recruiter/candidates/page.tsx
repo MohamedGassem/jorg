@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -184,6 +185,11 @@ export default function CandidatesPage() {
                     {c.daily_rate && <span>TJM : {c.daily_rate} €/j</span>}
                     {c.availability_status && <span>Dispo : {c.availability_status}</span>}
                     {c.work_mode && <span>{c.work_mode}</span>}
+                  </div>
+                  <div className="pt-1">
+                    <Link href="/recruiter/opportunities">
+                      <Button size="sm" variant="ghost">+ Opportunité</Button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>

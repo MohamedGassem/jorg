@@ -200,6 +200,37 @@ export interface ApiError {
   detail: string;
 }
 
+export type OpportunityStatus = "open" | "closed";
+
+export interface OpportunityRead {
+  id: string;
+  organization_id: string;
+  title: string;
+  description: string | null;
+  status: OpportunityStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShortlistCandidateInfo {
+  user_id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  title: string | null;
+}
+
+export interface OpportunityDetail extends OpportunityRead {
+  shortlist: ShortlistCandidateInfo[];
+}
+
+export interface BulkGenerateResult {
+  candidate_id: string;
+  status: "ok" | "error";
+  doc_id: string | null;
+  error: string | null;
+}
+
 export type OrganizationStatus = "invited" | "active" | "revoked" | "expired";
 export type InteractionEventType =
   | "invitation_sent" | "invitation_accepted" | "invitation_rejected"
