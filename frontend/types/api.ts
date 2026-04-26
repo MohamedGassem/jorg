@@ -75,6 +75,16 @@ export interface AuthResponse {
   refresh_token: string;
 }
 
+export type AvailabilityStatus = "available_now" | "available_from" | "not_available";
+export type WorkMode = "remote" | "onsite" | "hybrid";
+export type MissionDuration = "short" | "medium" | "long" | "permanent";
+
+export const VALID_DOMAINS = [
+  "finance", "retail", "industry", "public",
+  "health", "tech", "telecom", "energy", "other",
+] as const;
+export type Domain = typeof VALID_DOMAINS[number];
+
 export interface CandidateProfile {
   id: string;
   user_id: string;
@@ -90,6 +100,12 @@ export interface CandidateProfile {
   daily_rate: number | null;
   contract_type: ContractType;
   annual_salary: number | null;
+  availability_status: AvailabilityStatus;
+  availability_date: string | null;
+  work_mode: WorkMode | null;
+  location_preference: string | null;
+  preferred_domains: Domain[] | null;
+  mission_duration: MissionDuration | null;
   created_at: string;
   updated_at: string;
 }
