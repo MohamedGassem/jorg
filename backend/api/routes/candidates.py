@@ -17,7 +17,6 @@ from models.candidate_profile import (
     Skill,
 )
 from models.user import User, UserRole
-from schemas.rgpd import CandidateExport
 from schemas.candidate import (
     CandidateProfileRead,
     CandidateProfileUpdate,
@@ -33,10 +32,12 @@ from schemas.candidate import (
     LanguageCreate,
     LanguageRead,
     LanguageUpdate,
+    OrganizationInteractionCard,
     SkillCreate,
     SkillRead,
     SkillUpdate,
 )
+from schemas.rgpd import CandidateExport
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -59,7 +60,15 @@ async def update_my_profile(
     db: DB,
 ) -> CandidateProfile:
     profile = await candidate_service.get_or_create_profile(db, current_user.id)
-    return await candidate_service.update_profile(db, profile, data)
+    try:
+        return await candidate_service.update_profile(db, profile, data)
+    except ValueError as e:
+        if str(e) == "availability_date_required":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="availability_date is required when availability_status is 'available_from'",
+            ) from e
+        raise
 
 
 # ---- Experiences ------------------------------------------------------------
@@ -275,3 +284,15 @@ async def export_my_data(current_user: CandidateUser, db: DB) -> CandidateExport
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_my_account(current_user: CandidateUser, db: DB) -> None:
     await rgpd_service.delete_candidate_account(db, current_user)
+
+
+# ---- Interaction timeline ---------------------------------------------------
+
+
+@router.get("/me/organizations", response_model=list[OrganizationInteractionCard])
+async def list_my_organizations(
+    current_user: CandidateUser, db: DB
+) -> list[OrganizationInteractionCard]:
+    return await candidate_service.list_organization_interactions(
+        db, current_user.id, current_user.email
+    )

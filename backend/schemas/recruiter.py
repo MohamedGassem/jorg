@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from models.candidate_profile import AvailabilityStatus, ContractType, WorkMode
+
 # ---- Organization -----------------------------------------------------------
 
 
@@ -61,3 +63,10 @@ class AccessibleCandidateRead(BaseModel):
     email: str
     first_name: str | None
     last_name: str | None
+    title: str | None = None
+    daily_rate: int | None = None
+    contract_type: ContractType | None = None
+    availability_status: AvailabilityStatus | None = None
+    work_mode: WorkMode | None = None
+    location_preference: str | None = None
+    preferred_domains: list[str] | None = None

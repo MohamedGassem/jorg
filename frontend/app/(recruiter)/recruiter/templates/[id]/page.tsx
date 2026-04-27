@@ -41,6 +41,10 @@ const PROFILE_FIELDS = [
   { value: "experience.context", label: "Expérience — Contexte" },
   { value: "experience.achievements", label: "Expérience — Réalisations" },
   { value: "experience.technologies", label: "Expérience — Technologies" },
+  { value: "availability_status", label: "Disponibilité" },
+  { value: "work_mode", label: "Mode de travail" },
+  { value: "location_preference", label: "Localisation préférée" },
+  { value: "mission_duration", label: "Durée de mission souhaitée" },
 ];
 
 export default function TemplateMappingPage() {

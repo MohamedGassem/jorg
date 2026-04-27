@@ -9,6 +9,10 @@ from pathlib import Path
 _UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 
 
+def upload_dir() -> Path:
+    return _UPLOAD_DIR.resolve()
+
+
 def save_upload(content: bytes, original_filename: str) -> str:
     """Save raw bytes to local storage.
 

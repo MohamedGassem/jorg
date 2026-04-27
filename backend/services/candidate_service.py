@@ -1,9 +1,14 @@
 # backend/services/candidate_service.py
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Row, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from models.candidate_profile import (
+    AvailabilityStatus as _AvailabilityStatus,
+)
 from models.candidate_profile import (
     CandidateProfile,
     Certification,
@@ -12,6 +17,10 @@ from models.candidate_profile import (
     Language,
     Skill,
 )
+from models.generated_document import GeneratedDocument
+from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
+from models.recruiter import Organization
+from models.template import Template
 from schemas.candidate import (
     CandidateProfileUpdate,
     CertificationCreate,
@@ -20,8 +29,11 @@ from schemas.candidate import (
     EducationUpdate,
     ExperienceCreate,
     ExperienceUpdate,
+    InteractionEvent,
+    InteractionEventMetadata,
     LanguageCreate,
     LanguageUpdate,
+    OrganizationInteractionCard,
     SkillCreate,
     SkillUpdate,
 )
@@ -46,6 +58,10 @@ async def update_profile(
     data: CandidateProfileUpdate,
 ) -> CandidateProfile:
     updates = data.model_dump(exclude_unset=True)
+    new_status = updates.get("availability_status", profile.availability_status)
+    new_date = updates.get("availability_date", profile.availability_date)
+    if new_status == _AvailabilityStatus.AVAILABLE_FROM and new_date is None:
+        raise ValueError("availability_date_required")
     for field, value in updates.items():
         setattr(profile, field, value)
     await db.commit()
@@ -257,3 +273,122 @@ async def update_language(db: AsyncSession, lang: Language, data: LanguageUpdate
 async def delete_language(db: AsyncSession, lang: Language) -> None:
     await db.delete(lang)
     await db.commit()
+
+
+# ---- Interaction timeline ---------------------------------------------------
+
+_INVITATION_EVENT_TYPE = {
+    InvitationStatus.PENDING: "invitation_sent",
+    InvitationStatus.ACCEPTED: "invitation_accepted",
+    InvitationStatus.REJECTED: "invitation_rejected",
+    InvitationStatus.EXPIRED: "invitation_expired",
+}
+
+
+async def list_organization_interactions(
+    db: AsyncSession, user_id: UUID, user_email: str
+) -> list[OrganizationInteractionCard]:
+    inv_result = await db.execute(
+        select(Invitation, Organization)
+        .join(Organization, Organization.id == Invitation.organization_id)
+        .where(
+            or_(
+                Invitation.candidate_id == user_id,
+                Invitation.candidate_email == user_email,
+            )
+        )
+    )
+    invitations = inv_result.all()
+
+    grant_result = await db.execute(
+        select(AccessGrant, Organization)
+        .join(Organization, Organization.id == AccessGrant.organization_id)
+        .where(AccessGrant.candidate_id == user_id)
+    )
+    grants = grant_result.all()
+
+    grant_ids = [g.AccessGrant.id for g in grants]
+    doc_rows: list[Row[tuple[GeneratedDocument, Template]]] = []
+    if grant_ids:
+        doc_result = await db.execute(
+            select(GeneratedDocument, Template)
+            .join(Template, Template.id == GeneratedDocument.template_id)
+            .where(GeneratedDocument.access_grant_id.in_(grant_ids))
+        )
+        doc_rows = list(doc_result.all())
+
+    orgs: dict[str, dict[str, Any]] = {}
+
+    for inv, org in invitations:
+        oid = str(org.id)
+        if oid not in orgs:
+            orgs[oid] = {"org": org, "events": [], "grants": []}
+        orgs[oid]["events"].append(
+            InteractionEvent(
+                type=_INVITATION_EVENT_TYPE[inv.status],
+                occurred_at=inv.created_at,
+            )
+        )
+
+    for grant, org in grants:
+        oid = str(org.id)
+        if oid not in orgs:
+            orgs[oid] = {"org": org, "events": [], "grants": []}
+        orgs[oid]["grants"].append(grant)
+        orgs[oid]["events"].append(
+            InteractionEvent(type="access_granted", occurred_at=grant.granted_at)
+        )
+        if grant.status == AccessGrantStatus.REVOKED and grant.revoked_at:
+            orgs[oid]["events"].append(
+                InteractionEvent(type="access_revoked", occurred_at=grant.revoked_at)
+            )
+
+    grant_org_map = {str(g.AccessGrant.id): str(org.id) for g, org in grants}
+    for doc, tmpl in doc_rows:
+        doc_oid = grant_org_map.get(str(doc.access_grant_id))
+        if doc_oid and doc_oid in orgs:
+            oid = doc_oid
+            orgs[oid]["events"].append(
+                InteractionEvent(
+                    type="document_generated",
+                    occurred_at=doc.generated_at,
+                    metadata=InteractionEventMetadata(
+                        template_name=tmpl.name,
+                        file_format=doc.file_format,
+                    ),
+                )
+            )
+
+    result: list[OrganizationInteractionCard] = []
+    for oid, data in orgs.items():
+        org = data["org"]
+        org_grants: list[AccessGrant] = data["grants"]
+        events: list[InteractionEvent] = sorted(data["events"], key=lambda e: e.occurred_at)
+
+        active_grant = next((g for g in org_grants if g.status == AccessGrantStatus.ACTIVE), None)
+        revoked_grant = next((g for g in org_grants if g.status == AccessGrantStatus.REVOKED), None)
+
+        if active_grant:
+            status_val = "active"
+        elif revoked_grant:
+            status_val = "revoked"
+        else:
+            org_invs = [inv for inv, o in invitations if str(o.id) == oid]
+            has_pending = any(i.status == InvitationStatus.PENDING for i in org_invs)
+            status_val = "invited" if has_pending else "expired"
+
+        result.append(
+            OrganizationInteractionCard(
+                organization_id=org.id,
+                organization_name=org.name,
+                logo_url=getattr(org, "logo_url", None),
+                current_status=status_val,
+                events=events,
+            )
+        )
+
+    result.sort(
+        key=lambda c: c.events[-1].occurred_at if c.events else datetime.min.replace(tzinfo=UTC),
+        reverse=True,
+    )
+    return result

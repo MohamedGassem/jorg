@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +17,8 @@ from models.invitation import (
     make_invitation_token,
 )
 from models.user import User
+
+logger = structlog.get_logger()
 
 
 async def create_invitation(
@@ -40,6 +43,12 @@ async def create_invitation(
     db.add(invitation)
     await db.commit()
     await db.refresh(invitation)
+    logger.info(
+        "invitation.sent",
+        recruiter_id=str(invitation.recruiter_id),
+        candidate_email=invitation.candidate_email,
+        organization_id=str(invitation.organization_id),
+    )
     return invitation
 
 
@@ -108,6 +117,11 @@ async def accept_invitation(
     db.add(grant)
     await db.commit()
     await db.refresh(grant)
+    logger.info(
+        "access.granted",
+        candidate_id=str(grant.candidate_id),
+        organization_id=str(grant.organization_id),
+    )
     return grant
 
 
@@ -128,4 +142,9 @@ async def revoke_grant(db: AsyncSession, grant: AccessGrant) -> AccessGrant:
     grant.revoked_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(grant)
+    logger.info(
+        "access.revoked",
+        candidate_id=str(grant.candidate_id),
+        organization_id=str(grant.organization_id),
+    )
     return grant

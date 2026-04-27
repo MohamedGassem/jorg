@@ -3,9 +3,11 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -14,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, ApiError } from "@/lib/api";
-import type { CandidateProfile, ContractType } from "@/types/api";
+import { VALID_DOMAINS, type AvailabilityStatus, type CandidateProfile, type ContractType, type MissionDuration, type WorkMode } from "@/types/api";
 
 type FormFields = {
   first_name: string;
@@ -74,11 +76,25 @@ export default function ProfilePage() {
   const [form, setForm] = useState<FormFields | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>("not_available");
+  const [availabilityDate, setAvailabilityDate] = useState("");
+  const [workMode, setWorkMode] = useState<WorkMode | "">("");
+  const [locationPreference, setLocationPreference] = useState("");
+  const [preferredDomains, setPreferredDomains] = useState<string[]>([]);
+  const [missionDuration, setMissionDuration] = useState<MissionDuration | "">("");
 
   useEffect(() => {
     api
       .get<CandidateProfile>("/candidates/me/profile")
-      .then((p) => setForm(profileToForm(p)))
+      .then((p) => {
+        setForm(profileToForm(p));
+        setAvailabilityStatus(p.availability_status ?? "not_available");
+        setAvailabilityDate(p.availability_date ?? "");
+        setWorkMode(p.work_mode ?? "");
+        setLocationPreference(p.location_preference ?? "");
+        setPreferredDomains(p.preferred_domains ?? []);
+        setMissionDuration(p.mission_duration ?? "");
+      })
       .catch(console.error);
   }, []);
 
@@ -94,9 +110,23 @@ export default function ProfilePage() {
     try {
       const updated = await api.put<CandidateProfile>(
         "/candidates/me/profile",
-        formToPayload(form)
+        {
+          ...formToPayload(form),
+          availability_status: availabilityStatus,
+          availability_date: availabilityStatus === "available_from" ? availabilityDate || null : null,
+          work_mode: workMode || null,
+          location_preference: locationPreference || null,
+          preferred_domains: preferredDomains.length > 0 ? preferredDomains : null,
+          mission_duration: missionDuration || null,
+        }
       );
       setForm(profileToForm(updated));
+      setAvailabilityStatus(updated.availability_status ?? "not_available");
+      setAvailabilityDate(updated.availability_date ?? "");
+      setWorkMode(updated.work_mode ?? "");
+      setLocationPreference(updated.location_preference ?? "");
+      setPreferredDomains(updated.preferred_domains ?? []);
+      setMissionDuration(updated.mission_duration ?? "");
       setMessage("Profil mis à jour");
     } catch (err) {
       setMessage(
@@ -115,12 +145,13 @@ export default function ProfilePage() {
   return (
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-bold">Mon profil</h1>
+      <form onSubmit={handleSave} className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Informations personnelles</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSave} className="space-y-4">
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="first_name">Prénom</Label>
@@ -241,17 +272,74 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {message && (
-              <p role="status" className="text-sm text-muted-foreground">
-                {message}
-              </p>
-            )}
-            <Button type="submit" disabled={saving}>
-              {saving ? "Sauvegarde…" : "Sauvegarder"}
-            </Button>
-          </form>
+          </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Disponibilité &amp; préférences mission</CardTitle></CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Disponibilité</Label>
+            <RadioGroup value={availabilityStatus} onValueChange={(v) => setAvailabilityStatus(v as AvailabilityStatus)} className="flex flex-col gap-2">
+              <div className="flex items-center gap-2"><RadioGroupItem value="available_now" id="av-now" /><Label htmlFor="av-now">Disponible maintenant</Label></div>
+              <div className="flex items-center gap-2"><RadioGroupItem value="available_from" id="av-from" /><Label htmlFor="av-from">Disponible à partir du</Label></div>
+              <div className="flex items-center gap-2"><RadioGroupItem value="not_available" id="av-no" /><Label htmlFor="av-no">Non disponible</Label></div>
+            </RadioGroup>
+            {availabilityStatus === "available_from" && (
+              <Input type="date" value={availabilityDate} onChange={(e) => setAvailabilityDate(e.target.value)} required />
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="work-mode">Mode de travail</Label>
+            <Select value={workMode} onValueChange={(v) => setWorkMode(v as WorkMode)}>
+              <SelectTrigger id="work-mode"><SelectValue placeholder="Choisir…" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="remote">Télétravail</SelectItem>
+                <SelectItem value="onsite">Présentiel</SelectItem>
+                <SelectItem value="hybrid">Hybride</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="location-pref">Localisation préférée</Label>
+            <Input id="location-pref" value={locationPreference} onChange={(e) => setLocationPreference(e.target.value)} placeholder="ex: Paris, Lyon" />
+          </div>
+          <div className="space-y-2">
+            <Label>Domaines métier</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {VALID_DOMAINS.map((domain) => (
+                <div key={domain} className="flex items-center gap-2">
+                  <Checkbox id={`domain-${domain}`} checked={preferredDomains.includes(domain)} onCheckedChange={(checked) => { setPreferredDomains((prev) => checked ? [...prev, domain] : prev.filter((d) => d !== domain)); }} />
+                  <Label htmlFor={`domain-${domain}`} className="capitalize">{domain}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="mission-dur">Durée de mission souhaitée</Label>
+            <Select value={missionDuration} onValueChange={(v) => setMissionDuration(v as MissionDuration)}>
+              <SelectTrigger id="mission-dur"><SelectValue placeholder="Choisir…" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="short">Court terme (&lt; 3 mois)</SelectItem>
+                <SelectItem value="medium">Moyen terme (3–6 mois)</SelectItem>
+                <SelectItem value="long">Long terme (6 mois+)</SelectItem>
+                <SelectItem value="permanent">CDI / Permanent</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {message && (
+        <p role="status" className="text-sm text-muted-foreground">
+          {message}
+        </p>
+      )}
+      <Button type="submit" disabled={saving}>
+        {saving ? "Sauvegarde…" : "Sauvegarder"}
+      </Button>
+      </form>
     </div>
   );
 }

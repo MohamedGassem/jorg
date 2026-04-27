@@ -34,7 +34,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-def _compute_is_valid(detected: list[str], mappings: dict) -> bool:
+def _compute_is_valid(detected: list[str], mappings: dict[str, str]) -> bool:
     return bool(detected) and all(ph in mappings for ph in detected)
 
 

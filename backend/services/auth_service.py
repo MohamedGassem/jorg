@@ -1,4 +1,5 @@
 # backend/services/auth_service.py
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +10,8 @@ from core.security import (
     verify_password,
 )
 from models.user import User, UserRole
+
+logger = structlog.get_logger()
 
 
 class EmailAlreadyRegisteredError(Exception):
@@ -49,6 +52,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
         raise InvalidCredentialsError()
     if not user.is_active:
         raise InvalidCredentialsError()
+    logger.info("auth.login", user_id=str(user.id), role=user.role)
     return user
 
 

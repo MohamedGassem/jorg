@@ -461,3 +461,106 @@ async def test_create_skill_with_level_text_and_rating_coexist(
     data = r.json()
     assert data["level"] == "autonome"
     assert data["level_rating"] == 3
+
+
+async def test_update_profile_availability_fields(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={
+            "availability_status": "available_now",
+            "work_mode": "remote",
+            "location_preference": "Paris",
+            "preferred_domains": ["finance", "tech"],
+            "mission_duration": "medium",
+        },
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["availability_status"] == "available_now"
+    assert data["work_mode"] == "remote"
+    assert data["location_preference"] == "Paris"
+    assert data["preferred_domains"] == ["finance", "tech"]
+    assert data["mission_duration"] == "medium"
+
+
+async def test_availability_date_required_when_status_is_available_from(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"availability_status": "available_from", "availability_date": None},
+    )
+    assert r.status_code == 422
+
+
+async def test_availability_date_accepted_with_available_from(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"availability_status": "available_from", "availability_date": "2026-06-01"},
+    )
+    assert r.status_code == 200
+    assert r.json()["availability_date"] == "2026-06-01"
+
+
+async def test_preferred_domains_invalid_value_rejected(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"preferred_domains": ["invalid_domain"]},
+    )
+    assert r.status_code == 422
+
+
+# ---- Interaction timeline ---------------------------------------------------
+
+
+async def test_organizations_empty_for_new_candidate(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.get("/candidates/me/organizations", headers=candidate_headers)
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+async def test_organizations_shows_org_after_invitation(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    recruiter_headers: dict[str, str],
+) -> None:
+    org_r = await client.post("/organizations", json={"name": "Acme"}, headers=recruiter_headers)
+    org_id = org_r.json()["id"]
+    await client.put(
+        "/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers
+    )
+
+    cand_email = "candidate@test.com"
+    await client.post(
+        f"/organizations/{org_id}/invitations",
+        json={"candidate_email": cand_email},
+        headers=recruiter_headers,
+    )
+
+    r = await client.get("/candidates/me/organizations", headers=candidate_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data) == 1
+    card = data[0]
+    assert card["organization_name"] == "Acme"
+    assert card["current_status"] == "invited"
+    assert any(e["type"] == "invitation_sent" for e in card["events"])
+
+
+async def test_organizations_requires_candidate_role(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    r = await client.get("/candidates/me/organizations", headers=recruiter_headers)
+    assert r.status_code == 403

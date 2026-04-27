@@ -1,14 +1,18 @@
 # backend/api/routes/organizations.py
+import re
+from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import core.storage as storage
 import services.recruiter_service as recruiter_service
 import services.template_service as template_service
 from api.deps import get_db, require_role
+from models.candidate_profile import AvailabilityStatus, ContractType, MissionDuration, WorkMode
 from models.recruiter import Organization
 from models.template import Template
 from models.user import User, UserRole
@@ -59,11 +63,34 @@ async def get_organization(org_id: UUID, current_user: RecruiterUser, db: DB) ->
 
 @router.get("/{org_id}/candidates", response_model=list[AccessibleCandidateRead])
 async def list_accessible_candidates(
-    org_id: UUID, current_user: RecruiterUser, db: DB
+    org_id: UUID,
+    current_user: RecruiterUser,
+    db: DB,
+    availability_status: Annotated[AvailabilityStatus | None, Query()] = None,
+    work_mode: Annotated[WorkMode | None, Query()] = None,
+    contract_type: Annotated[ContractType | None, Query()] = None,
+    mission_duration: Annotated[MissionDuration | None, Query()] = None,
+    max_daily_rate: int | None = Query(default=None),
+    skill: str | None = Query(default=None),
+    location: str | None = Query(default=None),
+    domain: str | None = Query(default=None),
+    q: str | None = Query(default=None),
 ) -> list[dict[str, object]]:
     await _get_org_or_404(db, org_id)
     await _require_org_membership(db, current_user.id, org_id)
-    return await recruiter_service.list_accessible_candidates(db, org_id)
+    return await recruiter_service.list_accessible_candidates(
+        db,
+        org_id,
+        availability_status=availability_status,
+        work_mode=work_mode,
+        contract_type=contract_type,
+        mission_duration=mission_duration,
+        max_daily_rate=max_daily_rate,
+        skill=skill,
+        location=location,
+        domain=domain,
+        q=q,
+    )
 
 
 # ---- Templates --------------------------------------------------------------
@@ -146,3 +173,28 @@ async def delete_template(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
     storage.delete_file(tmpl.word_file_path)
     await template_service.delete_template(db, tmpl)
+
+
+@router.get("/{org_id}/templates/{template_id}/file")
+async def download_template_file(
+    org_id: UUID, template_id: UUID, current_user: RecruiterUser, db: DB
+) -> FileResponse:
+    await _get_org_or_404(db, org_id)
+    await _require_org_membership(db, current_user.id, org_id)
+    tmpl = await template_service.get_template(db, template_id, org_id)
+    if tmpl is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
+
+    file_path = Path(tmpl.word_file_path).resolve()
+    if not file_path.is_relative_to(storage.upload_dir()):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid file path")
+    if not file_path.exists():
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
+
+    safe_stem = re.sub(r"[^\w\-. ]", "_", tmpl.name).strip() or "template"
+    safe_name = f"{safe_stem}.docx"
+    return FileResponse(
+        path=str(file_path),
+        filename=safe_name,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )

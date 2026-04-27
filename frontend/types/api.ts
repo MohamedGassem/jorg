@@ -75,6 +75,16 @@ export interface AuthResponse {
   refresh_token: string;
 }
 
+export type AvailabilityStatus = "available_now" | "available_from" | "not_available";
+export type WorkMode = "remote" | "onsite" | "hybrid";
+export type MissionDuration = "short" | "medium" | "long" | "permanent";
+
+export const VALID_DOMAINS = [
+  "finance", "retail", "industry", "public",
+  "health", "tech", "telecom", "energy", "other",
+] as const;
+export type Domain = typeof VALID_DOMAINS[number];
+
 export interface CandidateProfile {
   id: string;
   user_id: string;
@@ -90,6 +100,12 @@ export interface CandidateProfile {
   daily_rate: number | null;
   contract_type: ContractType;
   annual_salary: number | null;
+  availability_status: AvailabilityStatus;
+  availability_date: string | null;
+  work_mode: WorkMode | null;
+  location_preference: string | null;
+  preferred_domains: Domain[] | null;
+  mission_duration: MissionDuration | null;
   created_at: string;
   updated_at: string;
 }
@@ -166,8 +182,75 @@ export interface AccessibleCandidate {
   last_name: string | null;
 }
 
+export interface AccessibleCandidateRead {
+  user_id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  title: string | null;
+  daily_rate: number | null;
+  contract_type: ContractType | null;
+  availability_status: AvailabilityStatus | null;
+  work_mode: WorkMode | null;
+  location_preference: string | null;
+  preferred_domains: string[] | null;
+}
+
 export interface ApiError {
   detail: string;
+}
+
+export type OpportunityStatus = "open" | "closed";
+
+export interface OpportunityRead {
+  id: string;
+  organization_id: string;
+  title: string;
+  description: string | null;
+  status: OpportunityStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShortlistCandidateInfo {
+  user_id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  title: string | null;
+}
+
+export interface OpportunityDetail extends OpportunityRead {
+  shortlist: ShortlistCandidateInfo[];
+}
+
+export interface BulkGenerateResult {
+  candidate_id: string;
+  status: "ok" | "error";
+  doc_id: string | null;
+  error: string | null;
+}
+
+export type OrganizationStatus = "invited" | "active" | "revoked" | "expired";
+export type InteractionEventType =
+  | "invitation_sent" | "invitation_accepted" | "invitation_rejected"
+  | "invitation_expired" | "access_granted" | "access_revoked" | "document_generated";
+
+export interface InteractionEvent {
+  type: InteractionEventType;
+  occurred_at: string;
+  metadata: {
+    template_name?: string | null;
+    file_format?: string | null;
+  };
+}
+
+export interface OrganizationInteractionCard {
+  organization_id: string;
+  organization_name: string;
+  logo_url: string | null;
+  current_status: OrganizationStatus;
+  events: InteractionEvent[];
 }
 
 export interface CandidateExport {

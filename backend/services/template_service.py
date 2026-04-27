@@ -2,10 +2,13 @@
 from typing import Any
 from uuid import UUID
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.template import Template
+
+logger = structlog.get_logger()
 
 
 def _compute_is_valid(detected_placeholders: list[str], mappings: dict[str, Any]) -> bool:
@@ -35,6 +38,12 @@ async def create_template(
     db.add(template)
     await db.commit()
     await db.refresh(template)
+    logger.info(
+        "template.uploaded",
+        organization_id=str(template.organization_id),
+        template_id=str(template.id),
+        placeholder_count=len(template.detected_placeholders),
+    )
     return template
 
 

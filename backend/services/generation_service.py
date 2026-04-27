@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Literal
 from uuid import UUID
 
+import structlog
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +23,8 @@ from models.generated_document import GeneratedDocument
 from services import invitation_service, template_service
 
 _PH = re.compile(r"\{\{[^}]+\}\}")
+
+logger = structlog.get_logger()
 
 
 # ---------- helpers ----------------------------------------------------------
@@ -44,6 +47,12 @@ def _profile_flat(profile: CandidateProfile) -> dict[str, str]:
         "years_of_experience": str(profile.years_of_experience or ""),
         "daily_rate": str(profile.daily_rate or ""),
         "annual_salary": str(profile.annual_salary or ""),
+        "availability_status": (
+            str(profile.availability_status.value) if profile.availability_status else ""
+        ),
+        "work_mode": str(profile.work_mode.value) if profile.work_mode else "",
+        "location_preference": profile.location_preference or "",
+        "mission_duration": str(profile.mission_duration.value) if profile.mission_duration else "",
     }
 
 
@@ -276,6 +285,13 @@ async def generate_for_candidate(
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
+    logger.info(
+        "document.generated",
+        template_id=str(template_id),
+        candidate_id=str(candidate_id),
+        format=fmt,
+        access_grant_id=str(doc.access_grant_id),
+    )
     return doc
 
 
