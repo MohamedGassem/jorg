@@ -88,7 +88,9 @@ class CandidateProfile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     years_of_experience: Mapped[int | None] = mapped_column(Integer, nullable=True)
     daily_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
     contract_type: Mapped[ContractType] = mapped_column(
-        Enum(ContractType, name="contract_type"),
+        Enum(
+            ContractType, name="contract_type", values_callable=lambda obj: [e.value for e in obj]
+        ),
         default=ContractType.FREELANCE,
         nullable=False,
     )
