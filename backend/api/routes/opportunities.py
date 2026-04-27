@@ -95,7 +95,7 @@ async def add_to_shortlist(
     data: ShortlistAddRequest,
     current_user: RecruiterUser,
     db: DB,
-) -> dict:
+) -> dict[str, str]:
     await _require_membership(db, current_user.id, org_id)
     await _get_opp_or_404(db, opp_id, org_id)
     try:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -51,7 +52,7 @@ class ShortlistAddRequest(BaseModel):
 
 class BulkGenerateRequest(BaseModel):
     template_id: UUID
-    format: str = "docx"
+    format: Literal["docx", "pdf"] = "docx"
 
 
 class BulkGenerateResult(BaseModel):

@@ -1,8 +1,9 @@
 # backend/services/candidate_service.py
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import Row, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.candidate_profile import (
@@ -307,16 +308,16 @@ async def list_organization_interactions(
     grants = grant_result.all()
 
     grant_ids = [g.AccessGrant.id for g in grants]
-    doc_rows = []
+    doc_rows: list[Row[tuple[GeneratedDocument, Template]]] = []
     if grant_ids:
         doc_result = await db.execute(
             select(GeneratedDocument, Template)
             .join(Template, Template.id == GeneratedDocument.template_id)
             .where(GeneratedDocument.access_grant_id.in_(grant_ids))
         )
-        doc_rows = doc_result.all()
+        doc_rows = list(doc_result.all())
 
-    orgs: dict[str, dict] = {}
+    orgs: dict[str, dict[str, Any]] = {}
 
     for inv, org in invitations:
         oid = str(org.id)
@@ -344,8 +345,9 @@ async def list_organization_interactions(
 
     grant_org_map = {str(g.AccessGrant.id): str(org.id) for g, org in grants}
     for doc, tmpl in doc_rows:
-        oid = grant_org_map.get(str(doc.access_grant_id))
-        if oid and oid in orgs:
+        doc_oid = grant_org_map.get(str(doc.access_grant_id))
+        if doc_oid and doc_oid in orgs:
+            oid = doc_oid
             orgs[oid]["events"].append(
                 InteractionEvent(
                     type="document_generated",

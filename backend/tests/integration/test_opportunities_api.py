@@ -1,23 +1,24 @@
 from httpx import AsyncClient
 
 
-async def _setup_org(client: AsyncClient, headers: dict) -> str:
+async def _setup_org(client: AsyncClient, headers: dict[str, str]) -> str:
     org = await client.post("/organizations", json={"name": "Opp Org"}, headers=headers)
-    org_id = org.json()["id"]
+    org_id: str = org.json()["id"]
     await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=headers)
     return org_id
 
 
 async def _create_opportunity(
-    client: AsyncClient, headers: dict, org_id: str, title: str = "Mission Alpha"
-) -> dict:
+    client: AsyncClient, headers: dict[str, str], org_id: str, title: str = "Mission Alpha"
+) -> dict[str, object]:
     r = await client.post(
         f"/organizations/{org_id}/opportunities",
         json={"title": title},
         headers=headers,
     )
     assert r.status_code == 201
-    return r.json()
+    result: dict[str, object] = r.json()
+    return result
 
 
 async def test_create_opportunity(client: AsyncClient, recruiter_headers: dict) -> None:

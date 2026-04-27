@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 import structlog
@@ -149,7 +150,7 @@ async def bulk_generate(
     organization_id: UUID,
     template_id: UUID,
     generated_by_user_id: UUID,
-    fmt: str,
+    fmt: Literal["docx", "pdf"],
 ) -> list[BulkGenerateResult]:
     entries_result = await db.execute(
         select(ShortlistEntry).where(ShortlistEntry.opportunity_id == opportunity_id)
