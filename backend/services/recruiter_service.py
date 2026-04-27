@@ -50,6 +50,11 @@ async def get_organization(db: AsyncSession, org_id: UUID) -> Organization | Non
 # ---- RecruiterProfile -------------------------------------------------------
 
 
+async def get_profile(db: AsyncSession, user_id: UUID) -> RecruiterProfile | None:
+    result = await db.execute(select(RecruiterProfile).where(RecruiterProfile.user_id == user_id))
+    return result.scalar_one_or_none()
+
+
 async def get_or_create_profile(db: AsyncSession, user_id: UUID) -> RecruiterProfile:
     result = await db.execute(select(RecruiterProfile).where(RecruiterProfile.user_id == user_id))
     profile = result.scalar_one_or_none()

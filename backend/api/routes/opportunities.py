@@ -18,6 +18,7 @@ from schemas.opportunity import (
     OpportunityUpdate,
     ShortlistAddRequest,
 )
+from services.opportunity_service import DuplicateShortlistEntryError, NoActiveGrantError
 
 router = APIRouter(prefix="/organizations", tags=["opportunities"])
 
@@ -26,8 +27,8 @@ DB = Annotated[AsyncSession, Depends(get_db)]
 
 
 async def _require_membership(db: AsyncSession, user_id: UUID, org_id: UUID) -> None:
-    profile = await recruiter_service.get_or_create_profile(db, user_id)
-    if profile.organization_id != org_id:
+    profile = await recruiter_service.get_profile(db, user_id)
+    if profile is None or profile.organization_id != org_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not a member")
 
 
@@ -101,17 +102,15 @@ async def add_to_shortlist(
     try:
         await opportunity_service.add_to_shortlist(db, opp_id, org_id, data.candidate_id)
         return {"status": "added"}
-    except ValueError as e:
-        if str(e) == "no_active_grant":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="no active access grant"
-            ) from e
-        if str(e) == "duplicate_entry":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="candidate already in shortlist",
-            ) from e
-        raise
+    except NoActiveGrantError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="no active access grant"
+        ) from e
+    except DuplicateShortlistEntryError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="candidate already in shortlist",
+        ) from e
 
 
 @router.delete(

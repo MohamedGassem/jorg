@@ -22,6 +22,14 @@ from services import generation_service
 logger = structlog.get_logger()
 
 
+class NoActiveGrantError(Exception):
+    pass
+
+
+class DuplicateShortlistEntryError(Exception):
+    pass
+
+
 async def create_opportunity(
     db: AsyncSession, organization_id: UUID, created_by: UUID, data: OpportunityCreate
 ) -> Opportunity:
@@ -116,7 +124,7 @@ async def add_to_shortlist(
         )
     )
     if grant_result.scalar_one_or_none() is None:
-        raise ValueError("no_active_grant")
+        raise NoActiveGrantError
 
     entry = ShortlistEntry(opportunity_id=opportunity_id, candidate_id=candidate_id)
     db.add(entry)
@@ -124,7 +132,7 @@ async def add_to_shortlist(
         await db.commit()
     except IntegrityError as err:
         await db.rollback()
-        raise ValueError("duplicate_entry") from err
+        raise DuplicateShortlistEntryError from err
     await db.refresh(entry)
     return entry
 

@@ -185,7 +185,9 @@ async def download_template_file(
     if tmpl is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
 
-    file_path = Path(tmpl.word_file_path)
+    file_path = Path(tmpl.word_file_path).resolve()
+    if not file_path.is_relative_to(storage.upload_dir()):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid file path")
     if not file_path.exists():
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
 
