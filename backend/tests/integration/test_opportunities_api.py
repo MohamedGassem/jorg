@@ -8,7 +8,9 @@ async def _setup_org(client: AsyncClient, headers: dict) -> str:
     return org_id
 
 
-async def _create_opportunity(client: AsyncClient, headers: dict, org_id: str, title: str = "Mission Alpha") -> dict:
+async def _create_opportunity(
+    client: AsyncClient, headers: dict, org_id: str, title: str = "Mission Alpha"
+) -> dict:
     r = await client.post(
         f"/organizations/{org_id}/opportunities",
         json={"title": title},
@@ -37,7 +39,9 @@ async def test_list_opportunities(client: AsyncClient, recruiter_headers: dict) 
 async def test_get_opportunity_detail(client: AsyncClient, recruiter_headers: dict) -> None:
     org_id = await _setup_org(client, recruiter_headers)
     opp = await _create_opportunity(client, recruiter_headers, org_id)
-    r = await client.get(f"/organizations/{org_id}/opportunities/{opp['id']}", headers=recruiter_headers)
+    r = await client.get(
+        f"/organizations/{org_id}/opportunities/{opp['id']}", headers=recruiter_headers
+    )
     assert r.status_code == 200
     assert r.json()["shortlist"] == []
 
@@ -79,7 +83,9 @@ async def test_add_candidate_to_shortlist(
     )
     assert r.status_code == 201
 
-    detail = await client.get(f"/organizations/{org_id}/opportunities/{opp['id']}", headers=recruiter_headers)
+    detail = await client.get(
+        f"/organizations/{org_id}/opportunities/{opp['id']}", headers=recruiter_headers
+    )
     assert len(detail.json()["shortlist"]) == 1
 
 
@@ -114,8 +120,16 @@ async def test_duplicate_shortlist_entry_returns_409(
     profile_r = await client.get("/candidates/me/profile", headers=candidate_headers)
     cand_user_id = profile_r.json()["user_id"]
 
-    await client.post(f"/organizations/{org_id}/opportunities/{opp['id']}/candidates", json={"candidate_id": cand_user_id}, headers=recruiter_headers)
-    r2 = await client.post(f"/organizations/{org_id}/opportunities/{opp['id']}/candidates", json={"candidate_id": cand_user_id}, headers=recruiter_headers)
+    await client.post(
+        f"/organizations/{org_id}/opportunities/{opp['id']}/candidates",
+        json={"candidate_id": cand_user_id},
+        headers=recruiter_headers,
+    )
+    r2 = await client.post(
+        f"/organizations/{org_id}/opportunities/{opp['id']}/candidates",
+        json={"candidate_id": cand_user_id},
+        headers=recruiter_headers,
+    )
     assert r2.status_code == 409
 
 
@@ -135,9 +149,18 @@ async def test_remove_candidate_from_shortlist(
     profile_r = await client.get("/candidates/me/profile", headers=candidate_headers)
     cand_user_id = profile_r.json()["user_id"]
 
-    await client.post(f"/organizations/{org_id}/opportunities/{opp['id']}/candidates", json={"candidate_id": cand_user_id}, headers=recruiter_headers)
-    r = await client.delete(f"/organizations/{org_id}/opportunities/{opp['id']}/candidates/{cand_user_id}", headers=recruiter_headers)
+    await client.post(
+        f"/organizations/{org_id}/opportunities/{opp['id']}/candidates",
+        json={"candidate_id": cand_user_id},
+        headers=recruiter_headers,
+    )
+    r = await client.delete(
+        f"/organizations/{org_id}/opportunities/{opp['id']}/candidates/{cand_user_id}",
+        headers=recruiter_headers,
+    )
     assert r.status_code == 204
 
-    detail = await client.get(f"/organizations/{org_id}/opportunities/{opp['id']}", headers=recruiter_headers)
+    detail = await client.get(
+        f"/organizations/{org_id}/opportunities/{opp['id']}", headers=recruiter_headers
+    )
     assert detail.json()["shortlist"] == []

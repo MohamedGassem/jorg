@@ -538,7 +538,9 @@ async def test_organizations_shows_org_after_invitation(
 ) -> None:
     org_r = await client.post("/organizations", json={"name": "Acme"}, headers=recruiter_headers)
     org_id = org_r.json()["id"]
-    await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
+    await client.put(
+        "/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers
+    )
 
     cand_email = "candidate@test.com"
     await client.post(

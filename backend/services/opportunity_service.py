@@ -128,9 +128,7 @@ async def add_to_shortlist(
     return entry
 
 
-async def remove_from_shortlist(
-    db: AsyncSession, opportunity_id: UUID, candidate_id: UUID
-) -> bool:
+async def remove_from_shortlist(db: AsyncSession, opportunity_id: UUID, candidate_id: UUID) -> bool:
     result = await db.execute(
         select(ShortlistEntry).where(
             ShortlistEntry.opportunity_id == opportunity_id,
@@ -174,9 +172,7 @@ async def bulk_generate(
             )
         except (FileNotFoundError, ValueError, KeyError) as e:
             results.append(
-                BulkGenerateResult(
-                    candidate_id=entry.candidate_id, status="error", error=str(e)
-                )
+                BulkGenerateResult(candidate_id=entry.candidate_id, status="error", error=str(e))
             )
         except Exception:
             logger.exception(

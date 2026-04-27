@@ -23,9 +23,7 @@ availability_status_enum = sa.Enum(
     "available_now", "available_from", "not_available", name="availability_status"
 )
 work_mode_enum = sa.Enum("remote", "onsite", "hybrid", name="work_mode")
-mission_duration_enum = sa.Enum(
-    "short", "medium", "long", "permanent", name="mission_duration"
-)
+mission_duration_enum = sa.Enum("short", "medium", "long", "permanent", name="mission_duration")
 
 
 def upgrade() -> None:

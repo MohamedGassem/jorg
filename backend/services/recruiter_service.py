@@ -147,6 +147,7 @@ async def list_accessible_candidates(
         stmt = stmt.where(CandidateProfile.location_preference.ilike(f"%{location}%"))
     if domain:
         from sqlalchemy.dialects.postgresql import array
+
         stmt = stmt.where(CandidateProfile.preferred_domains.contains(array([domain])))
     if q:
         q_like = f"%{q}%"

@@ -426,18 +426,27 @@ async def test_download_template_file_ok(
     """Recruiter can download the .docx file of a template they own."""
     org_r = await client.post("/organizations", json={"name": "DL Org"}, headers=recruiter_headers)
     org_id = org_r.json()["id"]
-    await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
+    await client.put(
+        "/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers
+    )
 
     import io
 
     from docx import Document
+
     buf = io.BytesIO()
     Document().save(buf)
     buf.seek(0)
     upload_r = await client.post(
         f"/organizations/{org_id}/templates",
         headers=recruiter_headers,
-        files={"file": ("test.docx", buf, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        files={
+            "file": (
+                "test.docx",
+                buf,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
         data={"name": "Test Template"},
     )
     assert upload_r.status_code == 201
@@ -458,10 +467,17 @@ async def test_download_template_file_wrong_org_returns_403(
     """A recruiter cannot download a template from another organization."""
     org_a = await client.post("/organizations", json={"name": "Org A"}, headers=recruiter_headers)
     org_a_id = org_a.json()["id"]
-    await client.put("/recruiters/me/profile", json={"organization_id": org_a_id}, headers=recruiter_headers)
+    await client.put(
+        "/recruiters/me/profile", json={"organization_id": org_a_id}, headers=recruiter_headers
+    )
 
-    await client.post("/auth/register", json={"email": "rec2@test.com", "password": "pass1234", "role": "recruiter"})
-    login2 = await client.post("/auth/login", json={"email": "rec2@test.com", "password": "pass1234"})
+    await client.post(
+        "/auth/register",
+        json={"email": "rec2@test.com", "password": "pass1234", "role": "recruiter"},
+    )
+    login2 = await client.post(
+        "/auth/login", json={"email": "rec2@test.com", "password": "pass1234"}
+    )
     headers2 = {"Authorization": f"Bearer {login2.json()['access_token']}"}
 
     org_b = await client.post("/organizations", json={"name": "Org B"}, headers=headers2)
@@ -471,13 +487,20 @@ async def test_download_template_file_wrong_org_returns_403(
     import io
 
     from docx import Document
+
     buf = io.BytesIO()
     Document().save(buf)
     buf.seek(0)
     upload_r = await client.post(
         f"/organizations/{org_b_id}/templates",
         headers=headers2,
-        files={"file": ("test.docx", buf, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        files={
+            "file": (
+                "test.docx",
+                buf,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
         data={"name": "Org B Template"},
     )
     template_id = upload_r.json()["id"]
@@ -494,9 +517,12 @@ async def test_download_template_file_not_found_returns_404(
 ) -> None:
     org_r = await client.post("/organizations", json={"name": "NF Org"}, headers=recruiter_headers)
     org_id = org_r.json()["id"]
-    await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
+    await client.put(
+        "/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers
+    )
 
     import uuid
+
     r = await client.get(
         f"/organizations/{org_id}/templates/{uuid.uuid4()}/file",
         headers=recruiter_headers,
@@ -512,9 +538,13 @@ async def test_filter_candidates_by_availability(
     candidate_headers: dict[str, str],
     recruiter_headers: dict[str, str],
 ) -> None:
-    org_r = await client.post("/organizations", json={"name": "Filter Org"}, headers=recruiter_headers)
+    org_r = await client.post(
+        "/organizations", json={"name": "Filter Org"}, headers=recruiter_headers
+    )
     org_id = org_r.json()["id"]
-    await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
+    await client.put(
+        "/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers
+    )
 
     await client.put(
         "/candidates/me/profile",
@@ -550,9 +580,13 @@ async def test_filter_candidates_by_skill(
     candidate_headers: dict[str, str],
     recruiter_headers: dict[str, str],
 ) -> None:
-    org_r = await client.post("/organizations", json={"name": "Skill Org"}, headers=recruiter_headers)
+    org_r = await client.post(
+        "/organizations", json={"name": "Skill Org"}, headers=recruiter_headers
+    )
     org_id = org_r.json()["id"]
-    await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
+    await client.put(
+        "/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers
+    )
 
     await client.post(
         "/candidates/me/skills",
@@ -588,9 +622,13 @@ async def test_filter_candidates_by_max_daily_rate(
     candidate_headers: dict[str, str],
     recruiter_headers: dict[str, str],
 ) -> None:
-    org_r = await client.post("/organizations", json={"name": "Rate Org"}, headers=recruiter_headers)
+    org_r = await client.post(
+        "/organizations", json={"name": "Rate Org"}, headers=recruiter_headers
+    )
     org_id = org_r.json()["id"]
-    await client.put("/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers)
+    await client.put(
+        "/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers
+    )
 
     await client.put("/candidates/me/profile", headers=candidate_headers, json={"daily_rate": 700})
 

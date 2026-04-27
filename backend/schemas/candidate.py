@@ -17,8 +17,15 @@ from models.candidate_profile import (
 )
 
 VALID_DOMAINS = {
-    "finance", "retail", "industry", "public",
-    "health", "tech", "telecom", "energy", "other",
+    "finance",
+    "retail",
+    "industry",
+    "public",
+    "health",
+    "tech",
+    "telecom",
+    "energy",
+    "other",
 }
 
 # ---- CandidateProfile -------------------------------------------------------

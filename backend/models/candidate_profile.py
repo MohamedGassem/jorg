@@ -61,9 +61,9 @@ class WorkMode(StrEnum):
 
 
 class MissionDuration(StrEnum):
-    SHORT = "short"      # < 3 mois
-    MEDIUM = "medium"    # 3-6 mois
-    LONG = "long"        # 6 mois+
+    SHORT = "short"  # < 3 mois
+    MEDIUM = "medium"  # 3-6 mois
+    LONG = "long"  # 6 mois+
     PERMANENT = "permanent"
 
 

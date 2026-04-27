@@ -76,7 +76,10 @@ def upgrade() -> None:
         sa.UniqueConstraint("opportunity_id", "candidate_id", name="uq_shortlist_entry"),
     )
     op.create_index(
-        op.f("ix_shortlist_entries_candidate_id"), "shortlist_entries", ["candidate_id"], unique=False
+        op.f("ix_shortlist_entries_candidate_id"),
+        "shortlist_entries",
+        ["candidate_id"],
+        unique=False,
     )
     op.create_index(
         op.f("ix_shortlist_entries_opportunity_id"),

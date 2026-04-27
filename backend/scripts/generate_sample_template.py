@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """One-shot script to generate backend/static/sample_template.docx."""
+
 from pathlib import Path
 
 from docx import Document

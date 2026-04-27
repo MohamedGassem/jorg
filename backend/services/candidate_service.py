@@ -363,12 +363,8 @@ async def list_organization_interactions(
         org_grants: list[AccessGrant] = data["grants"]
         events: list[InteractionEvent] = sorted(data["events"], key=lambda e: e.occurred_at)
 
-        active_grant = next(
-            (g for g in org_grants if g.status == AccessGrantStatus.ACTIVE), None
-        )
-        revoked_grant = next(
-            (g for g in org_grants if g.status == AccessGrantStatus.REVOKED), None
-        )
+        active_grant = next((g for g in org_grants if g.status == AccessGrantStatus.ACTIVE), None)
+        revoked_grant = next((g for g in org_grants if g.status == AccessGrantStatus.REVOKED), None)
 
         if active_grant:
             status_val = "active"
