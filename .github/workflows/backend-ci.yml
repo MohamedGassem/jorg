@@ -15,17 +15,17 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test
-      SECRET_KEY: ci-secret-key-must-be-at-least-32-characters-long
+      DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+      SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
     defaults:
       run:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
 
       - name: Set up Python 3.14
         run: uv python install 3.14
