@@ -1,0 +1,7 @@
+title = "jorg gitleaks config"
+
+[allowlist]
+  description = "CI test credentials — not real secrets"
+  paths = [
+    '''.github/workflows/backend-ci.yml''',
+  ]
