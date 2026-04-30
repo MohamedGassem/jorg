@@ -17,7 +17,10 @@ FROM python:3.14-slim AS runtime
 WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app /app
+COPY . .
+
+RUN useradd --system --uid 1001 app && chown -R app:app /app
+USER app
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
