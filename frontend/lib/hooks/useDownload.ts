@@ -1,0 +1,35 @@
+"use client";
+
+import { useState } from "react";
+import { api } from "@/lib/api";
+import { extractErrorMessage } from "@/lib/errors";
+
+interface UseDownload {
+  download: (path: string, filename: string, id: string) => void;
+  errors: Record<string, string>;
+  clearError: (id: string) => void;
+}
+
+export function useDownload(): UseDownload {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  function clearError(id: string) {
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
+  function download(path: string, filename: string, id: string) {
+    clearError(id);
+    api.download(path, filename).catch((err) => {
+      setErrors((prev) => ({
+        ...prev,
+        [id]: extractErrorMessage(err, "Erreur de téléchargement"),
+      }));
+    });
+  }
+
+  return { download, errors, clearError };
+}
