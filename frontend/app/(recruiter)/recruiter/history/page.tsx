@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { api } from "@/lib/api";
+import { extractErrorMessage } from "@/lib/errors";
 import { useDownload, useRecruiterOrg } from "@/lib/hooks";
 import type { GeneratedDocument } from "@/types/api";
 
@@ -26,9 +27,7 @@ export default function RecruiterHistoryPage() {
       .then(setDocs)
       .catch((err) =>
         setFetchError(
-          err instanceof Error
-            ? err.message
-            : "Impossible de charger les dossiers",
+          extractErrorMessage(err, "Impossible de charger les dossiers"),
         ),
       )
       .finally(() => setDocsLoading(false));

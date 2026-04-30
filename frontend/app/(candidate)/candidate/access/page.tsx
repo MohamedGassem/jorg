@@ -48,15 +48,17 @@ export default function AccessPage() {
     "Impossible de charger les accès",
   );
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   async function handleRevoke(orgId: string) {
+    setRevokeError(null);
     setRevoking(orgId);
     try {
       await api.post(`/access-grants/revoke`, { organization_id: orgId });
       refetch();
     } catch (err) {
-      alert(
+      setRevokeError(
         err instanceof ApiError ? err.detail : "Erreur lors de la révocation",
       );
     } finally {
@@ -70,6 +72,7 @@ export default function AccessPage() {
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-bold">Accès & interactions</h1>
       <ErrorAlert error={error} />
+      <ErrorAlert error={revokeError} />
       {!orgs || orgs.length === 0 ? (
         <EmptyState message="Aucune interaction avec une organisation pour l'instant." />
       ) : (

@@ -30,6 +30,7 @@ export default function RequestsPage() {
   const {
     data: invitations,
     loading,
+    error,
     refetch,
   } = useAsyncData<Invitation[]>(
     () => api.get("/invitations/me"),
@@ -52,6 +53,7 @@ export default function RequestsPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-bold">Invitations reçues</h1>
+      <ErrorAlert error={error} />
       <ErrorAlert error={actionError} />
       {!invitations || invitations.length === 0 ? (
         <EmptyState message="Aucune invitation pour l'instant." />
