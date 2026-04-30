@@ -60,15 +60,7 @@ async def update_my_profile(
     db: DB,
 ) -> CandidateProfile:
     profile = await candidate_service.get_or_create_profile(db, current_user.id)
-    try:
-        return await candidate_service.update_profile(db, profile, data)
-    except ValueError as e:
-        if str(e) == "availability_date_required":
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="availability_date is required when availability_status is 'available_from'",
-            ) from e
-        raise
+    return await candidate_service.update_profile(db, profile, data)
 
 
 # ---- Experiences ------------------------------------------------------------

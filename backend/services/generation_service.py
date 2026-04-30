@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import storage
+from core.exceptions import BusinessRuleError, ForbiddenError, NotFoundError
 from models.candidate_profile import CandidateProfile, Experience
 from models.generated_document import GeneratedDocument
 from services import invitation_service, template_service
@@ -224,7 +225,7 @@ async def _load_profile(db: AsyncSession, candidate_id: UUID) -> CandidateProfil
     )
     profile = result.scalar_one_or_none()
     if profile is None:
-        raise ValueError("candidate_profile_not_found")
+        raise NotFoundError("candidate_profile_not_found")
     return profile
 
 
@@ -245,14 +246,14 @@ async def generate_for_candidate(
     # 1. Verify active AccessGrant
     grant = await invitation_service.get_active_grant(db, candidate_id, organization_id)
     if grant is None:
-        raise ValueError("no_active_grant")
+        raise ForbiddenError("no_active_grant")
 
     # 2. Verify template is valid and belongs to the organization
     tmpl = await template_service.get_template(db, template_id, organization_id)
     if tmpl is None:
-        raise ValueError("template_not_found")
+        raise NotFoundError("template_not_found")
     if not tmpl.is_valid:
-        raise ValueError("template_invalid")
+        raise BusinessRuleError("template_invalid")
 
     # 3. Load candidate profile and experiences
     profile = await _load_profile(db, candidate_id)

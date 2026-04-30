@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import Row, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.exceptions import BusinessRuleError
 from models.candidate_profile import (
     AvailabilityStatus as _AvailabilityStatus,
 )
@@ -61,7 +62,9 @@ async def update_profile(
     new_status = updates.get("availability_status", profile.availability_status)
     new_date = updates.get("availability_date", profile.availability_date)
     if new_status == _AvailabilityStatus.AVAILABLE_FROM and new_date is None:
-        raise ValueError("availability_date_required")
+        raise BusinessRuleError(
+            "availability_date is required when availability_status is 'available_from'"
+        )
     for field, value in updates.items():
         setattr(profile, field, value)
     await db.commit()

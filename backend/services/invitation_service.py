@@ -8,6 +8,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.exceptions import BusinessRuleError
 from models.invitation import (
     AccessGrant,
     AccessGrantStatus,
@@ -98,7 +99,7 @@ async def accept_invitation(
     if expires < now:
         invitation.status = InvitationStatus.EXPIRED
         await db.commit()
-        raise ValueError("invitation_expired")
+        raise BusinessRuleError("invitation_expired")
 
     invitation.status = InvitationStatus.ACCEPTED
     invitation.candidate_id = candidate_id
