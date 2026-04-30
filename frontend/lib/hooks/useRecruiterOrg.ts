@@ -19,16 +19,25 @@ export function useRecruiterOrg(): RecruiterOrgState {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     api
       .get<RecruiterProfile>("/recruiters/me/profile")
       .then((p) => {
-        setProfile(p);
-        setOrgId(p.organization_id ?? null);
+        if (!cancelled) {
+          setProfile(p);
+          setOrgId(p.organization_id ?? null);
+        }
       })
-      .catch((err) =>
-        setError(extractErrorMessage(err, "Impossible de charger le profil")),
-      )
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (!cancelled)
+          setError(extractErrorMessage(err, "Impossible de charger le profil"));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return { orgId, profile, loading, error };

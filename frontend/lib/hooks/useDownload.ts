@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 
@@ -11,6 +11,13 @@ interface UseDownload {
 }
 
 export function useDownload(): UseDownload {
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function clearError(id: string) {
@@ -24,10 +31,12 @@ export function useDownload(): UseDownload {
   function download(path: string, filename: string, id: string) {
     clearError(id);
     api.download(path, filename).catch((err) => {
-      setErrors((prev) => ({
-        ...prev,
-        [id]: extractErrorMessage(err, "Erreur de téléchargement"),
-      }));
+      if (mountedRef.current) {
+        setErrors((prev) => ({
+          ...prev,
+          [id]: extractErrorMessage(err, "Erreur de téléchargement"),
+        }));
+      }
     });
   }
 
