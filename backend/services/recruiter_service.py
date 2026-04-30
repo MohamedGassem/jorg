@@ -1,12 +1,16 @@
 # backend/services/recruiter_service.py
 import re
-from typing import Any
+from typing import Any, Self
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Select, exists, func, or_, select
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from models.candidate_profile import CandidateProfile, Skill
+from models.invitation import AccessGrant, AccessGrantStatus
 from models.recruiter import Organization, RecruiterProfile
+from models.user import User
 from schemas.recruiter import OrganizationCreate, RecruiterProfileUpdate
 
 
@@ -81,6 +85,92 @@ async def update_profile(
 # ---- Accessible candidates --------------------------------------------------
 
 
+class CandidateQueryBuilder:
+    def __init__(self, organization_id: UUID) -> None:
+        self._stmt: Select[Any] = (
+            select(
+                User.id.label("user_id"),
+                User.email,
+                CandidateProfile.first_name,
+                CandidateProfile.last_name,
+                CandidateProfile.title,
+                CandidateProfile.daily_rate,
+                CandidateProfile.contract_type,
+                CandidateProfile.availability_status,
+                CandidateProfile.work_mode,
+                CandidateProfile.location_preference,
+                CandidateProfile.preferred_domains,
+            )
+            .join(AccessGrant, AccessGrant.candidate_id == User.id)
+            .outerjoin(CandidateProfile, CandidateProfile.user_id == User.id)
+            .where(
+                AccessGrant.organization_id == organization_id,
+                AccessGrant.status == AccessGrantStatus.ACTIVE,
+            )
+            .order_by(
+                CandidateProfile.last_name.nulls_last(),
+                CandidateProfile.first_name.nulls_last(),
+            )
+        )
+
+    def filter_availability(self, status: str) -> Self:
+        self._stmt = self._stmt.where(CandidateProfile.availability_status == status)
+        return self
+
+    def filter_work_mode(self, mode: str) -> Self:
+        self._stmt = self._stmt.where(CandidateProfile.work_mode == mode)
+        return self
+
+    def filter_contract_type(self, contract_type: str) -> Self:
+        self._stmt = self._stmt.where(CandidateProfile.contract_type == contract_type)
+        return self
+
+    def filter_mission_duration(self, duration: str) -> Self:
+        self._stmt = self._stmt.where(CandidateProfile.mission_duration == duration)
+        return self
+
+    def filter_max_rate(self, max_rate: int) -> Self:
+        self._stmt = self._stmt.where(
+            or_(
+                CandidateProfile.daily_rate.is_(None),
+                CandidateProfile.daily_rate <= max_rate,
+            )
+        )
+        return self
+
+    def filter_skill(self, skill: str) -> Self:
+        self._stmt = self._stmt.where(
+            exists(
+                select(Skill.id).where(
+                    Skill.profile_id == CandidateProfile.id,
+                    func.lower(Skill.name).contains(skill.lower()),
+                )
+            )
+        )
+        return self
+
+    def filter_location(self, location: str) -> Self:
+        self._stmt = self._stmt.where(CandidateProfile.location_preference.ilike(f"%{location}%"))
+        return self
+
+    def filter_domain(self, domain: str) -> Self:
+        self._stmt = self._stmt.where(CandidateProfile.preferred_domains.contains(array([domain])))
+        return self
+
+    def filter_query(self, q: str) -> Self:
+        q_like = f"%{q}%"
+        self._stmt = self._stmt.where(
+            or_(
+                CandidateProfile.title.ilike(q_like),
+                CandidateProfile.summary.ilike(q_like),
+            )
+        )
+        return self
+
+    def build(self) -> Select[Any]:
+        return self._stmt
+
+
 async def list_accessible_candidates(
     db: AsyncSession,
     organization_id: UUID,
@@ -96,78 +186,27 @@ async def list_accessible_candidates(
     q: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return candidates with an active AccessGrant on this org, with optional filters."""
-    from sqlalchemy import exists, func, or_
-
-    from models.candidate_profile import CandidateProfile, Skill
-    from models.invitation import AccessGrant, AccessGrantStatus
-    from models.user import User
-
-    stmt = (
-        select(
-            User.id.label("user_id"),
-            User.email,
-            CandidateProfile.first_name,
-            CandidateProfile.last_name,
-            CandidateProfile.title,
-            CandidateProfile.daily_rate,
-            CandidateProfile.contract_type,
-            CandidateProfile.availability_status,
-            CandidateProfile.work_mode,
-            CandidateProfile.location_preference,
-            CandidateProfile.preferred_domains,
-        )
-        .join(AccessGrant, AccessGrant.candidate_id == User.id)
-        .outerjoin(CandidateProfile, CandidateProfile.user_id == User.id)
-        .where(
-            AccessGrant.organization_id == organization_id,
-            AccessGrant.status == AccessGrantStatus.ACTIVE,
-        )
-    )
-
+    builder = CandidateQueryBuilder(organization_id)
     if availability_status:
-        stmt = stmt.where(CandidateProfile.availability_status == availability_status)
+        builder.filter_availability(availability_status)
     if work_mode:
-        stmt = stmt.where(CandidateProfile.work_mode == work_mode)
+        builder.filter_work_mode(work_mode)
     if contract_type:
-        stmt = stmt.where(CandidateProfile.contract_type == contract_type)
+        builder.filter_contract_type(contract_type)
     if mission_duration:
-        stmt = stmt.where(CandidateProfile.mission_duration == mission_duration)
+        builder.filter_mission_duration(mission_duration)
     if max_daily_rate is not None:
-        stmt = stmt.where(
-            or_(
-                CandidateProfile.daily_rate.is_(None),
-                CandidateProfile.daily_rate <= max_daily_rate,
-            )
-        )
+        builder.filter_max_rate(max_daily_rate)
     if skill:
-        stmt = stmt.where(
-            exists(
-                select(Skill.id).where(
-                    Skill.profile_id == CandidateProfile.id,
-                    func.lower(Skill.name).contains(skill.lower()),
-                )
-            )
-        )
+        builder.filter_skill(skill)
     if location:
-        stmt = stmt.where(CandidateProfile.location_preference.ilike(f"%{location}%"))
+        builder.filter_location(location)
     if domain:
-        from sqlalchemy.dialects.postgresql import array
-
-        stmt = stmt.where(CandidateProfile.preferred_domains.contains(array([domain])))
+        builder.filter_domain(domain)
     if q:
-        q_like = f"%{q}%"
-        stmt = stmt.where(
-            or_(
-                CandidateProfile.title.ilike(q_like),
-                CandidateProfile.summary.ilike(q_like),
-            )
-        )
+        builder.filter_query(q)
 
-    stmt = stmt.order_by(
-        CandidateProfile.last_name.nulls_last(),
-        CandidateProfile.first_name.nulls_last(),
-    )
-    result = await db.execute(stmt)
+    result = await db.execute(builder.build())
     return [
         {
             "user_id": row.user_id,
