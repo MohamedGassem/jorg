@@ -1,33 +1,41 @@
 // frontend/app/(recruiter)/invitations/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
-import type { Invitation, RecruiterProfile } from "@/types/api";
+import { useRecruiterOrg } from "@/lib/hooks";
+import type { Invitation } from "@/types/api";
 
-const statusLabel: Record<string, string> = {
+const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
   accepted: "Acceptée",
   rejected: "Refusée",
   expired: "Expirée",
 };
 
+const STATUS_VARIANTS: Record<
+  string,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
+  pending: "secondary",
+  accepted: "secondary",
+  rejected: "secondary",
+  expired: "secondary",
+};
+
 export default function InvitationsPage() {
-  const [orgId, setOrgId] = useState<string | null>(null);
+  const { orgId, loading: orgLoading } = useRecruiterOrg();
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.get<RecruiterProfile>("/recruiters/me/profile").then((p) => setOrgId(p.organization_id)).catch(console.error);
-  }, []);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -36,9 +44,12 @@ export default function InvitationsPage() {
     setError(null);
     setSuccess(null);
     try {
-      const inv = await api.post<Invitation>(`/organizations/${orgId}/invitations`, {
-        candidate_email: email.trim(),
-      });
+      const inv = await api.post<Invitation>(
+        `/organizations/${orgId}/invitations`,
+        {
+          candidate_email: email.trim(),
+        },
+      );
       setInvitations((prev) => [inv, ...prev]);
       setSuccess(`Invitation envoyée à ${email}`);
       setEmail("");
@@ -49,13 +60,22 @@ export default function InvitationsPage() {
     }
   }
 
-  if (!orgId) return <p className="text-muted-foreground">Associez d&apos;abord votre compte à une organisation.</p>;
+  if (orgLoading) return <p className="text-muted-foreground">Chargement…</p>;
+
+  if (!orgId)
+    return (
+      <p className="text-muted-foreground">
+        Associez d&apos;abord votre compte à une organisation.
+      </p>
+    );
 
   return (
     <div className="max-w-2xl space-y-8">
       <h1 className="text-2xl font-bold">Invitations</h1>
       <Card>
-        <CardHeader><CardTitle>Inviter un candidat</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Inviter un candidat</CardTitle>
+        </CardHeader>
         <CardContent>
           <form onSubmit={handleInvite} className="space-y-4">
             <div className="space-y-2">
@@ -68,8 +88,12 @@ export default function InvitationsPage() {
                 required
               />
             </div>
-            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-            {success && <p role="status" className="text-sm text-green-600">{success}</p>}
+            <ErrorAlert error={error} />
+            {success && (
+              <p role="status" className="text-sm text-green-600">
+                {success}
+              </p>
+            )}
             <Button type="submit" disabled={sending}>
               {sending ? "Envoi…" : "Envoyer l'invitation"}
             </Button>
@@ -83,13 +107,20 @@ export default function InvitationsPage() {
               <Card>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{inv.candidate_email}</CardTitle>
-                    <Badge variant="secondary">{statusLabel[inv.status] ?? inv.status}</Badge>
+                    <CardTitle className="text-base">
+                      {inv.candidate_email}
+                    </CardTitle>
+                    <StatusBadge
+                      status={inv.status}
+                      labels={STATUS_LABELS}
+                      variants={STATUS_VARIANTS}
+                    />
                   </div>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Expire le {new Date(inv.expires_at).toLocaleDateString("fr-FR")}
+                    Expire le{" "}
+                    {new Date(inv.expires_at).toLocaleDateString("fr-FR")}
                   </p>
                 </CardContent>
               </Card>
