@@ -38,6 +38,15 @@ from schemas.candidate import (
     SkillCreate,
     SkillUpdate,
 )
+from services.base_crud import CRUDService
+
+# ---- Per-model CRUD instances -----------------------------------------------
+
+experience_crud: CRUDService[Experience] = CRUDService(Experience, "profile_id")
+skill_crud: CRUDService[Skill] = CRUDService(Skill, "profile_id")
+education_crud: CRUDService[Education] = CRUDService(Education, "profile_id")
+certification_crud: CRUDService[Certification] = CRUDService(Certification, "profile_id")
+language_crud: CRUDService[Language] = CRUDService(Language, "profile_id")
 
 # ---- CandidateProfile -------------------------------------------------------
 
@@ -72,210 +81,121 @@ async def update_profile(
     return profile
 
 
-# ---- Experience -------------------------------------------------------------
+# ---- Convenience shims (keep existing route call-sites unchanged) ------------
 
 
 async def list_experiences(db: AsyncSession, profile_id: UUID) -> list[Experience]:
-    result = await db.execute(select(Experience).where(Experience.profile_id == profile_id))
-    return list(result.scalars().all())
+    return await experience_crud.list(db, profile_id)
 
 
 async def create_experience(
     db: AsyncSession, profile_id: UUID, data: ExperienceCreate
 ) -> Experience:
-    exp = Experience(profile_id=profile_id, **data.model_dump())
-    db.add(exp)
-    await db.commit()
-    await db.refresh(exp)
-    return exp
+    return await experience_crud.create(db, profile_id, data)
 
 
 async def get_experience(
     db: AsyncSession, experience_id: UUID, profile_id: UUID
 ) -> Experience | None:
-    result = await db.execute(
-        select(Experience).where(
-            Experience.id == experience_id,
-            Experience.profile_id == profile_id,
-        )
-    )
-    return result.scalar_one_or_none()
+    return await experience_crud.get(db, experience_id, profile_id)
 
 
 async def update_experience(
     db: AsyncSession, exp: Experience, data: ExperienceUpdate
 ) -> Experience:
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(exp, field, value)
-    await db.commit()
-    await db.refresh(exp)
-    return exp
+    return await experience_crud.update(db, exp, data)
 
 
 async def delete_experience(db: AsyncSession, exp: Experience) -> None:
-    await db.delete(exp)
-    await db.commit()
-
-
-# ---- Skill ------------------------------------------------------------------
+    return await experience_crud.delete(db, exp)
 
 
 async def list_skills(db: AsyncSession, profile_id: UUID) -> list[Skill]:
-    result = await db.execute(select(Skill).where(Skill.profile_id == profile_id))
-    return list(result.scalars().all())
+    return await skill_crud.list(db, profile_id)
 
 
 async def create_skill(db: AsyncSession, profile_id: UUID, data: SkillCreate) -> Skill:
-    skill = Skill(profile_id=profile_id, **data.model_dump())
-    db.add(skill)
-    await db.commit()
-    await db.refresh(skill)
-    return skill
+    return await skill_crud.create(db, profile_id, data)
 
 
 async def get_skill(db: AsyncSession, skill_id: UUID, profile_id: UUID) -> Skill | None:
-    result = await db.execute(
-        select(Skill).where(Skill.id == skill_id, Skill.profile_id == profile_id)
-    )
-    return result.scalar_one_or_none()
+    return await skill_crud.get(db, skill_id, profile_id)
 
 
 async def update_skill(db: AsyncSession, skill: Skill, data: SkillUpdate) -> Skill:
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(skill, field, value)
-    await db.commit()
-    await db.refresh(skill)
-    return skill
+    return await skill_crud.update(db, skill, data)
 
 
 async def delete_skill(db: AsyncSession, skill: Skill) -> None:
-    await db.delete(skill)
-    await db.commit()
-
-
-# ---- Education --------------------------------------------------------------
+    return await skill_crud.delete(db, skill)
 
 
 async def list_education(db: AsyncSession, profile_id: UUID) -> list[Education]:
-    result = await db.execute(select(Education).where(Education.profile_id == profile_id))
-    return list(result.scalars().all())
+    return await education_crud.list(db, profile_id)
 
 
 async def create_education(db: AsyncSession, profile_id: UUID, data: EducationCreate) -> Education:
-    edu = Education(profile_id=profile_id, **data.model_dump())
-    db.add(edu)
-    await db.commit()
-    await db.refresh(edu)
-    return edu
+    return await education_crud.create(db, profile_id, data)
 
 
 async def get_education_item(
     db: AsyncSession, education_id: UUID, profile_id: UUID
 ) -> Education | None:
-    result = await db.execute(
-        select(Education).where(
-            Education.id == education_id,
-            Education.profile_id == profile_id,
-        )
-    )
-    return result.scalar_one_or_none()
+    return await education_crud.get(db, education_id, profile_id)
 
 
 async def update_education(db: AsyncSession, edu: Education, data: EducationUpdate) -> Education:
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(edu, field, value)
-    await db.commit()
-    await db.refresh(edu)
-    return edu
+    return await education_crud.update(db, edu, data)
 
 
 async def delete_education(db: AsyncSession, edu: Education) -> None:
-    await db.delete(edu)
-    await db.commit()
-
-
-# ---- Certification ----------------------------------------------------------
+    return await education_crud.delete(db, edu)
 
 
 async def list_certifications(db: AsyncSession, profile_id: UUID) -> list[Certification]:
-    result = await db.execute(select(Certification).where(Certification.profile_id == profile_id))
-    return list(result.scalars().all())
+    return await certification_crud.list(db, profile_id)
 
 
 async def create_certification(
     db: AsyncSession, profile_id: UUID, data: CertificationCreate
 ) -> Certification:
-    cert = Certification(profile_id=profile_id, **data.model_dump())
-    db.add(cert)
-    await db.commit()
-    await db.refresh(cert)
-    return cert
+    return await certification_crud.create(db, profile_id, data)
 
 
 async def get_certification(
     db: AsyncSession, certification_id: UUID, profile_id: UUID
 ) -> Certification | None:
-    result = await db.execute(
-        select(Certification).where(
-            Certification.id == certification_id,
-            Certification.profile_id == profile_id,
-        )
-    )
-    return result.scalar_one_or_none()
+    return await certification_crud.get(db, certification_id, profile_id)
 
 
 async def update_certification(
     db: AsyncSession, cert: Certification, data: CertificationUpdate
 ) -> Certification:
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(cert, field, value)
-    await db.commit()
-    await db.refresh(cert)
-    return cert
+    return await certification_crud.update(db, cert, data)
 
 
 async def delete_certification(db: AsyncSession, cert: Certification) -> None:
-    await db.delete(cert)
-    await db.commit()
-
-
-# ---- Language ---------------------------------------------------------------
+    return await certification_crud.delete(db, cert)
 
 
 async def list_languages(db: AsyncSession, profile_id: UUID) -> list[Language]:
-    result = await db.execute(select(Language).where(Language.profile_id == profile_id))
-    return list(result.scalars().all())
+    return await language_crud.list(db, profile_id)
 
 
 async def create_language(db: AsyncSession, profile_id: UUID, data: LanguageCreate) -> Language:
-    lang = Language(profile_id=profile_id, **data.model_dump())
-    db.add(lang)
-    await db.commit()
-    await db.refresh(lang)
-    return lang
+    return await language_crud.create(db, profile_id, data)
 
 
 async def get_language(db: AsyncSession, language_id: UUID, profile_id: UUID) -> Language | None:
-    result = await db.execute(
-        select(Language).where(
-            Language.id == language_id,
-            Language.profile_id == profile_id,
-        )
-    )
-    return result.scalar_one_or_none()
+    return await language_crud.get(db, language_id, profile_id)
 
 
 async def update_language(db: AsyncSession, lang: Language, data: LanguageUpdate) -> Language:
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(lang, field, value)
-    await db.commit()
-    await db.refresh(lang)
-    return lang
+    return await language_crud.update(db, lang, data)
 
 
 async def delete_language(db: AsyncSession, lang: Language) -> None:
-    await db.delete(lang)
-    await db.commit()
+    return await language_crud.delete(db, lang)
 
 
 # ---- Interaction timeline ---------------------------------------------------

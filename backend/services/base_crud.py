@@ -1,7 +1,7 @@
 # backend/services/base_crud.py
 """Generic async CRUD service for SQLAlchemy models owned by a parent UUID."""
 
-from typing import Any, Generic, TypeVar
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -9,10 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.base import Base
 
-T = TypeVar("T", bound=Base)
 
-
-class CRUDService(Generic[T]):
+class CRUDService[T: Base]:
     """Five-operation async CRUD helper parameterised over a SQLAlchemy model.
 
     owner_field: the column name on T that holds the parent/owner UUID
