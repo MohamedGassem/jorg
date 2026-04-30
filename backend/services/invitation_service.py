@@ -90,7 +90,7 @@ async def accept_invitation(
 ) -> AccessGrant:
     """Accept invitation → create (or return existing) AccessGrant.
 
-    Raises ValueError("invitation_expired") if token is past its expiry.
+    Raises BusinessRuleError("invitation_expired") if token is past its expiry.
     """
     now = datetime.now(UTC)
     expires = invitation.expires_at
