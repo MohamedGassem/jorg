@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -12,12 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, ApiError } from "@/lib/api";
-import type {
-  AccessibleCandidateRead,
-  OpportunityRead,
-  RecruiterProfile,
-} from "@/types/api";
+import { api } from "@/lib/api";
+import { extractErrorMessage } from "@/lib/errors";
+import { useRecruiterOrg } from "@/lib/hooks";
+import type { AccessibleCandidateRead, OpportunityRead } from "@/types/api";
+import { VALID_DOMAINS } from "@/types/api";
 
 const EMPTY_FILTERS = {
   availability_status: "",
@@ -31,10 +32,9 @@ const EMPTY_FILTERS = {
 };
 
 export default function CandidatesPage() {
-  const [orgId, setOrgId] = useState<string | null>(null);
+  const { orgId, loading, error } = useRecruiterOrg();
   const [candidates, setCandidates] = useState<AccessibleCandidateRead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [candidatesError, setCandidatesError] = useState<string | null>(null);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [opportunities, setOpportunities] = useState<OpportunityRead[]>([]);
@@ -54,33 +54,24 @@ export default function CandidatesPage() {
         const data = await api.get<AccessibleCandidateRead[]>(url);
         setCandidates(data);
       } catch (err) {
-        setError(err instanceof ApiError ? err.detail : "Erreur de chargement");
+        setCandidatesError(extractErrorMessage(err, "Erreur de chargement"));
       }
     },
     [],
   );
 
   useEffect(() => {
-    api
-      .get<RecruiterProfile>("/recruiters/me/profile")
-      .then((p) => {
-        setOrgId(p.organization_id);
-        if (p.organization_id) {
-          return Promise.all([
-            fetchCandidates(p.organization_id, EMPTY_FILTERS),
-            api
-              .get<OpportunityRead[]>(
-                `/organizations/${p.organization_id}/opportunities`,
-              )
-              .then((opps) =>
-                setOpportunities(opps.filter((o) => o.status === "open")),
-              )
-              .catch(() => {}),
-          ]);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [fetchCandidates]);
+    if (!orgId) return;
+    Promise.all([
+      fetchCandidates(orgId, EMPTY_FILTERS),
+      api
+        .get<OpportunityRead[]>(`/organizations/${orgId}/opportunities`)
+        .then((opps) =>
+          setOpportunities(opps.filter((o) => o.status === "open")),
+        )
+        .catch(() => {}),
+    ]);
+  }, [orgId, fetchCandidates]);
 
   function handleFilterChange(
     key: keyof typeof EMPTY_FILTERS,
@@ -122,7 +113,7 @@ export default function CandidatesPage() {
     } catch (err) {
       setAddFeedback((prev) => ({
         ...prev,
-        [candidateId]: err instanceof ApiError ? err.detail : "Erreur",
+        [candidateId]: extractErrorMessage(err, "Erreur"),
       }));
     } finally {
       setAddingTo(null);
@@ -239,17 +230,7 @@ export default function CandidatesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Tous</SelectItem>
-                  {[
-                    "finance",
-                    "retail",
-                    "industry",
-                    "public",
-                    "health",
-                    "tech",
-                    "telecom",
-                    "energy",
-                    "other",
-                  ].map((d) => (
+                  {VALID_DOMAINS.map((d) => (
                     <SelectItem key={d} value={d} className="capitalize">
                       {d}
                     </SelectItem>
@@ -277,15 +258,9 @@ export default function CandidatesPage() {
         </CardContent>
       </Card>
 
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
+      <ErrorAlert error={error ?? candidatesError} />
       {candidates.length === 0 ? (
-        <p className="text-muted-foreground">
-          Aucun candidat ne correspond aux filtres.
-        </p>
+        <EmptyState message="Aucun candidat ne correspond aux filtres." />
       ) : (
         <ul className="space-y-3" role="list">
           {candidates.map((c) => (
