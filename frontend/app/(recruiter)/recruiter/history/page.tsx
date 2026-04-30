@@ -21,16 +21,29 @@ export default function RecruiterHistoryPage() {
 
   useEffect(() => {
     if (!orgId) return;
-    setDocsLoading(true);
-    api
-      .get<GeneratedDocument[]>(`/organizations/${orgId}/documents`)
-      .then(setDocs)
-      .catch((err) =>
-        setFetchError(
-          extractErrorMessage(err, "Impossible de charger les dossiers"),
-        ),
-      )
-      .finally(() => setDocsLoading(false));
+    const controller = new AbortController();
+    Promise.resolve()
+      .then(() => {
+        setDocsLoading(true);
+        return api.get<GeneratedDocument[]>(
+          `/organizations/${orgId}/documents`,
+        );
+      })
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          setDocs(data);
+          setDocsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setFetchError(
+            extractErrorMessage(err, "Impossible de charger les dossiers"),
+          );
+          setDocsLoading(false);
+        }
+      });
+    return () => controller.abort();
   }, [orgId]);
 
   if (orgLoading || docsLoading)

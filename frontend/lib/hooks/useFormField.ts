@@ -4,9 +4,12 @@ import { useCallback, useState } from "react";
 
 type SetField<T> = <K extends keyof T>(key: K, value: T[K]) => void;
 
-export function useFormField<T>(
-  _initial: T,
-): [T | null, SetField<T>, () => void, (v: T) => void] {
+export function useFormField<T>(): [
+  T | null,
+  SetField<T>,
+  () => void,
+  (v: T) => void,
+] {
   const [form, setForm] = useState<T | null>(null);
 
   const setField: SetField<T> = useCallback((key, value) => {

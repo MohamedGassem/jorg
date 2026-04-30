@@ -47,7 +47,7 @@ def convert_to_pdf(docx_path: str) -> str | None:
             pdf_path = str(Path(docx_path).with_suffix(".pdf"))
             if Path(pdf_path).exists():
                 return pdf_path
-    except subprocess.TimeoutExpired, FileNotFoundError:
+    except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
     return None
 
