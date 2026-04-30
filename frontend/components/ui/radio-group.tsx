@@ -1,58 +1,66 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-interface RadioGroupProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> {
+interface RadioGroupContextValue {
   value?: string;
   onValueChange?: (value: string) => void;
 }
 
-function RadioGroup({ className, value, onValueChange, children, ...props }: RadioGroupProps) {
+const RadioGroupContext = React.createContext<RadioGroupContextValue>({});
+
+interface RadioGroupProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  "onChange"
+> {
+  value?: string;
+  onValueChange?: (value: string) => void;
+}
+
+function RadioGroup({
+  className,
+  value,
+  onValueChange,
+  children,
+  ...props
+}: RadioGroupProps) {
   return (
-    <div
-      role="radiogroup"
-      data-value={value}
-      className={cn("grid gap-2", className)}
-      {...props}
-    >
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement<RadioGroupItemProps>, {
-            groupValue: value,
-            onGroupValueChange: onValueChange,
-          })
-        }
-        return child
-      })}
-    </div>
-  )
+    <RadioGroupContext.Provider value={{ value, onValueChange }}>
+      <div role="radiogroup" className={cn("grid gap-2", className)} {...props}>
+        {children}
+      </div>
+    </RadioGroupContext.Provider>
+  );
 }
 
-interface RadioGroupItemProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "onChange"> {
+interface RadioGroupItemProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "type" | "onChange"
+> {
   value: string;
-  groupValue?: string;
-  onGroupValueChange?: (value: string) => void;
 }
 
-function RadioGroupItem({ className, value, groupValue, onGroupValueChange, ...props }: RadioGroupItemProps) {
+function RadioGroupItem({ className, value, ...props }: RadioGroupItemProps) {
+  const { value: groupValue, onValueChange } =
+    React.useContext(RadioGroupContext);
   return (
     <input
       type="radio"
       className={cn(
         "h-4 w-4 rounded-full border border-input accent-primary cursor-pointer",
-        className
+        className,
       )}
       value={value}
       checked={groupValue === value}
       onChange={(e) => {
         if (e.target.checked) {
-          onGroupValueChange?.(value)
+          onValueChange?.(value);
         }
       }}
       {...props}
     />
-  )
+  );
 }
 
-export { RadioGroup, RadioGroupItem }
+export { RadioGroup, RadioGroupItem };
