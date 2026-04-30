@@ -67,6 +67,28 @@ class TestProfileFlat:
         flat = _profile_flat(p)
         assert flat["phone"] == ""
 
+    def test_contains_all_expected_keys(self):
+        p = _mock_profile()
+        flat = _profile_flat(p)
+        expected_keys = {
+            "first_name",
+            "last_name",
+            "title",
+            "summary",
+            "phone",
+            "email_contact",
+            "linkedin_url",
+            "location",
+            "years_of_experience",
+            "daily_rate",
+            "annual_salary",
+            "availability_status",
+            "work_mode",
+            "location_preference",
+            "mission_duration",
+        }
+        assert set(flat.keys()) == expected_keys
+
 
 class TestExpFlat:
     def test_formats_end_date(self):
@@ -118,3 +140,28 @@ class TestGenerateDocument:
         result_doc = Document(io.BytesIO(docx_bytes))
         texts = [p.text for p in result_doc.paragraphs]
         assert "Alice" in texts
+
+    def test_expands_experience_block(self, tmp_path):
+        """{{#EXPERIENCES}}...{{/EXPERIENCES}} block is expanded once per experience."""
+        from docx import Document
+
+        tmpl_path = tmp_path / "template.docx"
+        doc = Document()
+        doc.add_paragraph("{{#EXPERIENCES}}")
+        doc.add_paragraph("{{experience.role}}")
+        doc.add_paragraph("{{/EXPERIENCES}}")
+        doc.save(str(tmpl_path))
+
+        profile = _mock_profile()
+        exp1 = _mock_experience(role="Engineer")
+        exp2 = _mock_experience(role="Architect")
+        mappings = {"{{experience.role}}": "experience.role"}
+
+        docx_bytes = generate_document(str(tmpl_path), profile, [exp1, exp2], mappings)
+        result_doc = Document(io.BytesIO(docx_bytes))
+        texts = [p.text for p in result_doc.paragraphs if p.text]
+        assert "Engineer" in texts
+        assert "Architect" in texts
+        # Block markers must be removed
+        assert "{{#EXPERIENCES}}" not in texts
+        assert "{{/EXPERIENCES}}" not in texts

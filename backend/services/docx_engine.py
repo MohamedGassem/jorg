@@ -65,7 +65,7 @@ def _is_text_settable(node: Any) -> bool:
                 return attr.fset is not None
             # C-level getset_descriptor (lxml native) — always settable
             return True
-    return True
+    return False
 
 
 def _replace_element(elem: Any, lookup: dict[str, str]) -> None:
