@@ -41,38 +41,14 @@ async def generate_document(
             detail="you do not belong to this organization",
         )
 
-    try:
-        return await generation_service.generate_for_candidate(
-            db,
-            organization_id=org_id,
-            template_id=data.template_id,
-            candidate_id=data.candidate_id,
-            generated_by_user_id=current_user.id,
-            fmt=data.format,
-        )
-    except ValueError as e:
-        msg = str(e)
-        if msg == "no_active_grant":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="no active access grant for this candidate",
-            ) from e
-        if msg == "template_not_found":
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="template not found",
-            ) from e
-        if msg == "template_invalid":
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="template is not fully mapped (is_valid=false)",
-            ) from e
-        if msg == "candidate_profile_not_found":
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="candidate has no profile",
-            ) from e
-        raise
+    return await generation_service.generate_for_candidate(
+        db,
+        organization_id=org_id,
+        template_id=data.template_id,
+        candidate_id=data.candidate_id,
+        generated_by_user_id=current_user.id,
+        fmt=data.format,
+    )
 
 
 @router.get(

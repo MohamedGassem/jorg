@@ -8,6 +8,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.exceptions import GoneError
 from models.invitation import (
     AccessGrant,
     AccessGrantStatus,
@@ -89,7 +90,7 @@ async def accept_invitation(
 ) -> AccessGrant:
     """Accept invitation → create (or return existing) AccessGrant.
 
-    Raises ValueError("invitation_expired") if token is past its expiry.
+    Raises BusinessRuleError("invitation_expired") if token is past its expiry.
     """
     now = datetime.now(UTC)
     expires = invitation.expires_at
@@ -98,7 +99,7 @@ async def accept_invitation(
     if expires < now:
         invitation.status = InvitationStatus.EXPIRED
         await db.commit()
-        raise ValueError("invitation_expired")
+        raise GoneError("Invitation has expired")
 
     invitation.status = InvitationStatus.ACCEPTED
     invitation.candidate_id = candidate_id

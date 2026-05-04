@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.exceptions import ConflictError, ForbiddenError, JorgError
 from models.candidate_profile import CandidateProfile
 from models.invitation import AccessGrant, AccessGrantStatus
 from models.opportunity import Opportunity, ShortlistEntry
@@ -20,14 +21,6 @@ from schemas.opportunity import (
 from services import generation_service
 
 logger = structlog.get_logger()
-
-
-class NoActiveGrantError(Exception):
-    pass
-
-
-class DuplicateShortlistEntryError(Exception):
-    pass
 
 
 async def create_opportunity(
@@ -124,7 +117,7 @@ async def add_to_shortlist(
         )
     )
     if grant_result.scalar_one_or_none() is None:
-        raise NoActiveGrantError
+        raise ForbiddenError("no_active_grant")
 
     entry = ShortlistEntry(opportunity_id=opportunity_id, candidate_id=candidate_id)
     db.add(entry)
@@ -132,7 +125,7 @@ async def add_to_shortlist(
         await db.commit()
     except IntegrityError as err:
         await db.rollback()
-        raise DuplicateShortlistEntryError from err
+        raise ConflictError("already_in_shortlist") from err
     await db.refresh(entry)
     return entry
 
@@ -179,9 +172,13 @@ async def bulk_generate(
             results.append(
                 BulkGenerateResult(candidate_id=entry.candidate_id, status="ok", doc_id=doc.id)
             )
-        except (FileNotFoundError, ValueError, KeyError) as e:
+        except (FileNotFoundError, KeyError) as e:
             results.append(
                 BulkGenerateResult(candidate_id=entry.candidate_id, status="error", error=str(e))
+            )
+        except JorgError as e:
+            results.append(
+                BulkGenerateResult(candidate_id=entry.candidate_id, status="error", error=e.detail)
             )
         except Exception:
             logger.exception(

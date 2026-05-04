@@ -69,14 +69,7 @@ async def accept_invitation(token: str, current_user: CandidateUser, db: DB) -> 
             status_code=status.HTTP_409_CONFLICT,
             detail=f"invitation is {invitation.status.value}",
         )
-    try:
-        return await invitation_service.accept_invitation(db, invitation, current_user.id)
-    except ValueError as e:
-        if str(e) == "invitation_expired":
-            raise HTTPException(
-                status_code=status.HTTP_410_GONE, detail="invitation has expired"
-            ) from e
-        raise
+    return await invitation_service.accept_invitation(db, invitation, current_user.id)
 
 
 @router.post("/invitations/{token}/reject", response_model=InvitationRead)

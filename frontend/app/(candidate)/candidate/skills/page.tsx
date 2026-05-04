@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { extractErrorMessage } from "@/lib/errors";
 import type {
   Experience,
   Skill,
@@ -45,17 +46,13 @@ const LANGUAGE_LEVELS: { value: LanguageLevel; label: string }[] = [
   { value: "native", label: "Langue maternelle" },
 ];
 
-function errMsg(err: unknown, fallback: string): string {
-  if (err instanceof ApiError) return err.detail;
-  if (err instanceof Error) return err.message;
-  return fallback;
-}
-
 function safeUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   try {
     const parsed = new URL(url);
-    return parsed.protocol === "https:" || parsed.protocol === "http:" ? url : null;
+    return parsed.protocol === "https:" || parsed.protocol === "http:"
+      ? url
+      : null;
   } catch {
     return null;
   }
@@ -122,9 +119,14 @@ function ExperienceSection() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<Experience[]>("/candidates/me/experiences")
+    api
+      .get<Experience[]>("/candidates/me/experiences")
       .then(setItems)
-      .catch((err) => setFetchError(errMsg(err, "Impossible de charger les expériences")))
+      .catch((err) =>
+        setFetchError(
+          extractErrorMessage(err, "Impossible de charger les expériences"),
+        ),
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -147,15 +149,21 @@ function ExperienceSection() {
         context: form.context || null,
         achievements: form.achievements || null,
         technologies: form.technologies
-          ? form.technologies.split(",").map((t) => t.trim()).filter(Boolean)
+          ? form.technologies
+              .split(",")
+              .map((t) => t.trim())
+              .filter(Boolean)
           : [],
       };
-      const created = await api.post<Experience>("/candidates/me/experiences", body);
+      const created = await api.post<Experience>(
+        "/candidates/me/experiences",
+        body,
+      );
       setItems((prev) => [...prev, created]);
       setForm(EMPTY_EXP);
       setAdding(false);
     } catch (err) {
-      setError(errMsg(err, "Erreur lors de l'ajout"));
+      setError(extractErrorMessage(err, "Erreur lors de l'ajout"));
     } finally {
       setSaving(false);
     }
@@ -166,7 +174,7 @@ function ExperienceSection() {
       await api.delete(`/candidates/me/experiences/${id}`);
       setItems((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
-      setError(errMsg(err, "Erreur lors de la suppression"));
+      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
     }
   }
 
@@ -174,25 +182,44 @@ function ExperienceSection() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle>Expériences professionnelles</CardTitle>
-        <Button variant="outline" size="sm" onClick={() => { setAdding(!adding); setError(null); }}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setAdding(!adding);
+            setError(null);
+          }}
+        >
           {adding ? "Annuler" : "+ Ajouter"}
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
-        {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+        {loading && (
+          <p className="text-sm text-muted-foreground">Chargement…</p>
+        )}
         {fetchError && <p className="text-sm text-destructive">{fetchError}</p>}
         {!loading && !fetchError && items.length === 0 && !adding && (
-          <p className="text-sm text-muted-foreground">Aucune expérience ajoutée.</p>
+          <p className="text-sm text-muted-foreground">
+            Aucune expérience ajoutée.
+          </p>
         )}
         {items.map((exp) => (
-          <div key={exp.id} className="flex items-start justify-between rounded-md border p-3">
+          <div
+            key={exp.id}
+            className="flex items-start justify-between rounded-md border p-3"
+          >
             <div className="space-y-0.5">
-              <p className="font-medium">{exp.role} — {exp.client_name}</p>
+              <p className="font-medium">
+                {exp.role} — {exp.client_name}
+              </p>
               <p className="text-sm text-muted-foreground">
-                {exp.start_date} → {exp.is_current ? "présent" : (exp.end_date ?? "")}
+                {exp.start_date} →{" "}
+                {exp.is_current ? "présent" : (exp.end_date ?? "")}
               </p>
               {exp.technologies.length > 0 && (
-                <p className="text-xs text-muted-foreground">{exp.technologies.join(", ")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {exp.technologies.join(", ")}
+                </p>
               )}
             </div>
             <Button
@@ -207,25 +234,50 @@ function ExperienceSection() {
         ))}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {adding && (
-          <form onSubmit={handleAdd} className="space-y-3 rounded-md border p-4">
+          <form
+            onSubmit={handleAdd}
+            className="space-y-3 rounded-md border p-4"
+          >
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="exp-client">Client *</Label>
-                <Input id="exp-client" value={form.client_name} onChange={(e) => set("client_name", e.target.value)} required />
+                <Input
+                  id="exp-client"
+                  value={form.client_name}
+                  onChange={(e) => set("client_name", e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="exp-role">Rôle *</Label>
-                <Input id="exp-role" value={form.role} onChange={(e) => set("role", e.target.value)} required />
+                <Input
+                  id="exp-role"
+                  value={form.role}
+                  onChange={(e) => set("role", e.target.value)}
+                  required
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="exp-start">Date début *</Label>
-                <Input id="exp-start" type="date" value={form.start_date} onChange={(e) => set("start_date", e.target.value)} required />
+                <Input
+                  id="exp-start"
+                  type="date"
+                  value={form.start_date}
+                  onChange={(e) => set("start_date", e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="exp-end">Date fin</Label>
-                <Input id="exp-end" type="date" value={form.end_date} onChange={(e) => set("end_date", e.target.value)} disabled={form.is_current} />
+                <Input
+                  id="exp-end"
+                  type="date"
+                  value={form.end_date}
+                  onChange={(e) => set("end_date", e.target.value)}
+                  disabled={form.is_current}
+                />
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -233,28 +285,54 @@ function ExperienceSection() {
                 id="exp-current"
                 type="checkbox"
                 checked={form.is_current}
-                onChange={(e) => { set("is_current", e.target.checked); if (e.target.checked) set("end_date", ""); }}
+                onChange={(e) => {
+                  set("is_current", e.target.checked);
+                  if (e.target.checked) set("end_date", "");
+                }}
                 className="h-4 w-4 cursor-pointer"
               />
-              <Label htmlFor="exp-current" className="cursor-pointer">Poste actuel</Label>
+              <Label htmlFor="exp-current" className="cursor-pointer">
+                Poste actuel
+              </Label>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="exp-tech">Technologies (séparées par virgule)</Label>
-              <Input id="exp-tech" value={form.technologies} onChange={(e) => set("technologies", e.target.value)} placeholder="React, TypeScript, Node.js" />
+              <Label htmlFor="exp-tech">
+                Technologies (séparées par virgule)
+              </Label>
+              <Input
+                id="exp-tech"
+                value={form.technologies}
+                onChange={(e) => set("technologies", e.target.value)}
+                placeholder="React, TypeScript, Node.js"
+              />
             </div>
             <div className="space-y-1">
               <Label htmlFor="exp-desc">Description</Label>
-              <Textarea id="exp-desc" value={form.description} onChange={(v) => set("description", v)} />
+              <Textarea
+                id="exp-desc"
+                value={form.description}
+                onChange={(v) => set("description", v)}
+              />
             </div>
             <div className="space-y-1">
               <Label htmlFor="exp-context">Contexte</Label>
-              <Textarea id="exp-context" value={form.context} onChange={(v) => set("context", v)} />
+              <Textarea
+                id="exp-context"
+                value={form.context}
+                onChange={(v) => set("context", v)}
+              />
             </div>
             <div className="space-y-1">
               <Label htmlFor="exp-achiev">Réalisations</Label>
-              <Textarea id="exp-achiev" value={form.achievements} onChange={(v) => set("achievements", v)} />
+              <Textarea
+                id="exp-achiev"
+                value={form.achievements}
+                onChange={(v) => set("achievements", v)}
+              />
             </div>
-            <Button type="submit" size="sm" disabled={saving}>{saving ? "Ajout…" : "Ajouter"}</Button>
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Ajout…" : "Ajouter"}
+            </Button>
           </form>
         )}
       </CardContent>
@@ -298,9 +376,14 @@ function SkillSection() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<Skill[]>("/candidates/me/skills")
+    api
+      .get<Skill[]>("/candidates/me/skills")
       .then(setItems)
-      .catch((err) => setFetchError(errMsg(err, "Impossible de charger les compétences")))
+      .catch((err) =>
+        setFetchError(
+          extractErrorMessage(err, "Impossible de charger les compétences"),
+        ),
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -318,14 +401,16 @@ function SkillSection() {
         category: form.category,
         level: form.level || null,
         level_rating: form.level_rating ? Number(form.level_rating) : null,
-        years_of_experience: form.years_of_experience ? Number(form.years_of_experience) : null,
+        years_of_experience: form.years_of_experience
+          ? Number(form.years_of_experience)
+          : null,
       };
       const created = await api.post<Skill>("/candidates/me/skills", body);
       setItems((prev) => [...prev, created]);
       setForm(EMPTY_SKILL);
       setAdding(false);
     } catch (err) {
-      setError(errMsg(err, "Erreur lors de l'ajout"));
+      setError(extractErrorMessage(err, "Erreur lors de l'ajout"));
     } finally {
       setSaving(false);
     }
@@ -336,7 +421,7 @@ function SkillSection() {
       await api.delete(`/candidates/me/skills/${id}`);
       setItems((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
-      setError(errMsg(err, "Erreur lors de la suppression"));
+      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
     }
   }
 
@@ -347,25 +432,41 @@ function SkillSection() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle>Compétences techniques</CardTitle>
-        <Button variant="outline" size="sm" onClick={() => { setAdding(!adding); setError(null); }}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setAdding(!adding);
+            setError(null);
+          }}
+        >
           {adding ? "Annuler" : "+ Ajouter"}
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
-        {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+        {loading && (
+          <p className="text-sm text-muted-foreground">Chargement…</p>
+        )}
         {fetchError && <p className="text-sm text-destructive">{fetchError}</p>}
         {!loading && !fetchError && items.length === 0 && !adding && (
-          <p className="text-sm text-muted-foreground">Aucune compétence ajoutée.</p>
+          <p className="text-sm text-muted-foreground">
+            Aucune compétence ajoutée.
+          </p>
         )}
         {items.map((skill) => (
-          <div key={skill.id} className="flex items-start justify-between rounded-md border p-3">
+          <div
+            key={skill.id}
+            className="flex items-start justify-between rounded-md border p-3"
+          >
             <div className="space-y-0.5">
               <p className="font-medium">{skill.name}</p>
               <p className="text-sm text-muted-foreground">
                 {categoryLabel(skill.category)}
                 {skill.level_rating ? ` · ${skill.level_rating}/5` : ""}
                 {skill.level ? ` · ${skill.level}` : ""}
-                {skill.years_of_experience ? ` · ${skill.years_of_experience} an(s)` : ""}
+                {skill.years_of_experience
+                  ? ` · ${skill.years_of_experience} an(s)`
+                  : ""}
               </p>
             </div>
             <Button
@@ -380,19 +481,36 @@ function SkillSection() {
         ))}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {adding && (
-          <form onSubmit={handleAdd} className="space-y-3 rounded-md border p-4">
+          <form
+            onSubmit={handleAdd}
+            className="space-y-3 rounded-md border p-4"
+          >
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="skill-name">Nom *</Label>
-                <Input id="skill-name" value={form.name} onChange={(e) => set("name", e.target.value)} required />
+                <Input
+                  id="skill-name"
+                  value={form.name}
+                  onChange={(e) => set("name", e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="skill-cat">Catégorie *</Label>
-                <Select value={form.category} onValueChange={(v) => v && set("category", v as SkillCategory)}>
-                  <SelectTrigger id="skill-cat" className="w-full"><SelectValue /></SelectTrigger>
+                <Select
+                  value={form.category}
+                  onValueChange={(v) =>
+                    v && set("category", v as SkillCategory)
+                  }
+                >
+                  <SelectTrigger id="skill-cat" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {SKILL_CATEGORIES.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -410,21 +528,36 @@ function SkillSection() {
                   </SelectTrigger>
                   <SelectContent>
                     {SKILL_RATING_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="skill-level">Nuance (libre)</Label>
-                <Input id="skill-level" value={form.level} onChange={(e) => set("level", e.target.value)} placeholder="ex: autonome, Senior…" />
+                <Input
+                  id="skill-level"
+                  value={form.level}
+                  onChange={(e) => set("level", e.target.value)}
+                  placeholder="ex: autonome, Senior…"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="skill-years">{"Années d'expérience"}</Label>
-                <Input id="skill-years" type="number" min={0} value={form.years_of_experience} onChange={(e) => set("years_of_experience", e.target.value)} />
+                <Input
+                  id="skill-years"
+                  type="number"
+                  min={0}
+                  value={form.years_of_experience}
+                  onChange={(e) => set("years_of_experience", e.target.value)}
+                />
               </div>
             </div>
-            <Button type="submit" size="sm" disabled={saving}>{saving ? "Ajout…" : "Ajouter"}</Button>
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Ajout…" : "Ajouter"}
+            </Button>
           </form>
         )}
       </CardContent>
@@ -443,7 +576,14 @@ type EduForm = {
   description: string;
 };
 
-const EMPTY_EDU: EduForm = { school: "", degree: "", field_of_study: "", start_date: "", end_date: "", description: "" };
+const EMPTY_EDU: EduForm = {
+  school: "",
+  degree: "",
+  field_of_study: "",
+  start_date: "",
+  end_date: "",
+  description: "",
+};
 
 function EducationSection() {
   const [items, setItems] = useState<Education[]>([]);
@@ -455,9 +595,14 @@ function EducationSection() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<Education[]>("/candidates/me/education")
+    api
+      .get<Education[]>("/candidates/me/education")
       .then(setItems)
-      .catch((err) => setFetchError(errMsg(err, "Impossible de charger les formations")))
+      .catch((err) =>
+        setFetchError(
+          extractErrorMessage(err, "Impossible de charger les formations"),
+        ),
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -478,12 +623,15 @@ function EducationSection() {
         end_date: form.end_date || null,
         description: form.description || null,
       };
-      const created = await api.post<Education>("/candidates/me/education", body);
+      const created = await api.post<Education>(
+        "/candidates/me/education",
+        body,
+      );
       setItems((prev) => [...prev, created]);
       setForm(EMPTY_EDU);
       setAdding(false);
     } catch (err) {
-      setError(errMsg(err, "Erreur lors de l'ajout"));
+      setError(extractErrorMessage(err, "Erreur lors de l'ajout"));
     } finally {
       setSaving(false);
     }
@@ -494,7 +642,7 @@ function EducationSection() {
       await api.delete(`/candidates/me/education/${id}`);
       setItems((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
-      setError(errMsg(err, "Erreur lors de la suppression"));
+      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
     }
   }
 
@@ -502,25 +650,41 @@ function EducationSection() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle>Formation</CardTitle>
-        <Button variant="outline" size="sm" onClick={() => { setAdding(!adding); setError(null); }}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setAdding(!adding);
+            setError(null);
+          }}
+        >
           {adding ? "Annuler" : "+ Ajouter"}
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
-        {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+        {loading && (
+          <p className="text-sm text-muted-foreground">Chargement…</p>
+        )}
         {fetchError && <p className="text-sm text-destructive">{fetchError}</p>}
         {!loading && !fetchError && items.length === 0 && !adding && (
-          <p className="text-sm text-muted-foreground">Aucune formation ajoutée.</p>
+          <p className="text-sm text-muted-foreground">
+            Aucune formation ajoutée.
+          </p>
         )}
         {items.map((edu) => (
-          <div key={edu.id} className="flex items-start justify-between rounded-md border p-3">
+          <div
+            key={edu.id}
+            className="flex items-start justify-between rounded-md border p-3"
+          >
             <div className="space-y-0.5">
               <p className="font-medium">{edu.school}</p>
               <p className="text-sm text-muted-foreground">
                 {[edu.degree, edu.field_of_study].filter(Boolean).join(" · ")}
               </p>
               {(edu.start_date || edu.end_date) && (
-                <p className="text-xs text-muted-foreground">{edu.start_date ?? ""} → {edu.end_date ?? ""}</p>
+                <p className="text-xs text-muted-foreground">
+                  {edu.start_date ?? ""} → {edu.end_date ?? ""}
+                </p>
               )}
             </div>
             <Button
@@ -535,36 +699,70 @@ function EducationSection() {
         ))}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {adding && (
-          <form onSubmit={handleAdd} className="space-y-3 rounded-md border p-4">
+          <form
+            onSubmit={handleAdd}
+            className="space-y-3 rounded-md border p-4"
+          >
             <div className="space-y-1">
               <Label htmlFor="edu-school">{"École / Établissement *"}</Label>
-              <Input id="edu-school" value={form.school} onChange={(e) => set("school", e.target.value)} required />
+              <Input
+                id="edu-school"
+                value={form.school}
+                onChange={(e) => set("school", e.target.value)}
+                required
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="edu-degree">Diplôme</Label>
-                <Input id="edu-degree" value={form.degree} onChange={(e) => set("degree", e.target.value)} placeholder="ex: Master, Licence…" />
+                <Input
+                  id="edu-degree"
+                  value={form.degree}
+                  onChange={(e) => set("degree", e.target.value)}
+                  placeholder="ex: Master, Licence…"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="edu-field">{"Domaine d'études"}</Label>
-                <Input id="edu-field" value={form.field_of_study} onChange={(e) => set("field_of_study", e.target.value)} placeholder="ex: Informatique" />
+                <Input
+                  id="edu-field"
+                  value={form.field_of_study}
+                  onChange={(e) => set("field_of_study", e.target.value)}
+                  placeholder="ex: Informatique"
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="edu-start">Date début</Label>
-                <Input id="edu-start" type="date" value={form.start_date} onChange={(e) => set("start_date", e.target.value)} />
+                <Input
+                  id="edu-start"
+                  type="date"
+                  value={form.start_date}
+                  onChange={(e) => set("start_date", e.target.value)}
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="edu-end">Date fin</Label>
-                <Input id="edu-end" type="date" value={form.end_date} onChange={(e) => set("end_date", e.target.value)} />
+                <Input
+                  id="edu-end"
+                  type="date"
+                  value={form.end_date}
+                  onChange={(e) => set("end_date", e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-1">
               <Label htmlFor="edu-desc">Description</Label>
-              <Textarea id="edu-desc" value={form.description} onChange={(v) => set("description", v)} />
+              <Textarea
+                id="edu-desc"
+                value={form.description}
+                onChange={(v) => set("description", v)}
+              />
             </div>
-            <Button type="submit" size="sm" disabled={saving}>{saving ? "Ajout…" : "Ajouter"}</Button>
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Ajout…" : "Ajouter"}
+            </Button>
           </form>
         )}
       </CardContent>
@@ -582,7 +780,13 @@ type CertForm = {
   credential_url: string;
 };
 
-const EMPTY_CERT: CertForm = { name: "", issuer: "", issue_date: "", expiry_date: "", credential_url: "" };
+const EMPTY_CERT: CertForm = {
+  name: "",
+  issuer: "",
+  issue_date: "",
+  expiry_date: "",
+  credential_url: "",
+};
 
 function CertificationSection() {
   const [items, setItems] = useState<Certification[]>([]);
@@ -594,9 +798,14 @@ function CertificationSection() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<Certification[]>("/candidates/me/certifications")
+    api
+      .get<Certification[]>("/candidates/me/certifications")
       .then(setItems)
-      .catch((err) => setFetchError(errMsg(err, "Impossible de charger les certifications")))
+      .catch((err) =>
+        setFetchError(
+          extractErrorMessage(err, "Impossible de charger les certifications"),
+        ),
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -616,12 +825,15 @@ function CertificationSection() {
         expiry_date: form.expiry_date || null,
         credential_url: form.credential_url || null,
       };
-      const created = await api.post<Certification>("/candidates/me/certifications", body);
+      const created = await api.post<Certification>(
+        "/candidates/me/certifications",
+        body,
+      );
       setItems((prev) => [...prev, created]);
       setForm(EMPTY_CERT);
       setAdding(false);
     } catch (err) {
-      setError(errMsg(err, "Erreur lors de l'ajout"));
+      setError(extractErrorMessage(err, "Erreur lors de l'ajout"));
     } finally {
       setSaving(false);
     }
@@ -632,7 +844,7 @@ function CertificationSection() {
       await api.delete(`/candidates/me/certifications/${id}`);
       setItems((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
-      setError(errMsg(err, "Erreur lors de la suppression"));
+      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
     }
   }
 
@@ -640,18 +852,32 @@ function CertificationSection() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle>Certifications</CardTitle>
-        <Button variant="outline" size="sm" onClick={() => { setAdding(!adding); setError(null); }}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setAdding(!adding);
+            setError(null);
+          }}
+        >
           {adding ? "Annuler" : "+ Ajouter"}
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
-        {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+        {loading && (
+          <p className="text-sm text-muted-foreground">Chargement…</p>
+        )}
         {fetchError && <p className="text-sm text-destructive">{fetchError}</p>}
         {!loading && !fetchError && items.length === 0 && !adding && (
-          <p className="text-sm text-muted-foreground">Aucune certification ajoutée.</p>
+          <p className="text-sm text-muted-foreground">
+            Aucune certification ajoutée.
+          </p>
         )}
         {items.map((cert) => (
-          <div key={cert.id} className="flex items-start justify-between rounded-md border p-3">
+          <div
+            key={cert.id}
+            className="flex items-start justify-between rounded-md border p-3"
+          >
             <div className="space-y-0.5">
               <p className="font-medium">{cert.name}</p>
               <p className="text-sm text-muted-foreground">
@@ -659,7 +885,12 @@ function CertificationSection() {
                 {cert.expiry_date ? ` → ${cert.expiry_date}` : ""}
               </p>
               {safeUrl(cert.credential_url) && (
-                <a href={safeUrl(cert.credential_url)!} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+                <a
+                  href={safeUrl(cert.credential_url)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline"
+                >
                   Voir le certificat
                 </a>
               )}
@@ -676,32 +907,64 @@ function CertificationSection() {
         ))}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {adding && (
-          <form onSubmit={handleAdd} className="space-y-3 rounded-md border p-4">
+          <form
+            onSubmit={handleAdd}
+            className="space-y-3 rounded-md border p-4"
+          >
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="cert-name">Nom *</Label>
-                <Input id="cert-name" value={form.name} onChange={(e) => set("name", e.target.value)} required />
+                <Input
+                  id="cert-name"
+                  value={form.name}
+                  onChange={(e) => set("name", e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="cert-issuer">Organisme *</Label>
-                <Input id="cert-issuer" value={form.issuer} onChange={(e) => set("issuer", e.target.value)} required />
+                <Input
+                  id="cert-issuer"
+                  value={form.issuer}
+                  onChange={(e) => set("issuer", e.target.value)}
+                  required
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="cert-issue">{"Date d'obtention *"}</Label>
-                <Input id="cert-issue" type="date" value={form.issue_date} onChange={(e) => set("issue_date", e.target.value)} required />
+                <Input
+                  id="cert-issue"
+                  type="date"
+                  value={form.issue_date}
+                  onChange={(e) => set("issue_date", e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="cert-expiry">{"Date d'expiration"}</Label>
-                <Input id="cert-expiry" type="date" value={form.expiry_date} onChange={(e) => set("expiry_date", e.target.value)} />
+                <Input
+                  id="cert-expiry"
+                  type="date"
+                  value={form.expiry_date}
+                  onChange={(e) => set("expiry_date", e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-1">
               <Label htmlFor="cert-url">URL du certificat</Label>
-              <Input id="cert-url" type="url" value={form.credential_url} onChange={(e) => set("credential_url", e.target.value)} placeholder="https://…" />
+              <Input
+                id="cert-url"
+                type="url"
+                value={form.credential_url}
+                onChange={(e) => set("credential_url", e.target.value)}
+                placeholder="https://…"
+              />
             </div>
-            <Button type="submit" size="sm" disabled={saving}>{saving ? "Ajout…" : "Ajouter"}</Button>
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Ajout…" : "Ajouter"}
+            </Button>
           </form>
         )}
       </CardContent>
@@ -724,9 +987,14 @@ function LanguageSection() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<Language[]>("/candidates/me/languages")
+    api
+      .get<Language[]>("/candidates/me/languages")
       .then(setItems)
-      .catch((err) => setFetchError(errMsg(err, "Impossible de charger les langues")))
+      .catch((err) =>
+        setFetchError(
+          extractErrorMessage(err, "Impossible de charger les langues"),
+        ),
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -735,12 +1003,15 @@ function LanguageSection() {
     setSaving(true);
     setError(null);
     try {
-      const created = await api.post<Language>("/candidates/me/languages", form);
+      const created = await api.post<Language>(
+        "/candidates/me/languages",
+        form,
+      );
       setItems((prev) => [...prev, created]);
       setForm(EMPTY_LANG);
       setAdding(false);
     } catch (err) {
-      setError(errMsg(err, "Erreur lors de l'ajout"));
+      setError(extractErrorMessage(err, "Erreur lors de l'ajout"));
     } finally {
       setSaving(false);
     }
@@ -751,7 +1022,7 @@ function LanguageSection() {
       await api.delete(`/candidates/me/languages/${id}`);
       setItems((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
-      setError(errMsg(err, "Erreur lors de la suppression"));
+      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
     }
   }
 
@@ -762,21 +1033,37 @@ function LanguageSection() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle>Langues</CardTitle>
-        <Button variant="outline" size="sm" onClick={() => { setAdding(!adding); setError(null); }}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setAdding(!adding);
+            setError(null);
+          }}
+        >
           {adding ? "Annuler" : "+ Ajouter"}
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
-        {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+        {loading && (
+          <p className="text-sm text-muted-foreground">Chargement…</p>
+        )}
         {fetchError && <p className="text-sm text-destructive">{fetchError}</p>}
         {!loading && !fetchError && items.length === 0 && !adding && (
-          <p className="text-sm text-muted-foreground">Aucune langue ajoutée.</p>
+          <p className="text-sm text-muted-foreground">
+            Aucune langue ajoutée.
+          </p>
         )}
         {items.map((lang) => (
-          <div key={lang.id} className="flex items-center justify-between rounded-md border p-3">
+          <div
+            key={lang.id}
+            className="flex items-center justify-between rounded-md border p-3"
+          >
             <p className="font-medium">
               {lang.name}{" "}
-              <span className="text-sm font-normal text-muted-foreground">— {levelLabel(lang.level)}</span>
+              <span className="text-sm font-normal text-muted-foreground">
+                — {levelLabel(lang.level)}
+              </span>
             </p>
             <Button
               variant="ghost"
@@ -790,31 +1077,48 @@ function LanguageSection() {
         ))}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {adding && (
-          <form onSubmit={handleAdd} className="space-y-3 rounded-md border p-4">
+          <form
+            onSubmit={handleAdd}
+            className="space-y-3 rounded-md border p-4"
+          >
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="lang-name">Langue *</Label>
                 <Input
                   id="lang-name"
                   value={form.name}
-                  onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
                   placeholder="ex: Français, Anglais…"
                   required
                 />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="lang-level">Niveau *</Label>
-                <Select value={form.level} onValueChange={(v) => v && setForm((prev) => ({ ...prev, level: v as LanguageLevel }))}>
-                  <SelectTrigger id="lang-level" className="w-full"><SelectValue /></SelectTrigger>
+                <Select
+                  value={form.level}
+                  onValueChange={(v) =>
+                    v &&
+                    setForm((prev) => ({ ...prev, level: v as LanguageLevel }))
+                  }
+                >
+                  <SelectTrigger id="lang-level" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {LANGUAGE_LEVELS.map((l) => (
-                      <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                      <SelectItem key={l.value} value={l.value}>
+                        {l.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <Button type="submit" size="sm" disabled={saving}>{saving ? "Ajout…" : "Ajouter"}</Button>
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Ajout…" : "Ajouter"}
+            </Button>
           </form>
         )}
       </CardContent>
