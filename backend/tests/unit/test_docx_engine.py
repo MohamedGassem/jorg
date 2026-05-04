@@ -15,7 +15,7 @@ from services.docx_engine import (
 )
 
 
-def _mock_profile(**kwargs):
+def _mock_profile(**kwargs: object) -> MagicMock:
     profile = MagicMock()
     profile.first_name = kwargs.get("first_name", "Alice")
     profile.last_name = kwargs.get("last_name", "Martin")
@@ -35,7 +35,7 @@ def _mock_profile(**kwargs):
     return profile
 
 
-def _mock_experience(**kwargs):
+def _mock_experience(**kwargs: object) -> MagicMock:
     exp = MagicMock()
     exp.client_name = kwargs.get("client_name", "Acme")
     exp.role = kwargs.get("role", "Engineer")

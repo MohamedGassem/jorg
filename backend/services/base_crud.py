@@ -41,7 +41,7 @@ class CRUDService[T: Base]:
     async def get(self, db: AsyncSession, item_id: UUID, owner_id: UUID) -> T | None:
         result = await db.execute(
             select(self._model).where(
-                self._model.id == item_id,
+                self._model.id == item_id,  # type: ignore[attr-defined]
                 getattr(self._model, self._owner_field) == owner_id,
             )
         )

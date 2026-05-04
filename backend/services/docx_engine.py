@@ -6,7 +6,9 @@ from __future__ import annotations
 import copy
 import io
 import re
+from collections.abc import Sequence
 from datetime import date
+from enum import StrEnum
 from typing import Any, Protocol
 
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
@@ -38,10 +40,10 @@ class CandidateProfileProtocol(Protocol):
     years_of_experience: int | None
     daily_rate: int | None
     annual_salary: int | None
-    availability_status: Any | None
-    work_mode: Any | None
+    availability_status: StrEnum | None
+    work_mode: StrEnum | None
     location_preference: str | None
-    mission_duration: Any | None
+    mission_duration: StrEnum | None
 
 
 def fmt_date(d: date | None) -> str:
@@ -149,7 +151,7 @@ def _apply_block(
 def generate_document(
     template_path: str,
     profile: CandidateProfileProtocol,
-    experiences: list[ExperienceProtocol],
+    experiences: Sequence[ExperienceProtocol],
     mappings: dict[str, Any],
 ) -> bytes:
     """Apply mappings to a template docx and return the result as bytes.

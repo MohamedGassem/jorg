@@ -93,7 +93,7 @@ async def generate_for_candidate(
     experiences = await _load_experiences(db, profile.id)
 
     # 4. Generate document bytes
-    docx_bytes = generate_document(tmpl.word_file_path, profile, experiences, tmpl.mappings)
+    docx_bytes = generate_document(tmpl.word_file_path, profile, experiences, tmpl.mappings)  # type: ignore[arg-type]
 
     # 5. Convert to PDF if requested
     filename = f"doc_{candidate_id}_{template_id}.docx"

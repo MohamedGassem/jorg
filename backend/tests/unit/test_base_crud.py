@@ -50,7 +50,7 @@ class ItemUpdate(BaseModel):
 
 
 @pytest.fixture
-async def db():  # type: ignore[misc]
+async def db():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(_TestBase.metadata.create_all)
@@ -70,8 +70,8 @@ async def db():  # type: ignore[misc]
 
 
 @pytest.fixture
-def service() -> CRUDService[SampleItem]:
-    return CRUDService(SampleItem, "profile_id")
+def service() -> CRUDService[SampleItem]:  # type: ignore[type-var]
+    return CRUDService(SampleItem, "profile_id")  # type: ignore[type-var]
 
 
 # ---------------------------------------------------------------------------
