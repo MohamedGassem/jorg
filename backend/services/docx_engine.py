@@ -7,20 +7,48 @@ import copy
 import io
 import re
 from datetime import date
-from typing import Any
+from typing import Any, Protocol
 
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
 
-from models.candidate_profile import CandidateProfile, Experience
-
 _PH = re.compile(r"\{\{[^}]+\}\}")
+
+
+class ExperienceProtocol(Protocol):
+    client_name: str | None
+    role: str | None
+    start_date: Any  # date
+    end_date: Any | None  # date | None
+    is_current: bool
+    description: str | None
+    context: str | None
+    achievements: str | None
+    technologies: list[str] | None
+
+
+class CandidateProfileProtocol(Protocol):
+    first_name: str | None
+    last_name: str | None
+    title: str | None
+    summary: str | None
+    phone: str | None
+    email_contact: str | None
+    linkedin_url: str | None
+    location: str | None
+    years_of_experience: int | None
+    daily_rate: int | None
+    annual_salary: int | None
+    availability_status: Any | None
+    work_mode: Any | None
+    location_preference: str | None
+    mission_duration: Any | None
 
 
 def _fmt_date(d: date | None) -> str:
     return d.strftime("%m/%Y") if d else ""
 
 
-def _profile_flat(profile: CandidateProfile) -> dict[str, str]:
+def _profile_flat(profile: CandidateProfileProtocol) -> dict[str, str]:
     return {
         "first_name": profile.first_name or "",
         "last_name": profile.last_name or "",
@@ -42,7 +70,7 @@ def _profile_flat(profile: CandidateProfile) -> dict[str, str]:
     }
 
 
-def _exp_flat(exp: Experience) -> dict[str, str]:
+def _exp_flat(exp: ExperienceProtocol) -> dict[str, str]:
     end = _fmt_date(exp.end_date) if not exp.is_current else "présent"
     return {
         "experience.client_name": exp.client_name or "",
@@ -65,6 +93,8 @@ def _is_text_settable(node: Any) -> bool:
                 return attr.fset is not None
             # C-level getset_descriptor (lxml native) — always settable
             return True
+    # Return False (not True) when no .text in MRO — assigning to a non-existent
+    # attribute would raise AttributeError at runtime on those node types.
     return False
 
 
@@ -118,8 +148,8 @@ def _apply_block(
 
 def generate_document(
     template_path: str,
-    profile: CandidateProfile,
-    experiences: list[Experience],
+    profile: CandidateProfileProtocol,
+    experiences: list[ExperienceProtocol],
     mappings: dict[str, Any],
 ) -> bytes:
     """Apply mappings to a template docx and return the result as bytes.

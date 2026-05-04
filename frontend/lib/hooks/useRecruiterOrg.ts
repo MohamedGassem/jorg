@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useAsyncData } from "./useAsyncData";
 import { api } from "@/lib/api";
-import { extractErrorMessage } from "@/lib/errors";
 import type { RecruiterProfile } from "@/types/api";
 
 interface RecruiterOrgState {
@@ -13,32 +12,19 @@ interface RecruiterOrgState {
 }
 
 export function useRecruiterOrg(): RecruiterOrgState {
-  const [orgId, setOrgId] = useState<string | null>(null);
-  const [profile, setProfile] = useState<RecruiterProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: profile,
+    loading,
+    error,
+  } = useAsyncData<RecruiterProfile>(
+    () => api.get<RecruiterProfile>("/recruiters/me/profile"),
+    "Impossible de charger le profil",
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .get<RecruiterProfile>("/recruiters/me/profile")
-      .then((p) => {
-        if (!cancelled) {
-          setProfile(p);
-          setOrgId(p.organization_id ?? null);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled)
-          setError(extractErrorMessage(err, "Impossible de charger le profil"));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return { orgId, profile, loading, error };
+  return {
+    orgId: profile?.organization_id ?? null,
+    profile,
+    loading,
+    error,
+  };
 }

@@ -10,6 +10,14 @@ interface AsyncDataState<T> {
   refetch: () => void;
 }
 
+/**
+ * Fetches async data and manages loading/error state.
+ *
+ * The `fetcher` function is intentionally excluded from the effect dependency
+ * array. This prevents infinite re-fetch loops when callers pass an inline
+ * arrow function. To re-fetch on a dependency change, use the `refetch()`
+ * return value or wrap the fetcher in `useCallback`.
+ */
 export function useAsyncData<T>(
   fetcher: () => Promise<T>,
   fallbackError = "Erreur de chargement",

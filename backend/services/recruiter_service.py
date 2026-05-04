@@ -188,23 +188,23 @@ async def list_accessible_candidates(
     """Return candidates with an active AccessGrant on this org, with optional filters."""
     builder = CandidateQueryBuilder(organization_id)
     if availability_status:
-        builder.filter_availability(availability_status)
+        builder = builder.filter_availability(availability_status)
     if work_mode:
-        builder.filter_work_mode(work_mode)
+        builder = builder.filter_work_mode(work_mode)
     if contract_type:
-        builder.filter_contract_type(contract_type)
+        builder = builder.filter_contract_type(contract_type)
     if mission_duration:
-        builder.filter_mission_duration(mission_duration)
+        builder = builder.filter_mission_duration(mission_duration)
     if max_daily_rate is not None:
-        builder.filter_max_rate(max_daily_rate)
+        builder = builder.filter_max_rate(max_daily_rate)
     if skill:
-        builder.filter_skill(skill)
+        builder = builder.filter_skill(skill)
     if location:
-        builder.filter_location(location)
+        builder = builder.filter_location(location)
     if domain:
-        builder.filter_domain(domain)
+        builder = builder.filter_domain(domain)
     if q:
-        builder.filter_query(q)
+        builder = builder.filter_query(q)
 
     result = await db.execute(builder.build())
     return [

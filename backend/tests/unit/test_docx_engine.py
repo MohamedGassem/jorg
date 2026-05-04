@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 from services.docx_engine import (
     _exp_flat,
     _fmt_date,
+    _is_text_settable,
     _profile_flat,
     generate_document,
 )
@@ -46,6 +47,20 @@ def _mock_experience(**kwargs):
     exp.achievements = kwargs.get("achievements", "ach")
     exp.technologies = kwargs.get("technologies", ["Python"])
     return exp
+
+
+class TestIsTextSettable:
+    def test_returns_false_for_node_without_text(self):
+        class NoTextNode:
+            pass
+
+        assert _is_text_settable(NoTextNode()) is False
+
+    def test_returns_true_for_node_with_settable_text(self):
+        class TextNode:
+            text = "hello"
+
+        assert _is_text_settable(TextNode()) is True
 
 
 class TestFmtDate:
