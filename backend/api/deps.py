@@ -7,8 +7,10 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import services.candidate_service as candidate_service
 from core.database import get_db as get_db
 from core.security import TokenType, decode_token
+from models.candidate_profile import CandidateProfile
 from models.user import User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=True)
@@ -59,3 +61,13 @@ def require_role(role: UserRole) -> Any:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def get_candidate_profile(
+    current_user: Annotated[User, Depends(require_role(UserRole.CANDIDATE))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> CandidateProfile:
+    return await candidate_service.get_or_create_profile(db, current_user.id)
+
+
+CandidateProfile_dep = Annotated[CandidateProfile, Depends(get_candidate_profile)]

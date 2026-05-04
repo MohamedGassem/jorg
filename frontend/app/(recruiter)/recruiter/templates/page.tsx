@@ -6,12 +6,20 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, ApiError } from "@/lib/api";
-import type { Organization, RecruiterProfile, Template } from "@/types/api";
+import { api } from "@/lib/api";
+import { extractErrorMessage } from "@/lib/errors";
+import { useRecruiterOrg } from "@/lib/hooks";
+import type { Organization, Template } from "@/types/api";
 
-function CreateOrgPrompt({ onCreated }: { onCreated: (orgId: string) => void }) {
+function CreateOrgPrompt({
+  onCreated,
+}: {
+  onCreated: (orgId: string) => void;
+}) {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,11 +29,13 @@ function CreateOrgPrompt({ onCreated }: { onCreated: (orgId: string) => void }) 
     setSaving(true);
     setError(null);
     try {
-      const org = await api.post<Organization>("/organizations", { name: name.trim() });
+      const org = await api.post<Organization>("/organizations", {
+        name: name.trim(),
+      });
       await api.put("/recruiters/me/profile", { organization_id: org.id });
       onCreated(org.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : "Erreur lors de la création");
+      setError(extractErrorMessage(err, "Erreur lors de la création"));
     } finally {
       setSaving(false);
     }
@@ -40,8 +50,9 @@ function CreateOrgPrompt({ onCreated }: { onCreated: (orgId: string) => void }) 
         </CardHeader>
         <CardContent>
           <p className="mb-4 text-sm text-muted-foreground">
-            Votre compte n&apos;est pas encore associé à une organisation. Créez-en une pour
-            commencer à gérer des templates et inviter des candidats.
+            Votre compte n&apos;est pas encore associé à une organisation.
+            Créez-en une pour commencer à gérer des templates et inviter des
+            candidats.
           </p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -54,7 +65,7 @@ function CreateOrgPrompt({ onCreated }: { onCreated: (orgId: string) => void }) 
                 required
               />
             </div>
-            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+            <ErrorAlert error={error} />
             <Button type="submit" disabled={saving || !name.trim()}>
               {saving ? "Création…" : "Créer et continuer"}
             </Button>
@@ -66,27 +77,33 @@ function CreateOrgPrompt({ onCreated }: { onCreated: (orgId: string) => void }) 
 }
 
 export default function TemplatesPage() {
-  const [orgId, setOrgId] = useState<string | null>(null);
+  const {
+    orgId: hookOrgId,
+    loading: orgLoading,
+    error: orgError,
+  } = useRecruiterOrg();
+  // Allow local override after org creation (so CreateOrgPrompt can set it immediately)
+  const [createdOrgId, setCreatedOrgId] = useState<string | null>(null);
+  const orgId = createdOrgId ?? hookOrgId;
+
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [tmplLoading, setTmplLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [name, setName] = useState("");
 
   useEffect(() => {
-    api.get<RecruiterProfile>("/recruiters/me/profile")
-      .then((p) => {
-        setOrgId(p.organization_id);
-        if (p.organization_id) {
-          return api.get<Template[]>(`/organizations/${p.organization_id}/templates`);
-        }
-        return [];
-      })
+    if (!orgId) return;
+    setTmplLoading(true);
+    api
+      .get<Template[]>(`/organizations/${orgId}/templates`)
       .then(setTemplates)
-      .catch((err) => setLoadError(err instanceof ApiError ? err.detail : "Erreur de chargement"))
-      .finally(() => setLoading(false));
-  }, []);
+      .catch((err) =>
+        setLoadError(extractErrorMessage(err, "Erreur de chargement")),
+      )
+      .finally(() => setTmplLoading(false));
+  }, [orgId]);
 
   async function handleUpload(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -103,20 +120,24 @@ export default function TemplatesPage() {
     setUploading(true);
     setUploadError(null);
     try {
-      const tmpl = await api.upload<Template>(`/organizations/${orgId}/templates`, fd);
+      const tmpl = await api.upload<Template>(
+        `/organizations/${orgId}/templates`,
+        fd,
+      );
       setTemplates((prev) => [...prev, tmpl]);
       setName("");
       form.reset();
     } catch (err) {
-      setUploadError(err instanceof ApiError ? err.detail : "Erreur upload");
+      setUploadError(extractErrorMessage(err, "Erreur upload"));
     } finally {
       setUploading(false);
     }
   }
 
-  if (loading) return <p className="text-muted-foreground">Chargement…</p>;
-  if (loadError) return <p role="alert" className="text-sm text-destructive">{loadError}</p>;
-  if (!orgId) return <CreateOrgPrompt onCreated={setOrgId} />;
+  if (orgLoading || tmplLoading)
+    return <p className="text-muted-foreground">Chargement…</p>;
+  if (loadError) return <ErrorAlert error={loadError} />;
+  if (!orgId) return <CreateOrgPrompt onCreated={setCreatedOrgId} />;
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -127,7 +148,10 @@ export default function TemplatesPage() {
           onClick={async (e) => {
             e.preventDefault();
             const { api } = await import("@/lib/api");
-            await api.download("/templates/sample", "jorg-sample-template.docx");
+            await api.download(
+              "/templates/sample",
+              "jorg-sample-template.docx",
+            );
           }}
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
@@ -135,19 +159,34 @@ export default function TemplatesPage() {
         </a>
       </div>
 
+      <ErrorAlert error={orgError} />
+
       <Card>
-        <CardHeader><CardTitle>Uploader un nouveau template</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Uploader un nouveau template</CardTitle>
+        </CardHeader>
         <CardContent>
           <form onSubmit={handleUpload} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="tname">Nom du template</Label>
-              <Input id="tname" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Input
+                id="tname"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="file">Fichier Word (.docx)</Label>
-              <Input id="file" name="file" type="file" accept=".docx" required />
+              <Input
+                id="file"
+                name="file"
+                type="file"
+                accept=".docx"
+                required
+              />
             </div>
-            {uploadError && <p role="alert" className="text-sm text-destructive">{uploadError}</p>}
+            <ErrorAlert error={uploadError} />
             <Button type="submit" disabled={uploading}>
               {uploading ? "Upload…" : "Uploader"}
             </Button>
@@ -156,7 +195,7 @@ export default function TemplatesPage() {
       </Card>
 
       {templates.length === 0 ? (
-        <p className="text-muted-foreground">Aucun template. Uploadez-en un ci-dessus.</p>
+        <EmptyState message="Aucun template. Uploadez-en un ci-dessus." />
       ) : (
         <ul className="space-y-3" role="list">
           {templates.map((tmpl) => (
@@ -172,11 +211,15 @@ export default function TemplatesPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="mb-3 text-sm text-muted-foreground">
-                    {tmpl.detected_placeholders.length} placeholder(s) détecté(s)
+                    {tmpl.detected_placeholders.length} placeholder(s)
+                    détecté(s)
                   </p>
                   <Link
                     href={`/recruiter/templates/${tmpl.id}`}
-                    className={buttonVariants({ size: "sm", variant: "outline" })}
+                    className={buttonVariants({
+                      size: "sm",
+                      variant: "outline",
+                    })}
                   >
                     Configurer les mappings
                   </Link>

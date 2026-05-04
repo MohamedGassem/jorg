@@ -4,6 +4,7 @@ import uuid
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
@@ -17,12 +18,18 @@ from api.routes.organizations import router as organizations_router
 from api.routes.recruiters import router as recruiters_router
 from api.routes.templates import router as templates_router
 from core.config import get_settings
+from core.exceptions import JorgError
 from core.logging import configure_logging
 
 settings = get_settings()
 configure_logging(log_level=settings.log_level)
 
 app = FastAPI(title="Jorg API", version="0.1.0")
+
+
+@app.exception_handler(JorgError)
+async def jorg_error_handler(request: Request, exc: JorgError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):

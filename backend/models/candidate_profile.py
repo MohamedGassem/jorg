@@ -97,18 +97,28 @@ class CandidateProfile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     annual_salary: Mapped[int | None] = mapped_column(Integer, nullable=True)
     extra_fields: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     availability_status: Mapped[AvailabilityStatus] = mapped_column(
-        Enum(AvailabilityStatus, name="availability_status"),
+        Enum(
+            AvailabilityStatus,
+            name="availability_status",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         default=AvailabilityStatus.NOT_AVAILABLE,
         nullable=False,
     )
     availability_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     work_mode: Mapped[WorkMode | None] = mapped_column(
-        Enum(WorkMode, name="work_mode"), nullable=True
+        Enum(WorkMode, name="work_mode", values_callable=lambda obj: [e.value for e in obj]),
+        nullable=True,
     )
     location_preference: Mapped[str | None] = mapped_column(String(200), nullable=True)
     preferred_domains: Mapped[list[str] | None] = mapped_column(ARRAY(String(50)), nullable=True)
     mission_duration: Mapped[MissionDuration | None] = mapped_column(
-        Enum(MissionDuration, name="mission_duration"), nullable=True
+        Enum(
+            MissionDuration,
+            name="mission_duration",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
+        nullable=True,
     )
 
 

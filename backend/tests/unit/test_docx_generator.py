@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
 
-from services.generation_service import generate_document
+from services.docx_engine import generate_document
 
 
 def _make_docx_path(paragraphs: list[str]) -> str:

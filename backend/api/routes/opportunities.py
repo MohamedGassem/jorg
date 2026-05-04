@@ -18,7 +18,6 @@ from schemas.opportunity import (
     OpportunityUpdate,
     ShortlistAddRequest,
 )
-from services.opportunity_service import DuplicateShortlistEntryError, NoActiveGrantError
 
 router = APIRouter(prefix="/organizations", tags=["opportunities"])
 
@@ -99,18 +98,8 @@ async def add_to_shortlist(
 ) -> dict[str, str]:
     await _require_membership(db, current_user.id, org_id)
     await _get_opp_or_404(db, opp_id, org_id)
-    try:
-        await opportunity_service.add_to_shortlist(db, opp_id, org_id, data.candidate_id)
-        return {"status": "added"}
-    except NoActiveGrantError as e:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="no active access grant"
-        ) from e
-    except DuplicateShortlistEntryError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="candidate already in shortlist",
-        ) from e
+    await opportunity_service.add_to_shortlist(db, opp_id, org_id, data.candidate_id)
+    return {"status": "added"}
 
 
 @router.delete(
