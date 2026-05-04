@@ -5,15 +5,19 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, ApiError } from "@/lib/api";
-import type { OpportunityRead, RecruiterProfile } from "@/types/api";
+import { api } from "@/lib/api";
+import { extractErrorMessage } from "@/lib/errors";
+import { useRecruiterOrg } from "@/lib/hooks";
+import type { OpportunityRead } from "@/types/api";
 
 export default function OpportunitiesPage() {
-  const [orgId, setOrgId] = useState<string | null>(null);
+  const { orgId, loading, error: orgError } = useRecruiterOrg();
   const [opportunities, setOpportunities] = useState<OpportunityRead[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [oppsLoading, setOppsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -21,19 +25,14 @@ export default function OpportunitiesPage() {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
+    if (!orgId) return;
+    setOppsLoading(true);
     api
-      .get<RecruiterProfile>("/recruiters/me/profile")
-      .then((p) => {
-        setOrgId(p.organization_id);
-        if (p.organization_id) {
-          return api
-            .get<OpportunityRead[]>(`/organizations/${p.organization_id}/opportunities`)
-            .then(setOpportunities)
-            .catch((err) => setError(err instanceof ApiError ? err.detail : "Erreur"));
-        }
-      })
-      .finally(() => setLoading(false));
-  }, []);
+      .get<OpportunityRead[]>(`/organizations/${orgId}/opportunities`)
+      .then(setOpportunities)
+      .catch((err) => setError(extractErrorMessage(err, "Erreur")))
+      .finally(() => setOppsLoading(false));
+  }, [orgId]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -42,20 +41,21 @@ export default function OpportunitiesPage() {
     try {
       const opp = await api.post<OpportunityRead>(
         `/organizations/${orgId}/opportunities`,
-        { title: title.trim(), description: description.trim() || null }
+        { title: title.trim(), description: description.trim() || null },
       );
       setOpportunities((prev) => [opp, ...prev]);
       setTitle("");
       setDescription("");
       setShowForm(false);
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : "Erreur");
+      setError(extractErrorMessage(err, "Erreur"));
     } finally {
       setCreating(false);
     }
   }
 
-  if (loading) return <p className="text-muted-foreground">Chargement…</p>;
+  if (loading || oppsLoading)
+    return <p className="text-muted-foreground">Chargement…</p>;
   if (!orgId)
     return (
       <p className="text-muted-foreground">
@@ -96,11 +96,7 @@ export default function OpportunitiesPage() {
                   rows={3}
                 />
               </div>
-              {error && (
-                <p role="alert" className="text-sm text-destructive">
-                  {error}
-                </p>
-              )}
+              <ErrorAlert error={orgError ?? error} />
               <Button type="submit" disabled={creating || !title.trim()}>
                 {creating ? "Création…" : "Créer"}
               </Button>
@@ -109,10 +105,10 @@ export default function OpportunitiesPage() {
         </Card>
       )}
 
+      {!showForm && <ErrorAlert error={orgError ?? error} />}
+
       {opportunities.length === 0 ? (
-        <p className="text-muted-foreground">
-          Aucune opportunité. Créez-en une ci-dessus.
-        </p>
+        <EmptyState message="Aucune opportunité. Créez-en une ci-dessus." />
       ) : (
         <ul className="space-y-3" role="list">
           {opportunities.map((opp) => (

@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -13,11 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { extractErrorMessage } from "@/lib/errors";
+import { useDownload, useRecruiterOrg } from "@/lib/hooks";
 import type {
   AccessibleCandidate,
   GeneratedDocument,
-  RecruiterProfile,
   Template,
 } from "@/types/api";
 
@@ -27,7 +29,7 @@ function candidateLabel(c: AccessibleCandidate): string {
 }
 
 export default function GeneratePage() {
-  const [orgId, setOrgId] = useState<string | null>(null);
+  const { orgId, loading: orgLoading } = useRecruiterOrg();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [candidates, setCandidates] = useState<AccessibleCandidate[]>([]);
   const [templateId, setTemplateId] = useState("");
@@ -37,43 +39,41 @@ export default function GeneratePage() {
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<GeneratedDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { download, errors: downloadErrors } = useDownload();
 
   useEffect(() => {
+    if (!orgId) return;
     let cancelled = false;
     (async () => {
       try {
-        const profile = await api.get<RecruiterProfile>("/recruiters/me/profile");
-        if (cancelled) return;
-        setOrgId(profile.organization_id);
-        if (!profile.organization_id) return;
         const [tmpls, cands] = await Promise.all([
-          api.get<Template[]>(`/organizations/${profile.organization_id}/templates`),
-          api.get<AccessibleCandidate[]>(
-            `/organizations/${profile.organization_id}/candidates`
-          ),
+          api.get<Template[]>(`/organizations/${orgId}/templates`),
+          api.get<AccessibleCandidate[]>(`/organizations/${orgId}/candidates`),
         ]);
         if (cancelled) return;
         setTemplates(tmpls.filter((t) => t.is_valid));
         setCandidates(cands);
       } catch (err) {
         if (!cancelled)
-          setError(err instanceof ApiError ? err.detail : "Erreur de chargement");
+          setError(extractErrorMessage(err, "Erreur de chargement"));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [orgId]);
 
   const selectedCandidate = useMemo(
     () => candidates.find((c) => c.user_id === candidateId) ?? null,
-    [candidates, candidateId]
+    [candidates, candidateId],
   );
 
   const filteredCandidates = useMemo(() => {
     const q = candidateQuery.trim().toLowerCase();
     if (!q) return candidates;
-    return candidates.filter((c) => candidateLabel(c).toLowerCase().includes(q));
+    return candidates.filter((c) =>
+      candidateLabel(c).toLowerCase().includes(q),
+    );
   }, [candidates, candidateQuery]);
 
   async function handleGenerate(e: React.FormEvent) {
@@ -85,15 +85,17 @@ export default function GeneratePage() {
     try {
       const doc = await api.post<GeneratedDocument>(
         `/organizations/${orgId}/generate`,
-        { candidate_id: candidateId, template_id: templateId, format }
+        { candidate_id: candidateId, template_id: templateId, format },
       );
       setResult(doc);
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : "Erreur de génération");
+      setError(extractErrorMessage(err, "Erreur de génération"));
     } finally {
       setGenerating(false);
     }
   }
+
+  if (orgLoading) return <p className="text-muted-foreground">Chargement…</p>;
 
   if (!orgId)
     return (
@@ -117,14 +119,18 @@ export default function GeneratePage() {
                 id="candidate-search"
                 placeholder="Rechercher par nom ou email…"
                 value={
-                  selectedCandidate ? candidateLabel(selectedCandidate) : candidateQuery
+                  selectedCandidate
+                    ? candidateLabel(selectedCandidate)
+                    : candidateQuery
                 }
                 onChange={(e) => {
                   setCandidateId("");
                   setCandidateQuery(e.target.value);
                 }}
                 aria-autocomplete="list"
-                aria-expanded={!selectedCandidate && filteredCandidates.length > 0}
+                aria-expanded={
+                  !selectedCandidate && filteredCandidates.length > 0
+                }
               />
               {!selectedCandidate && candidateQuery && (
                 <ul
@@ -170,7 +176,10 @@ export default function GeneratePage() {
 
             <div className="space-y-2">
               <Label htmlFor="template">Template</Label>
-              <Select value={templateId} onValueChange={(v) => v && setTemplateId(v)}>
+              <Select
+                value={templateId}
+                onValueChange={(v) => v && setTemplateId(v)}
+              >
                 <SelectTrigger id="template">
                   <SelectValue placeholder="Choisir un template valide…" />
                 </SelectTrigger>
@@ -200,12 +209,11 @@ export default function GeneratePage() {
               </Select>
             </div>
 
-            {error && (
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-            )}
-            <Button type="submit" disabled={generating || !templateId || !candidateId}>
+            <ErrorAlert error={error} />
+            <Button
+              type="submit"
+              disabled={generating || !templateId || !candidateId}
+            >
               {generating ? "Génération…" : "Générer le dossier"}
             </Button>
           </form>
@@ -220,20 +228,16 @@ export default function GeneratePage() {
             <Button
               variant="outline"
               onClick={() =>
-                api
-                  .download(
-                    `/documents/${result.id}/download`,
-                    `dossier.${result.file_format}`
-                  )
-                  .catch((err) =>
-                    setError(
-                      err instanceof ApiError ? err.detail : "Erreur de téléchargement"
-                    )
-                  )
+                download(
+                  `/documents/${result.id}/download`,
+                  `dossier.${result.file_format}`,
+                  result.id,
+                )
               }
             >
               Télécharger ({result.file_format.toUpperCase()})
             </Button>
+            <ErrorAlert error={downloadErrors[result.id] ?? null} />
           </CardContent>
         </Card>
       )}
