@@ -23,10 +23,10 @@ const STATUS_VARIANTS: Record<
   string,
   "default" | "secondary" | "destructive" | "outline"
 > = {
-  pending: "secondary",
+  pending: "default",
   accepted: "secondary",
-  rejected: "secondary",
-  expired: "secondary",
+  rejected: "destructive",
+  expired: "outline",
 };
 
 export default function InvitationsPage() {

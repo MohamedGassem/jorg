@@ -76,24 +76,30 @@ async def generate_for_candidate(
     fmt: Literal["docx", "pdf"],
 ) -> GeneratedDocument:
     """Full pipeline: verify grant → load data → generate → save → record."""
+    # 1. Verify active access grant
     grant = await invitation_service.get_active_grant(db, candidate_id, organization_id)
     if grant is None:
         raise ForbiddenError("No active access grant for this candidate")
 
+    # 2. Load template
     tmpl = await template_service.get_template(db, template_id, organization_id)
     if tmpl is None:
         raise NotFoundError("Template not found")
     if not tmpl.is_valid:
         raise BusinessRuleError("Template is not fully mapped")
 
+    # 3. Load candidate profile
     profile = await _load_profile(db, candidate_id)
     experiences = await _load_experiences(db, profile.id)
 
+    # 4. Generate document bytes
     docx_bytes = generate_document(tmpl.word_file_path, profile, experiences, tmpl.mappings)
 
+    # 5. Convert to PDF if requested
     filename = f"doc_{candidate_id}_{template_id}.docx"
     file_path = storage.save_upload(docx_bytes, filename)
 
+    # 6. Save to storage
     actual_path = file_path
     actual_format: str = "docx"
     if fmt == "pdf":
@@ -102,6 +108,7 @@ async def generate_for_candidate(
             actual_path = pdf_path
             actual_format = "pdf"
 
+    # 7. Record generated document
     doc = GeneratedDocument(
         access_grant_id=grant.id,
         template_id=template_id,

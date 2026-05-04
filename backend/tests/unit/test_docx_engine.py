@@ -7,11 +7,11 @@ from unittest.mock import MagicMock
 
 # These imports will fail until docx_engine is created — that's expected.
 from services.docx_engine import (
-    _exp_flat,
-    _fmt_date,
-    _is_text_settable,
-    _profile_flat,
+    exp_flat,
+    fmt_date,
     generate_document,
+    is_text_settable,
+    profile_flat,
 )
 
 
@@ -54,37 +54,37 @@ class TestIsTextSettable:
         class NoTextNode:
             pass
 
-        assert _is_text_settable(NoTextNode()) is False
+        assert is_text_settable(NoTextNode()) is False
 
     def test_returns_true_for_node_with_settable_text(self):
         class TextNode:
             text = "hello"
 
-        assert _is_text_settable(TextNode()) is True
+        assert is_text_settable(TextNode()) is True
 
 
 class TestFmtDate:
     def test_returns_empty_string_for_none(self):
-        assert _fmt_date(None) == ""
+        assert fmt_date(None) == ""
 
     def test_formats_date_as_mm_yyyy(self):
-        assert _fmt_date(date(2023, 6, 15)) == "06/2023"
+        assert fmt_date(date(2023, 6, 15)) == "06/2023"
 
 
 class TestProfileFlat:
     def test_returns_first_name(self):
         p = _mock_profile(first_name="Bob")
-        flat = _profile_flat(p)
+        flat = profile_flat(p)
         assert flat["first_name"] == "Bob"
 
     def test_returns_empty_string_for_none_fields(self):
         p = _mock_profile(phone=None)
-        flat = _profile_flat(p)
+        flat = profile_flat(p)
         assert flat["phone"] == ""
 
     def test_contains_all_expected_keys(self):
         p = _mock_profile()
-        flat = _profile_flat(p)
+        flat = profile_flat(p)
         expected_keys = {
             "first_name",
             "last_name",
@@ -108,17 +108,17 @@ class TestProfileFlat:
 class TestExpFlat:
     def test_formats_end_date(self):
         exp = _mock_experience(end_date=date(2023, 6, 1), is_current=False)
-        flat = _exp_flat(exp)
+        flat = exp_flat(exp)
         assert flat["experience.end_date"] == "06/2023"
 
     def test_current_experience_shows_present(self):
         exp = _mock_experience(is_current=True)
-        flat = _exp_flat(exp)
+        flat = exp_flat(exp)
         assert flat["experience.end_date"] == "présent"
 
     def test_technologies_joined(self):
         exp = _mock_experience(technologies=["Python", "FastAPI"])
-        flat = _exp_flat(exp)
+        flat = exp_flat(exp)
         assert flat["experience.technologies"] == "Python, FastAPI"
 
 

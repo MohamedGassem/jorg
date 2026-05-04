@@ -44,11 +44,11 @@ class CandidateProfileProtocol(Protocol):
     mission_duration: Any | None
 
 
-def _fmt_date(d: date | None) -> str:
+def fmt_date(d: date | None) -> str:
     return d.strftime("%m/%Y") if d else ""
 
 
-def _profile_flat(profile: CandidateProfileProtocol) -> dict[str, str]:
+def profile_flat(profile: CandidateProfileProtocol) -> dict[str, str]:
     return {
         "first_name": profile.first_name or "",
         "last_name": profile.last_name or "",
@@ -70,12 +70,12 @@ def _profile_flat(profile: CandidateProfileProtocol) -> dict[str, str]:
     }
 
 
-def _exp_flat(exp: ExperienceProtocol) -> dict[str, str]:
-    end = _fmt_date(exp.end_date) if not exp.is_current else "présent"
+def exp_flat(exp: ExperienceProtocol) -> dict[str, str]:
+    end = fmt_date(exp.end_date) if not exp.is_current else "présent"
     return {
         "experience.client_name": exp.client_name or "",
         "experience.role": exp.role or "",
-        "experience.start_date": _fmt_date(exp.start_date),
+        "experience.start_date": fmt_date(exp.start_date),
         "experience.end_date": end,
         "experience.description": exp.description or "",
         "experience.context": exp.context or "",
@@ -84,7 +84,7 @@ def _exp_flat(exp: ExperienceProtocol) -> dict[str, str]:
     }
 
 
-def _is_text_settable(node: Any) -> bool:
+def is_text_settable(node: Any) -> bool:
     """Return True if node.text can be assigned (not a read-only computed property)."""
     for klass in type(node).__mro__:
         if "text" in klass.__dict__:
@@ -101,7 +101,7 @@ def _is_text_settable(node: Any) -> bool:
 def _replace_element(elem: Any, lookup: dict[str, str]) -> None:
     """Replace {{PLACEHOLDER}} in every XML text node using the lookup dict."""
     for node in elem.iter():
-        if _is_text_settable(node):
+        if is_text_settable(node):
             if node.text:
                 node.text = _PH.sub(lambda m: lookup.get(m.group(), ""), node.text)
             if node.tail:
@@ -162,7 +162,7 @@ def generate_document(
     """
     doc = Document(template_path)
 
-    profile_data = _profile_flat(profile)
+    profile_data = profile_flat(profile)
 
     # Build the simple placeholder → value lookup
     base_lookup: dict[str, str] = {}
@@ -175,7 +175,7 @@ def generate_document(
     # Build per-experience lookup rows
     exp_items: list[dict[str, str]] = []
     for exp in experiences:
-        exp_data = _exp_flat(exp)
+        exp_data = exp_flat(exp)
         item: dict[str, str] = {}
         for placeholder, field in mappings.items():
             if isinstance(field, str) and field.startswith("experience."):

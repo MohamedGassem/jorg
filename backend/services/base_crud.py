@@ -18,19 +18,21 @@ class CRUDService[T: Base]:
     """
 
     def __init__(self, model: type[T], owner_field: str) -> None:
-        self.model = model
-        self.owner_field = owner_field
+        if not hasattr(model, owner_field):
+            raise AttributeError(f"{model.__name__} has no attribute '{owner_field}'")
+        self._model = model
+        self._owner_field = owner_field
 
     async def list(self, db: AsyncSession, owner_id: UUID) -> list[T]:
         result = await db.execute(
-            select(self.model).where(getattr(self.model, self.owner_field) == owner_id)
+            select(self._model).where(getattr(self._model, self._owner_field) == owner_id)
         )
         return list(result.scalars().all())
 
     async def create(self, db: AsyncSession, owner_id: UUID, data: Any) -> T:
         fields = data.model_dump()
-        fields[self.owner_field] = owner_id
-        obj = self.model(**fields)
+        fields[self._owner_field] = owner_id
+        obj = self._model(**fields)
         db.add(obj)
         await db.commit()
         await db.refresh(obj)
@@ -38,9 +40,9 @@ class CRUDService[T: Base]:
 
     async def get(self, db: AsyncSession, item_id: UUID, owner_id: UUID) -> T | None:
         result = await db.execute(
-            select(self.model).where(
-                self.model.id == item_id,
-                getattr(self.model, self.owner_field) == owner_id,
+            select(self._model).where(
+                self._model.id == item_id,
+                getattr(self._model, self._owner_field) == owner_id,
             )
         )
         return result.scalar_one_or_none()
