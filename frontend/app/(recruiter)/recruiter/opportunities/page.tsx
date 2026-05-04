@@ -26,6 +26,7 @@ export default function OpportunitiesPage() {
 
   useEffect(() => {
     if (!orgId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOppsLoading(true);
     api
       .get<OpportunityRead[]>(`/organizations/${orgId}/opportunities`)

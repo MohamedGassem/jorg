@@ -95,6 +95,7 @@ export default function TemplatesPage() {
 
   useEffect(() => {
     if (!orgId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTmplLoading(true);
     api
       .get<Template[]>(`/organizations/${orgId}/templates`)
