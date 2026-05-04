@@ -23,3 +23,7 @@ class ConflictError(JorgError):
 
 class BusinessRuleError(JorgError):
     status_code = 422
+
+
+class GoneError(JorgError):
+    status_code = 410

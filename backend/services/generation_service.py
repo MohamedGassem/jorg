@@ -58,7 +58,7 @@ async def _load_profile(db: AsyncSession, candidate_id: UUID) -> CandidateProfil
     )
     profile = result.scalar_one_or_none()
     if profile is None:
-        raise NotFoundError("candidate_profile_not_found")
+        raise NotFoundError("Candidate profile not found")
     return profile
 
 
@@ -78,13 +78,13 @@ async def generate_for_candidate(
     """Full pipeline: verify grant → load data → generate → save → record."""
     grant = await invitation_service.get_active_grant(db, candidate_id, organization_id)
     if grant is None:
-        raise ForbiddenError("no_active_grant")
+        raise ForbiddenError("No active access grant for this candidate")
 
     tmpl = await template_service.get_template(db, template_id, organization_id)
     if tmpl is None:
-        raise NotFoundError("template_not_found")
+        raise NotFoundError("Template not found")
     if not tmpl.is_valid:
-        raise BusinessRuleError("template_invalid")
+        raise BusinessRuleError("Template is not fully mapped")
 
     profile = await _load_profile(db, candidate_id)
     experiences = await _load_experiences(db, profile.id)
