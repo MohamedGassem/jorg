@@ -17,5 +17,12 @@ services:
       timeout: 5s
       retries: 5
 
+  libreoffice:
+    image: linuxserver/libreoffice:latest
+    container_name: jorg-libreoffice
+    restart: unless-stopped
+    profiles:
+      - pdf
+
 volumes:
   jorg_pgdata:
