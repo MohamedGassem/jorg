@@ -6,6 +6,10 @@ interface JwtPayload {
   exp?: number;
 }
 
+// Decodes the JWT payload for routing purposes only.
+// The Edge runtime cannot access the signing key, so no signature verification
+// is performed here. The server verifies every API request independently —
+// this middleware only provides redirect-level convenience, not a security boundary.
 function decodeJwtPayload(token: string): JwtPayload | null {
   try {
     const base64Url = token.split(".")[1];

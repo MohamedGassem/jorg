@@ -22,7 +22,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.add_column(
-        "templates", sa.Column("version", sa.Integer(), nullable=False, server_default="1")
+        "templates", sa.Column("version", sa.Integer(), nullable=False, server_default="0")
     )
 
 

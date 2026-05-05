@@ -44,10 +44,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 _oauth_states: dict[str, dict] = {}  # { state: { role, created_at } }
 
+_settings = get_settings()
 _COOKIE_SETTINGS = {
     "httponly": True,
     "samesite": "lax",
     "path": "/",
+    "secure": _settings.env != "development",
 }
 
 
@@ -143,8 +145,9 @@ async def logout(
     raw_token = (payload.refresh_token if payload else None) or refresh_token_cookie
     if raw_token:
         await revoke_refresh_token(db, raw_token)
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    secure = get_settings().env != "development"
+    response.delete_cookie("access_token", path="/", secure=secure)
+    response.delete_cookie("refresh_token", path="/", secure=secure)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

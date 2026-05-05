@@ -180,13 +180,17 @@ async def bulk_generate(
             results.append(
                 BulkGenerateResult(candidate_id=entry.candidate_id, status="error", error=e.detail)
             )
-        except Exception as e:
+        except Exception:
             logger.exception(
                 "bulk_generate.unexpected_error",
                 opportunity_id=str(opportunity_id),
                 candidate_id=str(entry.candidate_id),
             )
             results.append(
-                BulkGenerateResult(candidate_id=entry.candidate_id, status="error", error=str(e))
+                BulkGenerateResult(
+                    candidate_id=entry.candidate_id,
+                    status="error",
+                    error="unexpected error during generation",
+                )
             )
     return results
