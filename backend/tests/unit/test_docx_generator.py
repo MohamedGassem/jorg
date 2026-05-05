@@ -31,6 +31,12 @@ def _mock_profile(**kwargs: object) -> MagicMock:
         "years_of_experience": 8,
         "daily_rate": 600,
         "annual_salary": None,
+        "availability_status": None,
+        "work_mode": None,
+        "location_preference": None,
+        "mission_duration": None,
+        "contract_type": None,
+        "preferred_domains": None,
     }
     profile = MagicMock()
     for k, v in {**defaults, **kwargs}.items():
@@ -62,6 +68,7 @@ def test_simple_placeholder_replaced() -> None:
         path,
         _mock_profile(),
         [],
+        [],
         {"{{NOM}}": "last_name", "{{PRENOM}}": "first_name"},
     )
     doc = Document(io.BytesIO(result))
@@ -73,7 +80,7 @@ def test_simple_placeholder_replaced() -> None:
 
 def test_unknown_field_replaced_with_empty() -> None:
     path = _make_docx_path(["Data: {{GHOST}}"])
-    result = generate_document(path, _mock_profile(), [], {"{{GHOST}}": "nonexistent_field"})
+    result = generate_document(path, _mock_profile(), [], [], {"{{GHOST}}": "nonexistent_field"})
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "{{GHOST}}" not in texts
@@ -94,7 +101,7 @@ def test_experience_block_repeated_per_item() -> None:
         "{{EXP_CLIENT}}": "experience.client_name",
         "{{EXP_ROLE}}": "experience.role",
     }
-    result = generate_document(path, _mock_profile(), [exp1, exp2], mappings)
+    result = generate_document(path, _mock_profile(), [exp1, exp2], [], mappings)
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "Alpha" in texts
@@ -114,7 +121,7 @@ def test_no_experiences_removes_block_markers() -> None:
         ]
     )
     result = generate_document(
-        path, _mock_profile(), [], {"{{EXP_CLIENT}}": "experience.client_name"}
+        path, _mock_profile(), [], [], {"{{EXP_CLIENT}}": "experience.client_name"}
     )
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
@@ -137,7 +144,7 @@ def test_experience_current_end_date_shows_present() -> None:
         "{{EXP_START}}": "experience.start_date",
         "{{EXP_END}}": "experience.end_date",
     }
-    result = generate_document(path, _mock_profile(), [exp], mappings)
+    result = generate_document(path, _mock_profile(), [exp], [], mappings)
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "06/2022" in texts
@@ -161,7 +168,7 @@ def test_date_formatted_mm_yyyy() -> None:
         "{{EXP_START}}": "experience.start_date",
         "{{EXP_END}}": "experience.end_date",
     }
-    result = generate_document(path, _mock_profile(), [exp], mappings)
+    result = generate_document(path, _mock_profile(), [exp], [], mappings)
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "03/2021" in texts
@@ -178,7 +185,7 @@ def test_technologies_joined_as_string() -> None:
     )
     exp = _mock_exp(technologies=["Python", "FastAPI", "Redis"])
     result = generate_document(
-        path, _mock_profile(), [exp], {"{{EXP_TECH}}": "experience.technologies"}
+        path, _mock_profile(), [exp], [], {"{{EXP_TECH}}": "experience.technologies"}
     )
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
@@ -198,6 +205,7 @@ def test_generate_replaces_annual_salary_placeholder(tmp_path: object) -> None:
     result = generate_document(
         str(template_path),
         profile,
+        [],
         [],
         {"{{SALAIRE}}": "annual_salary"},
     )

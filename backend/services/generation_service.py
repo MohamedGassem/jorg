@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import storage
 from core.exceptions import BusinessRuleError, ForbiddenError, NotFoundError
-from models.candidate_profile import CandidateProfile, Experience
+from models.candidate_profile import CandidateProfile, Experience, Skill
 from models.generated_document import GeneratedDocument
 from models.recruiter import Organization
 from models.template import Template
@@ -70,6 +70,11 @@ async def _load_experiences(db: AsyncSession, profile_id: UUID) -> list[Experien
     return list(result.scalars().all())
 
 
+async def _load_skills(db: AsyncSession, profile_id: UUID) -> list[Skill]:
+    result = await db.execute(select(Skill).where(Skill.profile_id == profile_id))
+    return list(result.scalars().all())
+
+
 async def generate_for_candidate(
     db: AsyncSession,
     organization_id: UUID,
@@ -94,9 +99,10 @@ async def generate_for_candidate(
     # 3. Load candidate profile
     profile = await _load_profile(db, candidate_id)
     experiences = await _load_experiences(db, profile.id)
+    skills = await _load_skills(db, profile.id)
 
     # 4. Generate document bytes
-    docx_bytes = generate_document(tmpl.word_file_path, profile, experiences, tmpl.mappings)  # type: ignore[arg-type]
+    docx_bytes = generate_document(tmpl.word_file_path, profile, experiences, skills, tmpl.mappings)  # type: ignore[arg-type]
 
     # 5. Convert to PDF if requested
     filename = f"doc_{candidate_id}_{template_id}.docx"
