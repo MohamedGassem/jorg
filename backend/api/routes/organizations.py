@@ -166,7 +166,7 @@ async def update_template_mappings(
     tmpl = await template_service.get_template(db, template_id, org_id)
     if tmpl is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
-    return await template_service.update_mappings(db, tmpl, data.mappings)
+    return await template_service.update_mappings(db, tmpl, data.mappings, data.version)
 
 
 @router.delete("/{org_id}/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)

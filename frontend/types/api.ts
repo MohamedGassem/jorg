@@ -4,7 +4,13 @@ export type UserRole = "candidate" | "recruiter";
 export type InvitationStatus = "pending" | "accepted" | "rejected" | "expired";
 export type AccessGrantStatus = "active" | "revoked";
 export type FileFormat = "docx" | "pdf";
-export type SkillCategory = "language" | "framework" | "database" | "tool" | "methodology" | "other";
+export type SkillCategory =
+  | "language"
+  | "framework"
+  | "database"
+  | "tool"
+  | "methodology"
+  | "other";
 export type LanguageLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | "native";
 export type ContractType = "freelance" | "cdi" | "both";
 
@@ -75,15 +81,25 @@ export interface AuthResponse {
   refresh_token: string;
 }
 
-export type AvailabilityStatus = "available_now" | "available_from" | "not_available";
+export type AvailabilityStatus =
+  | "available_now"
+  | "available_from"
+  | "not_available";
 export type WorkMode = "remote" | "onsite" | "hybrid";
 export type MissionDuration = "short" | "medium" | "long" | "permanent";
 
 export const VALID_DOMAINS = [
-  "finance", "retail", "industry", "public",
-  "health", "tech", "telecom", "energy", "other",
+  "finance",
+  "retail",
+  "industry",
+  "public",
+  "health",
+  "tech",
+  "telecom",
+  "energy",
+  "other",
 ] as const;
-export type Domain = typeof VALID_DOMAINS[number];
+export type Domain = (typeof VALID_DOMAINS)[number];
 
 export interface CandidateProfile {
   id: string;
@@ -139,6 +155,7 @@ export interface Template {
   detected_placeholders: string[];
   mappings: Record<string, string>;
   is_valid: boolean;
+  version: number;
   created_at: string;
   updated_at: string;
 }
@@ -233,8 +250,13 @@ export interface BulkGenerateResult {
 
 export type OrganizationStatus = "invited" | "active" | "revoked" | "expired";
 export type InteractionEventType =
-  | "invitation_sent" | "invitation_accepted" | "invitation_rejected"
-  | "invitation_expired" | "access_granted" | "access_revoked" | "document_generated";
+  | "invitation_sent"
+  | "invitation_accepted"
+  | "invitation_rejected"
+  | "invitation_expired"
+  | "access_granted"
+  | "access_revoked"
+  | "document_generated";
 
 export interface InteractionEvent {
   type: InteractionEventType;
