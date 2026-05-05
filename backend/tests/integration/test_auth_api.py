@@ -264,11 +264,11 @@ async def test_oauth_google_callback_creates_user_and_returns_tokens(
 
     r = await client.get(
         f"/auth/oauth/google/callback?code=fake-code&state={state}",
+        follow_redirects=False,
     )
-    assert r.status_code == 200
-    data = r.json()
-    assert data["access_token"]
-    assert data["refresh_token"]
+    assert r.status_code == 302
+    assert "access_token" in r.cookies
+    assert "refresh_token" in r.cookies
 
 
 # ---- OAuth LinkedIn tests --------------------------------------------------
@@ -313,10 +313,10 @@ async def test_oauth_linkedin_full_flow(
 
     r = await client.get(
         f"/auth/oauth/linkedin/callback?code=fake-code&state={state}",
+        follow_redirects=False,
     )
-    assert r.status_code == 200
-    data = r.json()
-    assert data["access_token"]
+    assert r.status_code == 302
+    assert "access_token" in r.cookies
 
 
 # ---- RefreshToken DB record tests -----------------------------------------
