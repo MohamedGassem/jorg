@@ -56,16 +56,22 @@ export default function TemplateMappingPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<RecruiterProfile>("/recruiters/me/profile").then((p) => {
-      setOrgId(p.organization_id);
-      if (p.organization_id) {
-        return api.get<Template>(`/organizations/${p.organization_id}/templates/${id}`)
-          .then((tmpl) => {
-            setTemplate(tmpl);
-            setMappings(tmpl.mappings as Record<string, string>);
-          });
-      }
-    }).catch(console.error);
+    api
+      .get<RecruiterProfile>("/recruiters/me/profile")
+      .then((p) => {
+        setOrgId(p.organization_id);
+        if (p.organization_id) {
+          return api
+            .get<Template>(
+              `/organizations/${p.organization_id}/templates/${id}`,
+            )
+            .then((tmpl) => {
+              setTemplate(tmpl);
+              setMappings(tmpl.mappings as Record<string, string>);
+            });
+        }
+      })
+      .catch(console.error);
   }, [id]);
 
   async function handleSave() {
@@ -75,10 +81,14 @@ export default function TemplateMappingPage() {
     try {
       const updated = await api.put<Template>(
         `/organizations/${orgId}/templates/${template.id}/mappings`,
-        { mappings }
+        { mappings, version: template.version },
       );
       setTemplate(updated);
-      setMessage(updated.is_valid ? "Template valide et prêt !" : "Mappings sauvegardés. Tous les placeholders doivent être mappés.");
+      setMessage(
+        updated.is_valid
+          ? "Template valide et prêt !"
+          : "Mappings sauvegardés. Tous les placeholders doivent être mappés.",
+      );
     } catch (err) {
       setMessage(err instanceof ApiError ? err.detail : "Erreur de sauvegarde");
     } finally {
@@ -92,29 +102,43 @@ export default function TemplateMappingPage() {
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-bold">Configurer : {template.name}</h1>
       <Card>
-        <CardHeader><CardTitle>Mappings des placeholders</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Mappings des placeholders</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-4">
-          {template.detected_placeholders.filter((ph) => !isBlockMarker(ph)).map((ph) => (
-            <div key={ph} className="space-y-2">
-              <Label htmlFor={ph}>
-                <code className="rounded bg-muted px-1 py-0.5 text-sm">{ph}</code>
-              </Label>
-              <Select
-                value={mappings[ph] ?? ""}
-                onValueChange={(val: string | null) => val && setMappings((prev) => ({ ...prev, [ph]: val }))}
-              >
-                <SelectTrigger id={ph}>
-                  <SelectValue placeholder="Choisir un champ…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROFILE_FIELDS.map((f) => (
-                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ))}
-          {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
+          {template.detected_placeholders
+            .filter((ph) => !isBlockMarker(ph))
+            .map((ph) => (
+              <div key={ph} className="space-y-2">
+                <Label htmlFor={ph}>
+                  <code className="rounded bg-muted px-1 py-0.5 text-sm">
+                    {ph}
+                  </code>
+                </Label>
+                <Select
+                  value={mappings[ph] ?? ""}
+                  onValueChange={(val: string | null) =>
+                    val && setMappings((prev) => ({ ...prev, [ph]: val }))
+                  }
+                >
+                  <SelectTrigger id={ph}>
+                    <SelectValue placeholder="Choisir un champ…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROFILE_FIELDS.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>
+                        {f.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          {message && (
+            <p role="status" className="text-sm text-muted-foreground">
+              {message}
+            </p>
+          )}
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Sauvegarde…" : "Sauvegarder les mappings"}
           </Button>

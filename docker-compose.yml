@@ -17,5 +17,16 @@ services:
       timeout: 5s
       retries: 5
 
+  # NOTE: PDF conversion uses `libreoffice --headless` as a subprocess inside
+  # the backend container. For this to work, libreoffice-headless must be
+  # installed in the backend image (e.g. via apt). This service entry is a
+  # placeholder; activate it only if you run a separate conversion sidecar.
+  libreoffice:
+    image: linuxserver/libreoffice:latest
+    container_name: jorg-libreoffice
+    restart: unless-stopped
+    profiles:
+      - pdf
+
 volumes:
   jorg_pgdata:

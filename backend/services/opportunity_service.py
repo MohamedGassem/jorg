@@ -186,5 +186,11 @@ async def bulk_generate(
                 opportunity_id=str(opportunity_id),
                 candidate_id=str(entry.candidate_id),
             )
-            raise
+            results.append(
+                BulkGenerateResult(
+                    candidate_id=entry.candidate_id,
+                    status="error",
+                    error="unexpected error during generation",
+                )
+            )
     return results

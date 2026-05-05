@@ -15,6 +15,7 @@ class TemplateMappingsUpdate(BaseModel):
     """
 
     mappings: dict[str, str]
+    version: int
 
 
 class TemplateRead(BaseModel):
@@ -29,5 +30,6 @@ class TemplateRead(BaseModel):
     detected_placeholders: list[str]
     mappings: dict[str, Any]
     is_valid: bool
+    version: int
     created_at: datetime
     updated_at: datetime

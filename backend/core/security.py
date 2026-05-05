@@ -1,4 +1,5 @@
 # backend/core/security.py
+import secrets
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any
@@ -59,7 +60,7 @@ def create_refresh_token(
 ) -> str:
     settings = get_settings()
     delta = expires_delta or timedelta(days=settings.refresh_token_expire_days)
-    return _create_token(subject, TokenType.REFRESH, delta)
+    return _create_token(subject, TokenType.REFRESH, delta, extra={"jti": secrets.token_hex(16)})
 
 
 def decode_token(token: str, expected_type: TokenType) -> dict[str, Any]:

@@ -6,6 +6,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.exceptions import ConflictError
 from models.template import Template
 
 logger = structlog.get_logger()
@@ -68,9 +69,13 @@ async def update_mappings(
     db: AsyncSession,
     template: Template,
     mappings: dict[str, str],
+    version: int,
 ) -> Template:
+    if template.version != version:
+        raise ConflictError("template has been modified — refresh and retry")
     template.mappings = mappings
     template.is_valid = _compute_is_valid(template.detected_placeholders, mappings)
+    template.version = version + 1
     await db.commit()
     await db.refresh(template)
     return template

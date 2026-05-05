@@ -66,7 +66,7 @@ async def _upload_valid_template(
     await client.put(
         f"/organizations/{org_id}/templates/{template_id}/mappings",
         headers=recruiter_headers,
-        json={"mappings": {"{{NOM}}": "last_name", "{{TITRE}}": "title"}},
+        json={"mappings": {"{{NOM}}": "last_name", "{{TITRE}}": "title"}, "version": 0},
     )
     return template_id
 
@@ -146,7 +146,7 @@ async def test_cannot_generate_with_invalid_template(
     await client.put(
         f"/organizations/{org_id}/templates/{template_id}/mappings",
         headers=recruiter_headers,
-        json={"mappings": {"{{NOM}}": "last_name"}},
+        json={"mappings": {"{{NOM}}": "last_name"}, "version": 0},
     )
 
     r2 = await client.post(

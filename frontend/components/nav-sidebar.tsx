@@ -2,10 +2,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { clearTokens } from "@/lib/auth";
+import { logout as authLogout } from "@/lib/auth";
 
 interface NavItem {
   href: string;
@@ -19,11 +19,9 @@ interface NavSidebarProps {
 
 export function NavSidebar({ items, title }: NavSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
 
   function logout() {
-    clearTokens();
-    router.push("/login");
+    void authLogout();
   }
 
   return (
@@ -34,7 +32,8 @@ export function NavSidebar({ items, title }: NavSidebarProps) {
       <p className="mb-6 px-2 text-lg font-semibold tracking-tight">{title}</p>
       <ul className="flex flex-col gap-1" role="list">
         {items.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          const active =
+            pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <li key={item.href}>
               <Link
@@ -54,7 +53,12 @@ export function NavSidebar({ items, title }: NavSidebarProps) {
       </ul>
       <div className="mt-auto">
         <Separator className="mb-4" />
-        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={logout}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+          onClick={logout}
+        >
           Déconnexion
         </Button>
       </div>

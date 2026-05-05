@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import JSON, Boolean, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -29,3 +29,4 @@ class Template(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     detected_placeholders: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     mappings: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
     is_valid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

@@ -14,8 +14,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import storage
 from core.exceptions import BusinessRuleError, ForbiddenError, NotFoundError
-from models.candidate_profile import CandidateProfile, Experience
+from models.candidate_profile import CandidateProfile, Experience, Skill
 from models.generated_document import GeneratedDocument
+from models.recruiter import Organization
+from models.template import Template
+from schemas.generation import GeneratedDocumentCandidateView
 from services import invitation_service, template_service
 from services.docx_engine import generate_document
 
@@ -41,7 +44,7 @@ def convert_to_pdf(docx_path: str) -> str | None:
                 docx_path,
             ],
             capture_output=True,
-            timeout=60,
+            timeout=15,
         )
         if result.returncode == 0:
             pdf_path = str(Path(docx_path).with_suffix(".pdf"))
@@ -64,6 +67,11 @@ async def _load_profile(db: AsyncSession, candidate_id: UUID) -> CandidateProfil
 
 async def _load_experiences(db: AsyncSession, profile_id: UUID) -> list[Experience]:
     result = await db.execute(select(Experience).where(Experience.profile_id == profile_id))
+    return list(result.scalars().all())
+
+
+async def _load_skills(db: AsyncSession, profile_id: UUID) -> list[Skill]:
+    result = await db.execute(select(Skill).where(Skill.profile_id == profile_id))
     return list(result.scalars().all())
 
 
@@ -91,9 +99,10 @@ async def generate_for_candidate(
     # 3. Load candidate profile
     profile = await _load_profile(db, candidate_id)
     experiences = await _load_experiences(db, profile.id)
+    skills = await _load_skills(db, profile.id)
 
     # 4. Generate document bytes
-    docx_bytes = generate_document(tmpl.word_file_path, profile, experiences, tmpl.mappings)  # type: ignore[arg-type]
+    docx_bytes = generate_document(tmpl.word_file_path, profile, experiences, skills, tmpl.mappings)  # type: ignore[arg-type]
 
     # 5. Convert to PDF if requested
     filename = f"doc_{candidate_id}_{template_id}.docx"
@@ -127,6 +136,37 @@ async def generate_for_candidate(
         access_grant_id=str(doc.access_grant_id),
     )
     return doc
+
+
+async def list_candidate_documents_view(
+    db: AsyncSession, candidate_id: UUID
+) -> list[GeneratedDocumentCandidateView]:
+    from models.invitation import AccessGrant
+
+    rows = await db.execute(
+        select(
+            GeneratedDocument.id,
+            GeneratedDocument.generated_at,
+            GeneratedDocument.file_format,
+            Organization.name.label("organization_name"),
+            Template.name.label("template_name"),
+        )
+        .join(AccessGrant, GeneratedDocument.access_grant_id == AccessGrant.id)
+        .join(Organization, AccessGrant.organization_id == Organization.id)
+        .join(Template, GeneratedDocument.template_id == Template.id)
+        .where(AccessGrant.candidate_id == candidate_id)
+        .order_by(GeneratedDocument.generated_at.desc())
+    )
+    return [
+        GeneratedDocumentCandidateView(
+            id=row.id,
+            generated_at=row.generated_at,
+            file_format=row.file_format,
+            organization_name=row.organization_name,
+            template_name=row.template_name,
+        )
+        for row in rows.all()
+    ]
 
 
 async def list_candidate_documents(db: AsyncSession, candidate_id: UUID) -> list[GeneratedDocument]:

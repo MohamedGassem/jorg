@@ -215,16 +215,16 @@ async def test_update_mappings_sets_is_valid(
     r1 = await client.put(
         f"/organizations/{org_id}/templates/{template_id}/mappings",
         headers=recruiter_headers,
-        json={"mappings": {"{{NOM}}": "last_name"}},
+        json={"mappings": {"{{NOM}}": "last_name"}, "version": 0},
     )
     assert r1.status_code == 200
     assert r1.json()["is_valid"] is False
 
-    # Full mapping — now valid
+    # Full mapping — now valid (version incremented to 1 by previous PUT)
     r2 = await client.put(
         f"/organizations/{org_id}/templates/{template_id}/mappings",
         headers=recruiter_headers,
-        json={"mappings": {"{{NOM}}": "last_name", "{{PRENOM}}": "first_name"}},
+        json={"mappings": {"{{NOM}}": "last_name", "{{PRENOM}}": "first_name"}, "version": 1},
     )
     assert r2.status_code == 200
     assert r2.json()["is_valid"] is True

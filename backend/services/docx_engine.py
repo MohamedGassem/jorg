@@ -44,6 +44,16 @@ class CandidateProfileProtocol(Protocol):
     work_mode: StrEnum | None
     location_preference: str | None
     mission_duration: StrEnum | None
+    contract_type: StrEnum | None
+    preferred_domains: list[str] | None
+
+
+class SkillProtocol(Protocol):
+    name: str | None
+    category: StrEnum | None
+    level: str | None
+    level_rating: int | None
+    years_of_experience: int | None
 
 
 def fmt_date(d: date | None) -> str:
@@ -69,6 +79,20 @@ def profile_flat(profile: CandidateProfileProtocol) -> dict[str, str]:
         "work_mode": str(profile.work_mode.value) if profile.work_mode else "",
         "location_preference": profile.location_preference or "",
         "mission_duration": str(profile.mission_duration.value) if profile.mission_duration else "",
+        "contract_type": str(profile.contract_type.value) if profile.contract_type else "",
+        "preferred_domains": ", ".join(profile.preferred_domains or []),
+    }
+
+
+def skill_flat(skill: SkillProtocol) -> dict[str, str]:
+    return {
+        "skill.name": skill.name or "",
+        "skill.category": str(skill.category.value) if skill.category else "",
+        "skill.level": skill.level or "",
+        "skill.level_rating": str(skill.level_rating) if skill.level_rating else "",
+        "skill.years_of_experience": (
+            str(skill.years_of_experience) if skill.years_of_experience else ""
+        ),
     }
 
 
@@ -152,26 +176,27 @@ def generate_document(
     template_path: str,
     profile: CandidateProfileProtocol,
     experiences: Sequence[ExperienceProtocol],
+    skills: Sequence[SkillProtocol],
     mappings: dict[str, Any],
 ) -> bytes:
     """Apply mappings to a template docx and return the result as bytes.
 
     Algorithm:
     1. Build reverse lookup: placeholder → resolved string value.
-    2. For experience block markers, clone template paragraphs per experience.
-    3. Replace remaining simple placeholders in all paragraphs and table cells.
-    4. Return docx bytes.
+    2. Expand {{#EXPERIENCES}}...{{/EXPERIENCES}} blocks (one clone per exp).
+    3. Expand {{#SKILLS}}...{{/SKILLS}} blocks (one clone per skill).
+    4. Replace remaining simple placeholders in paragraphs and table cells.
+    5. Return docx bytes.
     """
     doc = Document(template_path)
-
     profile_data = profile_flat(profile)
 
-    # Build the simple placeholder → value lookup
+    # Build simple placeholder → value lookup
     base_lookup: dict[str, str] = {}
     for placeholder, field in mappings.items():
         if not isinstance(field, str):
             continue
-        if not field.startswith("experience."):
+        if not field.startswith("experience.") and not field.startswith("skill."):
             base_lookup[placeholder] = profile_data.get(field, "")
 
     # Build per-experience lookup rows
@@ -184,8 +209,19 @@ def generate_document(
                 item[placeholder] = exp_data.get(field, "")
         exp_items.append(item)
 
-    # Handle {{#EXPERIENCES}}...{{/EXPERIENCES}} blocks
+    # Build per-skill lookup rows
+    skill_items: list[dict[str, str]] = []
+    for sk in skills:
+        sk_data = skill_flat(sk)
+        item = {}
+        for placeholder, field in mappings.items():
+            if isinstance(field, str) and field.startswith("skill."):
+                item[placeholder] = sk_data.get(field, "")
+        skill_items.append(item)
+
+    # Apply block expansions
     _apply_block(doc, "{{#EXPERIENCES}}", "{{/EXPERIENCES}}", exp_items, base_lookup)
+    _apply_block(doc, "{{#SKILLS}}", "{{/SKILLS}}", skill_items, base_lookup)
 
     # Replace simple placeholders in paragraphs
     for para in doc.paragraphs:

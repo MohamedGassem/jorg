@@ -12,6 +12,7 @@ from services.docx_engine import (
     generate_document,
     is_text_settable,
     profile_flat,
+    skill_flat,
 )
 
 
@@ -32,6 +33,8 @@ def _mock_profile(**kwargs: object) -> MagicMock:
     profile.work_mode = kwargs.get("work_mode")
     profile.location_preference = kwargs.get("location_preference")
     profile.mission_duration = kwargs.get("mission_duration")
+    profile.contract_type = kwargs.get("contract_type")
+    profile.preferred_domains = kwargs.get("preferred_domains")
     return profile
 
 
@@ -101,6 +104,8 @@ class TestProfileFlat:
             "work_mode",
             "location_preference",
             "mission_duration",
+            "contract_type",
+            "preferred_domains",
         }
         assert set(flat.keys()) == expected_keys
 
@@ -135,7 +140,7 @@ class TestGenerateDocument:
         profile = _mock_profile(first_name="Alice", last_name="Martin")
         mappings = {"{{first_name}}": "first_name", "{{last_name}}": "last_name"}
 
-        result = generate_document(str(tmpl_path), profile, [], mappings)
+        result = generate_document(str(tmpl_path), profile, [], [], mappings)
         assert isinstance(result, bytes)
         assert len(result) > 0
 
@@ -151,7 +156,7 @@ class TestGenerateDocument:
         profile = _mock_profile(first_name="Alice")
         mappings = {"{{first_name}}": "first_name"}
 
-        docx_bytes = generate_document(str(tmpl_path), profile, [], mappings)
+        docx_bytes = generate_document(str(tmpl_path), profile, [], [], mappings)
         result_doc = Document(io.BytesIO(docx_bytes))
         texts = [p.text for p in result_doc.paragraphs]
         assert "Alice" in texts
@@ -172,7 +177,7 @@ class TestGenerateDocument:
         exp2 = _mock_experience(role="Architect")
         mappings = {"{{experience.role}}": "experience.role"}
 
-        docx_bytes = generate_document(str(tmpl_path), profile, [exp1, exp2], mappings)
+        docx_bytes = generate_document(str(tmpl_path), profile, [exp1, exp2], [], mappings)
         result_doc = Document(io.BytesIO(docx_bytes))
         texts = [p.text for p in result_doc.paragraphs if p.text]
         assert "Engineer" in texts
@@ -180,3 +185,106 @@ class TestGenerateDocument:
         # Block markers must be removed
         assert "{{#EXPERIENCES}}" not in texts
         assert "{{/EXPERIENCES}}" not in texts
+
+
+class _FakeEnum:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+
+class TestProfileFlatNewFields:
+    def test_includes_contract_type(self):
+        p = _mock_profile(contract_type=_FakeEnum("freelance"))
+        flat = profile_flat(p)
+        assert "contract_type" in flat
+        assert flat["contract_type"] == "freelance"
+
+    def test_includes_preferred_domains(self):
+        p = _mock_profile(preferred_domains=["finance", "tech"])
+        flat = profile_flat(p)
+        assert "preferred_domains" in flat
+        assert flat["preferred_domains"] == "finance, tech"
+
+    def test_preferred_domains_none_returns_empty(self):
+        p = _mock_profile(preferred_domains=None)
+        flat = profile_flat(p)
+        assert flat["preferred_domains"] == ""
+
+    def test_includes_annual_salary(self):
+        p = _mock_profile(annual_salary=60000)
+        flat = profile_flat(p)
+        assert "annual_salary" in flat
+        assert flat["annual_salary"] == "60000"
+
+
+class TestSkillFlat:
+    def test_returns_skill_name(self):
+        sk = MagicMock()
+        sk.name = "Python"
+        sk.category = _FakeEnum("language")
+        sk.level = "Expert"
+        sk.level_rating = 5
+        sk.years_of_experience = 3
+        flat = skill_flat(sk)
+        assert flat["skill.name"] == "Python"
+        assert flat["skill.category"] == "language"
+        assert flat["skill.level"] == "Expert"
+        assert flat["skill.level_rating"] == "5"
+        assert flat["skill.years_of_experience"] == "3"
+
+
+class TestSkillsBlock:
+    def test_skills_block_clones_per_skill(self, tmp_path):
+        from docx import Document
+
+        tmpl_path = tmp_path / "skills_tmpl.docx"
+        doc = Document()
+        doc.add_paragraph("{{#SKILLS}}")
+        doc.add_paragraph("{{SKILL_NAME}} ({{SKILL_CATEGORY}})")
+        doc.add_paragraph("{{/SKILLS}}")
+        doc.save(str(tmpl_path))
+
+        profile = _mock_profile()
+        sk1 = MagicMock()
+        sk1.name = "Python"
+        sk1.category = _FakeEnum("language")
+        sk1.level = "Expert"
+        sk1.level_rating = None
+        sk1.years_of_experience = None
+        sk2 = MagicMock()
+        sk2.name = "Django"
+        sk2.category = _FakeEnum("framework")
+        sk2.level = "Avancé"
+        sk2.level_rating = None
+        sk2.years_of_experience = None
+
+        mappings = {
+            "{{SKILL_NAME}}": "skill.name",
+            "{{SKILL_CATEGORY}}": "skill.category",
+        }
+
+        result_bytes = generate_document(str(tmpl_path), profile, [], [sk1, sk2], mappings)
+        result_doc = Document(io.BytesIO(result_bytes))
+        full_text = "\n".join(p.text for p in result_doc.paragraphs)
+
+        assert "Python" in full_text
+        assert "Django" in full_text
+        assert "{{#SKILLS}}" not in full_text
+        assert "{{/SKILLS}}" not in full_text
+
+    def test_skills_block_empty_removes_markers(self, tmp_path):
+        from docx import Document
+
+        tmpl_path = tmp_path / "skills_empty.docx"
+        doc = Document()
+        doc.add_paragraph("{{#SKILLS}}")
+        doc.add_paragraph("{{SKILL_NAME}}")
+        doc.add_paragraph("{{/SKILLS}}")
+        doc.save(str(tmpl_path))
+
+        profile = _mock_profile()
+        result_bytes = generate_document(str(tmpl_path), profile, [], [], {})
+        result_doc = Document(io.BytesIO(result_bytes))
+        full_text = "\n".join(p.text for p in result_doc.paragraphs)
+        assert "{{#SKILLS}}" not in full_text
+        assert "{{/SKILLS}}" not in full_text

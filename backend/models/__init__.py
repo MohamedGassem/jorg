@@ -18,6 +18,7 @@ from models.generated_document import GeneratedDocument
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
 from models.opportunity import Opportunity, OpportunityStatus, ShortlistEntry
 from models.recruiter import Organization, RecruiterProfile
+from models.refresh_token import RefreshToken as RefreshToken
 from models.template import Template
 from models.user import OAuthProvider, User, UserRole
 
@@ -42,6 +43,7 @@ __all__ = [
     "OpportunityStatus",
     "Organization",
     "RecruiterProfile",
+    "RefreshToken",
     "ShortlistEntry",
     "Skill",
     "SkillCategory",
