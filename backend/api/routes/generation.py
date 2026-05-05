@@ -13,7 +13,11 @@ import services.recruiter_service as recruiter_service
 from api.deps import CurrentUser, get_db, require_role
 from models.generated_document import GeneratedDocument
 from models.user import User, UserRole
-from schemas.generation import GeneratedDocumentRead, GenerateRequest
+from schemas.generation import (
+    GeneratedDocumentCandidateView,
+    GeneratedDocumentRead,
+    GenerateRequest,
+)
 
 router = APIRouter(tags=["generation"])
 
@@ -69,10 +73,12 @@ async def list_org_documents(
 
 @router.get(
     "/candidates/me/documents",
-    response_model=list[GeneratedDocumentRead],
+    response_model=list[GeneratedDocumentCandidateView],
 )
-async def list_my_documents(current_user: CandidateUser, db: DB) -> list[GeneratedDocument]:
-    return await generation_service.list_candidate_documents(db, current_user.id)
+async def list_my_documents(
+    current_user: CandidateUser, db: DB
+) -> list[GeneratedDocumentCandidateView]:
+    return await generation_service.list_candidate_documents_view(db, current_user.id)
 
 
 @router.get("/documents/{doc_id}/download")

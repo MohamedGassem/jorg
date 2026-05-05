@@ -16,6 +16,9 @@ from core import storage
 from core.exceptions import BusinessRuleError, ForbiddenError, NotFoundError
 from models.candidate_profile import CandidateProfile, Experience
 from models.generated_document import GeneratedDocument
+from models.recruiter import Organization
+from models.template import Template
+from schemas.generation import GeneratedDocumentCandidateView
 from services import invitation_service, template_service
 from services.docx_engine import generate_document
 
@@ -127,6 +130,37 @@ async def generate_for_candidate(
         access_grant_id=str(doc.access_grant_id),
     )
     return doc
+
+
+async def list_candidate_documents_view(
+    db: AsyncSession, candidate_id: UUID
+) -> list[GeneratedDocumentCandidateView]:
+    from models.invitation import AccessGrant
+
+    rows = await db.execute(
+        select(
+            GeneratedDocument.id,
+            GeneratedDocument.generated_at,
+            GeneratedDocument.file_format,
+            Organization.name.label("organization_name"),
+            Template.name.label("template_name"),
+        )
+        .join(AccessGrant, GeneratedDocument.access_grant_id == AccessGrant.id)
+        .join(Organization, AccessGrant.organization_id == Organization.id)
+        .join(Template, GeneratedDocument.template_id == Template.id)
+        .where(AccessGrant.candidate_id == candidate_id)
+        .order_by(GeneratedDocument.generated_at.desc())
+    )
+    return [
+        GeneratedDocumentCandidateView(
+            id=row.id,
+            generated_at=row.generated_at,
+            file_format=row.file_format,
+            organization_name=row.organization_name,
+            template_name=row.template_name,
+        )
+        for row in rows.all()
+    ]
 
 
 async def list_candidate_documents(db: AsyncSession, candidate_id: UUID) -> list[GeneratedDocument]:
