@@ -31,6 +31,8 @@ class Settings(BaseSettings):
 
     frontend_url: str = "http://localhost:3000"
 
+    cors_origins: list[str] = ["http://localhost:3000"]
+
     log_level: str = "INFO"
 
     google_client_id: str | None = None
