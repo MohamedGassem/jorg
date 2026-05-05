@@ -81,7 +81,7 @@ async def login(
             detail="invalid credentials",
         ) from e
 
-    access, refresh = issue_token_pair(user)
+    access, refresh = await issue_token_pair(db, user)
     return TokenPair(access_token=access, refresh_token=refresh)
 
 
@@ -107,7 +107,7 @@ async def refresh_tokens(
             detail="user not found or inactive",
         )
 
-    access, new_refresh = issue_token_pair(user)
+    access, new_refresh = await issue_token_pair(db, user)
     return TokenPair(access_token=access, refresh_token=new_refresh)
 
 
@@ -181,5 +181,5 @@ async def oauth_callback(
     info = await client.exchange_code(code)
     user = await find_or_create_oauth_user(db, info, default_role=role)
 
-    access, refresh = issue_token_pair(user)
+    access, refresh = await issue_token_pair(db, user)
     return TokenPair(access_token=access, refresh_token=refresh)
