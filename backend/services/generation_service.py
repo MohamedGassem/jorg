@@ -44,7 +44,7 @@ def convert_to_pdf(docx_path: str) -> str | None:
                 docx_path,
             ],
             capture_output=True,
-            timeout=60,
+            timeout=15,
         )
         if result.returncode == 0:
             pdf_path = str(Path(docx_path).with_suffix(".pdf"))
