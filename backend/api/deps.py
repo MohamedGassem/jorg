@@ -2,7 +2,7 @@
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,13 +13,23 @@ from core.security import TokenType, decode_token
 from models.candidate_profile import CandidateProfile
 from models.user import User, UserRole
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=True)
+# auto_error=False so we can fall back to cookie when no Authorization header
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    bearer_token: Annotated[str | None, Depends(oauth2_scheme)],
+    access_token_cookie: Annotated[str | None, Cookie(alias="access_token")] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ) -> User:
+    token = bearer_token or access_token_cookie
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
         payload = decode_token(token, expected_type=TokenType.ACCESS)
     except ValueError as e:
