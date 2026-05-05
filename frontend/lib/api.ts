@@ -1,12 +1,9 @@
 // frontend/lib/api.ts
-import { getAccessToken, refreshAccessToken } from "@/lib/auth";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(
     public status: number,
-    public detail: string
+    public detail: string,
   ) {
     super(detail);
   }
@@ -16,24 +13,20 @@ async function request<T>(
   method: string,
   path: string,
   body?: unknown,
-  isRetry = false
+  isRetry = false,
 ): Promise<T> {
-  const token = getAccessToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`/api${path}`, {
     method,
-    headers,
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   if (res.status === 401 && !isRetry) {
-    const newToken = await refreshAccessToken();
-    if (newToken) return request<T>(method, path, body, true);
-    // Redirect to login
+    const refreshed = await import("@/lib/auth").then((m) =>
+      m.refreshAccessToken(),
+    );
+    if (refreshed) return request<T>(method, path, body, true);
     if (typeof window !== "undefined") window.location.href = "/login";
     throw new ApiError(401, "session expired");
   }
@@ -53,17 +46,22 @@ async function request<T>(
   return data as T;
 }
 
-async function upload<T>(path: string, formData: FormData, isRetry = false): Promise<T> {
-  const token = getAccessToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
+async function upload<T>(
+  path: string,
+  formData: FormData,
+  isRetry = false,
+): Promise<T> {
+  const res = await fetch(`/api${path}`, {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "include",
     body: formData,
   });
 
   if (res.status === 401 && !isRetry) {
-    const newToken = await refreshAccessToken();
-    if (newToken) return upload<T>(path, formData, true);
+    const refreshed = await import("@/lib/auth").then((m) =>
+      m.refreshAccessToken(),
+    );
+    if (refreshed) return upload<T>(path, formData, true);
     if (typeof window !== "undefined") window.location.href = "/login";
     throw new ApiError(401, "session expired");
   }
@@ -79,16 +77,21 @@ async function upload<T>(path: string, formData: FormData, isRetry = false): Pro
   return data as T;
 }
 
-async function downloadRequest(path: string, filename: string, isRetry = false): Promise<void> {
-  if (typeof document === "undefined") throw new ApiError(0, "Download requires a browser context");
-  const token = getAccessToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+async function downloadRequest(
+  path: string,
+  filename: string,
+  isRetry = false,
+): Promise<void> {
+  if (typeof document === "undefined")
+    throw new ApiError(0, "Download requires a browser context");
+
+  const res = await fetch(`/api${path}`, { credentials: "include" });
 
   if (res.status === 401 && !isRetry) {
-    const newToken = await refreshAccessToken();
-    if (newToken) return downloadRequest(path, filename, true);
+    const refreshed = await import("@/lib/auth").then((m) =>
+      m.refreshAccessToken(),
+    );
+    if (refreshed) return downloadRequest(path, filename, true);
     if (typeof window !== "undefined") window.location.href = "/login";
     throw new ApiError(401, "session expired");
   }
@@ -120,5 +123,3 @@ export const api = {
   upload: <T>(path: string, formData: FormData) => upload<T>(path, formData),
   download: (path: string, filename: string) => downloadRequest(path, filename),
 };
-
-export { ApiError };

@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
-import { clearTokens } from "@/lib/auth";
+import { logout } from "@/lib/auth";
 
 export default function SettingsPage() {
   const [exporting, setExporting] = useState(false);
@@ -32,7 +32,9 @@ export default function SettingsPage() {
     try {
       await api.download("/candidates/me/export", `jorg-export-${today}.json`);
     } catch (err) {
-      setExportError(err instanceof ApiError ? err.detail : "Échec de l'export");
+      setExportError(
+        err instanceof ApiError ? err.detail : "Échec de l'export",
+      );
     } finally {
       setExporting(false);
     }
@@ -47,10 +49,12 @@ export default function SettingsPage() {
     setDeleteError(null);
     try {
       await api.delete<void>("/candidates/me");
-      clearTokens();
+      await logout();
       window.location.href = "/";
     } catch (err) {
-      setDeleteError(err instanceof ApiError ? err.detail : "Échec de la suppression");
+      setDeleteError(
+        err instanceof ApiError ? err.detail : "Échec de la suppression",
+      );
       setDeleting(false);
     }
   }
@@ -65,8 +69,9 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Télécharger un fichier JSON contenant l&apos;intégralité de vos données personnelles
-            (profil, expériences, compétences, accès accordés, documents générés).
+            Télécharger un fichier JSON contenant l&apos;intégralité de vos
+            données personnelles (profil, expériences, compétences, accès
+            accordés, documents générés).
           </p>
           {exportError && (
             <p role="alert" className="text-sm text-destructive">
@@ -81,13 +86,15 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-destructive">Supprimer mon compte</CardTitle>
+          <CardTitle className="text-destructive">
+            Supprimer mon compte
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Action irréversible. Votre profil et toutes ses données seront supprimés
-            définitivement. Les documents déjà générés par les recruteurs sont conservés
-            pour audit mais anonymisés.
+            Action irréversible. Votre profil et toutes ses données seront
+            supprimés définitivement. Les documents déjà générés par les
+            recruteurs sont conservés pour audit mais anonymisés.
           </p>
           <Button variant="destructive" onClick={() => setDialogOpen(true)}>
             Supprimer définitivement mon compte
@@ -100,8 +107,8 @@ export default function SettingsPage() {
           <DialogHeader>
             <DialogTitle>Confirmation requise</DialogTitle>
             <DialogDescription>
-              Cette action est irréversible. Saisir <strong>SUPPRIMER</strong> ci-dessous
-              pour confirmer.
+              Cette action est irréversible. Saisir <strong>SUPPRIMER</strong>{" "}
+              ci-dessous pour confirmer.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -119,10 +126,18 @@ export default function SettingsPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={deleting}>
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              disabled={deleting}
+            >
               Annuler
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
               {deleting ? "Suppression…" : "Supprimer"}
             </Button>
           </DialogFooter>
