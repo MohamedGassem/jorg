@@ -1,16 +1,14 @@
 # backend/api/routes/auth.py
 import secrets
 from typing import Annotated
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import CurrentUser, get_db
-from core.security import TokenType, decode_token
-from models.user import OAuthProvider, User, UserRole
+from core.config import get_settings
+from models.user import OAuthProvider, UserRole
 from schemas.auth import (
     LoginRequest,
     RefreshRequest,
@@ -27,6 +25,8 @@ from services.auth_service import (
     authenticate_user,
     issue_token_pair,
     register_user,
+    revoke_refresh_token,
+    rotate_refresh_token,
 )
 from services.email_verification_service import (
     InvalidVerificationTokenError,
@@ -42,9 +42,29 @@ from services.password_reset_service import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# Simple in-memory state store (suffisant pour MVP single-instance).
-# À remplacer par Redis quand on passera en multi-process.
-_oauth_states: dict[str, UserRole] = {}
+_oauth_states: dict[str, dict] = {}  # { state: { role, created_at } }
+
+_COOKIE_SETTINGS = {
+    "httponly": True,
+    "samesite": "lax",
+    "path": "/",
+}
+
+
+def _set_auth_cookies(response: Response, access: str, refresh: str) -> None:
+    settings = get_settings()
+    response.set_cookie(
+        "access_token",
+        access,
+        max_age=settings.access_token_expire_minutes * 60,
+        **_COOKIE_SETTINGS,
+    )
+    response.set_cookie(
+        "refresh_token",
+        refresh,
+        max_age=settings.refresh_token_expire_days * 24 * 3600,
+        **_COOKIE_SETTINGS,
+    )
 
 
 @router.post(
@@ -71,6 +91,7 @@ async def register(
 @router.post("/login", response_model=TokenPair)
 async def login(
     payload: LoginRequest,
+    response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> TokenPair:
     try:
@@ -82,33 +103,49 @@ async def login(
         ) from e
 
     access, refresh = await issue_token_pair(db, user)
+    _set_auth_cookies(response, access, refresh)
     return TokenPair(access_token=access, refresh_token=refresh)
 
 
 @router.post("/refresh", response_model=TokenPair)
 async def refresh_tokens(
     payload: RefreshRequest,
+    response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
+    refresh_token_cookie: str | None = Cookie(alias="refresh_token", default=None),
 ) -> TokenPair:
+    raw_token = payload.refresh_token or refresh_token_cookie
+    if not raw_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="no refresh token provided",
+        )
+
     try:
-        claims = decode_token(payload.refresh_token, expected_type=TokenType.REFRESH)
-    except ValueError as e:
+        access, new_refresh = await rotate_refresh_token(db, raw_token)
+    except InvalidCredentialsError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
         ) from e
 
-    user_id = UUID(claims["sub"])
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="user not found or inactive",
-        )
-
-    access, new_refresh = await issue_token_pair(db, user)
+    _set_auth_cookies(response, access, new_refresh)
     return TokenPair(access_token=access, refresh_token=new_refresh)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    response: Response,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    payload: RefreshRequest | None = None,
+    refresh_token_cookie: str | None = Cookie(alias="refresh_token", default=None),
+) -> Response:
+    raw_token = (payload.refresh_token if payload else None) or refresh_token_cookie
+    if raw_token:
+        await revoke_refresh_token(db, raw_token)
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/verify-email", response_model=UserRead)
@@ -161,25 +198,37 @@ async def oauth_login(
     role: Annotated[UserRole, Query()],
 ) -> RedirectResponse:
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = role
+    _oauth_states[state] = {
+        "role": role,
+        "created_at": __import__("datetime").datetime.now(__import__("datetime").UTC),
+    }
     client = get_oauth_client(provider)
     return RedirectResponse(url=client.authorization_url(state), status_code=307)
 
 
-@router.get("/oauth/{provider}/callback", response_model=TokenPair)
+@router.get("/oauth/{provider}/callback")
 async def oauth_callback(
     provider: OAuthProvider,
     code: Annotated[str, Query()],
     state: Annotated[str, Query()],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> TokenPair:
-    role = _oauth_states.pop(state, None)
-    if role is None:
+) -> RedirectResponse:
+    state_data = _oauth_states.pop(state, None)
+    if state_data is None:
         raise HTTPException(status_code=400, detail="invalid or expired state")
 
+    role: UserRole = state_data["role"]
     client = get_oauth_client(provider)
     info = await client.exchange_code(code)
     user = await find_or_create_oauth_user(db, info, default_role=role)
 
     access, refresh = await issue_token_pair(db, user)
-    return TokenPair(access_token=access, refresh_token=refresh)
+    settings = get_settings()
+    redirect_url = (
+        f"{settings.frontend_url}/candidate/profile"
+        if user.role == UserRole.CANDIDATE
+        else f"{settings.frontend_url}/recruiter/templates"
+    )
+    redirect_response = RedirectResponse(url=redirect_url, status_code=302)
+    _set_auth_cookies(redirect_response, access, refresh)
+    return redirect_response
