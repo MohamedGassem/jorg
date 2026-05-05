@@ -8,9 +8,14 @@ import { jwtDecode } from "jwt-decode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { api, ApiError } from "@/lib/api";
-import { setTokens } from "@/lib/auth";
 import type { AuthResponse } from "@/types/api";
 
 interface JwtPayload {
@@ -29,16 +34,23 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const data = await api.post<AuthResponse>("/auth/login", { email, password });
-      setTokens(data);
+      // Backend sets httpOnly cookies; we only read role from the response body.
+      const data = await api.post<AuthResponse>("/auth/login", {
+        email,
+        password,
+      });
       const { role } = jwtDecode<JwtPayload>(data.access_token);
-      router.push(role === "candidate" ? "/candidate/profile" : "/recruiter/templates");
+      router.push(
+        role === "candidate" ? "/candidate/profile" : "/recruiter/templates",
+      );
     } catch (err) {
       console.error("[login]", err);
       if (err instanceof ApiError) {
         setError(err.detail);
       } else if (err instanceof TypeError && err.message.includes("fetch")) {
-        setError("Impossible de contacter le serveur — vérifiez que le backend est démarré");
+        setError(
+          "Impossible de contacter le serveur — vérifiez que le backend est démarré",
+        );
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -91,7 +103,10 @@ export default function LoginPage() {
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Pas encore de compte ?{" "}
-            <Link href="/register" className="underline underline-offset-4 hover:text-primary">
+            <Link
+              href="/register"
+              className="underline underline-offset-4 hover:text-primary"
+            >
               Créer un compte
             </Link>
           </p>
