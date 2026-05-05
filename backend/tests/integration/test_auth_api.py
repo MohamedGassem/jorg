@@ -317,3 +317,25 @@ async def test_oauth_linkedin_full_flow(
     assert r.status_code == 200
     data = r.json()
     assert data["access_token"]
+
+
+# ---- RefreshToken DB record tests -----------------------------------------
+
+
+async def test_login_creates_refresh_token_record(client, db_session):
+    from sqlalchemy import select
+
+    from models.refresh_token import RefreshToken
+
+    await client.post(
+        "/auth/register",
+        json={"email": "rttest@test.com", "password": "password123", "role": "candidate"},
+    )
+    r = await client.post(
+        "/auth/login", json={"email": "rttest@test.com", "password": "password123"}
+    )
+    assert r.status_code == 200
+    result = await db_session.execute(select(RefreshToken))
+    records = result.scalars().all()
+    assert len(records) >= 1
+    assert records[-1].revoked_at is None
