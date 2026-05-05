@@ -42,15 +42,10 @@ from services.password_reset_service import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-_oauth_states: dict[str, dict] = {}  # { state: { role, created_at } }
+_oauth_states: dict[str, dict[str, object]] = {}  # { state: { role, created_at } }
 
 _settings = get_settings()
-_COOKIE_SETTINGS = {
-    "httponly": True,
-    "samesite": "lax",
-    "path": "/",
-    "secure": _settings.env != "development",
-}
+_SECURE = _settings.env != "development"
 
 
 def _set_auth_cookies(response: Response, access: str, refresh: str) -> None:
@@ -59,13 +54,19 @@ def _set_auth_cookies(response: Response, access: str, refresh: str) -> None:
         "access_token",
         access,
         max_age=settings.access_token_expire_minutes * 60,
-        **_COOKIE_SETTINGS,
+        httponly=True,
+        samesite="lax",
+        path="/",
+        secure=_SECURE,
     )
     response.set_cookie(
         "refresh_token",
         refresh,
         max_age=settings.refresh_token_expire_days * 24 * 3600,
-        **_COOKIE_SETTINGS,
+        httponly=True,
+        samesite="lax",
+        path="/",
+        secure=_SECURE,
     )
 
 
@@ -145,9 +146,8 @@ async def logout(
     raw_token = (payload.refresh_token if payload else None) or refresh_token_cookie
     if raw_token:
         await revoke_refresh_token(db, raw_token)
-    secure = get_settings().env != "development"
-    response.delete_cookie("access_token", path="/", secure=secure)
-    response.delete_cookie("refresh_token", path="/", secure=secure)
+    response.delete_cookie("access_token", path="/", secure=_SECURE)
+    response.delete_cookie("refresh_token", path="/", secure=_SECURE)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -220,7 +220,7 @@ async def oauth_callback(
     if state_data is None:
         raise HTTPException(status_code=400, detail="invalid or expired state")
 
-    role: UserRole = state_data["role"]
+    role = UserRole(str(state_data["role"]))
     client = get_oauth_client(provider)
     info = await client.exchange_code(code)
     user = await find_or_create_oauth_user(db, info, default_role=role)

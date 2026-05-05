@@ -19,8 +19,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 async def get_current_user(
     bearer_token: Annotated[str | None, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     access_token_cookie: Annotated[str | None, Cookie(alias="access_token")] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
 ) -> User:
     token = bearer_token or access_token_cookie
     if not token:
