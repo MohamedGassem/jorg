@@ -22,6 +22,8 @@ from services.docx_parser import extract_placeholders
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
 
+_MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
 RecruiterUser = Annotated[User, Depends(require_role(UserRole.RECRUITER))]
 DB = Annotated[AsyncSession, Depends(get_db)]
 
@@ -120,6 +122,11 @@ async def upload_template(
     await _require_org_membership(db, current_user.id, org_id)
 
     content = await file.read()
+    if len(content) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="file exceeds 10 MB limit",
+        )
     file_path = storage.save_upload(content, file.filename or "template.docx")
     placeholders = extract_placeholders(file_path)
 
