@@ -56,6 +56,10 @@ module = ["jose", "jose.exceptions", "testcontainers.*", "docxtpl", "docxtpl.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = ["boto3", "boto3.*", "botocore", "botocore.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = ["tests.*", "tests.unit.*", "tests.integration.*", "alembic.*", "alembic.versions.*"]
 disallow_untyped_defs = false
 disallow_any_generics = false

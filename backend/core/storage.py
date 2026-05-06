@@ -1,12 +1,23 @@
 # backend/core/storage.py
-"""Local file storage for dev. Replace with S3 adapter in production."""
+"""File storage backends. Local for dev; S3/R2 for production.
+
+Generated documents use get_storage() / StorageBackend.
+Template files use the module-level save_upload() / delete_file() (local only).
+"""
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from pathlib import Path
+from typing import Protocol
 
 _UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
+
+
+# ---------------------------------------------------------------------------
+# Legacy helpers — used by template upload/delete in organizations.py
+# ---------------------------------------------------------------------------
 
 
 def upload_dir() -> Path:
@@ -14,10 +25,7 @@ def upload_dir() -> Path:
 
 
 def save_upload(content: bytes, original_filename: str) -> str:
-    """Save raw bytes to local storage.
-
-    Returns the absolute path of the saved file as a string.
-    """
+    """Save raw bytes to local upload dir. Returns absolute path."""
     _UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     safe_name = f"{uuid.uuid4()}_{Path(original_filename).name}"
     dest = _UPLOAD_DIR / safe_name
@@ -26,7 +34,135 @@ def save_upload(content: bytes, original_filename: str) -> str:
 
 
 def delete_file(file_path: str) -> None:
-    """Delete a file from local storage. Silently ignores missing files."""
+    """Delete a local file. Silently ignores missing files."""
     path = Path(file_path)
     if path.exists():
         path.unlink()
+
+
+# ---------------------------------------------------------------------------
+# StorageBackend — used for generated documents
+# ---------------------------------------------------------------------------
+
+
+class StorageBackend(Protocol):
+    async def save(self, file_bytes: bytes, filename: str) -> str: ...
+
+    async def delete(self, key: str) -> None: ...
+
+    async def get_download_url(self, key: str, expires_in: int = 3600) -> str | None: ...
+
+
+class LocalStorageBackend:
+    def __init__(self, upload_dir: Path = _UPLOAD_DIR) -> None:
+        self._dir = upload_dir
+
+    def upload_dir(self) -> Path:
+        return self._dir.resolve()
+
+    async def save(self, file_bytes: bytes, filename: str) -> str:
+        self._dir.mkdir(parents=True, exist_ok=True)
+        safe_name = f"{uuid.uuid4()}_{Path(filename).name}"
+        dest = self._dir / safe_name
+        dest.write_bytes(file_bytes)
+        return str(dest)
+
+    async def delete(self, key: str) -> None:
+        path = Path(key)
+        if path.exists():
+            path.unlink()
+
+    async def get_download_url(self, key: str, expires_in: int = 3600) -> str | None:
+        return None  # served locally by the download endpoint
+
+
+class S3StorageBackend:
+    def __init__(
+        self,
+        bucket: str,
+        endpoint_url: str | None,
+        access_key: str,
+        secret_key: str,
+        region: str,
+    ) -> None:
+        import boto3
+        from botocore.config import Config
+
+        self._bucket = bucket
+        self._client = boto3.client(
+            "s3",
+            endpoint_url=endpoint_url,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name=region,
+            config=Config(signature_version="s3v4"),
+        )
+
+    async def save(self, file_bytes: bytes, filename: str) -> str:
+        key = f"{uuid.uuid4()}_{Path(filename).name}"
+        loop = asyncio.get_event_loop()
+        client = self._client
+        bucket = self._bucket
+        await loop.run_in_executor(
+            None, lambda: client.put_object(Bucket=bucket, Key=key, Body=file_bytes)
+        )
+        return key
+
+    async def delete(self, key: str) -> None:
+        loop = asyncio.get_event_loop()
+        client = self._client
+        bucket = self._bucket
+        await loop.run_in_executor(None, lambda: client.delete_object(Bucket=bucket, Key=key))
+
+    async def get_download_url(self, key: str, expires_in: int = 3600) -> str | None:
+        loop = asyncio.get_event_loop()
+        client = self._client
+        bucket = self._bucket
+        url: str = await loop.run_in_executor(
+            None,
+            lambda: client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": bucket, "Key": key},
+                ExpiresIn=expires_in,
+            ),
+        )
+        return url
+
+
+_storage_instance: StorageBackend | None = None
+
+
+def get_storage() -> StorageBackend:
+    global _storage_instance
+    if _storage_instance is None:
+        from core.config import get_settings
+
+        settings = get_settings()
+        storage_backend = getattr(settings, "storage_backend", "local")
+        if storage_backend == "s3":
+            bucket = getattr(settings, "s3_bucket_name", None) or ""
+            access_key = getattr(settings, "s3_access_key_id", None) or ""
+            secret_key = getattr(settings, "s3_secret_access_key", None) or ""
+            endpoint_url = getattr(settings, "s3_endpoint_url", None)
+            region = getattr(settings, "s3_region", "auto")
+            if not bucket or not access_key or not secret_key:
+                raise ValueError(
+                    "S3_BUCKET_NAME, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY "
+                    "are required when STORAGE_BACKEND=s3"
+                )
+            _storage_instance = S3StorageBackend(
+                bucket=bucket,
+                endpoint_url=endpoint_url,
+                access_key=access_key,
+                secret_key=secret_key,
+                region=region,
+            )
+        else:
+            _storage_instance = LocalStorageBackend()
+    return _storage_instance
+
+
+def override_storage(backend: StorageBackend | None) -> None:
+    """Test helper — override the storage singleton."""
+    global _storage_instance
+    _storage_instance = backend
