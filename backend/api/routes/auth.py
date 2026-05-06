@@ -1,5 +1,4 @@
 # backend/api/routes/auth.py
-import secrets
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response, status
@@ -21,6 +20,7 @@ from schemas.auth import (
     VerifyEmailRequest,
 )
 from schemas.user import UserRead
+from services import oauth_state_service
 from services.auth_service import (
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
@@ -43,8 +43,6 @@ from services.password_reset_service import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-_oauth_states: dict[str, dict[str, object]] = {}  # { state: { role, created_at } }
 
 _settings = get_settings()
 _SECURE = _settings.env != "development"
@@ -207,12 +205,9 @@ async def perform_reset(
 async def oauth_login(
     provider: OAuthProvider,
     role: Annotated[UserRole, Query()],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> RedirectResponse:
-    state = secrets.token_urlsafe(32)
-    _oauth_states[state] = {
-        "role": role,
-        "created_at": __import__("datetime").datetime.now(__import__("datetime").UTC),
-    }
+    state = await oauth_state_service.create_state(db, provider.value, role.value)
     client = get_oauth_client(provider)
     return RedirectResponse(url=client.authorization_url(state), status_code=307)
 
@@ -224,11 +219,12 @@ async def oauth_callback(
     state: Annotated[str, Query()],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> RedirectResponse:
-    state_data = _oauth_states.pop(state, None)
-    if state_data is None:
+    result = await oauth_state_service.consume_state(db, state)
+    if result is None:
         raise HTTPException(status_code=400, detail="invalid or expired state")
 
-    role = UserRole(str(state_data["role"]))
+    _provider_str, role_str = result
+    role = UserRole(role_str)
     client = get_oauth_client(provider)
     info = await client.exchange_code(code)
     user = await find_or_create_oauth_user(db, info, default_role=role)
