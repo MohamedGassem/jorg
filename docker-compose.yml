@@ -10,7 +10,12 @@ services:
     depends_on:
       - gotenberg
     restart: unless-stopped
+    volumes:
+      - uploads:/app/uploads
 
   gotenberg:
     image: gotenberg/gotenberg:8
     restart: unless-stopped
+
+volumes:
+  uploads:

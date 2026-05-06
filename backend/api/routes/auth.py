@@ -223,7 +223,9 @@ async def oauth_callback(
     if result is None:
         raise HTTPException(status_code=400, detail="invalid or expired state")
 
-    _provider_str, role_str = result
+    stored_provider_str, role_str = result
+    if stored_provider_str != provider.value:
+        raise HTTPException(status_code=400, detail="invalid or expired state")
     role = UserRole(role_str)
     client = get_oauth_client(provider)
     info = await client.exchange_code(code)

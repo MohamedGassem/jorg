@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 _UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 
@@ -60,23 +60,46 @@ class LocalStorageBackend:
     def upload_dir(self) -> Path:
         return self._dir.resolve()
 
+    def resolve_local_path(self, key: str) -> Path:
+        """Resolve storage key to a validated absolute path within upload_dir.
+
+        Raises ValueError on path traversal attempts.
+        """
+        path = Path(key).resolve()
+        if not path.is_relative_to(self.upload_dir()):
+            raise ValueError("path is outside upload directory")
+        return path
+
     async def save(self, file_bytes: bytes, filename: str) -> str:
-        self._dir.mkdir(parents=True, exist_ok=True)
         safe_name = f"{uuid.uuid4()}_{Path(filename).name}"
         dest = self._dir / safe_name
-        dest.write_bytes(file_bytes)
+        loop = asyncio.get_running_loop()
+
+        def _write() -> None:
+            self._dir.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(file_bytes)
+
+        await loop.run_in_executor(None, _write)
         return str(dest)
 
     async def delete(self, key: str) -> None:
         path = Path(key)
-        if path.exists():
-            path.unlink()
+        loop = asyncio.get_running_loop()
+
+        def _delete() -> None:
+            if path.exists():
+                path.unlink()
+
+        await loop.run_in_executor(None, _delete)
 
     async def get_download_url(self, key: str, expires_in: int = 3600) -> str | None:
         return None  # served locally by the download endpoint
 
 
 class S3StorageBackend:
+    # boto3 clients are not thread-safe for concurrent calls. We store only the
+    # config and create a fresh client per executor call to avoid data races in
+    # the thread pool used by run_in_executor.
     def __init__(
         self,
         bucket: str,
@@ -85,39 +108,45 @@ class S3StorageBackend:
         secret_key: str,
         region: str,
     ) -> None:
+        self._bucket = bucket
+        self._endpoint_url = endpoint_url
+        self._access_key = access_key
+        self._secret_key = secret_key
+        self._region = region
+
+    def _make_client(self) -> Any:
         import boto3
         from botocore.config import Config
 
-        self._bucket = bucket
-        self._client = boto3.client(
+        return boto3.client(
             "s3",
-            endpoint_url=endpoint_url,
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-            region_name=region,
+            endpoint_url=self._endpoint_url,
+            aws_access_key_id=self._access_key,
+            aws_secret_access_key=self._secret_key,
+            region_name=self._region,
             config=Config(signature_version="s3v4"),
         )
 
     async def save(self, file_bytes: bytes, filename: str) -> str:
         key = f"{uuid.uuid4()}_{Path(filename).name}"
-        loop = asyncio.get_running_loop()
-        client = self._client
         bucket = self._bucket
+        client = self._make_client()
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(
             None, lambda: client.put_object(Bucket=bucket, Key=key, Body=file_bytes)
         )
         return key
 
     async def delete(self, key: str) -> None:
-        loop = asyncio.get_running_loop()
-        client = self._client
         bucket = self._bucket
+        client = self._make_client()
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, lambda: client.delete_object(Bucket=bucket, Key=key))
 
     async def get_download_url(self, key: str, expires_in: int = 3600) -> str | None:
-        loop = asyncio.get_running_loop()
-        client = self._client
         bucket = self._bucket
+        client = self._make_client()
+        loop = asyncio.get_running_loop()
         url: str = await loop.run_in_executor(
             None,
             lambda: client.generate_presigned_url(

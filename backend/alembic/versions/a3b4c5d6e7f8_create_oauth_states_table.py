@@ -24,14 +24,16 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.create_table(
         "oauth_states",
-        sa.Column("state", sa.String(length=64), nullable=False),
+        sa.Column("state", sa.String(length=48), nullable=False),
         sa.Column("provider", sa.String(length=32), nullable=False),
         sa.Column("role", sa.String(length=32), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("state"),
     )
+    op.create_index("ix_oauth_states_expires_at", "oauth_states", ["expires_at"])
 
 
 def downgrade() -> None:
+    op.drop_index("ix_oauth_states_expires_at", table_name="oauth_states")
     op.drop_table("oauth_states")

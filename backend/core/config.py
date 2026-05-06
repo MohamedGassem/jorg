@@ -54,6 +54,15 @@ class Settings(BaseSettings):
     # Gotenberg PDF service (empty = disabled)
     gotenberg_url: str | None = None
 
+    @field_validator("gotenberg_url")
+    @classmethod
+    def _validate_gotenberg_url(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("GOTENBERG_URL must start with http:// or https://")
+        return v.rstrip("/")
+
     @field_validator("secret_key")
     @classmethod
     def _validate_secret_key(cls, v: str) -> str:

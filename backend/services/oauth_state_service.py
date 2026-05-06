@@ -2,7 +2,7 @@
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.oauth_state import OAuthState
@@ -31,19 +31,21 @@ async def consume_state(db: AsyncSession, state: str) -> tuple[str, str] | None:
     """Validate, delete, and return (provider, role) for a state token.
 
     Returns None if the state is unknown or expired.
+    Uses DELETE ... RETURNING for an atomic consume-and-delete that prevents
+    replay attacks from concurrent requests with the same state token.
     Cleans up all expired states as a side-effect.
     """
     now = datetime.now(UTC)
+    # Atomic: only deletes if state exists AND is not yet expired
+    result = await db.execute(
+        delete(OAuthState)
+        .where(OAuthState.state == state, OAuthState.expires_at >= now)
+        .returning(OAuthState.provider, OAuthState.role)
+    )
+    row = result.one_or_none()
+    # Sweep expired rows as a side-effect (separate condition, no overlap with above)
     await db.execute(delete(OAuthState).where(OAuthState.expires_at < now))
-
-    result = await db.execute(select(OAuthState).where(OAuthState.state == state))
-    entry = result.scalar_one_or_none()
-    if entry is None:
-        await db.commit()
-        return None
-
-    provider = entry.provider
-    role = entry.role
-    await db.delete(entry)
     await db.commit()
-    return provider, role
+    if row is None:
+        return None
+    return row.provider, row.role
