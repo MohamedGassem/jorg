@@ -12,6 +12,44 @@ from models.template import Template
 logger = structlog.get_logger()
 
 
+# Standard profile field placeholders produced by docxtpl templates.
+# Any template whose detected_placeholders are a subset of this set is
+# auto-mapped and immediately valid — no wizard step required.
+# Keep in sync with _KNOWN_PLACEHOLDERS in the Alembic migration
+# f1a2b3c4d5e6_recompute_template_validity_for_docxtpl.py.
+_KNOWN_PLACEHOLDERS: frozenset[str] = frozenset(
+    f"{{{{{k}}}}}"
+    for k in (
+        "first_name",
+        "last_name",
+        "title",
+        "summary",
+        "phone",
+        "email_contact",
+        "linkedin_url",
+        "location",
+        "years_of_experience",
+        "daily_rate",
+        "annual_salary",
+        "availability_status",
+        "work_mode",
+        "location_preference",
+        "mission_duration",
+        "contract_type",
+        "preferred_domains",
+    )
+)
+
+
+def _auto_mappings(detected_placeholders: list[str]) -> dict[str, str]:
+    """Return identity mappings for every known standard-field placeholder.
+
+    Unknown placeholders (e.g. old Mustache ``{{NOM}}``) are omitted and must
+    be mapped manually through the wizard.
+    """
+    return {ph: ph[2:-2] for ph in detected_placeholders if ph in _KNOWN_PLACEHOLDERS}
+
+
 def _compute_is_valid(detected_placeholders: list[str], mappings: dict[str, Any]) -> bool:
     """A template is valid when every detected placeholder has a mapping."""
     return bool(detected_placeholders) and all(ph in mappings for ph in detected_placeholders)
@@ -26,6 +64,7 @@ async def create_template(
     word_file_path: str,
     detected_placeholders: list[str],
 ) -> Template:
+    auto = _auto_mappings(detected_placeholders)
     template = Template(
         organization_id=organization_id,
         created_by_user_id=created_by_user_id,
@@ -33,8 +72,8 @@ async def create_template(
         description=description,
         word_file_path=word_file_path,
         detected_placeholders=detected_placeholders,
-        mappings={},
-        is_valid=False,
+        mappings=auto,
+        is_valid=_compute_is_valid(detected_placeholders, auto),
     )
     db.add(template)
     await db.commit()

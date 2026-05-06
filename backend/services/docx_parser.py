@@ -9,35 +9,68 @@ from typing import Any
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
 
 _PLACEHOLDER_RE = re.compile(r"\{\{[^}]+\}\}")
-# Block markers start with `#` (opening) or `/` (closing), e.g. {{#EXPERIENCES}}, {{/EXPERIENCES}}
-_BLOCK_MARKER_RE = re.compile(r"^\{\{[#/]")
+
+# Old Mustache block markers: {{#EXPERIENCES}}, {{/EXPERIENCES}}
+_MUSTACHE_BLOCK_RE = re.compile(r"^\{\{[#/]")
+
+# Jinja2 loop variable access: {{exp.*}}, {{sk.*}}
+# These are resolved inside {%p for ... %} / {%tr for ... %} blocks and are
+# not standalone mappable fields.
+_LOOP_VAR_RE = re.compile(r"^\{\{(exp|sk)\.")
 
 
 def _iter_paragraphs(doc: Any) -> list[str]:
-    """Collect all text blocks from paragraphs and table cells."""
+    """Collect all text blocks from paragraphs, table cells, headers, and footers."""
     texts: list[str] = [p.text for p in doc.paragraphs]
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
                 texts.append(cell.text)
+    for section in doc.sections:
+        for hf in (
+            section.header,
+            section.footer,
+            section.first_page_header,
+            section.first_page_footer,
+            section.even_page_header,
+            section.even_page_footer,
+        ):
+            if hf is not None:
+                texts.extend(p.text for p in hf.paragraphs)
+                for table in hf.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            texts.append(cell.text)
     return texts
 
 
 def is_block_marker(placeholder: str) -> bool:
-    """Return True if the placeholder is a mustache block start/end marker.
+    """Return True if the placeholder is control syntax that should not be mapped.
 
-    Block markers are control syntax handled by the generator's block expansion
-    logic — they must not be presented to recruiters as fields to map.
+    Excluded patterns:
+    - Old Mustache block markers: ``{{#EXPERIENCES}}``, ``{{/EXPERIENCES}}``
+    - Jinja2 loop variable access: ``{{exp.role}}``, ``{{sk.name}}``, etc.
+      These appear inside ``{%p for exp in experiences %}`` blocks and are
+      resolved automatically — recruiters do not map them individually.
+
+    Note: Jinja2 block tags (``{%p for ... %}``, ``{%tr endfor %}``) use ``{%``
+    rather than ``{{`` and are never matched by the placeholder regex at all.
     """
-    return bool(_BLOCK_MARKER_RE.match(placeholder))
+    return bool(_MUSTACHE_BLOCK_RE.match(placeholder) or _LOOP_VAR_RE.match(placeholder))
 
 
 def extract_placeholders(file_path: str) -> list[str]:
-    """Return deduplicated list of mappable {{...}} placeholders found in the document.
+    """Return deduplicated list of mappable ``{{...}}`` placeholders in the document.
 
-    Preserves first-occurrence order. Excludes block markers such as
-    {{#EXPERIENCES}} and {{/EXPERIENCES}} — those are control syntax handled
-    by the generator, not data fields.
+    Preserves first-occurrence order. Excludes:
+    - Old Mustache block markers: ``{{#EXPERIENCES}}``, ``{{/EXPERIENCES}}``
+    - Jinja2 loop variables: ``{{exp.*}}``, ``{{sk.*}}``
+    - Jinja2 block tags (``{%p ... %}``, ``{%tr ... %}``): excluded naturally
+      because they use ``{%`` rather than ``{{``.
+
+    What remains are the standalone profile-field placeholders such as
+    ``{{first_name}}``, ``{{daily_rate}}``, etc., which recruiters can inspect
+    to verify template coverage.
     """
     doc = Document(file_path)
     seen: dict[str, None] = {}

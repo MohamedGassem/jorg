@@ -102,7 +102,16 @@ async def generate_for_candidate(
     skills = await _load_skills(db, profile.id)
 
     # 4. Generate document bytes
-    docx_bytes = generate_document(tmpl.word_file_path, profile, experiences, skills, tmpl.mappings)  # type: ignore[arg-type]
+    try:
+        docx_bytes = generate_document(
+            tmpl.word_file_path,
+            profile,  # type: ignore[arg-type]
+            experiences,  # type: ignore[arg-type]
+            skills,  # type: ignore[arg-type]
+            tmpl.mappings,
+        )
+    except ValueError as exc:
+        raise BusinessRuleError(str(exc)) from exc
 
     # 5. Convert to PDF if requested
     filename = f"doc_{candidate_id}_{template_id}.docx"

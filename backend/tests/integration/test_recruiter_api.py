@@ -271,19 +271,23 @@ async def test_recruiter_cannot_access_other_org_templates(
     assert r.status_code == 403
 
 
-async def test_upload_template_excludes_block_markers_from_detected(
+async def test_upload_template_excludes_control_syntax_from_detected(
     client: AsyncClient,
     recruiter_headers: dict[str, str],
 ) -> None:
-    """Uploading a template with mustache block markers must not list them
-    as mappable placeholders — they are control syntax, not fields."""
+    """Uploading a docxtpl template must surface only profile-field placeholders.
+
+    Jinja2 block tags ({%p for ... %}) and loop variable access ({{exp.*}},
+    {{sk.*}}) must not appear in detected_placeholders — only standalone
+    profile fields like {{last_name}} should be listed.
+    """
     org_id = await _setup_org_and_link(client, recruiter_headers)
     docx_bytes = _make_docx_bytes(
         [
-            "Candidat : {{NOM}}",
-            "{{#EXPERIENCES}}",
-            "{{EXP_CLIENT}} — {{EXP_ROLE}}",
-            "{{/EXPERIENCES}}",
+            "Candidat : {{last_name}} {{first_name}}",
+            "{%p for exp in experiences %}",
+            "{{exp.client_name}} — {{exp.role}}",
+            "{%p endfor %}",
         ]
     )
 
@@ -302,12 +306,14 @@ async def test_upload_template_excludes_block_markers_from_detected(
 
     assert r.status_code == 201, r.text
     body = r.json()
-    assert "{{NOM}}" in body["detected_placeholders"]
-    assert "{{EXP_CLIENT}}" in body["detected_placeholders"]
-    assert "{{EXP_ROLE}}" in body["detected_placeholders"]
-    assert "{{#EXPERIENCES}}" not in body["detected_placeholders"]
-    assert "{{/EXPERIENCES}}" not in body["detected_placeholders"]
-    assert body["is_valid"] is False  # no mappings yet
+    assert "{{last_name}}" in body["detected_placeholders"]
+    assert "{{first_name}}" in body["detected_placeholders"]
+    # Loop variables and block tags must be excluded
+    assert not any(p.startswith("{{exp.") for p in body["detected_placeholders"])
+    assert not any("{%p" in p for p in body["detected_placeholders"])
+    assert (
+        body["is_valid"] is True
+    )  # all detected placeholders are known fields — auto-mapped on upload
 
 
 # ---- Accessible candidates --------------------------------------------------
