@@ -2,6 +2,7 @@
 import tempfile
 
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
+from docx.shared import Inches
 
 from services.docx_parser import extract_placeholders
 
@@ -177,3 +178,103 @@ def test_standard_field_names_detected() -> None:
         "{{work_mode}}",
     ]:
         assert field in result, f"{field} not detected"
+
+
+# ---- Table cells inside headers/footers ------------------------------------
+
+
+def test_placeholder_in_header_table_cell_is_detected() -> None:
+    """A placeholder inside a table cell in the header must be detected."""
+    doc = Document()
+    doc.add_paragraph("body")
+    header = doc.sections[0].header
+    table = header.add_table(rows=1, cols=2, width=Inches(6))
+    table.rows[0].cells[0].paragraphs[0].text = "{{first_name}}"
+    table.rows[0].cells[1].paragraphs[0].text = "{{last_name}}"
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        path = tmp.name
+    result = extract_placeholders(path)
+    assert "{{first_name}}" in result
+    assert "{{last_name}}" in result
+
+
+def test_placeholder_in_footer_table_cell_is_detected() -> None:
+    """A placeholder inside a table cell in the footer must be detected."""
+    doc = Document()
+    doc.add_paragraph("body")
+    footer = doc.sections[0].footer
+    table = footer.add_table(rows=1, cols=1, width=Inches(6))
+    table.rows[0].cells[0].paragraphs[0].text = "{{title}}"
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        path = tmp.name
+    result = extract_placeholders(path)
+    assert "{{title}}" in result
+
+
+# ---- even_page header/footer -----------------------------------------------
+
+
+def test_placeholder_in_even_page_header_is_detected() -> None:
+    """Placeholders in the even-page header are detected."""
+    doc = Document()
+    doc.add_paragraph("body")
+    doc.sections[0].different_first_page_header_footer = True
+    even_hdr = doc.sections[0].even_page_header
+    even_hdr.paragraphs[0].text = "{{location}}"
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        path = tmp.name
+    result = extract_placeholders(path)
+    assert "{{location}}" in result
+
+
+def test_placeholder_in_even_page_footer_is_detected() -> None:
+    """Placeholders in the even-page footer are detected."""
+    doc = Document()
+    doc.add_paragraph("body")
+    even_ftr = doc.sections[0].even_page_footer
+    even_ftr.paragraphs[0].text = "{{phone}}"
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        path = tmp.name
+    result = extract_placeholders(path)
+    assert "{{phone}}" in result
+
+
+# ---- Custom loop variable names NOT filtered --------------------------------
+
+
+def test_custom_loop_variable_name_is_not_filtered() -> None:
+    """The _LOOP_VAR_RE filter only applies to exp.* and sk.* — the documented
+    loop variable names. A placeholder like {{item.foo}} does NOT match the
+    filter and will appear in detected_placeholders.
+
+    This is the expected behaviour: recruiters using non-standard loop var
+    names will see those placeholders in detected_placeholders and be alerted
+    that they are unmapped (and must use exp/sk instead).
+    """
+    path = _make_docx(["{{item.client_name}}", "{{entry.role}}"])
+    result = extract_placeholders(path)
+    assert "{{item.client_name}}" in result
+    assert "{{entry.role}}" in result
+
+
+# ---- Table cell placeholder detection in document body ----------------------
+
+
+def test_placeholder_in_table_cell_body_is_detected() -> None:
+    """Placeholders inside table cells in the document body are detected."""
+    doc = Document()
+    table = doc.add_table(rows=2, cols=2)
+    table.rows[0].cells[0].paragraphs[0].text = "{{first_name}}"
+    table.rows[0].cells[1].paragraphs[0].text = "{{last_name}}"
+    table.rows[1].cells[0].paragraphs[0].text = "{{title}}"
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        path = tmp.name
+    result = extract_placeholders(path)
+    assert "{{first_name}}" in result
+    assert "{{last_name}}" in result
+    assert "{{title}}" in result

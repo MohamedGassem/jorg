@@ -43,13 +43,19 @@ compatibility with existing callers; it is not used by the docxtpl renderer.
 from __future__ import annotations
 
 import io
+import warnings
+import zipfile
 from collections.abc import Sequence
 from datetime import date
 from enum import StrEnum
 from typing import Any, Protocol
 
+from docx.opc.exceptions import PackageNotFoundError
 from docxtpl import DocxTemplate
-from jinja2 import ChainableUndefined, Environment
+from jinja2 import ChainableUndefined, Environment, TemplateSyntaxError
+
+# Re-used across every render call — Environment construction is not free.
+_JINJA_ENV = Environment(undefined=ChainableUndefined)
 
 
 class ExperienceProtocol(Protocol):
@@ -167,14 +173,30 @@ def generate_document(
 
     Undefined variables render as empty strings rather than raising an error,
     which makes partial templates safe to render.
+
+    Raises:
+        ValueError: if the template file is missing/corrupt or contains invalid
+            Jinja2 syntax.
     """
+    if mappings:
+        warnings.warn(
+            "The 'mappings' argument is not used by the docxtpl engine and will be removed "
+            "in a future release. Pass an empty dict or update the caller.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
     tpl = DocxTemplate(template_path)
     context: dict[str, Any] = {
         **profile_flat(profile),
         "experiences": [exp_flat(exp) for exp in experiences],
         "skills": [skill_flat(sk) for sk in skills],
     }
-    tpl.render(context, jinja_env=Environment(undefined=ChainableUndefined))
+    try:
+        tpl.render(context, jinja_env=_JINJA_ENV)
+    except (FileNotFoundError, zipfile.BadZipFile, PackageNotFoundError) as exc:
+        raise ValueError(f"Template file unreadable: {template_path}") from exc
+    except TemplateSyntaxError as exc:
+        raise ValueError(f"Template contains invalid Jinja2 syntax: {exc.message}") from exc
     buf = io.BytesIO()
     tpl.save(buf)
     return buf.getvalue()

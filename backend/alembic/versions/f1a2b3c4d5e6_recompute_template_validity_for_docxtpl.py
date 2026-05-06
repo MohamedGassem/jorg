@@ -44,6 +44,7 @@ down_revision: str | Sequence[str] | None = "d1e2f3a4b5c6"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+# Keep in sync with _KNOWN_PLACEHOLDERS in services/template_service.py.
 _KNOWN_PLACEHOLDERS: frozenset[str] = frozenset(
     f"{{{{{k}}}}}"
     for k in (
@@ -106,6 +107,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Data-only migration with no reliable inverse.
-    # Re-running upgrade() is idempotent.
-    pass
+    raise NotImplementedError(
+        "This migration is data-only and cannot be safely reversed. "
+        "To roll back, restore the templates table from a pre-migration backup."
+    )

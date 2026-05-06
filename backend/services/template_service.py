@@ -15,6 +15,8 @@ logger = structlog.get_logger()
 # Standard profile field placeholders produced by docxtpl templates.
 # Any template whose detected_placeholders are a subset of this set is
 # auto-mapped and immediately valid — no wizard step required.
+# Keep in sync with _KNOWN_PLACEHOLDERS in the Alembic migration
+# f1a2b3c4d5e6_recompute_template_validity_for_docxtpl.py.
 _KNOWN_PLACEHOLDERS: frozenset[str] = frozenset(
     f"{{{{{k}}}}}"
     for k in (

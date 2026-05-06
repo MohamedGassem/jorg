@@ -3,9 +3,11 @@
 
 import io
 import time
+import warnings
 from datetime import date
 from unittest.mock import MagicMock
 
+import pytest
 from docx import Document
 
 from services.docx_engine import (
@@ -502,7 +504,7 @@ class TestSkillsBlockTableRows:
 
 
 class TestPerformance:
-    def test_100_experiences_completes_within_5_seconds(self, tmp_path):
+    def test_100_experiences_completes_within_2_seconds(self, tmp_path):
         tmpl = tmp_path / "t.docx"
         doc = Document()
         doc.add_paragraph("{%p for exp in experiences %}")
@@ -518,4 +520,50 @@ class TestPerformance:
         elapsed = time.monotonic() - start
 
         assert isinstance(result, bytes) and len(result) > 0
-        assert elapsed < 5.0, f"Generation took {elapsed:.1f}s — too slow"
+        assert elapsed < 2.0, f"Generation took {elapsed:.1f}s — too slow"
+
+
+# ---------------------------------------------------------------------------
+# generate_document — error handling
+# ---------------------------------------------------------------------------
+
+
+class TestErrorHandling:
+    def test_missing_template_file_raises_value_error(self):
+        with pytest.raises(ValueError, match="unreadable"):
+            generate_document("/nonexistent/path/to/template.docx", _mock_profile(), [], [], {})
+
+    def test_corrupt_file_raises_value_error(self, tmp_path):
+        bad = tmp_path / "bad.docx"
+        bad.write_bytes(b"this is not a zip/docx file at all")
+        with pytest.raises(ValueError, match="unreadable"):
+            generate_document(str(bad), _mock_profile(), [], [], {})
+
+    def test_invalid_jinja2_syntax_raises_value_error(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("{%p for exp in experiences %}")
+        doc.add_paragraph("{{exp.role}}")
+        # intentionally missing endfor — Jinja2 will raise TemplateSyntaxError
+        doc.save(str(tmpl))
+        with pytest.raises(ValueError, match=r"[Jj]inja2|syntax|template"):
+            generate_document(str(tmpl), _mock_profile(), [], [], {})
+
+    def test_nonempty_mappings_emits_deprecation_warning(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("{{first_name}}")
+        doc.save(str(tmpl))
+        with pytest.warns(DeprecationWarning, match="mappings"):
+            generate_document(str(tmpl), _mock_profile(), [], [], {"{{first_name}}": "first_name"})
+
+    def test_empty_mappings_does_not_warn(self, tmp_path):
+
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("{{first_name}}")
+        doc.save(str(tmpl))
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            # should not raise
+            generate_document(str(tmpl), _mock_profile(), [], [], {})

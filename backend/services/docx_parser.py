@@ -32,9 +32,15 @@ def _iter_paragraphs(doc: Any) -> list[str]:
             section.footer,
             section.first_page_header,
             section.first_page_footer,
+            section.even_page_header,
+            section.even_page_footer,
         ):
             if hf is not None:
                 texts.extend(p.text for p in hf.paragraphs)
+                for table in hf.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            texts.append(cell.text)
     return texts
 
 
