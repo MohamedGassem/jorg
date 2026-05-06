@@ -21,6 +21,7 @@ dependencies = [
     "docxtpl>=0.17",
     "python-multipart>=0.0.9",
     "slowapi>=0.1.9",
+    "boto3>=1.35",
 ]
 
 [dependency-groups]

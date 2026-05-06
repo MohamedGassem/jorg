@@ -138,13 +138,10 @@ def get_storage() -> StorageBackend:
         from core.config import get_settings
 
         settings = get_settings()
-        storage_backend = getattr(settings, "storage_backend", "local")
-        if storage_backend == "s3":
-            bucket = getattr(settings, "s3_bucket_name", None) or ""
-            access_key = getattr(settings, "s3_access_key_id", None) or ""
-            secret_key = getattr(settings, "s3_secret_access_key", None) or ""
-            endpoint_url = getattr(settings, "s3_endpoint_url", None)
-            region = getattr(settings, "s3_region", "auto")
+        if settings.storage_backend == "s3":
+            bucket = settings.s3_bucket_name or ""
+            access_key = settings.s3_access_key_id or ""
+            secret_key = settings.s3_secret_access_key or ""
             if not bucket or not access_key or not secret_key:
                 raise ValueError(
                     "S3_BUCKET_NAME, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY "
@@ -152,10 +149,10 @@ def get_storage() -> StorageBackend:
                 )
             _storage_instance = S3StorageBackend(
                 bucket=bucket,
-                endpoint_url=endpoint_url,
+                endpoint_url=settings.s3_endpoint_url,
                 access_key=access_key,
                 secret_key=secret_key,
-                region=region,
+                region=settings.s3_region,
             )
         else:
             _storage_instance = LocalStorageBackend()

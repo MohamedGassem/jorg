@@ -43,6 +43,17 @@ class Settings(BaseSettings):
     linkedin_client_secret: str | None = None
     linkedin_redirect_uri: str = "http://localhost:8000/auth/oauth/linkedin/callback"
 
+    # Storage backend
+    storage_backend: Literal["local", "s3"] = "local"
+    s3_bucket_name: str | None = None
+    s3_endpoint_url: str | None = None
+    s3_access_key_id: str | None = None
+    s3_secret_access_key: str | None = None
+    s3_region: str = "auto"
+
+    # Gotenberg PDF service (empty = disabled)
+    gotenberg_url: str | None = None
+
     @field_validator("secret_key")
     @classmethod
     def _validate_secret_key(cls, v: str) -> str:
