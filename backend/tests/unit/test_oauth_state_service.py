@@ -56,3 +56,23 @@ async def test_consume_state_returns_none_for_missing(mock_db: AsyncMock) -> Non
     assert result is None
     assert mock_db.execute.call_count == 2
     mock_db.commit.assert_called_once()
+
+
+async def test_consume_state_returns_none_for_expired(mock_db: AsyncMock) -> None:
+    expired_entry = OAuthState(
+        state="expired-state-token",
+        provider="google",
+        role="candidate",
+        created_at=datetime.now(UTC) - timedelta(minutes=20),
+        expires_at=datetime.now(UTC) - timedelta(minutes=10),
+    )
+    delete_result = MagicMock()
+    select_result = MagicMock()
+    # The service's SELECT filters by expires_at > now(), so expired entries return None
+    select_result.scalar_one_or_none.return_value = None
+    mock_db.execute = AsyncMock(side_effect=[delete_result, select_result])
+
+    result = await oauth_state_service.consume_state(mock_db, expired_entry.state)
+
+    assert result is None
+    assert mock_db.execute.call_count == 2
