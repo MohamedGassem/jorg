@@ -61,6 +61,43 @@ def test_extract_preserves_first_occurrence_order() -> None:
     assert result == ["{{A}}", "{{B}}", "{{C}}"]
 
 
+# ---- Headers and footers -------------------------------------------------------
+
+
+def test_placeholder_in_header_is_detected() -> None:
+    doc = Document()
+    doc.add_paragraph("body only")
+    doc.sections[0].header.paragraphs[0].text = "{{first_name}}"
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        path = tmp.name
+    result = extract_placeholders(path)
+    assert "{{first_name}}" in result
+
+
+def test_placeholder_in_footer_is_detected() -> None:
+    doc = Document()
+    doc.add_paragraph("body only")
+    doc.sections[0].footer.paragraphs[0].text = "{{last_name}}"
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        path = tmp.name
+    result = extract_placeholders(path)
+    assert "{{last_name}}" in result
+
+
+def test_header_placeholder_deduplicated_with_body() -> None:
+    """Same placeholder in header and body counts only once."""
+    doc = Document()
+    doc.add_paragraph("{{title}}")
+    doc.sections[0].header.paragraphs[0].text = "{{title}}"
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        path = tmp.name
+    result = extract_placeholders(path)
+    assert result.count("{{title}}") == 1
+
+
 # ---- docxtpl / Jinja2 syntax (new templates) ---------------------------------
 
 

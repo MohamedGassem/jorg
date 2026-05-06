@@ -20,12 +20,21 @@ _LOOP_VAR_RE = re.compile(r"^\{\{(exp|sk)\.")
 
 
 def _iter_paragraphs(doc: Any) -> list[str]:
-    """Collect all text blocks from paragraphs and table cells."""
+    """Collect all text blocks from paragraphs, table cells, headers, and footers."""
     texts: list[str] = [p.text for p in doc.paragraphs]
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
                 texts.append(cell.text)
+    for section in doc.sections:
+        for hf in (
+            section.header,
+            section.footer,
+            section.first_page_header,
+            section.first_page_footer,
+        ):
+            if hf is not None:
+                texts.extend(p.text for p in hf.paragraphs)
     return texts
 
 
