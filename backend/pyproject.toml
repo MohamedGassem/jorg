@@ -69,7 +69,7 @@ disallow_any_generics = false
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "--cov-fail-under=18"
+addopts = "--cov-fail-under=19"
 
 [tool.coverage.run]
 source = ["."]
