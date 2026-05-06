@@ -100,7 +100,7 @@ class S3StorageBackend:
 
     async def save(self, file_bytes: bytes, filename: str) -> str:
         key = f"{uuid.uuid4()}_{Path(filename).name}"
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         client = self._client
         bucket = self._bucket
         await loop.run_in_executor(
@@ -109,13 +109,13 @@ class S3StorageBackend:
         return key
 
     async def delete(self, key: str) -> None:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         client = self._client
         bucket = self._bucket
         await loop.run_in_executor(None, lambda: client.delete_object(Bucket=bucket, Key=key))
 
     async def get_download_url(self, key: str, expires_in: int = 3600) -> str | None:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         client = self._client
         bucket = self._bucket
         url: str = await loop.run_in_executor(
