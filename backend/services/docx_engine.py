@@ -1,19 +1,55 @@
 # backend/services/docx_engine.py
-"""Pure document generation engine — no DB, no I/O, no side effects."""
+"""Pure document generation engine — no DB, no I/O, no side effects.
+
+## Template syntax (docxtpl / Jinja2)
+
+Simple field replacement:
+    {{first_name}}  {{last_name}}  {{title}}  … (any profile field)
+
+Experience block — paragraphs:
+    {%p for exp in experiences %}
+    {{exp.role}} — {{exp.client_name}}
+    {%p endfor %}
+
+Experience block — table rows (one row cloned per experience):
+    ┌─────────────────────────────────────────┐  ← row with {%tr for exp in experiences %}
+    │ {{exp.client_name}} │ {{exp.role}}       │  ← content row(s), cloned per item
+    └─────────────────────────────────────────┘  ← row with {%tr endfor %}
+
+Skill block — same pattern with `sk in skills`:
+    {%p for sk in skills %}  /  {%tr for sk in skills %}
+
+Conditional paragraphs:
+    {%p if annual_salary %}Salaire : {{annual_salary}} €{%p endif %}
+
+Available context variables:
+    Profile fields (top-level):
+        first_name, last_name, title, summary, phone, email_contact,
+        linkedin_url, location, years_of_experience, daily_rate, annual_salary,
+        availability_status, work_mode, location_preference, mission_duration,
+        contract_type, preferred_domains
+
+    experiences — list of dicts, each with:
+        client_name, role, start_date, end_date, description,
+        context, achievements, technologies
+
+    skills — list of dicts, each with:
+        name, category, level, level_rating, years_of_experience
+
+Note: the `mappings` parameter is retained in the function signature for API
+compatibility with existing callers; it is not used by the docxtpl renderer.
+"""
 
 from __future__ import annotations
 
-import copy
 import io
-import re
 from collections.abc import Sequence
 from datetime import date
 from enum import StrEnum
 from typing import Any, Protocol
 
-from docx import Document  # type: ignore[import-untyped,unused-ignore]
-
-_PH = re.compile(r"\{\{[^}]+\}\}")
+from docxtpl import DocxTemplate
+from jinja2 import ChainableUndefined, Environment
 
 
 class ExperienceProtocol(Protocol):
@@ -78,98 +114,46 @@ def profile_flat(profile: CandidateProfileProtocol) -> dict[str, str]:
         ),
         "work_mode": str(profile.work_mode.value) if profile.work_mode else "",
         "location_preference": profile.location_preference or "",
-        "mission_duration": str(profile.mission_duration.value) if profile.mission_duration else "",
+        "mission_duration": (
+            str(profile.mission_duration.value) if profile.mission_duration else ""
+        ),
         "contract_type": str(profile.contract_type.value) if profile.contract_type else "",
         "preferred_domains": ", ".join(profile.preferred_domains or []),
     }
 
 
-def skill_flat(skill: SkillProtocol) -> dict[str, str]:
-    return {
-        "skill.name": skill.name or "",
-        "skill.category": str(skill.category.value) if skill.category else "",
-        "skill.level": skill.level or "",
-        "skill.level_rating": str(skill.level_rating) if skill.level_rating else "",
-        "skill.years_of_experience": (
-            str(skill.years_of_experience) if skill.years_of_experience else ""
-        ),
-    }
-
-
 def exp_flat(exp: ExperienceProtocol) -> dict[str, str]:
+    """Flatten an experience to a plain dict for use as a Jinja2 loop variable.
+
+    Keys are bare field names (e.g. ``client_name``), accessible in templates
+    as ``{{exp.client_name}}`` inside a ``{%p for exp in experiences %}`` block.
+    """
     end = fmt_date(exp.end_date) if not exp.is_current else "présent"
     return {
-        "experience.client_name": exp.client_name or "",
-        "experience.role": exp.role or "",
-        "experience.start_date": fmt_date(exp.start_date),
-        "experience.end_date": end,
-        "experience.description": exp.description or "",
-        "experience.context": exp.context or "",
-        "experience.achievements": exp.achievements or "",
-        "experience.technologies": ", ".join(exp.technologies or []),
+        "client_name": exp.client_name or "",
+        "role": exp.role or "",
+        "start_date": fmt_date(exp.start_date),
+        "end_date": end,
+        "description": exp.description or "",
+        "context": exp.context or "",
+        "achievements": exp.achievements or "",
+        "technologies": ", ".join(exp.technologies or []),
     }
 
 
-def is_text_settable(node: Any) -> bool:
-    """Return True if node.text can be assigned (not a read-only computed property)."""
-    for klass in type(node).__mro__:
-        if "text" in klass.__dict__:
-            attr = klass.__dict__["text"]
-            if isinstance(attr, property):
-                return attr.fset is not None
-            # C-level getset_descriptor (lxml native) — always settable
-            return True
-    # Return False (not True) when no .text in MRO — assigning to a non-existent
-    # attribute would raise AttributeError at runtime on those node types.
-    return False
+def skill_flat(sk: SkillProtocol) -> dict[str, str]:
+    """Flatten a skill to a plain dict for use as a Jinja2 loop variable.
 
-
-def _replace_element(elem: Any, lookup: dict[str, str]) -> None:
-    """Replace {{PLACEHOLDER}} in every XML text node using the lookup dict."""
-    for node in elem.iter():
-        if is_text_settable(node):
-            if node.text:
-                node.text = _PH.sub(lambda m: lookup.get(m.group(), ""), node.text)
-            if node.tail:
-                node.tail = _PH.sub(lambda m: lookup.get(m.group(), ""), node.tail)
-
-
-def _apply_block(
-    doc: Any,
-    start_marker: str,
-    end_marker: str,
-    items: list[dict[str, str]],
-    base_lookup: dict[str, str],
-) -> None:
-    """Clone template paragraphs between markers for each item, then remove markers.
-
-    Uses a while loop to re-scan after each replacement, in case the same
-    block appears multiple times in the document.
+    Keys are bare field names (e.g. ``name``), accessible in templates
+    as ``{{sk.name}}`` inside a ``{%p for sk in skills %}`` block.
     """
-    while True:
-        paras = list(doc.paragraphs)
-        start_idx = next((i for i, p in enumerate(paras) if start_marker in p.text), None)
-        end_idx = next((i for i, p in enumerate(paras) if end_marker in p.text), None)
-        if start_idx is None or end_idx is None:
-            break
-
-        # Deep-copy the template XML elements (between markers, exclusive)
-        template_elems = [copy.deepcopy(paras[j]._element) for j in range(start_idx + 1, end_idx)]
-
-        anchor = paras[start_idx]._element
-        body = doc.element.body
-
-        # Insert clones after anchor (reversed so first item ends up first)
-        for item in reversed(items):
-            lookup = {**base_lookup, **item}
-            for tmpl in reversed(template_elems):
-                new_elem = copy.deepcopy(tmpl)
-                _replace_element(new_elem, lookup)
-                anchor.addnext(new_elem)
-
-        # Remove marker paragraphs and original template paragraphs
-        for j in range(start_idx, end_idx + 1):
-            body.remove(paras[j]._element)
+    return {
+        "name": sk.name or "",
+        "category": str(sk.category.value) if sk.category else "",
+        "level": sk.level or "",
+        "level_rating": str(sk.level_rating) if sk.level_rating else "",
+        "years_of_experience": (str(sk.years_of_experience) if sk.years_of_experience else ""),
+    }
 
 
 def generate_document(
@@ -179,61 +163,18 @@ def generate_document(
     skills: Sequence[SkillProtocol],
     mappings: dict[str, Any],
 ) -> bytes:
-    """Apply mappings to a template docx and return the result as bytes.
+    """Render a docxtpl (Jinja2) Word template and return the result as bytes.
 
-    Algorithm:
-    1. Build reverse lookup: placeholder → resolved string value.
-    2. Expand {{#EXPERIENCES}}...{{/EXPERIENCES}} blocks (one clone per exp).
-    3. Expand {{#SKILLS}}...{{/SKILLS}} blocks (one clone per skill).
-    4. Replace remaining simple placeholders in paragraphs and table cells.
-    5. Return docx bytes.
+    Undefined variables render as empty strings rather than raising an error,
+    which makes partial templates safe to render.
     """
-    doc = Document(template_path)
-    profile_data = profile_flat(profile)
-
-    # Build simple placeholder → value lookup
-    base_lookup: dict[str, str] = {}
-    for placeholder, field in mappings.items():
-        if not isinstance(field, str):
-            continue
-        if not field.startswith("experience.") and not field.startswith("skill."):
-            base_lookup[placeholder] = profile_data.get(field, "")
-
-    # Build per-experience lookup rows
-    exp_items: list[dict[str, str]] = []
-    for exp in experiences:
-        exp_data = exp_flat(exp)
-        item: dict[str, str] = {}
-        for placeholder, field in mappings.items():
-            if isinstance(field, str) and field.startswith("experience."):
-                item[placeholder] = exp_data.get(field, "")
-        exp_items.append(item)
-
-    # Build per-skill lookup rows
-    skill_items: list[dict[str, str]] = []
-    for sk in skills:
-        sk_data = skill_flat(sk)
-        item = {}
-        for placeholder, field in mappings.items():
-            if isinstance(field, str) and field.startswith("skill."):
-                item[placeholder] = sk_data.get(field, "")
-        skill_items.append(item)
-
-    # Apply block expansions
-    _apply_block(doc, "{{#EXPERIENCES}}", "{{/EXPERIENCES}}", exp_items, base_lookup)
-    _apply_block(doc, "{{#SKILLS}}", "{{/SKILLS}}", skill_items, base_lookup)
-
-    # Replace simple placeholders in paragraphs
-    for para in doc.paragraphs:
-        _replace_element(para._element, base_lookup)
-
-    # Replace simple placeholders in table cells
-    for table in doc.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                for para in cell.paragraphs:
-                    _replace_element(para._element, base_lookup)
-
+    tpl = DocxTemplate(template_path)
+    context: dict[str, Any] = {
+        **profile_flat(profile),
+        "experiences": [exp_flat(exp) for exp in experiences],
+        "skills": [skill_flat(sk) for sk in skills],
+    }
+    tpl.render(context, jinja_env=Environment(undefined=ChainableUndefined))
     buf = io.BytesIO()
-    doc.save(buf)
+    tpl.save(buf)
     return buf.getvalue()
