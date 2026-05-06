@@ -16,6 +16,7 @@ from models.candidate_profile import (
 )
 from models.generated_document import GeneratedDocument
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
+from models.oauth_state import OAuthState
 from models.opportunity import Opportunity, OpportunityStatus, ShortlistEntry
 from models.recruiter import Organization, RecruiterProfile
 from models.refresh_token import RefreshToken as RefreshToken
@@ -39,6 +40,7 @@ __all__ = [
     "LanguageLevel",
     "MissionDuration",
     "OAuthProvider",
+    "OAuthState",
     "Opportunity",
     "OpportunityStatus",
     "Organization",
