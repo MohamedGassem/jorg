@@ -2,6 +2,7 @@
 """Unit tests for the docxtpl-based generation engine."""
 
 import io
+import pathlib
 import time
 import warnings
 from datetime import date
@@ -394,7 +395,7 @@ class TestExperienceBlockParagraphs:
 
 
 class TestExperienceBlockTableRows:
-    def _make_row_block_template(self, tmp_path, n_cols: int = 2):
+    def _make_row_block_template(self, tmp_path: "pathlib.Path", n_cols: int = 2) -> str:
         """Template: table with marker row / content row / endmarker row."""
         tmpl = tmp_path / "t.docx"
         doc = Document()

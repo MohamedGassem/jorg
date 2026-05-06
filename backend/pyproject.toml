@@ -51,7 +51,7 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["jose", "jose.exceptions", "testcontainers.*"]
+module = ["jose", "jose.exceptions", "testcontainers.*", "docxtpl", "docxtpl.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

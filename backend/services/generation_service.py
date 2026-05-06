@@ -104,8 +104,12 @@ async def generate_for_candidate(
     # 4. Generate document bytes
     try:
         docx_bytes = generate_document(
-            tmpl.word_file_path, profile, experiences, skills, tmpl.mappings
-        )  # type: ignore[arg-type]
+            tmpl.word_file_path,
+            profile,  # type: ignore[arg-type]
+            experiences,  # type: ignore[arg-type]
+            skills,  # type: ignore[arg-type]
+            tmpl.mappings,
+        )
     except ValueError as exc:
         raise BusinessRuleError(str(exc)) from exc
 
