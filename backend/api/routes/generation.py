@@ -121,6 +121,7 @@ async def download_document(
     if download_url is not None:
         return RedirectResponse(url=download_url, status_code=302)
 
+
     # get_download_url returned None — storage serves files locally.
     # Only LocalStorageBackend does this; any other backend returning None
     # means the file is unavailable.
