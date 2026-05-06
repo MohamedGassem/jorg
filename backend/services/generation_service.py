@@ -30,17 +30,20 @@ async def _convert_to_pdf(docx_bytes: bytes) -> bytes:
     settings = get_settings()
     if not settings.gotenberg_url:
         raise BusinessRuleError("PDF conversion not available: GOTENBERG_URL is not configured")
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-            f"{settings.gotenberg_url}/forms/libreoffice/convert",
-            files={
-                "files": (
-                    "document.docx",
-                    docx_bytes,
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                )
-            },
-        )
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                f"{settings.gotenberg_url}/forms/libreoffice/convert",
+                files={
+                    "files": (
+                        "document.docx",
+                        docx_bytes,
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    )
+                },
+            )
+    except httpx.RequestError as exc:
+        raise BusinessRuleError(f"PDF conversion unreachable: {exc}") from exc
     if response.status_code != 200:
         raise BusinessRuleError(f"PDF conversion failed (HTTP {response.status_code})")
     return response.content
