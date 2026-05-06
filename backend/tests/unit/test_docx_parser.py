@@ -59,3 +59,84 @@ def test_extract_preserves_first_occurrence_order() -> None:
     path = _make_docx(["{{A}} {{B}} {{C}} {{A}}"])
     result = extract_placeholders(path)
     assert result == ["{{A}}", "{{B}}", "{{C}}"]
+
+
+# ---- docxtpl / Jinja2 syntax (new templates) ---------------------------------
+
+
+def test_jinja2_block_tags_not_matched() -> None:
+    """Jinja2 block tags {%p for ... %} use {%, not {{, so they are never
+    matched by the placeholder regex and never appear in detected placeholders."""
+    path = _make_docx(
+        [
+            "{%p for exp in experiences %}",
+            "{{exp.role}}",
+            "{%p endfor %}",
+        ]
+    )
+    result = extract_placeholders(path)
+    assert not any("{%p" in r for r in result)
+    assert not any("{%tr" in r for r in result)
+
+
+def test_jinja2_loop_variables_are_excluded() -> None:
+    """Loop variables {{exp.*}} and {{sk.*}} are not standalone mappable fields
+    — they are resolved inside {%p for ... %} blocks."""
+    path = _make_docx(
+        [
+            "{%p for exp in experiences %}",
+            "{{exp.client_name}} — {{exp.role}}",
+            "{{exp.start_date}} / {{exp.technologies}}",
+            "{%p endfor %}",
+            "{%p for sk in skills %}",
+            "{{sk.name}} ({{sk.category}})",
+            "{%p endfor %}",
+        ]
+    )
+    result = extract_placeholders(path)
+    assert not any(r.startswith("{{exp.") for r in result)
+    assert not any(r.startswith("{{sk.") for r in result)
+
+
+def test_profile_fields_detected_alongside_jinja2_blocks() -> None:
+    """Top-level profile fields are still detected even when the template also
+    uses Jinja2 blocks for experiences or skills."""
+    path = _make_docx(
+        [
+            "{{last_name}} {{first_name}}",
+            "{{title}}",
+            "{%p for exp in experiences %}",
+            "{{exp.role}} chez {{exp.client_name}}",
+            "{%p endfor %}",
+        ]
+    )
+    result = extract_placeholders(path)
+    assert "{{last_name}}" in result
+    assert "{{first_name}}" in result
+    assert "{{title}}" in result
+    assert not any(r.startswith("{{exp.") for r in result)
+
+
+def test_standard_field_names_detected() -> None:
+    """All standard profile field names used directly in a docxtpl template
+    are surfaced as detected placeholders."""
+    path = _make_docx(
+        [
+            "{{first_name}} {{last_name}}",
+            "{{title}} — {{location}}",
+            "TJM : {{daily_rate}} € | Salaire : {{annual_salary}} €",
+            "{{availability_status}} / {{work_mode}}",
+        ]
+    )
+    result = extract_placeholders(path)
+    for field in [
+        "{{first_name}}",
+        "{{last_name}}",
+        "{{title}}",
+        "{{location}}",
+        "{{daily_rate}}",
+        "{{annual_salary}}",
+        "{{availability_status}}",
+        "{{work_mode}}",
+    ]:
+        assert field in result, f"{field} not detected"
