@@ -1,16 +1,17 @@
 # backend/tests/unit/test_docx_engine.py
-"""Unit tests for the pure docx generation engine."""
+"""Unit tests for the docxtpl-based generation engine."""
 
 import io
+import time
 from datetime import date
 from unittest.mock import MagicMock
 
-# These imports will fail until docx_engine is created — that's expected.
+from docx import Document
+
 from services.docx_engine import (
     exp_flat,
     fmt_date,
     generate_document,
-    is_text_settable,
     profile_flat,
     skill_flat,
 )
@@ -52,18 +53,24 @@ def _mock_experience(**kwargs: object) -> MagicMock:
     return exp
 
 
-class TestIsTextSettable:
-    def test_returns_false_for_node_without_text(self):
-        class NoTextNode:
-            pass
+def _mock_skill(**kwargs: object) -> MagicMock:
+    sk = MagicMock()
+    sk.name = kwargs.get("name", "Python")
+    sk.category = kwargs.get("category", _FakeEnum("language"))
+    sk.level = kwargs.get("level", "Expert")
+    sk.level_rating = kwargs.get("level_rating", 5)
+    sk.years_of_experience = kwargs.get("years_of_experience", 3)
+    return sk
 
-        assert is_text_settable(NoTextNode()) is False
 
-    def test_returns_true_for_node_with_settable_text(self):
-        class TextNode:
-            text = "hello"
+class _FakeEnum:
+    def __init__(self, value: str) -> None:
+        self.value = value
 
-        assert is_text_settable(TextNode()) is True
+
+# ---------------------------------------------------------------------------
+# Pure helper functions
+# ---------------------------------------------------------------------------
 
 
 class TestFmtDate:
@@ -77,18 +84,15 @@ class TestFmtDate:
 class TestProfileFlat:
     def test_returns_first_name(self):
         p = _mock_profile(first_name="Bob")
-        flat = profile_flat(p)
-        assert flat["first_name"] == "Bob"
+        assert profile_flat(p)["first_name"] == "Bob"
 
     def test_returns_empty_string_for_none_fields(self):
         p = _mock_profile(phone=None)
-        flat = profile_flat(p)
-        assert flat["phone"] == ""
+        assert profile_flat(p)["phone"] == ""
 
     def test_contains_all_expected_keys(self):
         p = _mock_profile()
-        flat = profile_flat(p)
-        expected_keys = {
+        expected = {
             "first_name",
             "last_name",
             "title",
@@ -107,184 +111,411 @@ class TestProfileFlat:
             "contract_type",
             "preferred_domains",
         }
-        assert set(flat.keys()) == expected_keys
+        assert set(profile_flat(p).keys()) == expected
 
-
-class TestExpFlat:
-    def test_formats_end_date(self):
-        exp = _mock_experience(end_date=date(2023, 6, 1), is_current=False)
-        flat = exp_flat(exp)
-        assert flat["experience.end_date"] == "06/2023"
-
-    def test_current_experience_shows_present(self):
-        exp = _mock_experience(is_current=True)
-        flat = exp_flat(exp)
-        assert flat["experience.end_date"] == "présent"
-
-    def test_technologies_joined(self):
-        exp = _mock_experience(technologies=["Python", "FastAPI"])
-        flat = exp_flat(exp)
-        assert flat["experience.technologies"] == "Python, FastAPI"
-
-
-class TestGenerateDocument:
-    def test_returns_bytes(self, tmp_path):
-        """generate_document returns non-empty bytes for a minimal template."""
-        from docx import Document
-
-        tmpl_path = tmp_path / "template.docx"
-        doc = Document()
-        doc.add_paragraph("Bonjour {{first_name}} {{last_name}}")
-        doc.save(str(tmpl_path))
-
-        profile = _mock_profile(first_name="Alice", last_name="Martin")
-        mappings = {"{{first_name}}": "first_name", "{{last_name}}": "last_name"}
-
-        result = generate_document(str(tmpl_path), profile, [], [], mappings)
-        assert isinstance(result, bytes)
-        assert len(result) > 0
-
-    def test_replaces_simple_placeholder(self, tmp_path):
-        """Placeholder {{first_name}} is replaced with the profile value."""
-        from docx import Document
-
-        tmpl_path = tmp_path / "template.docx"
-        doc = Document()
-        doc.add_paragraph("{{first_name}}")
-        doc.save(str(tmpl_path))
-
-        profile = _mock_profile(first_name="Alice")
-        mappings = {"{{first_name}}": "first_name"}
-
-        docx_bytes = generate_document(str(tmpl_path), profile, [], [], mappings)
-        result_doc = Document(io.BytesIO(docx_bytes))
-        texts = [p.text for p in result_doc.paragraphs]
-        assert "Alice" in texts
-
-    def test_expands_experience_block(self, tmp_path):
-        """{{#EXPERIENCES}}...{{/EXPERIENCES}} block is expanded once per experience."""
-        from docx import Document
-
-        tmpl_path = tmp_path / "template.docx"
-        doc = Document()
-        doc.add_paragraph("{{#EXPERIENCES}}")
-        doc.add_paragraph("{{experience.role}}")
-        doc.add_paragraph("{{/EXPERIENCES}}")
-        doc.save(str(tmpl_path))
-
-        profile = _mock_profile()
-        exp1 = _mock_experience(role="Engineer")
-        exp2 = _mock_experience(role="Architect")
-        mappings = {"{{experience.role}}": "experience.role"}
-
-        docx_bytes = generate_document(str(tmpl_path), profile, [exp1, exp2], [], mappings)
-        result_doc = Document(io.BytesIO(docx_bytes))
-        texts = [p.text for p in result_doc.paragraphs if p.text]
-        assert "Engineer" in texts
-        assert "Architect" in texts
-        # Block markers must be removed
-        assert "{{#EXPERIENCES}}" not in texts
-        assert "{{/EXPERIENCES}}" not in texts
-
-
-class _FakeEnum:
-    def __init__(self, value: str) -> None:
-        self.value = value
-
-
-class TestProfileFlatNewFields:
     def test_includes_contract_type(self):
         p = _mock_profile(contract_type=_FakeEnum("freelance"))
-        flat = profile_flat(p)
-        assert "contract_type" in flat
-        assert flat["contract_type"] == "freelance"
+        assert profile_flat(p)["contract_type"] == "freelance"
 
     def test_includes_preferred_domains(self):
         p = _mock_profile(preferred_domains=["finance", "tech"])
-        flat = profile_flat(p)
-        assert "preferred_domains" in flat
-        assert flat["preferred_domains"] == "finance, tech"
+        assert profile_flat(p)["preferred_domains"] == "finance, tech"
 
     def test_preferred_domains_none_returns_empty(self):
         p = _mock_profile(preferred_domains=None)
-        flat = profile_flat(p)
-        assert flat["preferred_domains"] == ""
+        assert profile_flat(p)["preferred_domains"] == ""
 
     def test_includes_annual_salary(self):
         p = _mock_profile(annual_salary=60000)
-        flat = profile_flat(p)
-        assert "annual_salary" in flat
-        assert flat["annual_salary"] == "60000"
+        assert profile_flat(p)["annual_salary"] == "60000"
+
+
+class TestExpFlat:
+    """exp_flat returns clean keys (no 'experience.' prefix) for use as Jinja2 context."""
+
+    def test_formats_end_date(self):
+        exp = _mock_experience(end_date=date(2023, 6, 1), is_current=False)
+        assert exp_flat(exp)["end_date"] == "06/2023"
+
+    def test_current_experience_shows_present(self):
+        exp = _mock_experience(is_current=True)
+        assert exp_flat(exp)["end_date"] == "présent"
+
+    def test_technologies_joined(self):
+        exp = _mock_experience(technologies=["Python", "FastAPI"])
+        assert exp_flat(exp)["technologies"] == "Python, FastAPI"
+
+    def test_keys_have_no_experience_prefix(self):
+        exp = _mock_experience()
+        keys = set(exp_flat(exp).keys())
+        assert "client_name" in keys
+        assert "role" in keys
+        assert not any(k.startswith("experience.") for k in keys)
+
+    def test_all_expected_keys_present(self):
+        exp = _mock_experience()
+        expected = {
+            "client_name",
+            "role",
+            "start_date",
+            "end_date",
+            "description",
+            "context",
+            "achievements",
+            "technologies",
+        }
+        assert set(exp_flat(exp).keys()) == expected
 
 
 class TestSkillFlat:
-    def test_returns_skill_name(self):
-        sk = MagicMock()
-        sk.name = "Python"
-        sk.category = _FakeEnum("language")
-        sk.level = "Expert"
-        sk.level_rating = 5
-        sk.years_of_experience = 3
-        flat = skill_flat(sk)
-        assert flat["skill.name"] == "Python"
-        assert flat["skill.category"] == "language"
-        assert flat["skill.level"] == "Expert"
-        assert flat["skill.level_rating"] == "5"
-        assert flat["skill.years_of_experience"] == "3"
+    """skill_flat returns clean keys (no 'skill.' prefix) for use as Jinja2 context."""
+
+    def test_returns_name(self):
+        sk = _mock_skill(name="Python")
+        assert skill_flat(sk)["name"] == "Python"
+
+    def test_keys_have_no_skill_prefix(self):
+        sk = _mock_skill()
+        keys = set(skill_flat(sk).keys())
+        assert "name" in keys
+        assert not any(k.startswith("skill.") for k in keys)
+
+    def test_all_expected_keys_present(self):
+        sk = _mock_skill()
+        expected = {"name", "category", "level", "level_rating", "years_of_experience"}
+        assert set(skill_flat(sk).keys()) == expected
+
+    def test_category_extracts_value(self):
+        sk = _mock_skill(category=_FakeEnum("framework"))
+        assert skill_flat(sk)["category"] == "framework"
+
+    def test_none_level_rating_returns_empty(self):
+        sk = _mock_skill(level_rating=None)
+        assert skill_flat(sk)["level_rating"] == ""
 
 
-class TestSkillsBlock:
-    def test_skills_block_clones_per_skill(self, tmp_path):
-        from docx import Document
+# ---------------------------------------------------------------------------
+# generate_document — simple field replacement
+# ---------------------------------------------------------------------------
 
-        tmpl_path = tmp_path / "skills_tmpl.docx"
+
+class TestSimpleFieldReplacement:
+    def test_returns_bytes(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
         doc = Document()
-        doc.add_paragraph("{{#SKILLS}}")
-        doc.add_paragraph("{{SKILL_NAME}} ({{SKILL_CATEGORY}})")
-        doc.add_paragraph("{{/SKILLS}}")
-        doc.save(str(tmpl_path))
+        doc.add_paragraph("{{first_name}}")
+        doc.save(str(tmpl))
 
-        profile = _mock_profile()
-        sk1 = MagicMock()
-        sk1.name = "Python"
-        sk1.category = _FakeEnum("language")
-        sk1.level = "Expert"
-        sk1.level_rating = None
-        sk1.years_of_experience = None
-        sk2 = MagicMock()
-        sk2.name = "Django"
-        sk2.category = _FakeEnum("framework")
-        sk2.level = "Avancé"
-        sk2.level_rating = None
-        sk2.years_of_experience = None
+        result = generate_document(str(tmpl), _mock_profile(), [], [], {})
+        assert isinstance(result, bytes) and len(result) > 0
 
-        mappings = {
-            "{{SKILL_NAME}}": "skill.name",
-            "{{SKILL_CATEGORY}}": "skill.category",
-        }
-
-        result_bytes = generate_document(str(tmpl_path), profile, [], [sk1, sk2], mappings)
-        result_doc = Document(io.BytesIO(result_bytes))
-        full_text = "\n".join(p.text for p in result_doc.paragraphs)
-
-        assert "Python" in full_text
-        assert "Django" in full_text
-        assert "{{#SKILLS}}" not in full_text
-        assert "{{/SKILLS}}" not in full_text
-
-    def test_skills_block_empty_removes_markers(self, tmp_path):
-        from docx import Document
-
-        tmpl_path = tmp_path / "skills_empty.docx"
+    def test_replaces_field_in_paragraph(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
         doc = Document()
-        doc.add_paragraph("{{#SKILLS}}")
-        doc.add_paragraph("{{SKILL_NAME}}")
-        doc.add_paragraph("{{/SKILLS}}")
-        doc.save(str(tmpl_path))
+        doc.add_paragraph("{{first_name}} {{last_name}}")
+        doc.save(str(tmpl))
 
-        profile = _mock_profile()
-        result_bytes = generate_document(str(tmpl_path), profile, [], [], {})
-        result_doc = Document(io.BytesIO(result_bytes))
-        full_text = "\n".join(p.text for p in result_doc.paragraphs)
-        assert "{{#SKILLS}}" not in full_text
-        assert "{{/SKILLS}}" not in full_text
+        result = generate_document(
+            str(tmpl), _mock_profile(first_name="Alice", last_name="Martin"), [], [], {}
+        )
+        text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
+        assert "Alice" in text and "Martin" in text
+
+    def test_replaces_field_in_table_cell(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        table = doc.add_table(rows=1, cols=2)
+        table.rows[0].cells[0].paragraphs[0].text = "{{first_name}}"
+        table.rows[0].cells[1].paragraphs[0].text = "{{last_name}}"
+        doc.save(str(tmpl))
+
+        result = generate_document(
+            str(tmpl), _mock_profile(first_name="Alice", last_name="Martin"), [], [], {}
+        )
+        out = Document(io.BytesIO(result))
+        cell_texts = [cell.text for row in out.tables[0].rows for cell in row.cells]
+        assert "Alice" in cell_texts
+        assert "Martin" in cell_texts
+
+    def test_replaces_field_in_header(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("body")
+        doc.sections[0].header.paragraphs[0].text = "{{title}}"
+        doc.save(str(tmpl))
+
+        result = generate_document(str(tmpl), _mock_profile(title="Architecte"), [], [], {})
+        out = Document(io.BytesIO(result))
+        header_text = out.sections[0].header.paragraphs[0].text
+        assert "Architecte" in header_text
+
+    def test_none_value_renders_as_empty(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("Tél: {{phone}}")
+        doc.save(str(tmpl))
+
+        result = generate_document(str(tmpl), _mock_profile(phone=None), [], [], {})
+        text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
+        assert "{{phone}}" not in text
+        assert "Tél:" in text
+
+    def test_unknown_variable_renders_as_empty(self, tmp_path):
+        """Jinja2 undefined variables render as empty string (undefined mode)."""
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("{{nonexistent_field}}")
+        doc.save(str(tmpl))
+
+        result = generate_document(str(tmpl), _mock_profile(), [], [], {})
+        text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
+        assert "{{nonexistent_field}}" not in text
+
+    def test_replaces_annual_salary(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("Salaire: {{annual_salary}} €")
+        doc.save(str(tmpl))
+
+        result = generate_document(str(tmpl), _mock_profile(annual_salary=55000), [], [], {})
+        text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
+        assert "55000" in text
+
+
+# ---------------------------------------------------------------------------
+# generate_document — fragmented runs
+# ---------------------------------------------------------------------------
+
+
+class TestFragmentedRuns:
+    def test_placeholder_split_across_runs_is_replaced(self, tmp_path):
+        """Placeholder split over multiple Word runs must still be replaced.
+
+        This simulates what Word does when applying formatting in the middle of
+        typing a placeholder, or when pasting text with mixed formatting.
+        """
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        para = doc.add_paragraph()
+        para.add_run("{{")
+        para.add_run("first_name")
+        para.add_run("}}")
+        doc.save(str(tmpl))
+
+        result = generate_document(str(tmpl), _mock_profile(first_name="Alice"), [], [], {})
+        text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
+        assert "Alice" in text
+        assert "{{" not in text
+
+    def test_placeholder_split_in_three_ways_is_replaced(self, tmp_path):
+        """Worst-case fragmentation: each character group is a separate run."""
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        para = doc.add_paragraph()
+        para.add_run("{")
+        para.add_run("{last")
+        para.add_run("_name}}")
+        doc.save(str(tmpl))
+
+        result = generate_document(str(tmpl), _mock_profile(last_name="Martin"), [], [], {})
+        text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
+        assert "Martin" in text
+
+
+# ---------------------------------------------------------------------------
+# generate_document — experience block (paragraphs)
+# ---------------------------------------------------------------------------
+
+
+class TestExperienceBlockParagraphs:
+    def test_block_clones_per_experience(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("{%p for exp in experiences %}")
+        doc.add_paragraph("{{exp.role}} — {{exp.client_name}}")
+        doc.add_paragraph("{%p endfor %}")
+        doc.save(str(tmpl))
+
+        exp1 = _mock_experience(role="Engineer", client_name="Alpha")
+        exp2 = _mock_experience(role="Architect", client_name="Beta")
+        result = generate_document(str(tmpl), _mock_profile(), [exp1, exp2], [], {})
+        text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs if p.text)
+        assert "Engineer" in text and "Alpha" in text
+        assert "Architect" in text and "Beta" in text
+
+    def test_empty_list_removes_block_markers(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("Header")
+        doc.add_paragraph("{%p for exp in experiences %}")
+        doc.add_paragraph("{{exp.role}}")
+        doc.add_paragraph("{%p endfor %}")
+        doc.add_paragraph("Footer")
+        doc.save(str(tmpl))
+
+        result = generate_document(str(tmpl), _mock_profile(), [], [], {})
+        texts = [p.text for p in Document(io.BytesIO(result)).paragraphs if p.text]
+        assert "Header" in texts
+        assert "Footer" in texts
+        assert not any("{%" in t or "{{" in t for t in texts)
+
+    def test_current_experience_shows_present(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("{%p for exp in experiences %}")
+        doc.add_paragraph("{{exp.start_date}} — {{exp.end_date}}")
+        doc.add_paragraph("{%p endfor %}")
+        doc.save(str(tmpl))
+
+        exp = _mock_experience(start_date=date(2022, 6, 1), end_date=None, is_current=True)
+        result = generate_document(str(tmpl), _mock_profile(), [exp], [], {})
+        text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
+        assert "06/2022" in text and "présent" in text
+
+    def test_technologies_joined_as_string(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("{%p for exp in experiences %}")
+        doc.add_paragraph("Stack: {{exp.technologies}}")
+        doc.add_paragraph("{%p endfor %}")
+        doc.save(str(tmpl))
+
+        exp = _mock_experience(technologies=["Python", "FastAPI", "Redis"])
+        result = generate_document(str(tmpl), _mock_profile(), [exp], [], {})
+        text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
+        assert "Python, FastAPI, Redis" in text
+
+
+# ---------------------------------------------------------------------------
+# generate_document — experience block (table rows)
+# ---------------------------------------------------------------------------
+
+
+class TestExperienceBlockTableRows:
+    def _make_row_block_template(self, tmp_path, n_cols: int = 2):
+        """Template: table with marker row / content row / endmarker row."""
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        table = doc.add_table(rows=3, cols=n_cols)
+        table.rows[0].cells[0].paragraphs[0].text = "{%tr for exp in experiences %}"
+        table.rows[1].cells[0].paragraphs[0].text = "{{exp.client_name}}"
+        table.rows[1].cells[1].paragraphs[0].text = "{{exp.role}}"
+        table.rows[2].cells[0].paragraphs[0].text = "{%tr endfor %}"
+        doc.save(str(tmpl))
+        return str(tmpl)
+
+    def test_one_row_per_experience(self, tmp_path):
+        tmpl = self._make_row_block_template(tmp_path)
+        exp1 = _mock_experience(client_name="Alpha", role="Dev")
+        exp2 = _mock_experience(client_name="Beta", role="Lead")
+
+        result = generate_document(tmpl, _mock_profile(), [exp1, exp2], [], {})
+        out = Document(io.BytesIO(result))
+        assert len(out.tables) == 1
+        assert len(out.tables[0].rows) == 2
+
+    def test_row_content_matches_experiences(self, tmp_path):
+        tmpl = self._make_row_block_template(tmp_path)
+        exp1 = _mock_experience(client_name="Alpha", role="Dev")
+        exp2 = _mock_experience(client_name="Beta", role="Lead")
+
+        result = generate_document(tmpl, _mock_profile(), [exp1, exp2], [], {})
+        out = Document(io.BytesIO(result))
+        all_text = " ".join(cell.text for row in out.tables[0].rows for cell in row.cells)
+        assert "Alpha" in all_text and "Dev" in all_text
+        assert "Beta" in all_text and "Lead" in all_text
+
+    def test_empty_list_produces_zero_rows(self, tmp_path):
+        tmpl = self._make_row_block_template(tmp_path)
+        result = generate_document(tmpl, _mock_profile(), [], [], {})
+        out = Document(io.BytesIO(result))
+        assert len(out.tables[0].rows) == 0
+
+    def test_no_marker_text_in_output(self, tmp_path):
+        tmpl = self._make_row_block_template(tmp_path)
+        exp = _mock_experience(client_name="Alpha", role="Dev")
+
+        result = generate_document(tmpl, _mock_profile(), [exp], [], {})
+        out = Document(io.BytesIO(result))
+        all_text = " ".join(cell.text for row in out.tables[0].rows for cell in row.cells)
+        assert "{%tr" not in all_text
+        assert "{{" not in all_text
+
+
+# ---------------------------------------------------------------------------
+# generate_document — skills block (table rows)
+# ---------------------------------------------------------------------------
+
+
+class TestSkillsBlockTableRows:
+    def test_one_row_per_skill(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        table = doc.add_table(rows=3, cols=2)
+        table.rows[0].cells[0].paragraphs[0].text = "{%tr for sk in skills %}"
+        table.rows[1].cells[0].paragraphs[0].text = "{{sk.name}}"
+        table.rows[1].cells[1].paragraphs[0].text = "{{sk.category}}"
+        table.rows[2].cells[0].paragraphs[0].text = "{%tr endfor %}"
+        doc.save(str(tmpl))
+
+        sk1 = _mock_skill(name="Python", category=_FakeEnum("language"))
+        sk2 = _mock_skill(name="Django", category=_FakeEnum("framework"))
+        result = generate_document(str(tmpl), _mock_profile(), [], [sk1, sk2], {})
+        out = Document(io.BytesIO(result))
+        assert len(out.tables[0].rows) == 2
+        all_text = " ".join(cell.text for row in out.tables[0].rows for cell in row.cells)
+        assert "Python" in all_text and "Django" in all_text
+
+    def test_skills_block_in_paragraphs(self, tmp_path):
+        """Non-regression: skills block in paragraphs still works."""
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("{%p for sk in skills %}")
+        doc.add_paragraph("{{sk.name}} ({{sk.category}})")
+        doc.add_paragraph("{%p endfor %}")
+        doc.save(str(tmpl))
+
+        sk1 = _mock_skill(name="Python", category=_FakeEnum("language"))
+        sk2 = _mock_skill(name="Django", category=_FakeEnum("framework"))
+        result = generate_document(str(tmpl), _mock_profile(), [], [sk1, sk2], {})
+        text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs if p.text)
+        assert "Python" in text and "Django" in text
+        assert "{%p" not in text
+
+    def test_empty_skills_produces_zero_rows(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        table = doc.add_table(rows=3, cols=1)
+        table.rows[0].cells[0].paragraphs[0].text = "{%tr for sk in skills %}"
+        table.rows[1].cells[0].paragraphs[0].text = "{{sk.name}}"
+        table.rows[2].cells[0].paragraphs[0].text = "{%tr endfor %}"
+        doc.save(str(tmpl))
+
+        result = generate_document(str(tmpl), _mock_profile(), [], [], {})
+        out = Document(io.BytesIO(result))
+        assert len(out.tables[0].rows) == 0
+
+
+# ---------------------------------------------------------------------------
+# generate_document — performance
+# ---------------------------------------------------------------------------
+
+
+class TestPerformance:
+    def test_100_experiences_completes_within_5_seconds(self, tmp_path):
+        tmpl = tmp_path / "t.docx"
+        doc = Document()
+        doc.add_paragraph("{%p for exp in experiences %}")
+        doc.add_paragraph(
+            "{{exp.role}} - {{exp.client_name}} ({{exp.start_date}}-{{exp.end_date}})"
+        )
+        doc.add_paragraph("{%p endfor %}")
+        doc.save(str(tmpl))
+
+        exps = [_mock_experience(role=f"Role {i}", client_name=f"Client {i}") for i in range(100)]
+        start = time.monotonic()
+        result = generate_document(str(tmpl), _mock_profile(), exps, [], {})
+        elapsed = time.monotonic() - start
+
+        assert isinstance(result, bytes) and len(result) > 0
+        assert elapsed < 5.0, f"Generation took {elapsed:.1f}s — too slow"
