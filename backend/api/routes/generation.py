@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
+from starlette.responses import Response
 
 import services.generation_service as generation_service
 import services.recruiter_service as recruiter_service
@@ -90,13 +91,12 @@ async def download_document(
     doc_id: UUID,
     current_user: CurrentUser,
     db: DB,
-) -> FileResponse:
+) -> Response:
     result = await db.execute(select(GeneratedDocument).where(GeneratedDocument.id == doc_id))
     doc = result.scalar_one_or_none()
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="document not found")
 
-    # Authorization: recruiter from org OR the candidate themselves
     from models.invitation import AccessGrant
 
     grant_result = await db.execute(
@@ -115,10 +115,21 @@ async def download_document(
     if not is_candidate and not is_recruiter_of_org:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="access denied")
 
-    from core import storage as storage_module
+    from fastapi.responses import RedirectResponse
+
+    from core.storage import LocalStorageBackend, get_storage
+
+    storage = get_storage()
+    download_url = await storage.get_download_url(doc.file_path)
+    if download_url is not None:
+        return RedirectResponse(url=download_url, status_code=302)
+
+    # Local storage: file_path is an absolute filesystem path
+    if not isinstance(storage, LocalStorageBackend):
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
 
     file_path = Path(doc.file_path).resolve()
-    if not file_path.is_relative_to(storage_module.upload_dir()):
+    if not file_path.is_relative_to(storage.upload_dir()):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid file path")
     if not file_path.exists():
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
@@ -128,8 +139,4 @@ async def download_document(
         if doc.file_format == "pdf"
         else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
-    return FileResponse(
-        path=str(file_path),
-        filename=file_path.name,
-        media_type=mime,
-    )
+    return FileResponse(path=str(file_path), filename=file_path.name, media_type=mime)

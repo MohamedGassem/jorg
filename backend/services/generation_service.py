@@ -3,17 +3,17 @@
 
 from __future__ import annotations
 
-import subprocess
-from pathlib import Path
 from typing import Literal
 from uuid import UUID
 
+import httpx
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core import storage
+from core.config import get_settings
 from core.exceptions import BusinessRuleError, ForbiddenError, NotFoundError
+from core.storage import get_storage
 from models.candidate_profile import CandidateProfile, Experience, Skill
 from models.generated_document import GeneratedDocument
 from models.recruiter import Organization
@@ -25,34 +25,25 @@ from services.docx_engine import generate_document
 logger = structlog.get_logger()
 
 
-def convert_to_pdf(docx_path: str) -> str | None:
-    """Convert a docx file to PDF using LibreOffice headless.
-
-    Returns the PDF path on success, or None if LibreOffice is unavailable
-    or conversion fails. Failure is non-fatal: caller delivers docx instead.
-    """
-    try:
-        output_dir = str(Path(docx_path).parent)
-        result = subprocess.run(
-            [
-                "libreoffice",
-                "--headless",
-                "--convert-to",
-                "pdf",
-                "--outdir",
-                output_dir,
-                docx_path,
-            ],
-            capture_output=True,
-            timeout=15,
+async def _convert_to_pdf(docx_bytes: bytes) -> bytes:
+    """Convert DOCX bytes to PDF via Gotenberg. Raises BusinessRuleError on failure."""
+    settings = get_settings()
+    if not settings.gotenberg_url:
+        raise BusinessRuleError("PDF conversion not available: GOTENBERG_URL is not configured")
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            f"{settings.gotenberg_url}/forms/libreoffice/convert",
+            files={
+                "files": (
+                    "document.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
         )
-        if result.returncode == 0:
-            pdf_path = str(Path(docx_path).with_suffix(".pdf"))
-            if Path(pdf_path).exists():
-                return pdf_path
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-    return None
+    if response.status_code != 200:
+        raise BusinessRuleError(f"PDF conversion failed (HTTP {response.status_code})")
+    return response.content
 
 
 async def _load_profile(db: AsyncSession, candidate_id: UUID) -> CandidateProfile:
@@ -113,25 +104,23 @@ async def generate_for_candidate(
     except ValueError as exc:
         raise BusinessRuleError(str(exc)) from exc
 
-    # 5. Convert to PDF if requested
-    filename = f"doc_{candidate_id}_{template_id}.docx"
-    file_path = storage.save_upload(docx_bytes, filename)
-
-    # 6. Save to storage
-    actual_path = file_path
-    actual_format: str = "docx"
+    # 5. Save to storage (convert to PDF in memory if requested)
+    storage = get_storage()
+    base_filename = f"doc_{candidate_id}_{template_id}"
     if fmt == "pdf":
-        pdf_path = convert_to_pdf(file_path)
-        if pdf_path:
-            actual_path = pdf_path
-            actual_format = "pdf"
+        pdf_bytes = await _convert_to_pdf(docx_bytes)
+        storage_key = await storage.save(pdf_bytes, f"{base_filename}.pdf")
+        actual_format: str = "pdf"
+    else:
+        storage_key = await storage.save(docx_bytes, f"{base_filename}.docx")
+        actual_format = "docx"
 
-    # 7. Record generated document
+    # 6. Record generated document
     doc = GeneratedDocument(
         access_grant_id=grant.id,
         template_id=template_id,
         generated_by_user_id=generated_by_user_id,
-        file_path=actual_path,
+        file_path=storage_key,
         file_format=actual_format,
     )
     db.add(doc)
