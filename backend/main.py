@@ -1,10 +1,13 @@
 # backend/main.py
 import uuid
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
@@ -19,12 +22,35 @@ from api.routes.recruiters import router as recruiters_router
 from api.routes.templates import router as templates_router
 from core.config import get_settings
 from core.exceptions import JorgError
+from core.limiter import limiter
 from core.logging import configure_logging
 
 settings = get_settings()
 configure_logging(log_level=settings.log_level)
 
-app = FastAPI(title="Jorg API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    from core.storage import get_storage
+
+    try:
+        get_storage()
+    except ValueError as exc:
+        raise RuntimeError(f"Storage configuration error: {exc}") from exc
+    yield
+
+
+app = FastAPI(title="Jorg API", version="0.1.0", lifespan=lifespan)
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    return JSONResponse(
+        status_code=429,
+        content={"detail": str(exc.detail)},
+        headers={"Retry-After": str(getattr(exc, "retry_after", ""))},
+    )
 
 
 @app.exception_handler(JorgError)

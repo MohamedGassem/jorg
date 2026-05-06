@@ -1,16 +1,19 @@
 # backend/api/routes/generation.py
-from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
+from starlette.responses import Response
 
 import services.generation_service as generation_service
 import services.recruiter_service as recruiter_service
 from api.deps import CurrentUser, get_db, require_role
+from core.limiter import limiter
+from core.storage import LocalStorageBackend, get_storage
 from models.generated_document import GeneratedDocument
 from models.user import User, UserRole
 from schemas.generation import (
@@ -31,7 +34,9 @@ DB = Annotated[AsyncSession, Depends(get_db)]
     response_model=GeneratedDocumentRead,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("5/minute")
 async def generate_document(
+    request: Request,
     org_id: UUID,
     data: GenerateRequest,
     current_user: RecruiterUser,
@@ -86,14 +91,13 @@ async def download_document(
     doc_id: UUID,
     current_user: CurrentUser,
     db: DB,
-) -> FileResponse:
+) -> Response:
     result = await db.execute(select(GeneratedDocument).where(GeneratedDocument.id == doc_id))
     doc = result.scalar_one_or_none()
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="document not found")
 
-    # Authorization: recruiter from org OR the candidate themselves
-    from models.invitation import AccessGrant
+    from models.invitation import AccessGrant  # lazy: avoids circular import
 
     grant_result = await db.execute(
         select(AccessGrant).where(AccessGrant.id == doc.access_grant_id)
@@ -111,11 +115,23 @@ async def download_document(
     if not is_candidate and not is_recruiter_of_org:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="access denied")
 
-    from core import storage as storage_module
+    storage = get_storage()
+    download_url = await storage.get_download_url(doc.file_path)
+    if download_url is not None:
+        return RedirectResponse(url=download_url, status_code=302)
 
-    file_path = Path(doc.file_path).resolve()
-    if not file_path.is_relative_to(storage_module.upload_dir()):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid file path")
+    # get_download_url returned None — storage serves files locally.
+    # Only LocalStorageBackend does this; any other backend returning None
+    # means the file is unavailable.
+    if not isinstance(storage, LocalStorageBackend):
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
+
+    try:
+        file_path = storage.resolve_local_path(doc.file_path)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="invalid file path"
+        ) from exc
     if not file_path.exists():
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
 
@@ -124,8 +140,4 @@ async def download_document(
         if doc.file_format == "pdf"
         else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
-    return FileResponse(
-        path=str(file_path),
-        filename=file_path.name,
-        media_type=mime,
-    )
+    return FileResponse(path=str(file_path), filename=file_path.name, media_type=mime)

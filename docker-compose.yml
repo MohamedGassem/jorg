@@ -1,32 +1,21 @@
 services:
-  postgres:
-    image: postgres:18.3
-    container_name: jorg-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: jorg
-      POSTGRES_PASSWORD: jorg_dev_password
-      POSTGRES_DB: jorg
+  api:
+    build: ./backend
     ports:
-      - "5432:5432"
-    volumes:
-      - jorg_pgdata:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jorg"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # NOTE: PDF conversion uses `libreoffice --headless` as a subprocess inside
-  # the backend container. For this to work, libreoffice-headless must be
-  # installed in the backend image (e.g. via apt). This service entry is a
-  # placeholder; activate it only if you run a separate conversion sidecar.
-  libreoffice:
-    image: linuxserver/libreoffice:latest
-    container_name: jorg-libreoffice
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - GOTENBERG_URL=http://gotenberg:3000
+    depends_on:
+      - gotenberg
     restart: unless-stopped
-    profiles:
-      - pdf
+    volumes:
+      - uploads:/app/uploads
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
 
 volumes:
-  jorg_pgdata:
+  uploads:

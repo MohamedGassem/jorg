@@ -20,6 +20,8 @@ dependencies = [
     "python-docx>=1.1",
     "docxtpl>=0.17",
     "python-multipart>=0.0.9",
+    "slowapi>=0.1.9",
+    "boto3>=1.35",
 ]
 
 [dependency-groups]
@@ -55,6 +57,10 @@ module = ["jose", "jose.exceptions", "testcontainers.*", "docxtpl", "docxtpl.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = ["boto3", "boto3.*", "botocore", "botocore.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = ["tests.*", "tests.unit.*", "tests.integration.*", "alembic.*", "alembic.versions.*"]
 disallow_untyped_defs = false
 disallow_any_generics = false
@@ -67,4 +73,7 @@ addopts = "--cov-fail-under=20"
 
 [tool.coverage.run]
 source = ["."]
-omit = ["tests/*", "alembic/*"]
+omit = [
+    "tests/*",
+    "alembic/*",
+]

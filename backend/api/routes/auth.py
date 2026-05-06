@@ -1,13 +1,14 @@
 # backend/api/routes/auth.py
-import secrets
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
 from api.deps import CurrentUser, get_db
 from core.config import get_settings
+from core.limiter import limiter
 from models.user import OAuthProvider, UserRole
 from schemas.auth import (
     LoginRequest,
@@ -19,6 +20,7 @@ from schemas.auth import (
     VerifyEmailRequest,
 )
 from schemas.user import UserRead
+from services import oauth_state_service
 from services.auth_service import (
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
@@ -41,8 +43,6 @@ from services.password_reset_service import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-_oauth_states: dict[str, dict[str, object]] = {}  # { state: { role, created_at } }
 
 _settings = get_settings()
 _SECURE = _settings.env != "development"
@@ -75,7 +75,9 @@ def _set_auth_cookies(response: Response, access: str, refresh: str) -> None:
     response_model=UserRead,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     payload: RegisterRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserRead:
@@ -92,7 +94,9 @@ async def register(
 
 
 @router.post("/login", response_model=TokenPair)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     payload: LoginRequest,
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -172,7 +176,9 @@ async def me(current_user: CurrentUser) -> UserRead:
 
 
 @router.post("/request-password-reset", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("5/minute")
 async def request_reset(
+    request: Request,
     payload: RequestPasswordResetRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
@@ -199,12 +205,9 @@ async def perform_reset(
 async def oauth_login(
     provider: OAuthProvider,
     role: Annotated[UserRole, Query()],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> RedirectResponse:
-    state = secrets.token_urlsafe(32)
-    _oauth_states[state] = {
-        "role": role,
-        "created_at": __import__("datetime").datetime.now(__import__("datetime").UTC),
-    }
+    state = await oauth_state_service.create_state(db, provider.value, role.value)
     client = get_oauth_client(provider)
     return RedirectResponse(url=client.authorization_url(state), status_code=307)
 
@@ -216,11 +219,14 @@ async def oauth_callback(
     state: Annotated[str, Query()],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> RedirectResponse:
-    state_data = _oauth_states.pop(state, None)
-    if state_data is None:
+    result = await oauth_state_service.consume_state(db, state)
+    if result is None:
         raise HTTPException(status_code=400, detail="invalid or expired state")
 
-    role = UserRole(str(state_data["role"]))
+    stored_provider_str, role_str = result
+    if stored_provider_str != provider.value:
+        raise HTTPException(status_code=400, detail="invalid or expired state")
+    role = UserRole(role_str)
     client = get_oauth_client(provider)
     info = await client.exchange_code(code)
     user = await find_or_create_oauth_user(db, info, default_role=role)

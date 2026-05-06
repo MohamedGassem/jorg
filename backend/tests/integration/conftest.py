@@ -14,6 +14,7 @@ from testcontainers.postgres import PostgresContainer
 
 from api.deps import get_db
 from core.email import ConsoleEmailBackend, override_email_backend
+from core.limiter import limiter
 from main import app
 from models import Base
 
@@ -51,6 +52,10 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
 
     email_backend = ConsoleEmailBackend()
     override_email_backend(email_backend)
+
+    # Reset rate limit counters so each test starts with a clean slate.
+    # The limiter uses in-memory storage which persists across tests otherwise.
+    limiter.reset()
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
