@@ -20,6 +20,7 @@ dependencies = [
     "python-docx>=1.1",
     "docxtpl>=0.17",
     "python-multipart>=0.0.9",
+    "slowapi>=0.1.9",
 ]
 
 [dependency-groups]

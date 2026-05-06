@@ -5,6 +5,8 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
@@ -19,12 +21,15 @@ from api.routes.recruiters import router as recruiters_router
 from api.routes.templates import router as templates_router
 from core.config import get_settings
 from core.exceptions import JorgError
+from core.limiter import limiter
 from core.logging import configure_logging
 
 settings = get_settings()
 configure_logging(log_level=settings.log_level)
 
 app = FastAPI(title="Jorg API", version="0.1.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 
 @app.exception_handler(JorgError)

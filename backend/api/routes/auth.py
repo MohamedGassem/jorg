@@ -5,9 +5,11 @@ from typing import Annotated
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
 from api.deps import CurrentUser, get_db
 from core.config import get_settings
+from core.limiter import limiter
 from models.user import OAuthProvider, UserRole
 from schemas.auth import (
     LoginRequest,
@@ -75,7 +77,9 @@ def _set_auth_cookies(response: Response, access: str, refresh: str) -> None:
     response_model=UserRead,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     payload: RegisterRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserRead:
@@ -92,7 +96,9 @@ async def register(
 
 
 @router.post("/login", response_model=TokenPair)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     payload: LoginRequest,
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -172,7 +178,9 @@ async def me(current_user: CurrentUser) -> UserRead:
 
 
 @router.post("/request-password-reset", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("5/minute")
 async def request_reset(
+    request: Request,
     payload: RequestPasswordResetRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:

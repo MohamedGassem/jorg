@@ -7,10 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
 import services.generation_service as generation_service
 import services.recruiter_service as recruiter_service
 from api.deps import CurrentUser, get_db, require_role
+from core.limiter import limiter
 from models.generated_document import GeneratedDocument
 from models.user import User, UserRole
 from schemas.generation import (
@@ -31,7 +33,9 @@ DB = Annotated[AsyncSession, Depends(get_db)]
     response_model=GeneratedDocumentRead,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("5/minute")
 async def generate_document(
+    request: Request,
     org_id: UUID,
     data: GenerateRequest,
     current_user: RecruiterUser,
