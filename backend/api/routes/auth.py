@@ -299,6 +299,7 @@ async def oauth_callback(
     if result is None:
         raise HTTPException(status_code=400, detail="invalid or expired state")
 
+<<<<<<< HEAD
     stored_provider_str, role_str = result
     if stored_provider_str != provider.value:
         raise HTTPException(status_code=400, detail="invalid or expired state")
@@ -315,6 +316,10 @@ async def oauth_callback(
             ),
         )
 
+=======
+    _provider_str, role_str = result
+    role = UserRole(role_str)
+>>>>>>> ea31e0e (feat: migrate OAuth CSRF state from in-memory dict to database)
     client = get_oauth_client(provider)
     info = await client.exchange_code(code)
     user = await find_or_create_oauth_user(db, info, default_role=role)
