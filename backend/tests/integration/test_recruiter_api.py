@@ -311,7 +311,9 @@ async def test_upload_template_excludes_control_syntax_from_detected(
     # Loop variables and block tags must be excluded
     assert not any(p.startswith("{{exp.") for p in body["detected_placeholders"])
     assert not any("{%p" in p for p in body["detected_placeholders"])
-    assert body["is_valid"] is False  # no mappings yet
+    assert (
+        body["is_valid"] is True
+    )  # all detected placeholders are known fields — auto-mapped on upload
 
 
 # ---- Accessible candidates --------------------------------------------------
