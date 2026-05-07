@@ -15,9 +15,10 @@ interface NavItem {
 interface NavSidebarProps {
   items: NavItem[];
   title: string;
+  homeHref?: string;
 }
 
-export function NavSidebar({ items, title }: NavSidebarProps) {
+export function NavSidebar({ items, title, homeHref }: NavSidebarProps) {
   const pathname = usePathname();
 
   function logout() {
@@ -29,7 +30,12 @@ export function NavSidebar({ items, title }: NavSidebarProps) {
       className="flex h-full w-56 flex-col border-r bg-card px-4 py-6"
       aria-label={`Navigation ${title}`}
     >
-      <p className="mb-6 px-2 text-lg font-semibold tracking-tight">{title}</p>
+      <Link
+        href={homeHref ?? "/"}
+        className="mb-6 block text-lg font-semibold tracking-tight no-underline hover:opacity-80 transition-opacity"
+      >
+        <p className="px-2">{title}</p>
+      </Link>
       <ul className="flex flex-col gap-1" role="list">
         {items.map((item) => {
           const active =

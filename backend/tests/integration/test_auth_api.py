@@ -339,3 +339,31 @@ async def test_login_creates_refresh_token_record(client, db_session):
     records = result.scalars().all()
     assert len(records) >= 1
     assert records[-1].revoked_at is None
+
+
+# ---- GET /auth/me tests ----------------------------------------------------
+
+
+async def test_get_me_returns_current_user(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.get("/auth/me", headers=candidate_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["email"] == "candidate@test.com"
+    assert data["role"] == "candidate"
+    assert "id" in data
+    assert "hashed_password" not in data
+
+
+async def test_get_me_requires_auth(client: AsyncClient) -> None:
+    r = await client.get("/auth/me")
+    assert r.status_code == 401
+
+
+async def test_get_me_works_for_recruiter(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    r = await client.get("/auth/me", headers=recruiter_headers)
+    assert r.status_code == 200
+    assert r.json()["role"] == "recruiter"

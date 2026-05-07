@@ -9,7 +9,7 @@ from starlette.requests import Request
 from api.deps import CurrentUser, get_db
 from core.config import get_settings
 from core.limiter import limiter
-from models.user import OAuthProvider, UserRole
+from models.user import OAuthProvider, User, UserRole
 from schemas.auth import (
     LoginRequest,
     RefreshRequest,
@@ -171,8 +171,8 @@ async def verify_email(
 
 
 @router.get("/me", response_model=UserRead)
-async def me(current_user: CurrentUser) -> UserRead:
-    return UserRead.model_validate(current_user)
+async def get_me(current_user: CurrentUser) -> User:
+    return current_user
 
 
 @router.post("/request-password-reset", status_code=status.HTTP_204_NO_CONTENT)

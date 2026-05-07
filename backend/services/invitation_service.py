@@ -71,6 +71,12 @@ async def list_candidate_invitations(
     return list(result.scalars().all())
 
 
+async def list_org_invitations(db: AsyncSession, org_id: UUID) -> list[Invitation]:
+    """Return all invitations sent by an organization."""
+    result = await db.execute(select(Invitation).where(Invitation.organization_id == org_id))
+    return list(result.scalars().all())
+
+
 async def get_active_grant(
     db: AsyncSession, candidate_id: UUID, organization_id: UUID
 ) -> AccessGrant | None:
