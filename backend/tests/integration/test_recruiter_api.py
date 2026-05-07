@@ -623,6 +623,51 @@ async def test_filter_candidates_by_skill(
     assert len(r2.json()) == 0
 
 
+# ---- Organization invitations -----------------------------------------------
+
+
+async def test_list_org_invitations_returns_created_invitations(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    # Create org and link recruiter
+    org_r = await client.post(
+        "/organizations", headers=recruiter_headers, json={"name": "Inv Corp"}
+    )
+    org_id = org_r.json()["id"]
+    await client.put(
+        "/recruiters/me/profile",
+        headers=recruiter_headers,
+        json={"organization_id": org_id},
+    )
+
+    # Send an invitation
+    await client.post(
+        f"/organizations/{org_id}/invitations",
+        headers=recruiter_headers,
+        json={"candidate_email": "cand@test.com"},
+    )
+
+    r = await client.get(f"/organizations/{org_id}/invitations", headers=recruiter_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data) == 1
+    assert data[0]["candidate_email"] == "cand@test.com"
+    assert data[0]["status"] == "pending"
+
+
+async def test_list_org_invitations_requires_membership(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    # Create org but do NOT link recruiter to it
+    org_r = await client.post(
+        "/organizations", headers=recruiter_headers, json={"name": "Other Corp"}
+    )
+    other_org_id = org_r.json()["id"]
+
+    r = await client.get(f"/organizations/{other_org_id}/invitations", headers=recruiter_headers)
+    assert r.status_code == 403
+
+
 async def test_filter_candidates_by_max_daily_rate(
     client: AsyncClient,
     candidate_headers: dict[str, str],

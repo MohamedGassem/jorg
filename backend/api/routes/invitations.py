@@ -45,6 +45,24 @@ async def create_invitation(
     )
 
 
+@router.get(
+    "/organizations/{org_id}/invitations",
+    response_model=list[InvitationRead],
+)
+async def list_org_invitations(
+    org_id: UUID,
+    current_user: RecruiterUser,
+    db: DB,
+) -> list[Invitation]:
+    profile = await recruiter_service.get_or_create_profile(db, current_user.id)
+    if profile.organization_id != org_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="you do not belong to this organization",
+        )
+    return await invitation_service.list_org_invitations(db, org_id)
+
+
 # ---- Candidate: view + respond to invitations -------------------------------
 
 
