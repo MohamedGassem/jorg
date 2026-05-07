@@ -15,9 +15,10 @@ interface NavItem {
 interface NavSidebarProps {
   items: NavItem[];
   title: string;
+  homeHref?: string;
 }
 
-export function NavSidebar({ items, title }: NavSidebarProps) {
+export function NavSidebar({ items, title, homeHref }: NavSidebarProps) {
   const pathname = usePathname();
 
   function logout() {

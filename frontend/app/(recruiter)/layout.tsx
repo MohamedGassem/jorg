@@ -2,6 +2,7 @@
 import { NavSidebar } from "@/components/nav-sidebar";
 
 const recruiterNav = [
+  { href: "/recruiter/dashboard", label: "Tableau de bord" },
   { href: "/recruiter/templates", label: "Templates" },
   { href: "/recruiter/invitations", label: "Invitations" },
   { href: "/recruiter/candidates", label: "Candidats" },
@@ -17,7 +18,11 @@ export default function RecruiterLayout({
 }) {
   return (
     <div className="flex min-h-dvh bg-background">
-      <NavSidebar items={recruiterNav} title="Espace recruteur" />
+      <NavSidebar
+        items={recruiterNav}
+        title="Espace recruteur"
+        homeHref="/recruiter/dashboard"
+      />
       <main className="flex-1 overflow-auto p-8" id="main-content">
         {children}
       </main>
