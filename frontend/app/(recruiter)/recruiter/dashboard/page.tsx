@@ -37,10 +37,7 @@ export default function RecruiterDashboardPage() {
 
   useEffect(() => {
     if (orgLoading) return;
-    if (!orgId) {
-      setDataLoading(false);
-      return;
-    }
+    if (!orgId) return;
 
     const candidatesPromise = api
       .get<AccessibleCandidateRead[]>(`/organizations/${orgId}/candidates`)
@@ -90,7 +87,7 @@ export default function RecruiterDashboardPage() {
     });
   }, [orgId, orgLoading]);
 
-  if (orgLoading || dataLoading) {
+  if (orgLoading || (!!orgId && dataLoading)) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-10 w-64 rounded-lg bg-muted" />
