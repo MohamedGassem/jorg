@@ -230,7 +230,7 @@ async def list_organization_interactions(
     )
     grants = grant_result.all()
 
-    grant_ids = [g.AccessGrant.id for g in grants]
+    grant_ids = [grant.id for grant, _ in grants]
     doc_rows: list[Row[tuple[GeneratedDocument, Template]]] = []
     if grant_ids:
         doc_result = await db.execute(
@@ -266,7 +266,7 @@ async def list_organization_interactions(
                 InteractionEvent(type="access_revoked", occurred_at=grant.revoked_at)
             )
 
-    grant_org_map = {str(g.AccessGrant.id): str(org.id) for g, org in grants}
+    grant_org_map = {str(grant.id): str(org.id) for grant, org in grants}
     for doc, tmpl in doc_rows:
         doc_oid = grant_org_map.get(str(doc.access_grant_id))
         if doc_oid and doc_oid in orgs:

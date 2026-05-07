@@ -3,9 +3,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import {
+  User,
+  Briefcase,
+  Mail,
+  Shield,
+  Clock,
+  Settings,
+  FileText,
+  Send,
+  Users,
+  Zap,
+  Sparkles,
+  History,
+  LayoutDashboard,
+  LogOut,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { logout as authLogout } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 interface NavItem {
   href: string;
@@ -18,6 +34,23 @@ interface NavSidebarProps {
   homeHref?: string;
 }
 
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  "/candidate/dashboard": LayoutDashboard,
+  "/candidate/profile": User,
+  "/candidate/skills": Briefcase,
+  "/candidate/requests": Mail,
+  "/candidate/access": Shield,
+  "/candidate/history": History,
+  "/candidate/settings": Settings,
+  "/recruiter/dashboard": LayoutDashboard,
+  "/recruiter/templates": FileText,
+  "/recruiter/invitations": Send,
+  "/recruiter/candidates": Users,
+  "/recruiter/opportunities": Zap,
+  "/recruiter/generate": Sparkles,
+  "/recruiter/history": Clock,
+};
+
 export function NavSidebar({ items, title, homeHref }: NavSidebarProps) {
   const pathname = usePathname();
 
@@ -25,48 +58,75 @@ export function NavSidebar({ items, title, homeHref }: NavSidebarProps) {
     void authLogout();
   }
 
+  const isCandidate = title.toLowerCase().includes("candidat");
+
   return (
     <nav
-      className="flex h-full w-56 flex-col border-r bg-card px-4 py-6"
+      className="flex h-full w-60 flex-col border-r border-border/50 bg-sidebar px-3 py-5"
       aria-label={`Navigation ${title}`}
     >
+      {/* Wordmark */}
       <Link
         href={homeHref ?? "/"}
-        className="mb-6 block text-lg font-semibold tracking-tight no-underline hover:opacity-80 transition-opacity"
+        className="mb-6 flex items-center gap-2.5 px-3 py-1"
       >
-        <p className="px-2">{title}</p>
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
+          J
+        </span>
+        <span className="font-heading text-base font-semibold tracking-tight text-foreground">
+          Jorg
+        </span>
       </Link>
-      <ul className="flex flex-col gap-1" role="list">
+
+      {/* Portal label */}
+      <p className="mb-2 px-3 text-[0.65rem] font-semibold uppercase tracking-widest text-muted-foreground/60">
+        {isCandidate ? "Candidat" : "Recruteur"}
+      </p>
+
+      <ul className="flex flex-col gap-0.5" role="list">
         {items.map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(item.href + "/");
+          const Icon = ICON_MAP[item.href];
           return (
             <li key={item.href}>
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
                   active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                )}
               >
+                {Icon && (
+                  <Icon
+                    className={cn(
+                      "size-4 shrink-0 transition-colors",
+                      active ? "text-primary" : "text-muted-foreground/70",
+                    )}
+                  />
+                )}
                 {item.label}
+                {active && (
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                )}
               </Link>
             </li>
           );
         })}
       </ul>
+
       <div className="mt-auto">
-        <Separator className="mb-4" />
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start"
+        <Separator className="mb-3 opacity-50" />
+        <button
           onClick={logout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all duration-150 hover:bg-destructive/10 hover:text-destructive"
         >
+          <LogOut className="size-4 shrink-0" />
           Déconnexion
-        </Button>
+        </button>
       </div>
     </nav>
   );

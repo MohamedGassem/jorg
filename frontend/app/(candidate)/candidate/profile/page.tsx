@@ -2,11 +2,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -16,7 +23,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, ApiError } from "@/lib/api";
-import { VALID_DOMAINS, type AvailabilityStatus, type CandidateProfile, type ContractType, type MissionDuration, type WorkMode } from "@/types/api";
+import {
+  VALID_DOMAINS,
+  type AvailabilityStatus,
+  type CandidateProfile,
+  type ContractType,
+  type MissionDuration,
+  type WorkMode,
+} from "@/types/api";
 
 type FormFields = {
   first_name: string;
@@ -55,7 +69,8 @@ function profileToForm(p: CandidateProfile): FormFields {
 }
 
 function formToPayload(f: FormFields): Record<string, unknown> {
-  const showDaily = f.contract_type === "freelance" || f.contract_type === "both";
+  const showDaily =
+    f.contract_type === "freelance" || f.contract_type === "both";
   const showSalary = f.contract_type === "cdi" || f.contract_type === "both";
   return {
     first_name: f.first_name || null,
@@ -68,20 +83,26 @@ function formToPayload(f: FormFields): Record<string, unknown> {
     location: f.location || null,
     contract_type: f.contract_type,
     daily_rate: showDaily && f.daily_rate ? Number(f.daily_rate) : null,
-    annual_salary: showSalary && f.annual_salary ? Number(f.annual_salary) : null,
+    annual_salary:
+      showSalary && f.annual_salary ? Number(f.annual_salary) : null,
   };
 }
 
 export default function ProfilePage() {
   const [form, setForm] = useState<FormFields | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>("not_available");
+  const [isError, setIsError] = useState(false);
+  const [availabilityStatus, setAvailabilityStatus] =
+    useState<AvailabilityStatus>("not_available");
   const [availabilityDate, setAvailabilityDate] = useState("");
   const [workMode, setWorkMode] = useState<WorkMode | "">("");
   const [locationPreference, setLocationPreference] = useState("");
   const [preferredDomains, setPreferredDomains] = useState<string[]>([]);
-  const [missionDuration, setMissionDuration] = useState<MissionDuration | "">("");
+  const [missionDuration, setMissionDuration] = useState<MissionDuration | "">(
+    "",
+  );
 
   useEffect(() => {
     api
@@ -107,18 +128,24 @@ export default function ProfilePage() {
     if (!form) return;
     setSaving(true);
     setMessage(null);
+    setSaved(false);
+    setIsError(false);
     try {
       const updated = await api.put<CandidateProfile>(
         "/candidates/me/profile",
         {
           ...formToPayload(form),
           availability_status: availabilityStatus,
-          availability_date: availabilityStatus === "available_from" ? availabilityDate || null : null,
+          availability_date:
+            availabilityStatus === "available_from"
+              ? availabilityDate || null
+              : null,
           work_mode: workMode || null,
           location_preference: locationPreference || null,
-          preferred_domains: preferredDomains.length > 0 ? preferredDomains : null,
+          preferred_domains:
+            preferredDomains.length > 0 ? preferredDomains : null,
           mission_duration: missionDuration || null,
-        }
+        },
       );
       setForm(profileToForm(updated));
       setAvailabilityStatus(updated.availability_status ?? "not_available");
@@ -127,108 +154,154 @@ export default function ProfilePage() {
       setLocationPreference(updated.location_preference ?? "");
       setPreferredDomains(updated.preferred_domains ?? []);
       setMissionDuration(updated.mission_duration ?? "");
-      setMessage("Profil mis à jour");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
     } catch (err) {
+      setIsError(true);
       setMessage(
-        err instanceof ApiError ? err.detail : "Erreur lors de la sauvegarde"
+        err instanceof ApiError ? err.detail : "Erreur lors de la sauvegarde",
       );
     } finally {
       setSaving(false);
     }
   }
 
-  if (!form) return <p className="text-muted-foreground">Chargement…</p>;
+  if (!form) {
+    return (
+      <div className="max-w-3xl space-y-4">
+        <div className="h-8 w-48 animate-pulse rounded-md bg-muted" />
+        <div className="h-64 animate-pulse rounded-xl bg-muted" />
+        <div className="h-48 animate-pulse rounded-xl bg-muted" />
+      </div>
+    );
+  }
 
-  const showDaily = form.contract_type === "freelance" || form.contract_type === "both";
-  const showSalary = form.contract_type === "cdi" || form.contract_type === "both";
+  const showDaily =
+    form.contract_type === "freelance" || form.contract_type === "both";
+  const showSalary =
+    form.contract_type === "cdi" || form.contract_type === "both";
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">Mon profil</h1>
-      <form onSubmit={handleSave} className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Informations personnelles</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="first_name">Prénom</Label>
-                <Input
-                  id="first_name"
-                  value={form.first_name}
-                  onChange={(e) => setField("first_name", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="last_name">Nom</Label>
-                <Input
-                  id="last_name"
-                  value={form.last_name}
-                  onChange={(e) => setField("last_name", e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="title">Titre</Label>
-              <Input
-                id="title"
-                value={form.title}
-                onChange={(e) => setField("title", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="summary">Résumé</Label>
-              <Input
-                id="summary"
-                value={form.summary}
-                onChange={(e) => setField("summary", e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Téléphone</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setField("phone", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email_contact">Email de contact</Label>
-                <Input
-                  id="email_contact"
-                  type="email"
-                  value={form.email_contact}
-                  onChange={(e) => setField("email_contact", e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="linkedin_url">LinkedIn URL</Label>
-              <Input
-                id="linkedin_url"
-                type="url"
-                value={form.linkedin_url}
-                onChange={(e) => setField("linkedin_url", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="location">Localisation</Label>
-              <Input
-                id="location"
-                value={form.location}
-                onChange={(e) => setField("location", e.target.value)}
-              />
-            </div>
+    <div className="max-w-3xl space-y-6">
+      {/* Page header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            Mon profil
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ces informations apparaissent dans vos profils générés pour les
+            recruteurs.
+          </p>
+        </div>
+      </div>
 
-            <div className="space-y-2">
+      <form onSubmit={handleSave} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Informations personnelles</CardTitle>
+            <CardDescription>
+              Vos coordonnées et présentation professionnelle.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="first_name">Prénom</Label>
+                  <Input
+                    id="first_name"
+                    value={form.first_name}
+                    onChange={(e) => setField("first_name", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="last_name">Nom</Label>
+                  <Input
+                    id="last_name"
+                    value={form.last_name}
+                    onChange={(e) => setField("last_name", e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="title">Titre professionnel</Label>
+                <Input
+                  id="title"
+                  placeholder="ex: Développeur Full-Stack Senior"
+                  value={form.title}
+                  onChange={(e) => setField("title", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="summary">Résumé</Label>
+                <textarea
+                  id="summary"
+                  rows={4}
+                  value={form.summary}
+                  onChange={(e) => setField("summary", e.target.value)}
+                  placeholder="Décrivez votre profil en quelques phrases…"
+                  className="w-full resize-none rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone">Téléphone</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => setField("phone", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email_contact">Email de contact</Label>
+                  <Input
+                    id="email_contact"
+                    type="email"
+                    value={form.email_contact}
+                    onChange={(e) => setField("email_contact", e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="linkedin_url">LinkedIn URL</Label>
+                <Input
+                  id="linkedin_url"
+                  type="url"
+                  placeholder="https://linkedin.com/in/…"
+                  value={form.linkedin_url}
+                  onChange={(e) => setField("linkedin_url", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="location">Localisation</Label>
+                <Input
+                  id="location"
+                  placeholder="ex: Paris, France"
+                  value={form.location}
+                  onChange={(e) => setField("location", e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Contrat &amp; rémunération</CardTitle>
+            <CardDescription>
+              Indiquez vos préférences contractuelles.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
               <Label htmlFor="contract_type">Type de contrat recherché</Label>
               <Select
                 value={form.contract_type}
-                onValueChange={(v) => v && setField("contract_type", v as ContractType)}
+                onValueChange={(v) =>
+                  v && setField("contract_type", v as ContractType)
+                }
               >
                 <SelectTrigger id="contract_type" className="w-full">
                   <SelectValue />
@@ -244,101 +317,188 @@ export default function ProfilePage() {
             </div>
 
             {(showDaily || showSalary) && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 {showDaily && (
-                  <div className="space-y-2">
-                    <Label htmlFor="daily_rate">TJM (€)</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="daily_rate">TJM (€/jour)</Label>
                     <Input
                       id="daily_rate"
                       type="number"
                       min={0}
+                      placeholder="700"
                       value={form.daily_rate}
                       onChange={(e) => setField("daily_rate", e.target.value)}
                     />
                   </div>
                 )}
                 {showSalary && (
-                  <div className="space-y-2">
-                    <Label htmlFor="annual_salary">Salaire annuel brut (€)</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="annual_salary">
+                      Salaire annuel brut (€)
+                    </Label>
                     <Input
                       id="annual_salary"
                       type="number"
                       min={0}
+                      placeholder="55000"
                       value={form.annual_salary}
-                      onChange={(e) => setField("annual_salary", e.target.value)}
+                      onChange={(e) =>
+                        setField("annual_salary", e.target.value)
+                      }
                     />
                   </div>
                 )}
               </div>
             )}
+          </CardContent>
+        </Card>
 
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle>Disponibilité &amp; préférences mission</CardTitle></CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label>Disponibilité</Label>
-            <RadioGroup value={availabilityStatus} onValueChange={(v) => setAvailabilityStatus(v as AvailabilityStatus)} className="flex flex-col gap-2">
-              <div className="flex items-center gap-2"><RadioGroupItem value="available_now" id="av-now" /><Label htmlFor="av-now">Disponible maintenant</Label></div>
-              <div className="flex items-center gap-2"><RadioGroupItem value="available_from" id="av-from" /><Label htmlFor="av-from">Disponible à partir du</Label></div>
-              <div className="flex items-center gap-2"><RadioGroupItem value="not_available" id="av-no" /><Label htmlFor="av-no">Non disponible</Label></div>
-            </RadioGroup>
-            {availabilityStatus === "available_from" && (
-              <Input type="date" value={availabilityDate} onChange={(e) => setAvailabilityDate(e.target.value)} required />
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="work-mode">Mode de travail</Label>
-            <Select value={workMode} onValueChange={(v) => setWorkMode(v as WorkMode)}>
-              <SelectTrigger id="work-mode"><SelectValue placeholder="Choisir…" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="remote">Télétravail</SelectItem>
-                <SelectItem value="onsite">Présentiel</SelectItem>
-                <SelectItem value="hybrid">Hybride</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="location-pref">Localisation préférée</Label>
-            <Input id="location-pref" value={locationPreference} onChange={(e) => setLocationPreference(e.target.value)} placeholder="ex: Paris, Lyon" />
-          </div>
-          <div className="space-y-2">
-            <Label>Domaines métier</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {VALID_DOMAINS.map((domain) => (
-                <div key={domain} className="flex items-center gap-2">
-                  <Checkbox id={`domain-${domain}`} checked={preferredDomains.includes(domain)} onCheckedChange={(checked) => { setPreferredDomains((prev) => checked ? [...prev, domain] : prev.filter((d) => d !== domain)); }} />
-                  <Label htmlFor={`domain-${domain}`} className="capitalize">{domain}</Label>
+        <Card>
+          <CardHeader>
+            <CardTitle>Disponibilité &amp; préférences mission</CardTitle>
+            <CardDescription>
+              Ces informations aident les recruteurs à filtrer les profils.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <Label>Disponibilité</Label>
+              <RadioGroup
+                value={availabilityStatus}
+                onValueChange={(v) =>
+                  setAvailabilityStatus(v as AvailabilityStatus)
+                }
+                className="flex flex-col gap-2"
+              >
+                <div className="flex items-center gap-2.5">
+                  <RadioGroupItem value="available_now" id="av-now" />
+                  <Label
+                    htmlFor="av-now"
+                    className="cursor-pointer font-normal"
+                  >
+                    Disponible maintenant
+                  </Label>
                 </div>
-              ))}
+                <div className="flex items-center gap-2.5">
+                  <RadioGroupItem value="available_from" id="av-from" />
+                  <Label
+                    htmlFor="av-from"
+                    className="cursor-pointer font-normal"
+                  >
+                    Disponible à partir du
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <RadioGroupItem value="not_available" id="av-no" />
+                  <Label htmlFor="av-no" className="cursor-pointer font-normal">
+                    Non disponible
+                  </Label>
+                </div>
+              </RadioGroup>
+              {availabilityStatus === "available_from" && (
+                <Input
+                  type="date"
+                  value={availabilityDate}
+                  onChange={(e) => setAvailabilityDate(e.target.value)}
+                  className="mt-2 w-48"
+                  required
+                />
+              )}
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="mission-dur">Durée de mission souhaitée</Label>
-            <Select value={missionDuration} onValueChange={(v) => setMissionDuration(v as MissionDuration)}>
-              <SelectTrigger id="mission-dur"><SelectValue placeholder="Choisir…" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="short">Court terme (&lt; 3 mois)</SelectItem>
-                <SelectItem value="medium">Moyen terme (3–6 mois)</SelectItem>
-                <SelectItem value="long">Long terme (6 mois+)</SelectItem>
-                <SelectItem value="permanent">CDI / Permanent</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
 
-      {message && (
-        <p role="status" className="text-sm text-muted-foreground">
-          {message}
-        </p>
-      )}
-      <Button type="submit" disabled={saving}>
-        {saving ? "Sauvegarde…" : "Sauvegarder"}
-      </Button>
+            <div className="space-y-1.5">
+              <Label htmlFor="work-mode">Mode de travail</Label>
+              <Select
+                value={workMode}
+                onValueChange={(v) => setWorkMode(v as WorkMode)}
+              >
+                <SelectTrigger id="work-mode">
+                  <SelectValue placeholder="Choisir…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="remote">Télétravail</SelectItem>
+                  <SelectItem value="onsite">Présentiel</SelectItem>
+                  <SelectItem value="hybrid">Hybride</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="location-pref">Localisation préférée</Label>
+              <Input
+                id="location-pref"
+                value={locationPreference}
+                onChange={(e) => setLocationPreference(e.target.value)}
+                placeholder="ex: Paris, Lyon"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Domaines métier</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {VALID_DOMAINS.map((domain) => (
+                  <div key={domain} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`domain-${domain}`}
+                      checked={preferredDomains.includes(domain)}
+                      onCheckedChange={(checked) => {
+                        setPreferredDomains((prev) =>
+                          checked
+                            ? [...prev, domain]
+                            : prev.filter((d) => d !== domain),
+                        );
+                      }}
+                    />
+                    <Label
+                      htmlFor={`domain-${domain}`}
+                      className="cursor-pointer font-normal capitalize"
+                    >
+                      {domain}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="mission-dur">Durée de mission souhaitée</Label>
+              <Select
+                value={missionDuration}
+                onValueChange={(v) => setMissionDuration(v as MissionDuration)}
+              >
+                <SelectTrigger id="mission-dur">
+                  <SelectValue placeholder="Choisir…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="short">
+                    Court terme (&lt; 3 mois)
+                  </SelectItem>
+                  <SelectItem value="medium">Moyen terme (3–6 mois)</SelectItem>
+                  <SelectItem value="long">Long terme (6 mois+)</SelectItem>
+                  <SelectItem value="permanent">CDI / Permanent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Footer actions */}
+        <div className="flex items-center gap-4 pb-8">
+          <Button type="submit" size="lg" disabled={saving}>
+            {saving ? "Sauvegarde…" : "Sauvegarder le profil"}
+          </Button>
+          {saved && (
+            <span className="flex items-center gap-1.5 text-sm text-emerald-500">
+              <CheckCircle2 className="size-4" />
+              Profil mis à jour
+            </span>
+          )}
+          {isError && message && (
+            <span role="alert" className="text-sm text-destructive">
+              {message}
+            </span>
+          )}
+        </div>
       </form>
     </div>
   );
