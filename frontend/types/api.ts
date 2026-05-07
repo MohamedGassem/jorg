@@ -192,6 +192,14 @@ export interface GeneratedDocument {
   generated_at: string;
 }
 
+export interface GeneratedDocumentCandidateView {
+  id: string;
+  generated_at: string;
+  file_format: string;
+  organization_name: string;
+  template_name: string;
+}
+
 export interface AccessibleCandidate {
   user_id: string;
   email: string;
