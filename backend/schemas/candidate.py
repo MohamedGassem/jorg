@@ -14,6 +14,7 @@ from models.candidate_profile import (
     MissionDuration,
     WorkMode,
 )
+from schemas.skill import AchievementRead, ExperienceSkillUsageRead
 
 VALID_DOMAINS = {
     "finance",
@@ -134,8 +135,8 @@ class ExperienceRead(BaseModel):
     description: str | None
     context: str | None
     achievements_summary: str | None
-    # technologies removed
-    # achievements (list) and skill_usages added in Task 3 after schemas/skill.py exists
+    achievements: list[AchievementRead] = []
+    skill_usages: list[ExperienceSkillUsageRead] = []
     created_at: datetime
     updated_at: datetime
 
