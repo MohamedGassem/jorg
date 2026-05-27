@@ -51,18 +51,19 @@ def _mock_experience(**kwargs: object) -> MagicMock:
     exp.is_current = kwargs.get("is_current", False)
     exp.description = kwargs.get("description", "desc")
     exp.context = kwargs.get("context", "ctx")
-    exp.achievements = kwargs.get("achievements", "ach")
-    exp.technologies = kwargs.get("technologies", ["Python"])
+    exp.achievements_summary = kwargs.get("achievements_summary", "ach")
+    # technologies removed
     return exp
 
 
 def _mock_skill(**kwargs: object) -> MagicMock:
     sk = MagicMock()
-    sk.name = kwargs.get("name", "Python")
-    sk.category = kwargs.get("category", _FakeEnum("language"))
-    sk.level = kwargs.get("level", "Expert")
-    sk.level_rating = kwargs.get("level_rating", 5)
-    sk.years_of_experience = kwargs.get("years_of_experience", 3)
+    skill_ref = MagicMock()
+    skill_ref.name = kwargs.get("name", "Python")
+    skill_ref.kind = kwargs.get("kind", _FakeEnum("technical"))
+    sk.skill_ref = skill_ref
+    sk.self_assessed_level = kwargs.get("self_assessed_level", "Expert")
+    sk.featured = kwargs.get("featured", False)
     return sk
 
 
@@ -144,9 +145,13 @@ class TestExpFlat:
         exp = _mock_experience(is_current=True)
         assert exp_flat(exp)["end_date"] == "présent"
 
-    def test_technologies_joined(self):
-        exp = _mock_experience(technologies=["Python", "FastAPI"])
-        assert exp_flat(exp)["technologies"] == "Python, FastAPI"
+    def test_achievements_summary_key_present(self):
+        exp = _mock_experience(achievements_summary="Shipped feature X")
+        assert exp_flat(exp)["achievements_summary"] == "Shipped feature X"
+
+    def test_achievements_backward_compat_alias(self):
+        exp = _mock_experience(achievements_summary="Shipped feature X")
+        assert exp_flat(exp)["achievements"] == "Shipped feature X"
 
     def test_keys_have_no_experience_prefix(self):
         exp = _mock_experience()
@@ -164,8 +169,8 @@ class TestExpFlat:
             "end_date",
             "description",
             "context",
+            "achievements_summary",
             "achievements",
-            "technologies",
         }
         assert set(exp_flat(exp).keys()) == expected
 
@@ -185,16 +190,20 @@ class TestSkillFlat:
 
     def test_all_expected_keys_present(self):
         sk = _mock_skill()
-        expected = {"name", "category", "level", "level_rating", "years_of_experience"}
+        expected = {"name", "kind", "level", "self_assessed_level", "featured"}
         assert set(skill_flat(sk).keys()) == expected
 
-    def test_category_extracts_value(self):
-        sk = _mock_skill(category=_FakeEnum("framework"))
-        assert skill_flat(sk)["category"] == "framework"
+    def test_kind_extracts_value(self):
+        sk = _mock_skill(kind=_FakeEnum("technical"))
+        assert skill_flat(sk)["kind"] == "technical"
 
-    def test_none_level_rating_returns_empty(self):
-        sk = _mock_skill(level_rating=None)
-        assert skill_flat(sk)["level_rating"] == ""
+    def test_level_backward_compat_alias(self):
+        sk = _mock_skill(self_assessed_level="Expert")
+        assert skill_flat(sk)["level"] == "Expert"
+
+    def test_featured_true_returns_true_string(self):
+        sk = _mock_skill(featured=True)
+        assert skill_flat(sk)["featured"] == "true"
 
 
 # ---------------------------------------------------------------------------
@@ -375,18 +384,18 @@ class TestExperienceBlockParagraphs:
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
         assert "06/2022" in text and "présent" in text
 
-    def test_technologies_joined_as_string(self, tmp_path):
+    def test_achievements_summary_rendered(self, tmp_path):
         tmpl = tmp_path / "t.docx"
         doc = Document()
         doc.add_paragraph("{%p for exp in experiences %}")
-        doc.add_paragraph("Stack: {{exp.technologies}}")
+        doc.add_paragraph("Summary: {{exp.achievements_summary}}")
         doc.add_paragraph("{%p endfor %}")
         doc.save(str(tmpl))
 
-        exp = _mock_experience(technologies=["Python", "FastAPI", "Redis"])
+        exp = _mock_experience(achievements_summary="Reduced latency by 40%")
         result = generate_document(str(tmpl), _mock_profile(), [exp], [], {})
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
-        assert "Python, FastAPI, Redis" in text
+        assert "Reduced latency by 40%" in text
 
 
 # ---------------------------------------------------------------------------
@@ -457,12 +466,12 @@ class TestSkillsBlockTableRows:
         table = doc.add_table(rows=3, cols=2)
         table.rows[0].cells[0].paragraphs[0].text = "{%tr for sk in skills %}"
         table.rows[1].cells[0].paragraphs[0].text = "{{sk.name}}"
-        table.rows[1].cells[1].paragraphs[0].text = "{{sk.category}}"
+        table.rows[1].cells[1].paragraphs[0].text = "{{sk.kind}}"
         table.rows[2].cells[0].paragraphs[0].text = "{%tr endfor %}"
         doc.save(str(tmpl))
 
-        sk1 = _mock_skill(name="Python", category=_FakeEnum("language"))
-        sk2 = _mock_skill(name="Django", category=_FakeEnum("framework"))
+        sk1 = _mock_skill(name="Python", kind=_FakeEnum("technical"))
+        sk2 = _mock_skill(name="Django", kind=_FakeEnum("technical"))
         result = generate_document(str(tmpl), _mock_profile(), [], [sk1, sk2], {})
         out = Document(io.BytesIO(result))
         assert len(out.tables[0].rows) == 2
@@ -474,12 +483,12 @@ class TestSkillsBlockTableRows:
         tmpl = tmp_path / "t.docx"
         doc = Document()
         doc.add_paragraph("{%p for sk in skills %}")
-        doc.add_paragraph("{{sk.name}} ({{sk.category}})")
+        doc.add_paragraph("{{sk.name}} ({{sk.kind}})")
         doc.add_paragraph("{%p endfor %}")
         doc.save(str(tmpl))
 
-        sk1 = _mock_skill(name="Python", category=_FakeEnum("language"))
-        sk2 = _mock_skill(name="Django", category=_FakeEnum("framework"))
+        sk1 = _mock_skill(name="Python", kind=_FakeEnum("technical"))
+        sk2 = _mock_skill(name="Django", kind=_FakeEnum("technical"))
         result = generate_document(str(tmpl), _mock_profile(), [], [sk1, sk2], {})
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs if p.text)
         assert "Python" in text and "Django" in text

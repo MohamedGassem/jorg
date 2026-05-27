@@ -5,14 +5,13 @@ from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from models.candidate_profile import (
     AvailabilityStatus,
     ContractType,
     LanguageLevel,
     MissionDuration,
-    SkillCategory,
     WorkMode,
 )
 
@@ -106,8 +105,8 @@ class ExperienceCreate(BaseModel):
     is_current: bool = False
     description: str | None = None
     context: str | None = None
-    achievements: str | None = None
-    technologies: list[str] = []
+    achievements_summary: str | None = None
+    # technologies removed
 
 
 class ExperienceUpdate(BaseModel):
@@ -118,8 +117,8 @@ class ExperienceUpdate(BaseModel):
     is_current: bool | None = None
     description: str | None = None
     context: str | None = None
-    achievements: str | None = None
-    technologies: list[str] | None = None
+    achievements_summary: str | None = None
+    # technologies removed
 
 
 class ExperienceRead(BaseModel):
@@ -134,41 +133,9 @@ class ExperienceRead(BaseModel):
     is_current: bool
     description: str | None
     context: str | None
-    achievements: str | None
-    technologies: list[str]
-    created_at: datetime
-    updated_at: datetime
-
-
-# ---- Skill ------------------------------------------------------------------
-
-
-class SkillCreate(BaseModel):
-    name: str
-    category: SkillCategory
-    level: str | None = None
-    level_rating: int | None = Field(default=None, ge=1, le=5)
-    years_of_experience: int | None = None
-
-
-class SkillUpdate(BaseModel):
-    name: str | None = None
-    category: SkillCategory | None = None
-    level: str | None = None
-    level_rating: int | None = Field(default=None, ge=1, le=5)
-    years_of_experience: int | None = None
-
-
-class SkillRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    profile_id: UUID
-    name: str
-    category: SkillCategory
-    level: str | None
-    level_rating: int | None
-    years_of_experience: int | None
+    achievements_summary: str | None
+    # technologies removed
+    # achievements (list) and skill_usages added in Task 3 after schemas/skill.py exists
     created_at: datetime
     updated_at: datetime
 

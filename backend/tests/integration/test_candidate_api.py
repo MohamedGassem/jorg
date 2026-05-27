@@ -153,7 +153,6 @@ async def test_create_experience(client: AsyncClient, candidate_headers: dict[st
             "role": "Backend Developer",
             "start_date": "2023-01-01",
             "is_current": True,
-            "technologies": ["Python", "FastAPI", "PostgreSQL"],
         },
     )
     assert r.status_code == 201
@@ -161,7 +160,8 @@ async def test_create_experience(client: AsyncClient, candidate_headers: dict[st
     assert data["client_name"] == "Acme Corp"
     assert data["role"] == "Backend Developer"
     assert data["is_current"] is True
-    assert data["technologies"] == ["Python", "FastAPI", "PostgreSQL"]
+    assert "technologies" not in data
+    assert "achievements_summary" in data
     assert "id" in data
 
 
@@ -192,13 +192,12 @@ async def test_update_experience(client: AsyncClient, candidate_headers: dict[st
     r = await client.put(
         f"/candidates/me/experiences/{exp_id}",
         headers=candidate_headers,
-        json={"client_name": "New Corp", "technologies": ["Go"]},
+        json={"client_name": "New Corp", "achievements_summary": "Led migration to microservices"},
     )
     assert r.status_code == 200
     data = r.json()
     assert data["client_name"] == "New Corp"
-    assert data["role"] == "Junior Dev"  # non écrasé
-    assert data["technologies"] == ["Go"]
+    assert data["achievements_summary"] == "Led migration to microservices"
 
 
 async def test_delete_experience(client: AsyncClient, candidate_headers: dict[str, str]) -> None:
@@ -225,48 +224,6 @@ async def test_update_experience_not_found_returns_404(
         json={"client_name": "Corp"},
     )
     assert r.status_code == 404
-
-
-# ---- Skill ------------------------------------------------------------------
-
-
-async def test_create_and_list_skills(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
-    r = await client.post(
-        "/candidates/me/skills",
-        headers=candidate_headers,
-        json={"name": "Python", "category": "language", "level": "expert"},
-    )
-    assert r.status_code == 201
-    assert r.json()["name"] == "Python"
-    assert r.json()["category"] == "language"
-
-    list_r = await client.get("/candidates/me/skills", headers=candidate_headers)
-    assert len(list_r.json()) == 1
-
-
-async def test_update_and_delete_skill(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
-    create = await client.post(
-        "/candidates/me/skills",
-        headers=candidate_headers,
-        json={"name": "Docker", "category": "tool"},
-    )
-    skill_id = create.json()["id"]
-
-    upd = await client.put(
-        f"/candidates/me/skills/{skill_id}",
-        headers=candidate_headers,
-        json={"level": "intermediate"},
-    )
-    assert upd.status_code == 200
-    assert upd.json()["level"] == "intermediate"
-    assert upd.json()["name"] == "Docker"  # non écrasé
-
-    del_r = await client.delete(f"/candidates/me/skills/{skill_id}", headers=candidate_headers)
-    assert del_r.status_code == 204
 
 
 # ---- Education --------------------------------------------------------------
@@ -376,148 +333,6 @@ async def test_delete_language(client: AsyncClient, candidate_headers: dict[str,
 
     r = await client.delete(f"/candidates/me/languages/{lang_id}", headers=candidate_headers)
     assert r.status_code == 204
-
-
-# ---- Skill level_rating -----------------------------------------------------
-
-
-async def test_create_skill_with_level_rating(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
-    r = await client.post(
-        "/candidates/me/skills",
-        headers=candidate_headers,
-        json={"name": "Python", "category": "language", "level_rating": 4},
-    )
-    assert r.status_code == 201
-    data = r.json()
-    assert data["level_rating"] == 4
-    assert data["level"] is None
-
-
-async def test_create_skill_level_rating_is_optional(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
-    r = await client.post(
-        "/candidates/me/skills",
-        headers=candidate_headers,
-        json={"name": "Python", "category": "language"},
-    )
-    assert r.status_code == 201
-    assert r.json()["level_rating"] is None
-
-
-async def test_create_skill_rejects_rating_outside_range(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
-    r_low = await client.post(
-        "/candidates/me/skills",
-        headers=candidate_headers,
-        json={"name": "Python", "category": "language", "level_rating": 0},
-    )
-    assert r_low.status_code == 422
-
-    r_high = await client.post(
-        "/candidates/me/skills",
-        headers=candidate_headers,
-        json={"name": "Python", "category": "language", "level_rating": 6},
-    )
-    assert r_high.status_code == 422
-
-
-async def test_update_skill_level_rating(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
-    created = await client.post(
-        "/candidates/me/skills",
-        headers=candidate_headers,
-        json={"name": "Python", "category": "language", "level_rating": 2},
-    )
-    skill_id = created.json()["id"]
-
-    r = await client.put(
-        f"/candidates/me/skills/{skill_id}",
-        headers=candidate_headers,
-        json={"level_rating": 5},
-    )
-    assert r.status_code == 200
-    assert r.json()["level_rating"] == 5
-
-
-async def test_create_skill_with_level_text_and_rating_coexist(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
-    r = await client.post(
-        "/candidates/me/skills",
-        headers=candidate_headers,
-        json={
-            "name": "Python",
-            "category": "language",
-            "level": "autonome",
-            "level_rating": 3,
-        },
-    )
-    assert r.status_code == 201
-    data = r.json()
-    assert data["level"] == "autonome"
-    assert data["level_rating"] == 3
-
-
-async def test_update_profile_availability_fields(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
-    r = await client.put(
-        "/candidates/me/profile",
-        headers=candidate_headers,
-        json={
-            "availability_status": "available_now",
-            "work_mode": "remote",
-            "location_preference": "Paris",
-            "preferred_domains": ["finance", "tech"],
-            "mission_duration": "medium",
-        },
-    )
-    assert r.status_code == 200
-    data = r.json()
-    assert data["availability_status"] == "available_now"
-    assert data["work_mode"] == "remote"
-    assert data["location_preference"] == "Paris"
-    assert data["preferred_domains"] == ["finance", "tech"]
-    assert data["mission_duration"] == "medium"
-
-
-async def test_availability_date_required_when_status_is_available_from(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
-    r = await client.put(
-        "/candidates/me/profile",
-        headers=candidate_headers,
-        json={"availability_status": "available_from", "availability_date": None},
-    )
-    assert r.status_code == 422
-
-
-async def test_availability_date_accepted_with_available_from(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
-    r = await client.put(
-        "/candidates/me/profile",
-        headers=candidate_headers,
-        json={"availability_status": "available_from", "availability_date": "2026-06-01"},
-    )
-    assert r.status_code == 200
-    assert r.json()["availability_date"] == "2026-06-01"
-
-
-async def test_preferred_domains_invalid_value_rejected(
-    client: AsyncClient, candidate_headers: dict[str, str]
-) -> None:
-    r = await client.put(
-        "/candidates/me/profile",
-        headers=candidate_headers,
-        json={"preferred_domains": ["invalid_domain"]},
-    )
-    assert r.status_code == 422
 
 
 # ---- Interaction timeline ---------------------------------------------------

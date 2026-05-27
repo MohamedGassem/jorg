@@ -10,8 +10,6 @@ from models.candidate_profile import (
     Language,
     LanguageLevel,
     MissionDuration,
-    Skill,
-    SkillCategory,
     WorkMode,
 )
 from models.generated_document import GeneratedDocument
@@ -20,19 +18,31 @@ from models.oauth_state import OAuthState
 from models.opportunity import Opportunity, OpportunityStatus, ShortlistEntry
 from models.recruiter import Organization, RecruiterProfile
 from models.refresh_token import RefreshToken as RefreshToken
+from models.skill import (
+    Achievement,
+    CandidateSkill,
+    ExperienceSkillUsage,
+    SkillKind,
+    SkillReference,
+    UsageIntensity,
+    UsageRole,
+)
 from models.template import Template
 from models.user import OAuthProvider, User, UserRole
 
 __all__ = [
     "AccessGrant",
     "AccessGrantStatus",
+    "Achievement",
     "AvailabilityStatus",
     "Base",
     "CandidateProfile",
+    "CandidateSkill",
     "Certification",
     "ContractType",
     "Education",
     "Experience",
+    "ExperienceSkillUsage",
     "GeneratedDocument",
     "Invitation",
     "InvitationStatus",
@@ -47,9 +57,11 @@ __all__ = [
     "RecruiterProfile",
     "RefreshToken",
     "ShortlistEntry",
-    "Skill",
-    "SkillCategory",
+    "SkillKind",
+    "SkillReference",
     "Template",
+    "UsageIntensity",
+    "UsageRole",
     "User",
     "UserRole",
     "WorkMode",
