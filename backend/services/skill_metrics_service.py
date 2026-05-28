@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -26,9 +27,9 @@ def _compute_months(start: date, end: date) -> int:
 
 
 def compute_metrics_from_usages(
-    rows: list[tuple],  # list of (usage, experience, skill_ref)
+    rows: list[tuple[Any, Any, Any]],  # list of (usage, experience, skill_ref)
 ) -> list[SkillMetricsRead]:
-    by_skill: dict[UUID, dict] = defaultdict(
+    by_skill: dict[UUID, dict[str, Any]] = defaultdict(
         lambda: {
             "months_weighted": 0.0,
             "last_used": None,

@@ -19,6 +19,7 @@ from api.routes.invitations import router as invitations_router
 from api.routes.opportunities import router as opportunities_router
 from api.routes.organizations import router as organizations_router
 from api.routes.recruiters import router as recruiters_router
+from api.routes.skills import router as skills_router
 from api.routes.templates import router as templates_router
 from core.config import get_settings
 from core.exceptions import JorgError
@@ -83,6 +84,7 @@ app.include_router(recruiters_router)
 app.include_router(invitations_router)
 app.include_router(generation_router)
 app.include_router(opportunities_router)
+app.include_router(skills_router)
 app.include_router(templates_router)
 
 

@@ -2,7 +2,9 @@
 """Unit tests for compute_skill_metrics — pure logic, no DB."""
 
 from datetime import date
-from uuid import uuid4
+from types import SimpleNamespace
+from typing import Any
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -14,41 +16,26 @@ from services.skill_metrics_service import (
 )
 
 
-def make_exp(start: date, end: date | None, is_current: bool = False):
-    class FakeExp:
-        pass
-
-    e = FakeExp()
-    e.start_date = start
-    e.end_date = end
-    e.is_current = is_current
-    e.id = uuid4()
-    return e
+def make_exp(start: date, end: date | None, is_current: bool = False) -> Any:
+    return SimpleNamespace(start_date=start, end_date=end, is_current=is_current, id=uuid4())
 
 
 def make_usage(
-    exp, skill_ref_id, usage_role=UsageRole.implementer, intensity=UsageIntensity.primary
-):
-    class FakeUsage:
-        pass
+    exp: Any,
+    skill_ref_id: UUID,
+    usage_role: UsageRole = UsageRole.implementer,
+    intensity: UsageIntensity = UsageIntensity.primary,
+) -> Any:
+    return SimpleNamespace(
+        experience_id=exp.id,
+        skill_ref_id=skill_ref_id,
+        usage_role=usage_role,
+        intensity=intensity,
+    )
 
-    u = FakeUsage()
-    u.experience_id = exp.id
-    u.skill_ref_id = skill_ref_id
-    u.usage_role = usage_role
-    u.intensity = intensity
-    return u
 
-
-def make_ref(skill_id, name="Python", kind=SkillKind.technical):
-    class FakeRef:
-        pass
-
-    r = FakeRef()
-    r.id = skill_id
-    r.name = name
-    r.kind = kind
-    return r
+def make_ref(skill_id: UUID, name: str = "Python", kind: SkillKind = SkillKind.technical) -> Any:
+    return SimpleNamespace(id=skill_id, name=name, kind=kind)
 
 
 def test_intensity_weights_exist():
