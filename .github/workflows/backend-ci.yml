@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
-      SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
+      SECRET_KEY: ${{ secrets.CI_SECRET_KEY || 'ci-fallback-secret-key-for-unit-tests-only' }}
     defaults:
       run:
         working-directory: backend
