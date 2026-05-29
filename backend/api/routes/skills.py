@@ -68,8 +68,16 @@ async def create_or_get_skill_reference(
     if existing:
         response.status_code = status.HTTP_200_OK
         return existing
+    try:
+        ref = await skill_reference_service.get_or_create_by_name(data.name, data.kind, db)
+    except IntegrityError:
+        await db.rollback()
+        result = await db.execute(select(SkillReference).where(SkillReference.slug == slug))
+        ref = result.scalar_one()
+        response.status_code = status.HTTP_200_OK
+        return ref
     response.status_code = status.HTTP_201_CREATED
-    return await skill_reference_service.get_or_create_by_name(data.name, data.kind, db)
+    return ref
 
 
 # ---- CandidateSkill ----------------------------------------------------------
@@ -138,8 +146,12 @@ async def update_my_skill(
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(skill, field, value)
     await db.commit()
-    await db.refresh(skill)
-    return skill
+    result = await db.execute(
+        select(CandidateSkill)
+        .where(CandidateSkill.id == skill_id)
+        .options(selectinload(CandidateSkill.skill_ref))
+    )
+    return result.scalar_one()
 
 
 @router.delete("/candidates/me/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -181,6 +193,18 @@ async def add_skill_usage(
     db: DB,
 ) -> ExperienceSkillUsage:
     await _get_experience_or_404(exp_id, profile.id, db)
+    if data.achievement_id is not None:
+        ach_result = await db.execute(
+            select(AchievementModel).where(
+                AchievementModel.id == data.achievement_id,
+                AchievementModel.experience_id == exp_id,
+            )
+        )
+        if ach_result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="achievement not found for this experience",
+            )
     usage = ExperienceSkillUsage(
         experience_id=exp_id,
         skill_ref_id=data.skill_ref_id,

@@ -52,8 +52,12 @@ def test_compute_months_partial():
     assert _compute_months(date(2022, 1, 1), date(2022, 7, 1)) == 6
 
 
-def test_compute_months_zero():
-    assert _compute_months(date(2022, 1, 1), date(2022, 1, 1)) == 0
+def test_compute_months_same_month_returns_one():
+    assert _compute_months(date(2022, 1, 1), date(2022, 1, 31)) == 1
+
+
+def test_compute_months_same_day_returns_one():
+    assert _compute_months(date(2022, 1, 1), date(2022, 1, 1)) == 1
 
 
 def test_compute_metrics_single_primary_usage():

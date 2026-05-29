@@ -23,7 +23,8 @@ VALIDATED_INTENSITIES = {UsageIntensity.primary, UsageIntensity.secondary}
 
 
 def _compute_months(start: date, end: date) -> int:
-    return max(0, (end.year - start.year) * 12 + (end.month - start.month))
+    # A same-month experience (or same-day) counts as 1 month, not 0.
+    return max(1, (end.year - start.year) * 12 + (end.month - start.month))
 
 
 def compute_metrics_from_usages(
