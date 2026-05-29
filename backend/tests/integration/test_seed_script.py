@@ -3,7 +3,6 @@
 
 import re
 
-import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,14 +14,12 @@ ESCO_URI_PATTERN = re.compile(
 )
 
 
-@pytest.mark.anyio
 async def test_seed_creates_rows(db_session: AsyncSession) -> None:
     result = await db_session.execute(select(func.count()).select_from(SkillReference))
     count = result.scalar_one()
     assert count >= 50, f"Expected >= 50 SkillReference rows, got {count}"
 
 
-@pytest.mark.anyio
 async def test_esco_source_entries_have_valid_uris(db_session: AsyncSession) -> None:
     result = await db_session.execute(select(SkillReference).where(SkillReference.source == "esco"))
     esco_entries = result.scalars().all()
@@ -37,7 +34,6 @@ async def test_esco_source_entries_have_valid_uris(db_session: AsyncSession) -> 
         )
 
 
-@pytest.mark.anyio
 async def test_manual_entries_have_no_esco_uri(db_session: AsyncSession) -> None:
     result = await db_session.execute(
         select(SkillReference).where(SkillReference.source == "manual")
