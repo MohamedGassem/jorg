@@ -1,0 +1,55 @@
+esco_uri,name,slug,kind,aliases,description,esco_skill_type,source
+http://data.europa.eu/esco/skill/ccd0a1d9-afda-43d9-b901-96344886e14d,Python,python,technical,"Python 3;Python 2;Pyston","General-purpose programming language",knowledge,esco
+http://data.europa.eu/esco/skill/19a8293b-8e95-4de3-983f-77484079c389,Java,java,technical,"Java SE;Java EE;JVM","Object-oriented programming language",knowledge,esco
+http://data.europa.eu/esco/skill/3cd569a2-4f88-4c1e-9995-8dce8c5e51a7,JavaScript,javascript,technical,"JS;ECMAScript;ES6","Dynamic scripting language for web",knowledge,esco
+http://data.europa.eu/esco/skill/867137fb-ff1b-4ca3-99f3-cb6969aa2c68,TypeScript,typescript,technical,"TS","Typed superset of JavaScript",knowledge,esco
+http://data.europa.eu/esco/skill/598de5b0-5b58-4ea7-8058-a4bc4d18c742,SQL,sql,technical,"Structured Query Language;SEQUEL;T-SQL","Query language for relational databases",knowledge,esco
+http://data.europa.eu/esco/skill/4da171e5-779c-4983-a76f-91c16751e99f,MySQL,mysql,technical,"","Open-source relational database management system",knowledge,esco
+http://data.europa.eu/esco/skill/a8d07b5a-c1a1-42c6-9d53-db9c7a2ca996,PostgreSQL,postgresql,technical,"Postgres","Open-source relational database",knowledge,esco
+http://data.europa.eu/esco/skill/c062bab3-3ea0-4291-9220-a2d8fef4bead,SQL Server,sql-server,technical,"MSSQL;Microsoft SQL Server","Microsoft relational database software",knowledge,esco
+http://data.europa.eu/esco/skill/76ef6ed3-1658-4a1a-9593-204d799c6d0c,NoSQL,nosql,technical,"Not Only SQL","Non-relational database paradigm",knowledge,esco
+http://data.europa.eu/esco/skill/f0de4973-0a70-4644-8fd4-3a97080476f4,DevOps,devops,methodology,"Dev-Ops","Software delivery culture and practice integrating dev and ops",knowledge,esco
+http://data.europa.eu/esco/skill/3a2d5b45-56e4-4f5a-a55a-4a4a65afdc43,Machine Learning,machine-learning,technical,"ML;deep learning","Algorithms that learn patterns from data",knowledge,esco
+http://data.europa.eu/esco/skill/8088750d-8388-4170-a76f-48354c469c44,Cybersecurity,cybersecurity,technical,"IT security;information security","Protection of ICT systems and networks",knowledge,esco
+http://data.europa.eu/esco/skill/7111b95d-0ce3-441a-9d92-4c75d05c4388,Project Management,project-management,functional,"gestion de projets;program management","Planning and executing projects to achieve goals",knowledge,esco
+http://data.europa.eu/esco/skill/0a9acb6b-1139-4be9-b431-3a80a959f2f4,Agile,agile,methodology,"Agile project management;Agile methodology","Iterative software delivery method",knowledge,esco
+http://data.europa.eu/esco/skill/7106b5df-e017-4c28-8c40-98814db5b775,PRINCE2,prince2,methodology,"","Structured project management method",knowledge,esco
+http://data.europa.eu/esco/skill/d12e9d68-84c5-444e-aa98-d36533bf03f6,ITIL,itil,methodology,"","IT service management framework",skill,esco
+http://data.europa.eu/esco/skill/15d76317-c71a-4fa2-aadc-2ecc34e627b7,Communication,communication,soft,"communiquer","Exchange and transmission of information and ideas",knowledge,esco
+http://data.europa.eu/esco/skill/d5145a9a-602e-40bf-b3e1-f04cf9c3ef86,Leadership,leadership,soft,"management principles;commandement","Traits and values guiding leaders",knowledge,esco
+http://data.europa.eu/esco/skill/a3ce2bf7-5562-4639-9b52-fdb4850a3904,Problem Solving,problem-solving,soft,"","Identifying root-cause solutions to issues",knowledge,esco
+http://data.europa.eu/esco/skill/1af2db15-2af9-44dd-9639-bf1fc69d4c34,Stakeholder Management,stakeholder-management,functional,"gestion des parties prenantes","Managing relationships with project stakeholders",skill,esco
+http://data.europa.eu/esco/skill/1177c6f5-09c5-4c35-873c-afd22d170ad3,Quality Assurance,quality-assurance,methodology,"QA;quality control","Inspection of products and systems for quality",knowledge,esco
+http://data.europa.eu/esco/skill/5d74614d-32c8-4ca4-9818-6980e52424b1,Software Testing,software-testing,technical,"test logiciel;QA testing","Planning and executing software tests",skill,esco
+http://data.europa.eu/esco/skill/69bbd53f-fbb0-4476-b4b2-ef7844464e28,Web Development,web-development,technical,"HTML;XML;XHTML;web programming","Programming for web browsers and servers",knowledge,esco
+http://data.europa.eu/esco/skill/09f2f811-a3fb-4de3-a70f-6420a6935575,Software Development Lifecycle,software-development-lifecycle,methodology,"SDLC;cycle de developpement logiciel","Phases from planning to deployment of software",knowledge,esco
+http://data.europa.eu/esco/skill/2164e860-7f20-48bc-b98c-5d9f8a561550,Network Design,network-design,technical,"WAN;LAN;reseau informatique","Designing and planning ICT networks",skill,esco
+http://data.europa.eu/esco/skill/0a52bed5-fd29-45fb-aba6-e32bccfda1c1,Cloud Computing,cloud-computing,technical,"informatique en nuage;cloud migration","Planning and executing migration to cloud infrastructure",skill,esco
+http://data.europa.eu/esco/skill/062320e5-79d1-45e8-8b7e-5deeb53279a2,Data Analysis,data-analysis,technical,"analyse de donnees","Analysing data to derive insights and understand behaviour",skill,esco
+http://data.europa.eu/esco/skill/0ccdfe98-f845-4598-84a1-3dca66e9d9a3,Ruby,ruby,technical,"Ruby lang;Ruby prog","General-purpose programming language",knowledge,esco
+http://data.europa.eu/esco/skill/5b9cde20-f1b9-4adc-bfb3-dbf70b14138d,Object-Oriented Programming,object-oriented-programming,technical,"OOP;POO","Programming paradigm based on objects and classes",skill,esco
+http://data.europa.eu/esco/skill/54d774a3-de3b-4425-b0d7-c03bc99a0937,Cybersecurity Program Design,cybersecurity-program-design,functional,"cybersecurity training","Designing and implementing cybersecurity education programs",skill,esco
+,Docker,docker,tool,"containerisation;containers","Container platform for packaging applications",,manual
+,Kubernetes,kubernetes,tool,"K8s;container orchestration","Container orchestration platform",,manual
+,Scrum,scrum,methodology,"Scrum master;sprint planning","Agile iterative development framework",,manual
+,Kanban,kanban,methodology,"","Visual workflow management method",,manual
+,Git,git,tool,"version control;VCS","Distributed version control system",,manual
+,GitHub,github,tool,"","Code hosting and collaboration platform",,manual
+,CI/CD,ci-cd,tool,"continuous integration;continuous deployment;Jenkins;GitLab CI","Continuous integration and delivery practices",,manual
+,Apache Kafka,apache-kafka,technical,"Kafka;event streaming","Distributed event streaming platform",,manual
+,Apache Spark,apache-spark,technical,"Spark;PySpark","Unified analytics engine for large-scale data",,manual
+,Terraform,terraform,tool,"IaC;Infrastructure as Code","Infrastructure automation and provisioning tool",,manual
+,React,react,technical,"ReactJS;React.js","JavaScript library for building user interfaces",,manual
+,Vue.js,vue-js,technical,"Vue;VueJS","Progressive JavaScript framework",,manual
+,Angular,angular,technical,"Angular 2+","TypeScript-based web application framework",,manual
+,Django,django,technical,"DRF;Django REST Framework","Python web framework",,manual
+,FastAPI,fastapi,technical,"","Modern Python async web framework",,manual
+,PyTorch,pytorch,technical,"","Open-source machine learning framework",,manual
+,dbt,dbt,tool,"data build tool","Analytics engineering transformation tool",,manual
+,scikit-learn,scikit-learn,technical,"sklearn","Machine learning library for Python",,manual
+,Elasticsearch,elasticsearch,technical,"ELK;OpenSearch","Distributed search and analytics engine",,manual
+,Redis,redis,technical,"","In-memory key-value data store",,manual
+,MongoDB,mongodb,technical,"","Document-oriented NoSQL database",,manual
+,Spring Boot,spring-boot,technical,"Spring;Spring Framework","Java-based framework for microservices",,manual
+,Linux,linux,tool,"GNU/Linux;Linux OS","Open-source operating system kernel",,manual
+,SAFe,safe,methodology,"Scaled Agile Framework","Enterprise-scale Agile framework",,manual
