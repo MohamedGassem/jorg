@@ -16,7 +16,7 @@ from models.candidate_profile import (
 )
 from models.generated_document import GeneratedDocument
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
-from models.skill import CandidateSkill
+from models.skill import CandidateSkill, ExperienceSkillUsage
 from models.user import User
 from schemas.candidate import (
     CandidateProfileRead,
@@ -44,7 +44,14 @@ async def export_candidate_data(db: AsyncSession, user: User) -> CandidateExport
     profile = profile_q.scalar_one_or_none()
 
     if profile is not None:
-        exp_q = await db.execute(select(Experience).where(Experience.profile_id == profile.id))
+        exp_q = await db.execute(
+            select(Experience)
+            .where(Experience.profile_id == profile.id)
+            .options(
+                selectinload(Experience.achievements),
+                selectinload(Experience.skill_usages).selectinload(ExperienceSkillUsage.skill_ref),
+            )
+        )
         skill_q = await db.execute(
             select(CandidateSkill)
             .where(CandidateSkill.candidate_id == profile.id)
