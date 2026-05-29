@@ -1,0 +1,348 @@
+# backend/api/routes/skills.py
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from api.deps import CandidateProfile_dep, get_db, require_role
+from models.candidate_profile import Experience
+from models.skill import (
+    Achievement as AchievementModel,
+)
+from models.skill import (
+    CandidateSkill,
+    ExperienceSkillUsage,
+    SkillKind,
+    SkillReference,
+)
+from models.user import UserRole
+from schemas.skill import (
+    AchievementCreate,
+    AchievementRead,
+    AchievementUpdate,
+    CandidateSkillCreate,
+    CandidateSkillRead,
+    CandidateSkillUpdate,
+    ExperienceSkillUsageCreate,
+    ExperienceSkillUsageRead,
+    SkillMetricsRead,
+    SkillReferenceCreate,
+    SkillReferenceRead,
+)
+from services import skill_metrics_service, skill_reference_service
+
+router = APIRouter(tags=["skills"])
+
+DB = Annotated[AsyncSession, Depends(get_db)]
+AnyAuth = Annotated[object, Depends(require_role(UserRole.CANDIDATE))]
+
+
+# ---- SkillReference ----------------------------------------------------------
+
+
+@router.get("/skill-references", response_model=list[SkillReferenceRead])
+async def search_skill_references(
+    q: str,
+    db: DB,
+    _: AnyAuth,
+    kind: SkillKind | None = None,
+    limit: int = 20,
+) -> list[SkillReference]:
+    return await skill_reference_service.search(q, kind=kind, limit=limit, db=db)
+
+
+@router.post("/skill-references", response_model=SkillReferenceRead)
+async def create_or_get_skill_reference(
+    data: SkillReferenceCreate,
+    db: DB,
+    _: AnyAuth,
+    response: Response,
+) -> SkillReference:
+    slug = skill_reference_service.slugify(data.name)
+    result = await db.execute(select(SkillReference).where(SkillReference.slug == slug))
+    existing = result.scalar_one_or_none()
+    if existing:
+        response.status_code = status.HTTP_200_OK
+        return existing
+    try:
+        ref = await skill_reference_service.get_or_create_by_name(data.name, data.kind, db)
+    except IntegrityError:
+        await db.rollback()
+        result = await db.execute(select(SkillReference).where(SkillReference.slug == slug))
+        ref = result.scalar_one()
+        response.status_code = status.HTTP_200_OK
+        return ref
+    response.status_code = status.HTTP_201_CREATED
+    return ref
+
+
+# ---- CandidateSkill ----------------------------------------------------------
+
+
+@router.get("/candidates/me/skills", response_model=list[CandidateSkillRead])
+async def list_my_skills(profile: CandidateProfile_dep, db: DB) -> list[CandidateSkill]:
+    result = await db.execute(
+        select(CandidateSkill)
+        .where(CandidateSkill.candidate_id == profile.id)
+        .options(selectinload(CandidateSkill.skill_ref))
+    )
+    return list(result.scalars().all())
+
+
+@router.post(
+    "/candidates/me/skills",
+    response_model=CandidateSkillRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_my_skill(
+    data: CandidateSkillCreate,
+    profile: CandidateProfile_dep,
+    db: DB,
+) -> CandidateSkill:
+    skill = CandidateSkill(
+        candidate_id=profile.id,
+        skill_ref_id=data.skill_ref_id,
+        self_assessed_level=data.self_assessed_level,
+        featured=data.featured,
+        notes=data.notes,
+    )
+    try:
+        db.add(skill)
+        await db.commit()
+        await db.refresh(skill)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Skill already added to profile",
+        ) from None
+    result = await db.execute(
+        select(CandidateSkill)
+        .where(CandidateSkill.id == skill.id)
+        .options(selectinload(CandidateSkill.skill_ref))
+    )
+    return result.scalar_one()
+
+
+@router.put("/candidates/me/skills/{skill_id}", response_model=CandidateSkillRead)
+async def update_my_skill(
+    skill_id: UUID,
+    data: CandidateSkillUpdate,
+    profile: CandidateProfile_dep,
+    db: DB,
+) -> CandidateSkill:
+    result = await db.execute(
+        select(CandidateSkill)
+        .where(CandidateSkill.id == skill_id, CandidateSkill.candidate_id == profile.id)
+        .options(selectinload(CandidateSkill.skill_ref))
+    )
+    skill = result.scalar_one_or_none()
+    if skill is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="skill not found")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(skill, field, value)
+    await db.commit()
+    result = await db.execute(
+        select(CandidateSkill)
+        .where(CandidateSkill.id == skill_id)
+        .options(selectinload(CandidateSkill.skill_ref))
+    )
+    return result.scalar_one()
+
+
+@router.delete("/candidates/me/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_skill(skill_id: UUID, profile: CandidateProfile_dep, db: DB) -> None:
+    result = await db.execute(
+        select(CandidateSkill).where(
+            CandidateSkill.id == skill_id, CandidateSkill.candidate_id == profile.id
+        )
+    )
+    skill = result.scalar_one_or_none()
+    if skill is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="skill not found")
+    await db.delete(skill)
+    await db.commit()
+
+
+# ---- ExperienceSkillUsage ----------------------------------------------------
+
+
+async def _get_experience_or_404(exp_id: UUID, profile_id: UUID, db: AsyncSession) -> Experience:
+    result = await db.execute(
+        select(Experience).where(Experience.id == exp_id, Experience.profile_id == profile_id)
+    )
+    exp = result.scalar_one_or_none()
+    if exp is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="experience not found")
+    return exp
+
+
+@router.post(
+    "/candidates/me/experiences/{exp_id}/skill-usages",
+    response_model=ExperienceSkillUsageRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_skill_usage(
+    exp_id: UUID,
+    data: ExperienceSkillUsageCreate,
+    profile: CandidateProfile_dep,
+    db: DB,
+) -> ExperienceSkillUsage:
+    await _get_experience_or_404(exp_id, profile.id, db)
+    if data.achievement_id is not None:
+        ach_result = await db.execute(
+            select(AchievementModel).where(
+                AchievementModel.id == data.achievement_id,
+                AchievementModel.experience_id == exp_id,
+            )
+        )
+        if ach_result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="achievement not found for this experience",
+            )
+    usage = ExperienceSkillUsage(
+        experience_id=exp_id,
+        skill_ref_id=data.skill_ref_id,
+        usage_role=data.usage_role,
+        intensity=data.intensity,
+        achievement_id=data.achievement_id,
+    )
+    try:
+        db.add(usage)
+        await db.commit()
+        await db.refresh(usage)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Skill usage already exists for this experience",
+        ) from None
+    result = await db.execute(
+        select(ExperienceSkillUsage)
+        .where(ExperienceSkillUsage.id == usage.id)
+        .options(selectinload(ExperienceSkillUsage.skill_ref))
+    )
+    return result.scalar_one()
+
+
+@router.delete(
+    "/candidates/me/experiences/{exp_id}/skill-usages/{usage_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_skill_usage(
+    exp_id: UUID, usage_id: UUID, profile: CandidateProfile_dep, db: DB
+) -> None:
+    await _get_experience_or_404(exp_id, profile.id, db)
+    result = await db.execute(
+        select(ExperienceSkillUsage).where(
+            ExperienceSkillUsage.id == usage_id,
+            ExperienceSkillUsage.experience_id == exp_id,
+        )
+    )
+    usage = result.scalar_one_or_none()
+    if usage is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="usage not found")
+    await db.delete(usage)
+    await db.commit()
+
+
+# ---- Metrics -----------------------------------------------------------------
+
+
+@router.get("/candidates/me/skill-metrics", response_model=list[SkillMetricsRead])
+async def get_my_skill_metrics(profile: CandidateProfile_dep, db: DB) -> list[SkillMetricsRead]:
+    return await skill_metrics_service.compute_skill_metrics(profile.id, db)
+
+
+# ---- Achievements ------------------------------------------------------------
+
+
+@router.post(
+    "/candidates/me/experiences/{exp_id}/achievements",
+    response_model=AchievementRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_achievement(
+    exp_id: UUID, data: AchievementCreate, profile: CandidateProfile_dep, db: DB
+) -> AchievementModel:
+    await _get_experience_or_404(exp_id, profile.id, db)
+    achievement = AchievementModel(
+        experience_id=exp_id,
+        description=data.description,
+        impact=data.impact,
+        order=data.order,
+    )
+    db.add(achievement)
+    await db.commit()
+    await db.refresh(achievement)
+    return achievement
+
+
+@router.get(
+    "/candidates/me/experiences/{exp_id}/achievements",
+    response_model=list[AchievementRead],
+)
+async def list_achievements(
+    exp_id: UUID, profile: CandidateProfile_dep, db: DB
+) -> list[AchievementModel]:
+    await _get_experience_or_404(exp_id, profile.id, db)
+    result = await db.execute(
+        select(AchievementModel)
+        .where(AchievementModel.experience_id == exp_id)
+        .order_by(AchievementModel.order)
+    )
+    return list(result.scalars().all())
+
+
+@router.put(
+    "/candidates/me/experiences/{exp_id}/achievements/{achievement_id}",
+    response_model=AchievementRead,
+)
+async def update_achievement(
+    exp_id: UUID,
+    achievement_id: UUID,
+    data: AchievementUpdate,
+    profile: CandidateProfile_dep,
+    db: DB,
+) -> AchievementModel:
+    await _get_experience_or_404(exp_id, profile.id, db)
+    result = await db.execute(
+        select(AchievementModel).where(
+            AchievementModel.id == achievement_id,
+            AchievementModel.experience_id == exp_id,
+        )
+    )
+    achievement = result.scalar_one_or_none()
+    if achievement is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="achievement not found")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(achievement, field, value)
+    await db.commit()
+    await db.refresh(achievement)
+    return achievement
+
+
+@router.delete(
+    "/candidates/me/experiences/{exp_id}/achievements/{achievement_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_achievement(
+    exp_id: UUID, achievement_id: UUID, profile: CandidateProfile_dep, db: DB
+) -> None:
+    await _get_experience_or_404(exp_id, profile.id, db)
+    result = await db.execute(
+        select(AchievementModel).where(
+            AchievementModel.id == achievement_id,
+            AchievementModel.experience_id == exp_id,
+        )
+    )
+    achievement = result.scalar_one_or_none()
+    if achievement is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="achievement not found")
+    await db.delete(achievement)
+    await db.commit()

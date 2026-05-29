@@ -248,3 +248,58 @@ async def test_delete_does_not_expire_accepted_or_rejected_invitations(
 
     rejected_q = await db_session.execute(select(Invitation).where(Invitation.id == rejected_id))
     assert rejected_q.scalar_one().status == InvitationStatus.REJECTED
+
+
+async def test_export_includes_nested_candidate_skills(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    ref1_r = await client.post(
+        "/skill-references",
+        headers=candidate_headers,
+        json={"name": "RGPDSkill1", "kind": "technical"},
+    )
+    ref1_id = ref1_r.json()["id"]
+
+    ref2_r = await client.post(
+        "/skill-references",
+        headers=candidate_headers,
+        json={"name": "RGPDSkill2", "kind": "tool"},
+    )
+    ref2_id = ref2_r.json()["id"]
+
+    await client.post(
+        "/candidates/me/skills",
+        headers=candidate_headers,
+        json={"skill_ref_id": ref1_id, "featured": True},
+    )
+    await client.post(
+        "/candidates/me/skills",
+        headers=candidate_headers,
+        json={"skill_ref_id": ref2_id},
+    )
+
+    exp_r = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={"client_name": "RGPDCorp", "role": "Dev", "start_date": "2022-01-01"},
+    )
+    exp_id = exp_r.json()["id"]
+    await client.post(
+        f"/candidates/me/experiences/{exp_id}/skill-usages",
+        headers=candidate_headers,
+        json={"skill_ref_id": ref1_id, "usage_role": "implementer", "intensity": "primary"},
+    )
+
+    r = await client.get("/candidates/me/export", headers=candidate_headers)
+    assert r.status_code == 200
+    data = r.json()
+
+    assert len(data["skills"]) >= 2
+    skill_names = [s["skill_ref"]["name"] for s in data["skills"]]
+    assert "RGPDSkill1" in skill_names
+    assert "RGPDSkill2" in skill_names
+
+    s1 = next(s for s in data["skills"] if s["skill_ref"]["name"] == "RGPDSkill1")
+    assert "id" in s1["skill_ref"]
+    assert "kind" in s1["skill_ref"]
+    assert s1["featured"] is True

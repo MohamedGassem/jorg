@@ -7,9 +7,10 @@ from sqlalchemy import Select, exists, func, or_, select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.candidate_profile import CandidateProfile, Skill
+from models.candidate_profile import CandidateProfile
 from models.invitation import AccessGrant, AccessGrantStatus
 from models.recruiter import Organization, RecruiterProfile
+from models.skill import CandidateSkill, SkillReference
 from models.user import User
 from schemas.recruiter import OrganizationCreate, RecruiterProfileUpdate
 
@@ -141,9 +142,14 @@ class CandidateQueryBuilder:
     def filter_skill(self, skill: str) -> Self:
         self._stmt = self._stmt.where(
             exists(
-                select(Skill.id).where(
-                    Skill.profile_id == CandidateProfile.id,
-                    func.lower(Skill.name).contains(skill.lower()),
+                select(CandidateSkill.id).where(
+                    CandidateSkill.candidate_id == CandidateProfile.id,
+                    exists(
+                        select(SkillReference.id).where(
+                            SkillReference.id == CandidateSkill.skill_ref_id,
+                            func.lower(SkillReference.name).contains(skill.lower()),
+                        )
+                    ),
                 )
             )
         )

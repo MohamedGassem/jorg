@@ -13,8 +13,8 @@ from schemas.candidate import (
     EducationRead,
     ExperienceRead,
     LanguageRead,
-    SkillRead,
 )
+from schemas.skill import CandidateSkillRead
 
 
 class AccessGrantExport(BaseModel):
@@ -49,7 +49,7 @@ class CandidateExport(BaseModel):
 
     profile: CandidateProfileRead | None
     experiences: list[ExperienceRead]
-    skills: list[SkillRead]
+    skills: list[CandidateSkillRead]
     education: list[EducationRead]
     certifications: list[CertificationRead]
     languages: list[LanguageRead]

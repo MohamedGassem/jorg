@@ -10,13 +10,15 @@ import httpx
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from core.config import get_settings
 from core.exceptions import BusinessRuleError, ForbiddenError, NotFoundError
 from core.storage import get_storage
-from models.candidate_profile import CandidateProfile, Experience, Skill
+from models.candidate_profile import CandidateProfile, Experience
 from models.generated_document import GeneratedDocument
 from models.recruiter import Organization
+from models.skill import CandidateSkill
 from models.template import Template
 from schemas.generation import GeneratedDocumentCandidateView
 from services import invitation_service, template_service
@@ -64,8 +66,12 @@ async def _load_experiences(db: AsyncSession, profile_id: UUID) -> list[Experien
     return list(result.scalars().all())
 
 
-async def _load_skills(db: AsyncSession, profile_id: UUID) -> list[Skill]:
-    result = await db.execute(select(Skill).where(Skill.profile_id == profile_id))
+async def _load_skills(db: AsyncSession, profile_id: UUID) -> list[CandidateSkill]:
+    result = await db.execute(
+        select(CandidateSkill)
+        .where(CandidateSkill.candidate_id == profile_id)
+        .options(selectinload(CandidateSkill.skill_ref))
+    )
     return list(result.scalars().all())
 
 

@@ -16,7 +16,6 @@ from models.candidate_profile import (
     Education,
     Experience,
     Language,
-    Skill,
 )
 from models.generated_document import GeneratedDocument
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
@@ -35,15 +34,12 @@ from schemas.candidate import (
     LanguageCreate,
     LanguageUpdate,
     OrganizationInteractionCard,
-    SkillCreate,
-    SkillUpdate,
 )
 from services.base_crud import CRUDService
 
 # ---- Per-model CRUD instances -----------------------------------------------
 
 experience_crud: CRUDService[Experience] = CRUDService(Experience, "profile_id")
-skill_crud: CRUDService[Skill] = CRUDService(Skill, "profile_id")
 education_crud: CRUDService[Education] = CRUDService(Education, "profile_id")
 certification_crud: CRUDService[Certification] = CRUDService(Certification, "profile_id")
 language_crud: CRUDService[Language] = CRUDService(Language, "profile_id")
@@ -108,26 +104,6 @@ async def update_experience(
 
 async def delete_experience(db: AsyncSession, exp: Experience) -> None:
     return await experience_crud.delete(db, exp)
-
-
-async def list_skills(db: AsyncSession, profile_id: UUID) -> list[Skill]:
-    return await skill_crud.list(db, profile_id)
-
-
-async def create_skill(db: AsyncSession, profile_id: UUID, data: SkillCreate) -> Skill:
-    return await skill_crud.create(db, profile_id, data)
-
-
-async def get_skill(db: AsyncSession, skill_id: UUID, profile_id: UUID) -> Skill | None:
-    return await skill_crud.get(db, skill_id, profile_id)
-
-
-async def update_skill(db: AsyncSession, skill: Skill, data: SkillUpdate) -> Skill:
-    return await skill_crud.update(db, skill, data)
-
-
-async def delete_skill(db: AsyncSession, skill: Skill) -> None:
-    return await skill_crud.delete(db, skill)
 
 
 async def list_education(db: AsyncSession, profile_id: UUID) -> list[Education]:

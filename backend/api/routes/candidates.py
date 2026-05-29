@@ -3,7 +3,9 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 import services.candidate_service as candidate_service
 import services.rgpd_service as rgpd_service
@@ -14,8 +16,8 @@ from models.candidate_profile import (
     Education,
     Experience,
     Language,
-    Skill,
 )
+from models.skill import ExperienceSkillUsage
 from models.user import User, UserRole
 from schemas.candidate import (
     CandidateProfileRead,
@@ -33,9 +35,6 @@ from schemas.candidate import (
     LanguageRead,
     LanguageUpdate,
     OrganizationInteractionCard,
-    SkillCreate,
-    SkillRead,
-    SkillUpdate,
 )
 from schemas.rgpd import CandidateExport
 
@@ -43,6 +42,11 @@ router = APIRouter(prefix="/candidates", tags=["candidates"])
 
 CandidateUser = Annotated[User, Depends(require_role(UserRole.CANDIDATE))]
 DB = Annotated[AsyncSession, Depends(get_db)]
+
+_EXP_OPTIONS = [
+    selectinload(Experience.achievements),
+    selectinload(Experience.skill_usages).selectinload(ExperienceSkillUsage.skill_ref),
+]
 
 
 # ---- Profile ----------------------------------------------------------------
@@ -68,7 +72,10 @@ async def update_my_profile(
 
 @router.get("/me/experiences", response_model=list[ExperienceRead])
 async def list_my_experiences(profile: CandidateProfile_dep, db: DB) -> list[Experience]:
-    return await candidate_service.list_experiences(db, profile.id)
+    result = await db.execute(
+        select(Experience).where(Experience.profile_id == profile.id).options(*_EXP_OPTIONS)
+    )
+    return list(result.scalars().all())
 
 
 @router.post("/me/experiences", response_model=ExperienceRead, status_code=status.HTTP_201_CREATED)
@@ -77,7 +84,11 @@ async def create_my_experience(
     profile: CandidateProfile_dep,
     db: DB,
 ) -> Experience:
-    return await candidate_service.create_experience(db, profile.id, data)
+    exp = await candidate_service.create_experience(db, profile.id, data)
+    result = await db.execute(
+        select(Experience).where(Experience.id == exp.id).options(*_EXP_OPTIONS)
+    )
+    return result.scalar_one()
 
 
 @router.put("/me/experiences/{experience_id}", response_model=ExperienceRead)
@@ -90,7 +101,11 @@ async def update_my_experience(
     exp = await candidate_service.get_experience(db, experience_id, profile.id)
     if exp is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="experience not found")
-    return await candidate_service.update_experience(db, exp, data)
+    await candidate_service.update_experience(db, exp, data)
+    result = await db.execute(
+        select(Experience).where(Experience.id == experience_id).options(*_EXP_OPTIONS)
+    )
+    return result.scalar_one()
 
 
 @router.delete("/me/experiences/{experience_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -103,37 +118,6 @@ async def delete_my_experience(
     if exp is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="experience not found")
     await candidate_service.delete_experience(db, exp)
-
-
-# ---- Skills -----------------------------------------------------------------
-
-
-@router.get("/me/skills", response_model=list[SkillRead])
-async def list_my_skills(profile: CandidateProfile_dep, db: DB) -> list[Skill]:
-    return await candidate_service.list_skills(db, profile.id)
-
-
-@router.post("/me/skills", response_model=SkillRead, status_code=status.HTTP_201_CREATED)
-async def create_my_skill(data: SkillCreate, profile: CandidateProfile_dep, db: DB) -> Skill:
-    return await candidate_service.create_skill(db, profile.id, data)
-
-
-@router.put("/me/skills/{skill_id}", response_model=SkillRead)
-async def update_my_skill(
-    skill_id: UUID, data: SkillUpdate, profile: CandidateProfile_dep, db: DB
-) -> Skill:
-    skill = await candidate_service.get_skill(db, skill_id, profile.id)
-    if skill is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="skill not found")
-    return await candidate_service.update_skill(db, skill, data)
-
-
-@router.delete("/me/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_my_skill(skill_id: UUID, profile: CandidateProfile_dep, db: DB) -> None:
-    skill = await candidate_service.get_skill(db, skill_id, profile.id)
-    if skill is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="skill not found")
-    await candidate_service.delete_skill(db, skill)
 
 
 # ---- Education --------------------------------------------------------------

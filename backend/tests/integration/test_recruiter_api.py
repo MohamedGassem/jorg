@@ -594,10 +594,16 @@ async def test_filter_candidates_by_skill(
         "/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers
     )
 
+    ref_r = await client.post(
+        "/skill-references",
+        headers=candidate_headers,
+        json={"name": "Python", "kind": "technical"},
+    )
+    ref_id = ref_r.json()["id"]
     await client.post(
         "/candidates/me/skills",
         headers=candidate_headers,
-        json={"name": "Python", "category": "language"},
+        json={"skill_ref_id": ref_id},
     )
 
     inv = await client.post(

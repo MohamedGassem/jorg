@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from models.candidate_profile import (
     CandidateProfile,
@@ -12,10 +13,10 @@ from models.candidate_profile import (
     Education,
     Experience,
     Language,
-    Skill,
 )
 from models.generated_document import GeneratedDocument
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
+from models.skill import CandidateSkill, ExperienceSkillUsage
 from models.user import User
 from schemas.candidate import (
     CandidateProfileRead,
@@ -23,13 +24,13 @@ from schemas.candidate import (
     EducationRead,
     ExperienceRead,
     LanguageRead,
-    SkillRead,
 )
 from schemas.rgpd import (
     AccessGrantExport,
     CandidateExport,
     GeneratedDocumentExport,
 )
+from schemas.skill import CandidateSkillRead
 
 
 async def export_candidate_data(db: AsyncSession, user: User) -> CandidateExport:
@@ -43,8 +44,19 @@ async def export_candidate_data(db: AsyncSession, user: User) -> CandidateExport
     profile = profile_q.scalar_one_or_none()
 
     if profile is not None:
-        exp_q = await db.execute(select(Experience).where(Experience.profile_id == profile.id))
-        skill_q = await db.execute(select(Skill).where(Skill.profile_id == profile.id))
+        exp_q = await db.execute(
+            select(Experience)
+            .where(Experience.profile_id == profile.id)
+            .options(
+                selectinload(Experience.achievements),
+                selectinload(Experience.skill_usages).selectinload(ExperienceSkillUsage.skill_ref),
+            )
+        )
+        skill_q = await db.execute(
+            select(CandidateSkill)
+            .where(CandidateSkill.candidate_id == profile.id)
+            .options(selectinload(CandidateSkill.skill_ref))
+        )
         edu_q = await db.execute(select(Education).where(Education.profile_id == profile.id))
         cert_q = await db.execute(
             select(Certification).where(Certification.profile_id == profile.id)
@@ -80,7 +92,7 @@ async def export_candidate_data(db: AsyncSession, user: User) -> CandidateExport
         created_at=user.created_at,
         profile=CandidateProfileRead.model_validate(profile) if profile else None,
         experiences=[ExperienceRead.model_validate(e) for e in experiences],
-        skills=[SkillRead.model_validate(s) for s in skills],
+        skills=[CandidateSkillRead.model_validate(s) for s in skills],
         education=[EducationRead.model_validate(e) for e in education],
         certifications=[CertificationRead.model_validate(c) for c in certifications],
         languages=[LanguageRead.model_validate(lang) for lang in languages],

@@ -3,14 +3,13 @@ from __future__ import annotations
 
 from datetime import date
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from sqlalchemy import (
     ARRAY,
     JSON,
     Boolean,
-    CheckConstraint,
     Date,
     Enum,
     ForeignKey,
@@ -18,18 +17,12 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
-
-class SkillCategory(StrEnum):
-    LANGUAGE = "language"
-    FRAMEWORK = "framework"
-    DATABASE = "database"
-    TOOL = "tool"
-    METHODOLOGY = "methodology"
-    OTHER = "other"
+if TYPE_CHECKING:
+    from models.skill import Achievement, ExperienceSkillUsage
 
 
 class LanguageLevel(StrEnum):
@@ -137,29 +130,21 @@ class Experience(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     is_current: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     context: Mapped[str | None] = mapped_column(Text, nullable=True)
-    achievements: Mapped[str | None] = mapped_column(Text, nullable=True)
-    technologies: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    achievements_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # technologies removed — replaced by ExperienceSkillUsage
+    # achievements (Text) renamed to achievements_summary — achievements is now list[Achievement]
 
-
-class Skill(Base, UUIDPrimaryKeyMixin, TimestampMixin):
-    __tablename__ = "skills"
-
-    profile_id: Mapped[UUID] = mapped_column(
-        ForeignKey("candidate_profiles.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
+    achievements: Mapped[list[Achievement]] = relationship(
+        "Achievement",
+        cascade="all, delete-orphan",
+        order_by="Achievement.order",
+        back_populates="experience",
     )
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    category: Mapped[SkillCategory] = mapped_column(
-        Enum(SkillCategory, name="skill_category"), nullable=False
+    skill_usages: Mapped[list[ExperienceSkillUsage]] = relationship(
+        "ExperienceSkillUsage",
+        cascade="all, delete-orphan",
+        back_populates="experience",
     )
-    level: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    level_rating: Mapped[int | None] = mapped_column(
-        Integer,
-        CheckConstraint("level_rating BETWEEN 1 AND 5", name="ck_skills_level_rating_range"),
-        nullable=True,
-    )
-    years_of_experience: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class Education(Base, UUIDPrimaryKeyMixin, TimestampMixin):

@@ -66,8 +66,8 @@ class ExperienceProtocol(Protocol):
     is_current: bool
     description: str | None
     context: str | None
-    achievements: str | None
-    technologies: list[str] | None
+    achievements_summary: str | None
+    # technologies removed
 
 
 class CandidateProfileProtocol(Protocol):
@@ -90,12 +90,15 @@ class CandidateProfileProtocol(Protocol):
     preferred_domains: list[str] | None
 
 
-class SkillProtocol(Protocol):
+class SkillReferenceProtocol(Protocol):
     name: str | None
-    category: StrEnum | None
-    level: str | None
-    level_rating: int | None
-    years_of_experience: int | None
+    kind: StrEnum | None
+
+
+class SkillProtocol(Protocol):
+    skill_ref: SkillReferenceProtocol
+    self_assessed_level: str | None
+    featured: bool
 
 
 def fmt_date(d: date | None) -> str:
@@ -135,6 +138,7 @@ def exp_flat(exp: ExperienceProtocol) -> dict[str, str]:
     as ``{{exp.client_name}}`` inside a ``{%p for exp in experiences %}`` block.
     """
     end = fmt_date(exp.end_date) if not exp.is_current else "présent"
+    summary = exp.achievements_summary or ""
     return {
         "client_name": exp.client_name or "",
         "role": exp.role or "",
@@ -142,8 +146,8 @@ def exp_flat(exp: ExperienceProtocol) -> dict[str, str]:
         "end_date": end,
         "description": exp.description or "",
         "context": exp.context or "",
-        "achievements": exp.achievements or "",
-        "technologies": ", ".join(exp.technologies or []),
+        "achievements_summary": summary,
+        "achievements": summary,  # backward-compat alias for existing templates
     }
 
 
@@ -154,11 +158,11 @@ def skill_flat(sk: SkillProtocol) -> dict[str, str]:
     as ``{{sk.name}}`` inside a ``{%p for sk in skills %}`` block.
     """
     return {
-        "name": sk.name or "",
-        "category": str(sk.category.value) if sk.category else "",
-        "level": sk.level or "",
-        "level_rating": str(sk.level_rating) if sk.level_rating else "",
-        "years_of_experience": (str(sk.years_of_experience) if sk.years_of_experience else ""),
+        "name": sk.skill_ref.name or "",
+        "kind": str(sk.skill_ref.kind.value) if sk.skill_ref.kind else "",
+        "level": sk.self_assessed_level or "",  # backward-compat alias for old templates
+        "self_assessed_level": sk.self_assessed_level or "",
+        "featured": "true" if sk.featured else "false",
     }
 
 

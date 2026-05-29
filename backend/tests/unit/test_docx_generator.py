@@ -55,8 +55,7 @@ def _mock_exp(**kwargs: object) -> MagicMock:
         "is_current": True,
         "description": "Developed REST APIs",
         "context": "Greenfield project",
-        "achievements": "Reduced latency by 30%",
-        "technologies": ["Python", "FastAPI", "PostgreSQL"],
+        "achievements_summary": "Reduced latency by 30%",
     }
     exp = MagicMock()
     for k, v in {**defaults, **kwargs}.items():
@@ -157,19 +156,19 @@ def test_date_formatted_mm_yyyy() -> None:
     assert "03/2021" in texts and "11/2023" in texts
 
 
-def test_technologies_joined_as_string() -> None:
+def test_achievements_summary_rendered() -> None:
     path = _make_docx_path(
         [
             "{%p for exp in experiences %}",
-            "Stack: {{exp.technologies}}",
+            "Summary: {{exp.achievements_summary}}",
             "{%p endfor %}",
         ]
     )
-    exp = _mock_exp(technologies=["Python", "FastAPI", "Redis"])
+    exp = _mock_exp(achievements_summary="Reduced latency by 40%")
     result = generate_document(path, _mock_profile(), [exp], [], {})
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
-    assert "Python, FastAPI, Redis" in texts
+    assert "Reduced latency by 40%" in texts
 
 
 def test_generate_replaces_annual_salary_placeholder() -> None:
