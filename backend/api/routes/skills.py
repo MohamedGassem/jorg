@@ -181,8 +181,21 @@ async def update_my_skill(
     skill = result.scalar_one_or_none()
     if skill is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="skill not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
+
+    update_data = data.model_dump(exclude_unset=True)
+    kind = update_data.pop("kind", None)
+
+    if kind is not None:
+        if not skill.skill_ref.is_custom:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot change kind of an ESCO skill",
+            )
+        skill.skill_ref.kind = kind
+
+    for field, value in update_data.items():
         setattr(skill, field, value)
+
     await db.commit()
     result = await db.execute(
         select(CandidateSkill)

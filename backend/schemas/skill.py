@@ -48,6 +48,7 @@ class CandidateSkillUpdate(BaseModel):
     self_assessed_level: str | None = None
     featured: bool | None = None
     notes: str | None = None
+    kind: SkillKind | None = None
 
 
 class CandidateSkillRead(BaseModel):
