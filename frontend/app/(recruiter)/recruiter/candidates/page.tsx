@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -31,6 +32,126 @@ const EMPTY_FILTERS = {
   q: "",
 };
 
+function CandidateSkillHighlight({
+  candidate,
+  activeSkillRefId,
+  activeSkillName,
+  onClose,
+}: {
+  candidate: AccessibleCandidateRead;
+  activeSkillRefId: string;
+  activeSkillName: string;
+  onClose: () => void;
+}) {
+  const [focusOnly, setFocusOnly] = useState(true);
+
+  const totalCount = candidate.experiences
+    .flatMap((e) => e.achievements)
+    .filter((a) =>
+      a.skill_tags.some((t) => t.skill_ref_id === activeSkillRefId),
+    ).length;
+
+  const matchingExpCount = candidate.experiences.filter((exp) =>
+    exp.achievements.some((ach) =>
+      ach.skill_tags.some((t) => t.skill_ref_id === activeSkillRefId),
+    ),
+  ).length;
+
+  return (
+    <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5">
+      <div className="flex items-center justify-between border-b border-primary/20 px-3 py-2">
+        <p className="text-xs font-medium text-primary">
+          {activeSkillName} ·{" "}
+          <span className="font-normal text-muted-foreground">
+            {totalCount} réalisation{totalCount > 1 ? "s" : ""} dans{" "}
+            {matchingExpCount} expérience{matchingExpCount > 1 ? "s" : ""}
+          </span>
+        </p>
+        <div className="flex items-center gap-3">
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={focusOnly}
+              onChange={(e) => setFocusOnly(e.target.checked)}
+              className="accent-primary"
+            />
+            Liées uniquement
+          </label>
+          <button
+            type="button"
+            aria-label="Fermer le filtre"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-2 p-3">
+        {candidate.experiences.map((exp) => {
+          const relevantAchs = exp.achievements.filter((a) =>
+            a.skill_tags.some((t) => t.skill_ref_id === activeSkillRefId),
+          );
+          if (focusOnly && relevantAchs.length === 0) return null;
+
+          return (
+            <div key={exp.id} className="rounded-md bg-background/60 px-3 py-2">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-xs font-semibold">
+                  {exp.client_name} — {exp.role}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {exp.start_date}
+                  {exp.end_date
+                    ? ` → ${exp.end_date}`
+                    : exp.is_current
+                      ? " → présent"
+                      : ""}
+                </span>
+              </div>
+              <div className="space-y-0.5">
+                {exp.achievements.map((ach) => {
+                  const isMatch = ach.skill_tags.some(
+                    (t) => t.skill_ref_id === activeSkillRefId,
+                  );
+                  if (focusOnly && !isMatch) return null;
+                  return (
+                    <div
+                      key={ach.id}
+                      className={`flex items-start gap-1.5 rounded px-1.5 py-1 ${
+                        isMatch ? "bg-primary/10" : "opacity-40"
+                      }`}
+                    >
+                      <span
+                        className={`mt-0.5 text-xs ${isMatch ? "text-primary" : "text-muted-foreground"}`}
+                      >
+                        •
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={`text-xs ${isMatch ? "font-medium text-foreground" : "text-muted-foreground"}`}
+                        >
+                          {ach.description}
+                        </p>
+                        {ach.impact && isMatch && (
+                          <p className="text-[10px] italic text-muted-foreground">
+                            {ach.impact}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function CandidatesPage() {
   const { orgId, loading, error } = useRecruiterOrg();
   const [candidates, setCandidates] = useState<AccessibleCandidateRead[]>([]);
@@ -41,6 +162,11 @@ export default function CandidatesPage() {
   const [pickingFor, setPickingFor] = useState<string | null>(null);
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [addFeedback, setAddFeedback] = useState<Record<string, string>>({});
+  const [activeSkillFilter, setActiveSkillFilter] = useState<{
+    candidateId: string;
+    skillRefId: string;
+    skillName: string;
+  } | null>(null);
 
   const fetchCandidates = useCallback(
     async (currentOrgId: string, currentFilters: typeof EMPTY_FILTERS) => {
@@ -263,85 +389,148 @@ export default function CandidatesPage() {
         <EmptyState message="Aucun candidat ne correspond aux filtres." />
       ) : (
         <ul className="space-y-3" role="list">
-          {candidates.map((c) => (
-            <li key={c.user_id}>
-              <Card>
-                <CardHeader className="pb-1">
-                  <CardTitle className="text-base">
-                    {c.first_name && c.last_name
-                      ? `${c.first_name} ${c.last_name}`
-                      : c.email}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground space-y-1">
-                  {c.title && <p>{c.title}</p>}
-                  <div className="flex flex-wrap gap-3">
-                    {c.daily_rate && <span>TJM : {c.daily_rate} €/j</span>}
-                    {c.availability_status && (
-                      <span>Dispo : {c.availability_status}</span>
-                    )}
-                    {c.work_mode && <span>{c.work_mode}</span>}
-                  </div>
-                  <div className="pt-1 space-y-2">
-                    {addFeedback[c.user_id] && (
-                      <p className="text-xs text-muted-foreground">
-                        {addFeedback[c.user_id]}
-                      </p>
-                    )}
-                    {pickingFor === c.user_id ? (
-                      <div className="rounded border p-2 space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          Choisir une opportunité :
-                        </p>
-                        {opportunities.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">
-                            Aucune opportunité ouverte.
-                          </p>
-                        ) : (
-                          opportunities.map((opp) => (
-                            <Button
-                              key={opp.id}
-                              size="sm"
-                              variant="outline"
-                              className="w-full justify-start text-xs"
-                              disabled={addingTo === opp.id}
-                              onClick={() =>
-                                handleAddToOpportunity(c.user_id, opp.id)
-                              }
+          {candidates.map((c) => {
+            const isActive = activeSkillFilter?.candidateId === c.user_id;
+
+            // Collect unique skills from all experiences
+            const skillMap = new Map<string, string>();
+            for (const exp of c.experiences) {
+              for (const u of exp.skill_usages) {
+                if (!skillMap.has(u.skill_ref_id)) {
+                  skillMap.set(u.skill_ref_id, u.skill_ref.name);
+                }
+              }
+            }
+            const expSkills = Array.from(skillMap.entries()).map(
+              ([id, name]) => ({
+                id,
+                name,
+              }),
+            );
+
+            return (
+              <li key={c.user_id}>
+                <Card>
+                  <CardHeader className="pb-1">
+                    <CardTitle className="text-base">
+                      {c.first_name && c.last_name
+                        ? `${c.first_name} ${c.last_name}`
+                        : c.email}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                    {c.title && <p>{c.title}</p>}
+                    <div className="flex flex-wrap gap-3">
+                      {c.daily_rate && <span>TJM : {c.daily_rate} €/j</span>}
+                      {c.availability_status && (
+                        <span>Dispo : {c.availability_status}</span>
+                      )}
+                      {c.work_mode && <span>{c.work_mode}</span>}
+                    </div>
+
+                    {expSkills.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {expSkills.map((sk) => {
+                          const active =
+                            isActive && activeSkillFilter?.skillRefId === sk.id;
+                          return (
+                            <button
+                              key={sk.id}
+                              type="button"
+                              onClick={() => {
+                                if (active) {
+                                  setActiveSkillFilter(null);
+                                } else {
+                                  setActiveSkillFilter({
+                                    candidateId: c.user_id,
+                                    skillRefId: sk.id,
+                                    skillName: sk.name,
+                                  });
+                                }
+                              }}
+                              className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                                active
+                                  ? "border-primary/50 bg-primary/10 text-primary"
+                                  : "border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                              }`}
                             >
-                              {opp.title}
-                            </Button>
-                          ))
-                        )}
+                              {sk.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {isActive && activeSkillFilter && (
+                      <CandidateSkillHighlight
+                        candidate={c}
+                        activeSkillRefId={activeSkillFilter.skillRefId}
+                        activeSkillName={activeSkillFilter.skillName}
+                        onClose={() => setActiveSkillFilter(null)}
+                      />
+                    )}
+
+                    <div className="pt-1 space-y-2">
+                      {addFeedback[c.user_id] && (
+                        <p className="text-xs text-muted-foreground">
+                          {addFeedback[c.user_id]}
+                        </p>
+                      )}
+                      {pickingFor === c.user_id ? (
+                        <div className="rounded border p-2 space-y-1">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Choisir une opportunité :
+                          </p>
+                          {opportunities.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                              Aucune opportunité ouverte.
+                            </p>
+                          ) : (
+                            opportunities.map((opp) => (
+                              <Button
+                                key={opp.id}
+                                size="sm"
+                                variant="outline"
+                                className="w-full justify-start text-xs"
+                                disabled={addingTo === opp.id}
+                                onClick={() =>
+                                  handleAddToOpportunity(c.user_id, opp.id)
+                                }
+                              >
+                                {opp.title}
+                              </Button>
+                            ))
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs"
+                            onClick={() => setPickingFor(null)}
+                          >
+                            Annuler
+                          </Button>
+                        </div>
+                      ) : (
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-xs"
-                          onClick={() => setPickingFor(null)}
+                          onClick={() => {
+                            setPickingFor(c.user_id);
+                            setAddFeedback((prev) => ({
+                              ...prev,
+                              [c.user_id]: "",
+                            }));
+                          }}
                         >
-                          Annuler
+                          + Opportunité
                         </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setPickingFor(c.user_id);
-                          setAddFeedback((prev) => ({
-                            ...prev,
-                            [c.user_id]: "",
-                          }));
-                        }}
-                      >
-                        + Opportunité
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
