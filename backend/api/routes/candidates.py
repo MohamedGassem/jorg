@@ -17,7 +17,7 @@ from models.candidate_profile import (
     Experience,
     Language,
 )
-from models.skill import ExperienceSkillUsage
+from models.skill import Achievement, AchievementSkillTag, ExperienceSkillUsage
 from models.user import User, UserRole
 from schemas.candidate import (
     CandidateProfileRead,
@@ -44,7 +44,9 @@ CandidateUser = Annotated[User, Depends(require_role(UserRole.CANDIDATE))]
 DB = Annotated[AsyncSession, Depends(get_db)]
 
 _EXP_OPTIONS = [
-    selectinload(Experience.achievements),
+    selectinload(Experience.achievements)
+    .selectinload(Achievement.skill_tags)
+    .selectinload(AchievementSkillTag.skill_ref),
     selectinload(Experience.skill_usages).selectinload(ExperienceSkillUsage.skill_ref),
 ]
 

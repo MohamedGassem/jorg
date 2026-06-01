@@ -72,7 +72,6 @@ class ExperienceSkillUsageCreate(BaseModel):
     skill_ref_id: UUID
     usage_role: UsageRole
     intensity: UsageIntensity = UsageIntensity.secondary
-    achievement_id: UUID | None = None
 
 
 class ExperienceSkillUsageRead(BaseModel):
@@ -84,7 +83,21 @@ class ExperienceSkillUsageRead(BaseModel):
     skill_ref: SkillReferenceRead
     usage_role: UsageRole
     intensity: UsageIntensity
-    achievement_id: UUID | None
+    created_at: datetime
+
+
+# ---- AchievementSkillTag -----------------------------------------------------
+
+
+class AchievementSkillTagCreate(BaseModel):
+    skill_ref_id: UUID
+
+
+class AchievementSkillTagRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    skill_ref_id: UUID
+    skill_ref: SkillReferenceRead
     created_at: datetime
 
 
@@ -111,6 +124,7 @@ class AchievementRead(BaseModel):
     description: str
     impact: str | None
     order: int
+    skill_tags: list[AchievementSkillTagRead] = []
     created_at: datetime
     updated_at: datetime
 
