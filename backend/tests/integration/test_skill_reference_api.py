@@ -1,4 +1,5 @@
 # backend/tests/integration/test_skill_reference_api.py
+import pytest
 from httpx import AsyncClient
 
 
@@ -105,10 +106,26 @@ async def test_esco_skill_visible_to_all_candidates(
     candidate_headers: dict[str, str],
     second_candidate_headers: dict[str, str],
 ) -> None:
-    """Les skills ESCO (creator_candidate_id=None) sont visibles par tous."""
-    r = await client.get("/skill-references?q=Python", headers=second_candidate_headers)
-    assert r.status_code == 200
-    assert isinstance(r.json(), list)
+    """Les skills ESCO (creator_candidate_id=None) sont visibles par tous les candidats."""
+    # ESCO skills are seeded in conftest from data/esco_seed.csv with creator_candidate_id=NULL.
+    # They must appear in search results for any authenticated candidate.
+    # Search with q="" doesn't work (requires query), so search with a common substring.
+    # First candidate searches
+    r1 = await client.get("/skill-references?q=a&limit=5", headers=candidate_headers)
+    assert r1.status_code == 200
+    esco_from_candidate_a = [s for s in r1.json() if not s["is_custom"]]
+
+    if not esco_from_candidate_a:
+        pytest.skip("No ESCO seeds available — cannot test ESCO visibility")
+
+    # Second candidate must see the same ESCO skills
+    r2 = await client.get("/skill-references?q=a&limit=5", headers=second_candidate_headers)
+    assert r2.status_code == 200
+    esco_from_candidate_b = [s for s in r2.json() if not s["is_custom"]]
+
+    esco_ids_a = {s["id"] for s in esco_from_candidate_a}
+    esco_ids_b = {s["id"] for s in esco_from_candidate_b}
+    assert esco_ids_a == esco_ids_b, "ESCO skills must be visible to all candidates identically"
 
 
 async def test_create_custom_skill_sets_creator(
