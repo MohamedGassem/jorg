@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -32,54 +32,65 @@ const EMPTY_FILTERS = {
   q: "",
 };
 
-function CandidateSkillHighlight({
+function CandidateExperiencePanel({
   candidate,
   activeSkillRefId,
   activeSkillName,
   onClose,
 }: {
   candidate: AccessibleCandidateRead;
-  activeSkillRefId: string;
-  activeSkillName: string;
+  activeSkillRefId: string | null;
+  activeSkillName: string | null;
   onClose: () => void;
 }) {
-  const [focusOnly, setFocusOnly] = useState(true);
+  const [focusOnly, setFocusOnly] = useState(false);
 
-  const totalCount = candidate.experiences
-    .flatMap((e) => e.achievements)
-    .filter((a) =>
-      a.skill_tags.some((t) => t.skill_ref_id === activeSkillRefId),
-    ).length;
+  const totalCount = activeSkillRefId
+    ? candidate.experiences
+        .flatMap((e) => e.achievements)
+        .filter((a) =>
+          a.skill_tags.some((t) => t.skill_ref_id === activeSkillRefId),
+        ).length
+    : 0;
 
-  const matchingExpCount = candidate.experiences.filter((exp) =>
-    exp.achievements.some((ach) =>
-      ach.skill_tags.some((t) => t.skill_ref_id === activeSkillRefId),
-    ),
-  ).length;
+  const matchingExpCount = activeSkillRefId
+    ? candidate.experiences.filter((exp) =>
+        exp.achievements.some((ach) =>
+          ach.skill_tags.some((t) => t.skill_ref_id === activeSkillRefId),
+        ),
+      ).length
+    : 0;
 
   return (
-    <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5">
-      <div className="flex items-center justify-between border-b border-primary/20 px-3 py-2">
-        <p className="text-xs font-medium text-primary">
-          {activeSkillName} ·{" "}
-          <span className="font-normal text-muted-foreground">
-            {totalCount} réalisation{totalCount > 1 ? "s" : ""} dans{" "}
-            {matchingExpCount} expérience{matchingExpCount > 1 ? "s" : ""}
-          </span>
-        </p>
+    <div className="mt-3 rounded-lg border border-border/40 bg-muted/5">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
+        {activeSkillRefId ? (
+          <p className="text-xs font-medium text-primary">
+            {activeSkillName} ·{" "}
+            <span className="font-normal text-muted-foreground">
+              {totalCount} réalisation{totalCount > 1 ? "s" : ""} dans{" "}
+              {matchingExpCount} expérience{matchingExpCount > 1 ? "s" : ""}
+            </span>
+          </p>
+        ) : (
+          <p className="text-xs font-medium text-foreground">Expériences</p>
+        )}
         <div className="flex items-center gap-3">
-          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={focusOnly}
-              onChange={(e) => setFocusOnly(e.target.checked)}
-              className="accent-primary"
-            />
-            Liées uniquement
-          </label>
+          {activeSkillRefId && (
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={focusOnly}
+                onChange={(e) => setFocusOnly(e.target.checked)}
+                className="accent-primary"
+              />
+              Liées uniquement
+            </label>
+          )}
           <button
             type="button"
-            aria-label="Fermer le filtre"
+            aria-label="Fermer"
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground"
           >
@@ -88,12 +99,22 @@ function CandidateSkillHighlight({
         </div>
       </div>
 
+      {/* Experience list */}
       <div className="space-y-2 p-3">
+        {candidate.experiences.length === 0 && (
+          <p className="text-xs italic text-muted-foreground">
+            Aucune expérience renseignée.
+          </p>
+        )}
         {candidate.experiences.map((exp) => {
-          const relevantAchs = exp.achievements.filter((a) =>
-            a.skill_tags.some((t) => t.skill_ref_id === activeSkillRefId),
-          );
-          if (focusOnly && relevantAchs.length === 0) return null;
+          const relevantAchs = activeSkillRefId
+            ? exp.achievements.filter((a) =>
+                a.skill_tags.some((t) => t.skill_ref_id === activeSkillRefId),
+              )
+            : exp.achievements;
+
+          if (focusOnly && activeSkillRefId && relevantAchs.length === 0)
+            return null;
 
           return (
             <div key={exp.id} className="rounded-md bg-background/60 px-3 py-2">
@@ -110,40 +131,53 @@ function CandidateSkillHighlight({
                       : ""}
                 </span>
               </div>
-              <div className="space-y-0.5">
-                {exp.achievements.map((ach) => {
-                  const isMatch = ach.skill_tags.some(
-                    (t) => t.skill_ref_id === activeSkillRefId,
-                  );
-                  if (focusOnly && !isMatch) return null;
-                  return (
-                    <div
-                      key={ach.id}
-                      className={`flex items-start gap-1.5 rounded px-1.5 py-1 ${
-                        isMatch ? "bg-primary/10" : "opacity-40"
-                      }`}
-                    >
-                      <span
-                        className={`mt-0.5 text-xs ${isMatch ? "text-primary" : "text-muted-foreground"}`}
+              {exp.achievements.length === 0 ? (
+                <p className="text-[11px] italic text-muted-foreground">
+                  Aucune réalisation.
+                </p>
+              ) : (
+                <div className="space-y-0.5">
+                  {exp.achievements.map((ach) => {
+                    const isMatch = activeSkillRefId
+                      ? ach.skill_tags.some(
+                          (t) => t.skill_ref_id === activeSkillRefId,
+                        )
+                      : true;
+                    if (focusOnly && activeSkillRefId && !isMatch) return null;
+                    return (
+                      <div
+                        key={ach.id}
+                        className={`flex items-start gap-1.5 rounded px-1.5 py-1 ${
+                          activeSkillRefId
+                            ? isMatch
+                              ? "bg-primary/10"
+                              : "opacity-40"
+                            : ""
+                        }`}
                       >
-                        •
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className={`text-xs ${isMatch ? "font-medium text-foreground" : "text-muted-foreground"}`}
+                        <span
+                          className={`mt-0.5 text-xs ${activeSkillRefId && isMatch ? "text-primary" : "text-muted-foreground"}`}
                         >
-                          {ach.description}
-                        </p>
-                        {ach.impact && isMatch && (
-                          <p className="text-[10px] italic text-muted-foreground">
-                            {ach.impact}
+                          •
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className={`text-xs ${activeSkillRefId && isMatch ? "font-medium text-foreground" : "text-muted-foreground"}`}
+                          >
+                            {ach.description}
                           </p>
-                        )}
+                          {ach.impact &&
+                            (activeSkillRefId ? isMatch : true) && (
+                              <p className="text-[10px] italic text-muted-foreground">
+                                {ach.impact}
+                              </p>
+                            )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
@@ -167,6 +201,17 @@ export default function CandidatesPage() {
     skillRefId: string;
     skillName: string;
   } | null>(null);
+  const [expandedCandidates, setExpandedCandidates] = useState<Set<string>>(
+    new Set(),
+  );
+
+  function toggleCandidateExpand(userId: string) {
+    setExpandedCandidates((prev) => {
+      const next = new Set(prev);
+      next.has(userId) ? next.delete(userId) : next.add(userId);
+      return next;
+    });
+  }
 
   const fetchCandidates = useCallback(
     async (currentOrgId: string, currentFilters: typeof EMPTY_FILTERS) => {
@@ -412,11 +457,31 @@ export default function CandidatesPage() {
               <li key={c.user_id}>
                 <Card>
                   <CardHeader className="pb-1">
-                    <CardTitle className="text-base">
-                      {c.first_name && c.last_name
-                        ? `${c.first_name} ${c.last_name}`
-                        : c.email}
-                    </CardTitle>
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-base">
+                        {c.first_name && c.last_name
+                          ? `${c.first_name} ${c.last_name}`
+                          : c.email}
+                      </CardTitle>
+                      {c.experiences.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleCandidateExpand(c.user_id)}
+                          className="ml-2 mt-0.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          {expandedCandidates.has(c.user_id) ? (
+                            <>
+                              <ChevronUp className="size-3.5" /> Réduire
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="size-3.5" /> Expériences (
+                              {c.experiences.length})
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm text-muted-foreground">
                     {c.title && <p>{c.title}</p>}
@@ -461,12 +526,27 @@ export default function CandidatesPage() {
                       </div>
                     )}
 
-                    {isActive && activeSkillFilter && (
-                      <CandidateSkillHighlight
+                    {(expandedCandidates.has(c.user_id) || isActive) && (
+                      <CandidateExperiencePanel
                         candidate={c}
-                        activeSkillRefId={activeSkillFilter.skillRefId}
-                        activeSkillName={activeSkillFilter.skillName}
-                        onClose={() => setActiveSkillFilter(null)}
+                        activeSkillRefId={
+                          isActive && activeSkillFilter
+                            ? activeSkillFilter.skillRefId
+                            : null
+                        }
+                        activeSkillName={
+                          isActive && activeSkillFilter
+                            ? activeSkillFilter.skillName
+                            : null
+                        }
+                        onClose={() => {
+                          setActiveSkillFilter(null);
+                          setExpandedCandidates((prev) => {
+                            const next = new Set(prev);
+                            next.delete(c.user_id);
+                            return next;
+                          });
+                        }}
                       />
                     )}
 
