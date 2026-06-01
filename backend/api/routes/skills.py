@@ -462,6 +462,14 @@ async def delete_skill_tag(
     db: DB,
 ) -> None:
     await _get_experience_or_404(exp_id, profile.id, db)
+    ach_result = await db.execute(
+        select(AchievementModel).where(
+            AchievementModel.id == ach_id,
+            AchievementModel.experience_id == exp_id,
+        )
+    )
+    if ach_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="achievement not found")
     result = await db.execute(
         select(AchievementSkillTagModel).where(
             AchievementSkillTagModel.achievement_id == ach_id,

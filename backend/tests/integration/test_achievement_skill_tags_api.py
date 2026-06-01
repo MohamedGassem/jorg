@@ -153,3 +153,24 @@ async def test_delete_nonexistent_skill_tag_returns_404(
         headers=candidate_headers,
     )
     assert r.status_code == 404
+
+
+async def test_delete_skill_tag_wrong_experience_returns_404(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    exp1_id = await _create_experience(client, candidate_headers)
+    exp2_id = await _create_experience(client, candidate_headers)
+    ref_id = await _create_skill_ref(client, candidate_headers, "WrongExpSkill")
+    await _add_skill_usage(client, candidate_headers, exp1_id, ref_id)
+    ach_id = await _create_achievement(client, candidate_headers, exp1_id, "Work in exp1")
+    await client.post(
+        f"/candidates/me/experiences/{exp1_id}/achievements/{ach_id}/skill-tags",
+        headers=candidate_headers,
+        json={"skill_ref_id": ref_id},
+    )
+    # Try to delete from wrong experience
+    r = await client.delete(
+        f"/candidates/me/experiences/{exp2_id}/achievements/{ach_id}/skill-tags/{ref_id}",
+        headers=candidate_headers,
+    )
+    assert r.status_code == 404
