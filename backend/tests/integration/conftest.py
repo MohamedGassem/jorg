@@ -140,6 +140,24 @@ async def candidate_headers(client: AsyncClient) -> dict[str, str]:
 
 
 @pytest_asyncio.fixture
+async def second_candidate_headers(client: AsyncClient) -> dict[str, str]:
+    await client.post(
+        "/auth/register",
+        json={
+            "email": "second_candidate@example.com",
+            "password": "SecondPass123!",
+            "role": "candidate",
+        },
+    )
+    r = await client.post(
+        "/auth/login",
+        json={"email": "second_candidate@example.com", "password": "SecondPass123!"},
+    )
+    token = r.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
 async def recruiter_headers(client: AsyncClient) -> dict[str, str]:
     await client.post(
         "/auth/register",

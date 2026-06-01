@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from api.deps import CandidateProfile_dep, get_db, require_role
+from api.deps import CandidateProfile_dep, get_db
 from models.candidate_profile import Experience
 from models.skill import (
     Achievement as AchievementModel,
@@ -19,7 +19,6 @@ from models.skill import (
     SkillKind,
     SkillReference,
 )
-from models.user import UserRole
 from schemas.skill import (
     AchievementCreate,
     AchievementRead,
@@ -38,7 +37,6 @@ from services import skill_metrics_service, skill_reference_service
 router = APIRouter(tags=["skills"])
 
 DB = Annotated[AsyncSession, Depends(get_db)]
-AnyAuth = Annotated[object, Depends(require_role(UserRole.CANDIDATE))]
 
 
 # ---- SkillReference ----------------------------------------------------------
@@ -48,31 +46,57 @@ AnyAuth = Annotated[object, Depends(require_role(UserRole.CANDIDATE))]
 async def search_skill_references(
     q: str,
     db: DB,
-    _: AnyAuth,
+    profile: CandidateProfile_dep,
     kind: SkillKind | None = None,
     limit: int = 20,
 ) -> list[SkillReference]:
-    return await skill_reference_service.search(q, kind=kind, limit=limit, db=db)
+    return await skill_reference_service.search(
+        q, kind=kind, limit=limit, candidate_id=profile.id, db=db
+    )
 
 
 @router.post("/skill-references", response_model=SkillReferenceRead)
 async def create_or_get_skill_reference(
     data: SkillReferenceCreate,
     db: DB,
-    _: AnyAuth,
+    profile: CandidateProfile_dep,
     response: Response,
 ) -> SkillReference:
     slug = skill_reference_service.slugify(data.name)
-    result = await db.execute(select(SkillReference).where(SkillReference.slug == slug))
+    # Search ESCO shared skills first
+    result = await db.execute(
+        select(SkillReference).where(
+            SkillReference.slug == slug,
+            SkillReference.creator_candidate_id.is_(None),
+        )
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        response.status_code = status.HTTP_200_OK
+        return existing
+    # Then private custom skills of this candidate
+    result = await db.execute(
+        select(SkillReference).where(
+            SkillReference.slug == slug,
+            SkillReference.creator_candidate_id == profile.id,
+        )
+    )
     existing = result.scalar_one_or_none()
     if existing:
         response.status_code = status.HTTP_200_OK
         return existing
     try:
-        ref = await skill_reference_service.get_or_create_by_name(data.name, data.kind, db)
+        ref = await skill_reference_service.get_or_create_by_name(
+            data.name, data.kind, creator_candidate_id=profile.id, db=db
+        )
     except IntegrityError:
         await db.rollback()
-        result = await db.execute(select(SkillReference).where(SkillReference.slug == slug))
+        result = await db.execute(
+            select(SkillReference).where(
+                SkillReference.slug == slug,
+                SkillReference.creator_candidate_id == profile.id,
+            )
+        )
         ref = result.scalar_one()
         response.status_code = status.HTTP_200_OK
         return ref

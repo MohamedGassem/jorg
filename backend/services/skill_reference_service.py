@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,10 +22,16 @@ def slugify(name: str) -> str:
 async def get_or_create_by_name(
     name: str,
     kind: SkillKind,
+    creator_candidate_id: UUID,
     db: AsyncSession,
 ) -> SkillReference:
     slug = slugify(name)
-    result = await db.execute(select(SkillReference).where(SkillReference.slug == slug))
+    result = await db.execute(
+        select(SkillReference).where(
+            SkillReference.slug == slug,
+            SkillReference.creator_candidate_id == creator_candidate_id,
+        )
+    )
     ref = result.scalar_one_or_none()
     if ref is None:
         ref = SkillReference(
@@ -34,6 +41,7 @@ async def get_or_create_by_name(
             is_custom=True,
             source="manual",
             aliases=[],
+            creator_candidate_id=creator_candidate_id,
         )
         db.add(ref)
         await db.commit()
@@ -45,9 +53,14 @@ async def search(
     query: str,
     kind: SkillKind | None,
     limit: int,
+    candidate_id: UUID,
     db: AsyncSession,
 ) -> list[SkillReference]:
-    stmt = select(SkillReference).where(SkillReference.name.ilike(f"%{query}%"))
+    stmt = select(SkillReference).where(
+        SkillReference.name.ilike(f"%{query}%"),
+        (SkillReference.creator_candidate_id.is_(None))
+        | (SkillReference.creator_candidate_id == candidate_id),
+    )
     if kind is not None:
         stmt = stmt.where(SkillReference.kind == kind)
     result = await db.execute(stmt.limit(limit))
