@@ -54,6 +54,8 @@ from docx.opc.exceptions import PackageNotFoundError
 from docxtpl import DocxTemplate
 from jinja2 import ChainableUndefined, Environment, TemplateSyntaxError
 
+from models.skill import SkillKind
+
 # Re-used across every render call — Environment construction is not free.
 _JINJA_ENV = Environment(undefined=ChainableUndefined)
 
@@ -166,6 +168,23 @@ def skill_flat(sk: SkillProtocol) -> dict[str, str]:
     }
 
 
+def _group_skills_by_kind(
+    skills: Sequence[SkillProtocol],
+) -> dict[str, list[dict[str, str]]]:
+    """Build per-kind and featured skill lists for template context."""
+
+    def _sort_key(s: SkillProtocol) -> int:
+        return 0 if s.featured else 1
+
+    result: dict[str, list[dict[str, str]]] = {}
+    for kind in SkillKind:
+        filtered = [s for s in skills if s.skill_ref.kind == kind]
+        result[f"skills_{kind.value}"] = [skill_flat(s) for s in sorted(filtered, key=_sort_key)]
+
+    result["skills_featured"] = [skill_flat(s) for s in skills if s.featured]
+    return result
+
+
 def generate_document(
     template_path: str,
     profile: CandidateProfileProtocol,
@@ -194,6 +213,7 @@ def generate_document(
         **profile_flat(profile),
         "experiences": [exp_flat(exp) for exp in experiences],
         "skills": [skill_flat(sk) for sk in skills],
+        **_group_skills_by_kind(skills),
     }
     try:
         tpl.render(context, jinja_env=_JINJA_ENV)

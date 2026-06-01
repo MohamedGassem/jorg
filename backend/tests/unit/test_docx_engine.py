@@ -577,3 +577,63 @@ class TestErrorHandling:
             warnings.simplefilter("error", DeprecationWarning)
             # should not raise
             generate_document(str(tmpl), _mock_profile(), [], [], {})
+
+
+# ---------------------------------------------------------------------------
+# _group_skills_by_kind
+# ---------------------------------------------------------------------------
+
+
+from enum import StrEnum  # noqa: E402
+
+from models.skill import SkillKind  # noqa: E402
+from services.docx_engine import SkillReferenceProtocol, _group_skills_by_kind  # noqa: E402
+
+
+class _FakeRef:
+    def __init__(self, kind: SkillKind) -> None:
+        self.kind: StrEnum | None = kind
+        self.name: str | None = "FakeSkill"
+
+
+class _FakeSkill:
+    def __init__(self, kind: SkillKind, featured: bool = False) -> None:
+        self.skill_ref: SkillReferenceProtocol = _FakeRef(kind)
+        self.featured: bool = featured
+        self.self_assessed_level: str | None = None
+
+
+def test_group_skills_by_kind_returns_all_kind_keys() -> None:
+    skills = [_FakeSkill(SkillKind.technical), _FakeSkill(SkillKind.tool)]
+    result = _group_skills_by_kind(skills)
+    assert "skills_technical" in result
+    assert "skills_tool" in result
+    assert "skills_functional" in result  # vide mais présent
+    assert "skills_featured" in result
+
+
+def test_group_skills_by_kind_filters_correctly() -> None:
+    s1 = _FakeSkill(SkillKind.technical)
+    s2 = _FakeSkill(SkillKind.tool)
+    s3 = _FakeSkill(SkillKind.technical)
+    result = _group_skills_by_kind([s1, s2, s3])
+    assert len(result["skills_technical"]) == 2
+    assert len(result["skills_tool"]) == 1
+    assert len(result["skills_methodology"]) == 0
+
+
+def test_group_skills_featured_first_within_type() -> None:
+    plain = _FakeSkill(SkillKind.technical, featured=False)
+    starred = _FakeSkill(SkillKind.technical, featured=True)
+    result = _group_skills_by_kind([plain, starred])
+    tech = result["skills_technical"]
+    assert tech[0]["featured"] == "true"
+    assert tech[1]["featured"] == "false"
+
+
+def test_group_skills_featured_cross_type() -> None:
+    s1 = _FakeSkill(SkillKind.technical, featured=True)
+    s2 = _FakeSkill(SkillKind.tool, featured=False)
+    s3 = _FakeSkill(SkillKind.methodology, featured=True)
+    result = _group_skills_by_kind([s1, s2, s3])
+    assert len(result["skills_featured"]) == 2
