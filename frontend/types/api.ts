@@ -4,13 +4,13 @@ export type UserRole = "candidate" | "recruiter";
 export type InvitationStatus = "pending" | "accepted" | "rejected" | "expired";
 export type AccessGrantStatus = "active" | "revoked";
 export type FileFormat = "docx" | "pdf";
-export type SkillCategory =
-  | "language"
-  | "framework"
-  | "database"
-  | "tool"
+export type SkillKind =
+  | "technical"
+  | "functional"
+  | "sectoral"
   | "methodology"
-  | "other";
+  | "tool"
+  | "soft";
 export type LanguageLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | "native";
 export type ContractType = "freelance" | "cdi" | "both";
 
@@ -30,14 +30,28 @@ export interface Experience {
   updated_at: string;
 }
 
+export interface SkillReference {
+  id: string;
+  name: string;
+  slug: string;
+  kind: SkillKind;
+  aliases: string[];
+  esco_uri: string | null;
+  esco_skill_type: string | null;
+  source: string;
+  description: string | null;
+  is_custom: boolean;
+  creator_candidate_id: string | null;
+}
+
 export interface Skill {
   id: string;
-  profile_id: string;
-  name: string;
-  category: SkillCategory;
-  level: string | null;
-  level_rating: number | null;
-  years_of_experience: number | null;
+  candidate_id: string;
+  skill_ref_id: string;
+  skill_ref: SkillReference;
+  self_assessed_level: string | null;
+  featured: boolean;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
