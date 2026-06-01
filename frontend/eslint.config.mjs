@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Resetting state in an effect early-return (e.g. clearing search results
+      // when the query is too short) is a standard React pattern; this rule is
+      // too strict for our usage.
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
