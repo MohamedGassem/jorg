@@ -78,14 +78,12 @@ class SkillReference(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
     __table_args__ = (
-        # ESCO skills: slug globally unique (creator_candidate_id IS NULL)
         Index(
             "uq_skill_references_slug_esco",
             "slug",
             unique=True,
             postgresql_where=text("creator_candidate_id IS NULL"),
         ),
-        # Custom skills: (slug, creator_candidate_id) unique per candidate
         Index(
             "uq_skill_references_slug_custom",
             "slug",
@@ -93,7 +91,6 @@ class SkillReference(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             unique=True,
             postgresql_where=text("creator_candidate_id IS NOT NULL"),
         ),
-        # Enforce is_custom = (creator_candidate_id IS NOT NULL)
         CheckConstraint(
             "is_custom = (creator_candidate_id IS NOT NULL)",
             name="ck_skill_ref_custom_consistency",
@@ -124,6 +121,33 @@ class CandidateSkill(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __table_args__ = (UniqueConstraint("candidate_id", "skill_ref_id", name="uq_candidate_skill"),)
 
 
+class AchievementSkillTag(Base):
+    __tablename__ = "achievement_skill_tags"
+
+    achievement_id: Mapped[UUID] = mapped_column(
+        ForeignKey("achievements.id", ondelete="CASCADE"),
+        nullable=False,
+        primary_key=True,
+    )
+    skill_ref_id: Mapped[UUID] = mapped_column(
+        ForeignKey("skill_references.id", ondelete="RESTRICT"),
+        nullable=False,
+        primary_key=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # No lazy="joined" — use explicit selectinload in list endpoints
+    skill_ref: Mapped[SkillReference] = relationship("SkillReference")
+
+    __table_args__ = (
+        UniqueConstraint("achievement_id", "skill_ref_id", name="uq_achievement_skill_tag"),
+    )
+
+
 class Achievement(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "achievements"
 
@@ -137,6 +161,11 @@ class Achievement(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     experience: Mapped[Experience] = relationship("Experience", back_populates="achievements")
+    skill_tags: Mapped[list[AchievementSkillTag]] = relationship(
+        "AchievementSkillTag",
+        cascade="all, delete-orphan",
+        primaryjoin="Achievement.id == AchievementSkillTag.achievement_id",
+    )
 
 
 class ExperienceSkillUsage(Base, UUIDPrimaryKeyMixin):
@@ -164,10 +193,6 @@ class ExperienceSkillUsage(Base, UUIDPrimaryKeyMixin):
         ),
         default=UsageIntensity.secondary,
         nullable=False,
-    )
-    achievement_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("achievements.id", ondelete="SET NULL"),
-        nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
