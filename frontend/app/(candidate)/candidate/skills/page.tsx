@@ -204,6 +204,10 @@ function AchievementRow({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const syncedTagsRef = useRef<Set<string>>(
+    new Set(ach.skill_tags.map((t) => t.skill_ref_id)),
+  );
 
   function openForm() {
     setForm({ description: ach.description, impact: ach.impact ?? "" });
@@ -227,7 +231,7 @@ function AchievementRow({
         `/candidates/me/experiences/${expId}/achievements/${ach.id}`,
         { description: form.description || null, impact: form.impact || null },
       );
-      const existingIds = new Set(ach.skill_tags.map((t) => t.skill_ref_id));
+      const existingIds = new Set(syncedTagsRef.current);
       const toDelete = [...existingIds].filter((id) => !checkedIds.has(id));
       const toAdd = [...checkedIds].filter((id) => !existingIds.has(id));
       await Promise.all([
@@ -243,6 +247,8 @@ function AchievementRow({
           ),
         ),
       ]);
+      // Update synced state so retries don't re-attempt already-done operations
+      syncedTagsRef.current = new Set(checkedIds);
       const newTags: AchievementSkillTag[] = skillUsages
         .filter((u) => checkedIds.has(u.skill_ref_id))
         .map((u) => ({
@@ -260,6 +266,7 @@ function AchievementRow({
   }
 
   async function handleDelete() {
+    setDeleting(true);
     try {
       await api.delete(
         `/candidates/me/experiences/${expId}/achievements/${ach.id}`,
@@ -267,6 +274,8 @@ function AchievementRow({
       onDeleted(ach.id);
     } catch (err) {
       setError(extractErrorMessage(err, "Erreur lors de la suppression"));
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -371,9 +380,10 @@ function AchievementRow({
             <button
               type="button"
               onClick={handleDelete}
-              className="mr-auto text-xs text-destructive hover:underline"
+              disabled={deleting}
+              className="mr-auto text-xs text-destructive hover:underline disabled:opacity-50"
             >
-              Supprimer
+              {deleting ? "…" : "Supprimer"}
             </button>
             <Button
               variant="outline"
@@ -729,6 +739,18 @@ function ExperienceCard({
               value={form.description}
               onChange={(v) => set("description", v)}
               rows={2}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`exp-context-${exp.id}`} className="text-xs">
+              Contexte
+            </Label>
+            <Textarea
+              id={`exp-context-${exp.id}`}
+              value={form.context}
+              onChange={(v) => set("context", v)}
+              rows={2}
+              placeholder="Contexte de la mission, secteur, équipe…"
             />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
