@@ -25,7 +25,10 @@ import {
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import type {
+  Achievement,
+  AchievementSkillTag,
   Experience,
+  ExperienceSkillUsage,
   Skill,
   SkillReference,
   SkillKind,
@@ -149,8 +152,6 @@ type ExpForm = {
   is_current: boolean;
   description: string;
   context: string;
-  achievements: string;
-  technologies: string;
 };
 
 const EMPTY_EXP: ExpForm = {
@@ -161,8 +162,6 @@ const EMPTY_EXP: ExpForm = {
   is_current: false,
   description: "",
   context: "",
-  achievements: "",
-  technologies: "",
 };
 
 function expToForm(exp: Experience): ExpForm {
@@ -174,9 +173,631 @@ function expToForm(exp: Experience): ExpForm {
     is_current: exp.is_current,
     description: exp.description ?? "",
     context: exp.context ?? "",
-    achievements: exp.achievements ?? "",
-    technologies: exp.technologies.join(", "),
   };
+}
+
+type AchForm = {
+  description: string;
+  impact: string;
+};
+
+function AchievementRow({
+  ach,
+  skillUsages,
+  expId,
+  onSaved,
+  onDeleted,
+}: {
+  ach: Achievement;
+  skillUsages: ExperienceSkillUsage[];
+  expId: string;
+  onSaved: (updated: Achievement) => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<AchForm>({
+    description: ach.description,
+    impact: ach.impact ?? "",
+  });
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(
+    new Set(ach.skill_tags.map((t) => t.skill_ref_id)),
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function openForm() {
+    setForm({ description: ach.description, impact: ach.impact ?? "" });
+    setCheckedIds(new Set(ach.skill_tags.map((t) => t.skill_ref_id)));
+    setOpen(true);
+  }
+
+  function toggleChip(refId: string) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      next.has(refId) ? next.delete(refId) : next.add(refId);
+      return next;
+    });
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await api.put<Achievement>(
+        `/candidates/me/experiences/${expId}/achievements/${ach.id}`,
+        { description: form.description || null, impact: form.impact || null },
+      );
+      const existingIds = new Set(ach.skill_tags.map((t) => t.skill_ref_id));
+      const toDelete = [...existingIds].filter((id) => !checkedIds.has(id));
+      const toAdd = [...checkedIds].filter((id) => !existingIds.has(id));
+      await Promise.all([
+        ...toDelete.map((id) =>
+          api.delete(
+            `/candidates/me/experiences/${expId}/achievements/${ach.id}/skill-tags/${id}`,
+          ),
+        ),
+        ...toAdd.map((id) =>
+          api.post(
+            `/candidates/me/experiences/${expId}/achievements/${ach.id}/skill-tags`,
+            { skill_ref_id: id },
+          ),
+        ),
+      ]);
+      const newTags: AchievementSkillTag[] = skillUsages
+        .filter((u) => checkedIds.has(u.skill_ref_id))
+        .map((u) => ({
+          skill_ref_id: u.skill_ref_id,
+          skill_ref: u.skill_ref,
+          created_at: new Date().toISOString(),
+        }));
+      onSaved({ ...updated, skill_tags: newTags });
+      setOpen(false);
+    } catch (err) {
+      setError(extractErrorMessage(err, "Erreur lors de la sauvegarde"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await api.delete(
+        `/candidates/me/experiences/${expId}/achievements/${ach.id}`,
+      );
+      onDeleted(ach.id);
+    } catch (err) {
+      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
+    }
+  }
+
+  return (
+    <div>
+      <div
+        className={`group flex items-start gap-2 rounded-md px-2 py-1.5 ${open ? "bg-muted/20" : "hover:bg-muted/10"}`}
+      >
+        <span className="mt-0.5 shrink-0 text-muted-foreground">•</span>
+        <div className="min-w-0 flex-1">
+          <span className="text-sm">{ach.description}</span>
+          {ach.impact && (
+            <p className="mt-0.5 text-xs italic text-muted-foreground">
+              {ach.impact}
+            </p>
+          )}
+          {ach.skill_tags.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {ach.skill_tags.map((t) => (
+                <span
+                  key={t.skill_ref_id}
+                  className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+                >
+                  {t.skill_ref.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={openForm}
+            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Éditer"
+          >
+            <Pencil className="size-3" />
+          </button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="mx-6 mb-2 mt-1 space-y-3 rounded-lg border border-border/60 bg-muted/10 p-3">
+          <div className="space-y-1.5">
+            <Label htmlFor={`ach-desc-${ach.id}`} className="text-xs">
+              Réalisation
+            </Label>
+            <textarea
+              id={`ach-desc-${ach.id}`}
+              rows={2}
+              value={form.description}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, description: e.target.value }))
+              }
+              className="w-full resize-none rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`ach-impact-${ach.id}`} className="text-xs">
+              Impact{" "}
+              <span className="font-normal text-muted-foreground">
+                (optionnel)
+              </span>
+            </Label>
+            <Input
+              id={`ach-impact-${ach.id}`}
+              value={form.impact}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, impact: e.target.value }))
+              }
+              placeholder="ex: −40% temps de déploiement"
+            />
+          </div>
+          {skillUsages.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">
+                Skills associés à cette réalisation
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {skillUsages.map((u) => {
+                  const checked = checkedIds.has(u.skill_ref_id);
+                  return (
+                    <button
+                      key={u.skill_ref_id}
+                      type="button"
+                      onClick={() => toggleChip(u.skill_ref_id)}
+                      className={`rounded border px-2 py-1 text-xs font-medium transition-colors ${
+                        checked
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-border/80"
+                      }`}
+                    >
+                      {u.skill_ref.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="mr-auto text-xs text-destructive hover:underline"
+            >
+              Supprimer
+            </button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setOpen(false)}
+              className="h-7 text-xs"
+            >
+              Annuler
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saving || !form.description.trim()}
+              className="h-7 text-xs"
+            >
+              {saving ? "…" : "Sauvegarder"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddAchievementRow({
+  expId,
+  skillUsages,
+  onAdded,
+}: {
+  expId: string;
+  skillUsages: ExperienceSkillUsage[];
+  onAdded: (ach: Achievement) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<AchForm>({ description: "", impact: "" });
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function toggleChip(refId: string) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      next.has(refId) ? next.delete(refId) : next.add(refId);
+      return next;
+    });
+  }
+
+  async function handleAdd() {
+    setSaving(true);
+    setError(null);
+    try {
+      const created = await api.post<Achievement>(
+        `/candidates/me/experiences/${expId}/achievements`,
+        { description: form.description, impact: form.impact || null },
+      );
+      await Promise.all(
+        [...checkedIds].map((id) =>
+          api.post(
+            `/candidates/me/experiences/${expId}/achievements/${created.id}/skill-tags`,
+            { skill_ref_id: id },
+          ),
+        ),
+      );
+      const newTags: AchievementSkillTag[] = skillUsages
+        .filter((u) => checkedIds.has(u.skill_ref_id))
+        .map((u) => ({
+          skill_ref_id: u.skill_ref_id,
+          skill_ref: u.skill_ref,
+          created_at: new Date().toISOString(),
+        }));
+      onAdded({ ...created, skill_tags: newTags });
+      setForm({ description: "", impact: "" });
+      setCheckedIds(new Set());
+      setOpen(false);
+    } catch (err) {
+      setError(extractErrorMessage(err, "Erreur lors de la création"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-2 w-full rounded-md border border-dashed border-border/60 py-1.5 text-xs text-muted-foreground hover:border-border hover:text-foreground"
+      >
+        + Ajouter une réalisation
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 space-y-3 rounded-lg border border-border/60 bg-muted/10 p-3">
+      <div className="space-y-1.5">
+        <Label htmlFor={`new-ach-desc-${expId}`} className="text-xs">
+          Réalisation <span className="text-destructive">*</span>
+        </Label>
+        <textarea
+          id={`new-ach-desc-${expId}`}
+          rows={2}
+          autoFocus
+          value={form.description}
+          onChange={(e) =>
+            setForm((p) => ({ ...p, description: e.target.value }))
+          }
+          className="w-full resize-none rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          placeholder="Décrivez la réalisation…"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={`new-ach-impact-${expId}`} className="text-xs">
+          Impact{" "}
+          <span className="font-normal text-muted-foreground">(optionnel)</span>
+        </Label>
+        <Input
+          id={`new-ach-impact-${expId}`}
+          value={form.impact}
+          onChange={(e) => setForm((p) => ({ ...p, impact: e.target.value }))}
+          placeholder="ex: −40% temps de déploiement"
+        />
+      </div>
+      {skillUsages.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">
+            Skills associés à cette réalisation
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {skillUsages.map((u) => {
+              const checked = checkedIds.has(u.skill_ref_id);
+              return (
+                <button
+                  key={u.skill_ref_id}
+                  type="button"
+                  onClick={() => toggleChip(u.skill_ref_id)}
+                  className={`rounded border px-2 py-1 text-xs font-medium transition-colors ${
+                    checked
+                      ? "border-primary/50 bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-border/80"
+                  }`}
+                >
+                  {u.skill_ref.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setOpen(false);
+            setForm({ description: "", impact: "" });
+            setCheckedIds(new Set());
+          }}
+          className="h-7 text-xs"
+        >
+          Annuler
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleAdd}
+          disabled={saving || !form.description.trim()}
+          className="h-7 text-xs"
+        >
+          {saving ? "…" : "Ajouter"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ExperienceCard({
+  exp,
+  onUpdated,
+  onDeleted,
+}: {
+  exp: Experience;
+  onUpdated: (updated: Experience) => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [editingExp, setEditingExp] = useState(false);
+  const [form, setForm] = useState<ExpForm>(expToForm(exp));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [achievements, setAchievements] = useState<Achievement[]>(
+    exp.achievements,
+  );
+
+  function set<K extends keyof ExpForm>(k: K, v: ExpForm[K]) {
+    setForm((prev) => ({ ...prev, [k]: v }));
+  }
+
+  async function handleSaveExp(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await api.put<Experience>(
+        `/candidates/me/experiences/${exp.id}`,
+        {
+          client_name: form.client_name,
+          role: form.role,
+          start_date: form.start_date,
+          end_date: form.is_current ? null : form.end_date || null,
+          is_current: form.is_current,
+          description: form.description || null,
+          context: form.context || null,
+        },
+      );
+      onUpdated({ ...updated, achievements, skill_usages: exp.skill_usages });
+      setEditingExp(false);
+    } catch (err) {
+      setError(extractErrorMessage(err, "Erreur lors de la sauvegarde"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteExp() {
+    try {
+      await api.delete(`/candidates/me/experiences/${exp.id}`);
+      onDeleted(exp.id);
+    } catch (err) {
+      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
+    }
+  }
+
+  const dates = exp.is_current
+    ? `${exp.start_date} → présent`
+    : `${exp.start_date}${exp.end_date ? ` → ${exp.end_date}` : ""}`;
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-card">
+      <div className="flex items-start justify-between gap-4 border-b border-border/40 px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium">
+            {exp.client_name} — {exp.role}
+          </p>
+          <p className="text-xs text-muted-foreground">{dates}</p>
+          {exp.description && (
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+              {exp.description}
+            </p>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setEditingExp(!editingExp);
+              setForm(expToForm(exp));
+            }}
+            className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Éditer l'expérience"
+          >
+            <Pencil className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleDeleteExp}
+            className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
+            title="Supprimer"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {editingExp && (
+        <form
+          onSubmit={handleSaveExp}
+          className="space-y-3 border-b border-border/40 bg-muted/10 px-4 py-3"
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor={`exp-client-${exp.id}`} className="text-xs">
+                Client *
+              </Label>
+              <Input
+                id={`exp-client-${exp.id}`}
+                value={form.client_name}
+                onChange={(e) => set("client_name", e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`exp-role-${exp.id}`} className="text-xs">
+                Rôle *
+              </Label>
+              <Input
+                id={`exp-role-${exp.id}`}
+                value={form.role}
+                onChange={(e) => set("role", e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor={`exp-start-${exp.id}`} className="text-xs">
+                Date début *
+              </Label>
+              <Input
+                id={`exp-start-${exp.id}`}
+                type="date"
+                value={form.start_date}
+                onChange={(e) => set("start_date", e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`exp-end-${exp.id}`} className="text-xs">
+                Date fin
+              </Label>
+              <Input
+                id={`exp-end-${exp.id}`}
+                type="date"
+                value={form.end_date}
+                onChange={(e) => set("end_date", e.target.value)}
+                disabled={form.is_current}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              id={`exp-current-${exp.id}`}
+              type="checkbox"
+              checked={form.is_current}
+              onChange={(e) => {
+                set("is_current", e.target.checked);
+                if (e.target.checked) set("end_date", "");
+              }}
+              className="h-4 w-4 cursor-pointer accent-primary"
+            />
+            <Label
+              htmlFor={`exp-current-${exp.id}`}
+              className="cursor-pointer font-normal text-xs"
+            >
+              Poste actuel
+            </Label>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`exp-desc-${exp.id}`} className="text-xs">
+              Description
+            </Label>
+            <Textarea
+              id={`exp-desc-${exp.id}`}
+              value={form.description}
+              onChange={(v) => set("description", v)}
+              rows={2}
+            />
+          </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => setEditingExp(false)}
+              className="h-7 text-xs"
+            >
+              Annuler
+            </Button>
+            <Button
+              size="sm"
+              type="submit"
+              disabled={saving}
+              className="h-7 text-xs"
+            >
+              {saving ? "…" : "Sauvegarder"}
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {exp.skill_usages.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border/40 px-4 py-2">
+          <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Skills
+          </span>
+          {exp.skill_usages.map((u) => (
+            <span
+              key={u.id}
+              className="rounded-full border border-border/60 bg-muted/30 px-2.5 py-0.5 text-xs text-muted-foreground"
+            >
+              {u.skill_ref.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="px-4 py-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Réalisations
+        </p>
+        {achievements.map((ach) => (
+          <AchievementRow
+            key={ach.id}
+            ach={ach}
+            skillUsages={exp.skill_usages}
+            expId={exp.id}
+            onSaved={(updated) =>
+              setAchievements((prev) =>
+                prev.map((a) => (a.id === updated.id ? updated : a)),
+              )
+            }
+            onDeleted={(id) =>
+              setAchievements((prev) => prev.filter((a) => a.id !== id))
+            }
+          />
+        ))}
+        <AddAchievementRow
+          expId={exp.id}
+          skillUsages={exp.skill_usages}
+          onAdded={(ach) => setAchievements((prev) => [...prev, ach])}
+        />
+      </div>
+    </div>
+  );
 }
 
 function ExperienceSection() {
@@ -184,7 +805,6 @@ function ExperienceSection() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ExpForm>(EMPTY_EXP);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -205,250 +825,156 @@ function ExperienceSection() {
     setForm((prev) => ({ ...prev, [k]: v }));
   }
 
-  function startEdit(exp: Experience) {
-    setAdding(false);
-    setEditingId(exp.id);
-    setForm(expToForm(exp));
-    setError(null);
-  }
-
-  function cancelForm() {
-    setAdding(false);
-    setEditingId(null);
-    setForm(EMPTY_EXP);
-    setError(null);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError(null);
-    const body = {
-      client_name: form.client_name,
-      role: form.role,
-      start_date: form.start_date,
-      end_date: form.is_current ? null : form.end_date || null,
-      is_current: form.is_current,
-      description: form.description || null,
-      context: form.context || null,
-      achievements: form.achievements || null,
-      technologies: form.technologies
-        ? form.technologies
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : [],
-    };
     try {
-      if (editingId) {
-        const updated = await api.put<Experience>(
-          `/candidates/me/experiences/${editingId}`,
-          body,
-        );
-        setItems((prev) => prev.map((i) => (i.id === editingId ? updated : i)));
-        setEditingId(null);
-      } else {
-        const created = await api.post<Experience>(
-          "/candidates/me/experiences",
-          body,
-        );
-        setItems((prev) => [...prev, created]);
-        setAdding(false);
-      }
+      const created = await api.post<Experience>("/candidates/me/experiences", {
+        client_name: form.client_name,
+        role: form.role,
+        start_date: form.start_date,
+        end_date: form.is_current ? null : form.end_date || null,
+        is_current: form.is_current,
+        description: form.description || null,
+        context: form.context || null,
+      });
+      setItems((prev) => [...prev, created]);
       setForm(EMPTY_EXP);
+      setAdding(false);
     } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la sauvegarde"));
+      setError(extractErrorMessage(err, "Erreur lors de la création"));
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDelete(id: string) {
-    try {
-      await api.delete(`/candidates/me/experiences/${id}`);
-      setItems((prev) => prev.filter((i) => i.id !== id));
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
-    }
-  }
-
-  const inlineForm = (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-3 rounded-lg border border-border/60 bg-muted/10 p-4"
-    >
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="exp-client">
-            Client <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="exp-client"
-            value={form.client_name}
-            onChange={(e) => set("client_name", e.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="exp-role">
-            Rôle <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="exp-role"
-            value={form.role}
-            onChange={(e) => set("role", e.target.value)}
-            required
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="exp-start">
-            Date début <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="exp-start"
-            type="date"
-            value={form.start_date}
-            onChange={(e) => set("start_date", e.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="exp-end">Date fin</Label>
-          <Input
-            id="exp-end"
-            type="date"
-            value={form.end_date}
-            onChange={(e) => set("end_date", e.target.value)}
-            disabled={form.is_current}
-          />
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          id="exp-current"
-          type="checkbox"
-          checked={form.is_current}
-          onChange={(e) => {
-            set("is_current", e.target.checked);
-            if (e.target.checked) set("end_date", "");
-          }}
-          className="h-4 w-4 cursor-pointer accent-primary"
-        />
-        <Label htmlFor="exp-current" className="cursor-pointer font-normal">
-          Poste actuel
-        </Label>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="exp-tech">Technologies (séparées par virgule)</Label>
-        <Input
-          id="exp-tech"
-          value={form.technologies}
-          onChange={(e) => set("technologies", e.target.value)}
-          placeholder="React, TypeScript, Node.js"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="exp-desc">Description</Label>
-        <Textarea
-          id="exp-desc"
-          value={form.description}
-          onChange={(v) => set("description", v)}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="exp-context">Contexte</Label>
-        <Textarea
-          id="exp-context"
-          value={form.context}
-          onChange={(v) => set("context", v)}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="exp-achiev">Réalisations</Label>
-        <Textarea
-          id="exp-achiev"
-          value={form.achievements}
-          onChange={(v) => set("achievements", v)}
-        />
-      </div>
-      <div className="flex items-center gap-2">
-        <Button type="submit" size="sm" disabled={saving}>
-          {saving
-            ? "Sauvegarde…"
-            : editingId
-              ? "Enregistrer"
-              : "Ajouter l'expérience"}
-        </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={cancelForm}>
-          Annuler
-        </Button>
-      </div>
-    </form>
-  );
+  if (loading)
+    return <div className="h-24 animate-pulse rounded-xl bg-muted" />;
+  if (fetchError)
+    return <p className="text-sm text-destructive">{fetchError}</p>;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle>Expériences professionnelles</CardTitle>
-        <SectionAddButton
-          adding={adding && !editingId}
-          onToggle={() => {
-            cancelForm();
-            setAdding((v) => !v);
-          }}
+    <div className="space-y-3">
+      {items.map((exp) => (
+        <ExperienceCard
+          key={exp.id}
+          exp={exp}
+          onUpdated={(updated) =>
+            setItems((prev) =>
+              prev.map((i) => (i.id === updated.id ? updated : i)),
+            )
+          }
+          onDeleted={(id) =>
+            setItems((prev) => prev.filter((i) => i.id !== id))
+          }
         />
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {loading && <div className="h-16 animate-pulse rounded-lg bg-muted" />}
-        {fetchError && <p className="text-sm text-destructive">{fetchError}</p>}
-        {!loading && !fetchError && items.length === 0 && !adding && (
-          <p className="py-2 text-sm text-muted-foreground">
-            Aucune expérience ajoutée.
-          </p>
-        )}
-        {items.map((exp) =>
-          editingId === exp.id ? (
-            <div key={exp.id}>{inlineForm}</div>
-          ) : (
-            <div
-              key={exp.id}
-              className="flex items-start justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-4 py-3"
-            >
-              <div className="min-w-0 space-y-1">
-                <p className="truncate font-medium">
-                  {exp.role}{" "}
-                  <span className="font-normal text-muted-foreground">
-                    — {exp.client_name}
-                  </span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {exp.start_date} →{" "}
-                  {exp.is_current ? "présent" : (exp.end_date ?? "")}
-                </p>
-                {(exp.technologies?.length ?? 0) > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-0.5">
-                    {exp.technologies.map((t) => (
-                      <Badge key={t} variant="secondary" className="text-xs">
-                        {t}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <ItemActions
-                deleteLabel="Supprimer cette expérience"
-                onEdit={() => startEdit(exp)}
-                onDelete={() => handleDelete(exp.id)}
+      ))}
+
+      {adding ? (
+        <form
+          onSubmit={handleAdd}
+          className="space-y-3 rounded-xl border border-border/60 bg-muted/10 p-4"
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="new-exp-client">Client *</Label>
+              <Input
+                id="new-exp-client"
+                value={form.client_name}
+                onChange={(e) => set("client_name", e.target.value)}
+                required
               />
             </div>
-          ),
-        )}
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        {adding && !editingId && inlineForm}
-      </CardContent>
-    </Card>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-exp-role">Rôle *</Label>
+              <Input
+                id="new-exp-role"
+                value={form.role}
+                onChange={(e) => set("role", e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="new-exp-start">Date début *</Label>
+              <Input
+                id="new-exp-start"
+                type="date"
+                value={form.start_date}
+                onChange={(e) => set("start_date", e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-exp-end">Date fin</Label>
+              <Input
+                id="new-exp-end"
+                type="date"
+                value={form.end_date}
+                onChange={(e) => set("end_date", e.target.value)}
+                disabled={form.is_current}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="new-exp-current"
+              type="checkbox"
+              checked={form.is_current}
+              onChange={(e) => {
+                set("is_current", e.target.checked);
+                if (e.target.checked) set("end_date", "");
+              }}
+              className="h-4 w-4 cursor-pointer accent-primary"
+            />
+            <Label
+              htmlFor="new-exp-current"
+              className="cursor-pointer font-normal"
+            >
+              Poste actuel
+            </Label>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-exp-desc">Description</Label>
+            <Textarea
+              id="new-exp-desc"
+              value={form.description}
+              onChange={(v) => set("description", v)}
+              rows={2}
+            />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => {
+                setAdding(false);
+                setForm(EMPTY_EXP);
+              }}
+            >
+              Annuler
+            </Button>
+            <Button size="sm" type="submit" disabled={saving}>
+              {saving ? "…" : "Créer"}
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setAdding(true)}
+          className="gap-1.5"
+        >
+          <Plus className="size-3.5" />
+          Ajouter une expérience
+        </Button>
+      )}
+    </div>
   );
 }
 
