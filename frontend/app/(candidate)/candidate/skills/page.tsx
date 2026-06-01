@@ -592,6 +592,118 @@ function AddAchievementRow({
   );
 }
 
+function AddSkillToBouquet({
+  expId,
+  existingRefIds,
+  onAdded,
+}: {
+  expId: string;
+  existingRefIds: Set<string>;
+  onAdded: (usage: ExperienceSkillUsage) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SkillReference[]>([]);
+  const [searching, setSearching] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!query || query.length < 2) {
+      setResults([]);
+      return;
+    }
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get<SkillReference[]>(
+          `/skill-references?q=${encodeURIComponent(query)}`,
+        );
+        setResults(res.filter((r) => !existingRefIds.has(r.id)));
+      } catch {
+        // ignore
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, existingRefIds]);
+
+  async function handleSelect(ref: SkillReference) {
+    try {
+      const usage = await api.post<ExperienceSkillUsage>(
+        `/candidates/me/experiences/${expId}/skill-usages`,
+        {
+          skill_ref_id: ref.id,
+          usage_role: "implementer",
+          intensity: "secondary",
+        },
+      );
+      onAdded(usage);
+      setQuery("");
+      setResults([]);
+      setOpen(false);
+    } catch {
+      // ignore — skill might already exist
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(true);
+          setTimeout(() => inputRef.current?.focus(), 50);
+        }}
+        className="rounded-full border border-dashed border-border/60 px-2.5 py-0.5 text-xs text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+      >
+        + Skill
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onBlur={() =>
+          setTimeout(() => {
+            setOpen(false);
+            setQuery("");
+            setResults([]);
+          }, 200)
+        }
+        placeholder="Rechercher…"
+        className="h-6 rounded-full border border-primary/40 bg-background px-2.5 text-xs outline-none focus:border-primary w-32"
+      />
+      {(results.length > 0 || searching) && (
+        <div className="absolute left-0 top-7 z-20 w-48 rounded-lg border border-border bg-popover shadow-lg">
+          {searching && (
+            <p className="px-3 py-2 text-xs text-muted-foreground">
+              Recherche…
+            </p>
+          )}
+          {results.map((ref) => (
+            <button
+              key={ref.id}
+              type="button"
+              onMouseDown={() => handleSelect(ref)}
+              className="w-full px-3 py-1.5 text-left text-xs hover:bg-muted"
+            >
+              {ref.name}
+              <span className="ml-1 text-[10px] text-muted-foreground">
+                {ref.kind}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ExperienceCard({
   exp,
   onUpdated,
@@ -608,9 +720,23 @@ function ExperienceCard({
   const [achievements, setAchievements] = useState<Achievement[]>(
     exp.achievements,
   );
+  const [skillUsages, setSkillUsages] = useState<ExperienceSkillUsage[]>(
+    exp.skill_usages,
+  );
 
   function set<K extends keyof ExpForm>(k: K, v: ExpForm[K]) {
     setForm((prev) => ({ ...prev, [k]: v }));
+  }
+
+  async function handleRemoveSkillUsage(usage: ExperienceSkillUsage) {
+    try {
+      await api.delete(
+        `/candidates/me/experiences/${exp.id}/skill-usages/${usage.id}`,
+      );
+      setSkillUsages((prev) => prev.filter((u) => u.id !== usage.id));
+    } catch {
+      // ignore
+    }
   }
 
   async function handleSaveExp(e: React.FormEvent) {
@@ -630,7 +756,7 @@ function ExperienceCard({
           context: form.context || null,
         },
       );
-      onUpdated({ ...updated, achievements, skill_usages: exp.skill_usages });
+      onUpdated({ ...updated, achievements, skill_usages: skillUsages });
       setEditingExp(false);
     } catch (err) {
       setError(extractErrorMessage(err, "Erreur lors de la sauvegarde"));
@@ -808,21 +934,33 @@ function ExperienceCard({
         </form>
       )}
 
-      {exp.skill_usages.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-border/40 px-4 py-2">
-          <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Skills
-          </span>
-          {exp.skill_usages.map((u) => (
-            <span
-              key={u.id}
-              className="rounded-full border border-border/60 bg-muted/30 px-2.5 py-0.5 text-xs text-muted-foreground"
+      {/* Skill bouquet — always visible */}
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-border/40 px-4 py-2">
+        <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Skills
+        </span>
+        {skillUsages.map((u) => (
+          <span
+            key={u.id}
+            className="group flex items-center gap-1 rounded-full border border-border/60 bg-muted/30 px-2.5 py-0.5 text-xs text-muted-foreground"
+          >
+            {u.skill_ref.name}
+            <button
+              type="button"
+              onClick={() => handleRemoveSkillUsage(u)}
+              className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+              aria-label={`Supprimer ${u.skill_ref.name}`}
             >
-              {u.skill_ref.name}
-            </span>
-          ))}
-        </div>
-      )}
+              <X className="size-2.5" />
+            </button>
+          </span>
+        ))}
+        <AddSkillToBouquet
+          expId={exp.id}
+          existingRefIds={new Set(skillUsages.map((u) => u.skill_ref_id))}
+          onAdded={(usage) => setSkillUsages((prev) => [...prev, usage])}
+        />
+      </div>
 
       <div className="px-4 py-3">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -832,7 +970,7 @@ function ExperienceCard({
           <AchievementRow
             key={ach.id}
             ach={ach}
-            skillUsages={exp.skill_usages}
+            skillUsages={skillUsages}
             expId={exp.id}
             onSaved={(updated) =>
               setAchievements((prev) =>
@@ -846,7 +984,7 @@ function ExperienceCard({
         ))}
         <AddAchievementRow
           expId={exp.id}
-          skillUsages={exp.skill_usages}
+          skillUsages={skillUsages}
           onAdded={(ach) => setAchievements((prev) => [...prev, ach])}
         />
       </div>
