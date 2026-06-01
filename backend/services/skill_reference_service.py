@@ -26,6 +26,17 @@ async def get_or_create_by_name(
     db: AsyncSession,
 ) -> SkillReference:
     slug = slugify(name)
+    # Check ESCO skills first (creator_candidate_id IS NULL)
+    result = await db.execute(
+        select(SkillReference).where(
+            SkillReference.slug == slug,
+            SkillReference.creator_candidate_id.is_(None),
+        )
+    )
+    ref = result.scalar_one_or_none()
+    if ref is not None:
+        return ref
+    # Then check candidate's own custom skills
     result = await db.execute(
         select(SkillReference).where(
             SkillReference.slug == slug,

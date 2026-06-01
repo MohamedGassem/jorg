@@ -91,15 +91,29 @@ async def create_or_get_skill_reference(
         )
     except IntegrityError:
         await db.rollback()
+        # Try to find as ESCO first, then as candidate's custom
         result = await db.execute(
             select(SkillReference).where(
                 SkillReference.slug == slug,
-                SkillReference.creator_candidate_id == profile.id,
+                SkillReference.creator_candidate_id.is_(None),
             )
         )
-        ref = result.scalar_one()
+        recovered: SkillReference | None = result.scalar_one_or_none()
+        if recovered is None:
+            result = await db.execute(
+                select(SkillReference).where(
+                    SkillReference.slug == slug,
+                    SkillReference.creator_candidate_id == profile.id,
+                )
+            )
+            recovered = result.scalar_one_or_none()
+        if recovered is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create or retrieve skill reference",
+            ) from None
         response.status_code = status.HTTP_200_OK
-        return ref
+        return recovered
     response.status_code = status.HTTP_201_CREATED
     return ref
 

@@ -12,11 +12,13 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -53,7 +55,7 @@ class SkillReference(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "skill_references"
 
     name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
-    slug: Mapped[str] = mapped_column(String(200), unique=True, nullable=False, index=True)
+    slug: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     kind: Mapped[SkillKind] = mapped_column(
         Enum(SkillKind, name="skill_kind", values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
@@ -72,6 +74,24 @@ class SkillReference(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         ForeignKey("candidate_profiles.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
+    )
+
+    __table_args__ = (
+        # ESCO skills: slug globally unique (creator_candidate_id IS NULL)
+        Index(
+            "uq_skill_references_slug_esco",
+            "slug",
+            unique=True,
+            postgresql_where=text("creator_candidate_id IS NULL"),
+        ),
+        # Custom skills: (slug, creator_candidate_id) unique per candidate
+        Index(
+            "uq_skill_references_slug_custom",
+            "slug",
+            "creator_candidate_id",
+            unique=True,
+            postgresql_where=text("creator_candidate_id IS NOT NULL"),
+        ),
     )
 
 
