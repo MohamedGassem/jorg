@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from models.candidate_profile import AvailabilityStatus, ContractType, WorkMode
+from schemas.candidate import ExperienceRead
 
 # ---- Organization -----------------------------------------------------------
 
@@ -70,3 +71,4 @@ class AccessibleCandidateRead(BaseModel):
     work_mode: WorkMode | None = None
     location_preference: str | None = None
     preferred_domains: list[str] | None = None
+    experiences: list[ExperienceRead] = []

@@ -6,11 +6,18 @@ from uuid import UUID
 from sqlalchemy import Select, exists, func, or_, select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from models.candidate_profile import CandidateProfile
+from models.candidate_profile import CandidateProfile, Experience
 from models.invitation import AccessGrant, AccessGrantStatus
 from models.recruiter import Organization, RecruiterProfile
-from models.skill import CandidateSkill, SkillReference
+from models.skill import (
+    Achievement,
+    AchievementSkillTag,
+    CandidateSkill,
+    ExperienceSkillUsage,
+    SkillReference,
+)
 from models.user import User
 from schemas.recruiter import OrganizationCreate, RecruiterProfileUpdate
 
@@ -212,7 +219,29 @@ async def list_accessible_candidates(
     if q:
         builder = builder.filter_query(q)
 
-    result = await db.execute(builder.build())
+    # Add profile_id to the select so we can load experiences
+    stmt = builder.build().add_columns(CandidateProfile.id.label("profile_id"))
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    # Load experiences with achievements + skill_tags for all profiles in one query
+    profile_ids = [row.profile_id for row in rows if row.profile_id is not None]
+    experiences_by_profile: dict[UUID, list[Experience]] = {}
+    if profile_ids:
+        exp_result = await db.execute(
+            select(Experience)
+            .where(Experience.profile_id.in_(profile_ids))
+            .options(
+                selectinload(Experience.achievements)
+                .selectinload(Achievement.skill_tags)
+                .selectinload(AchievementSkillTag.skill_ref),
+                selectinload(Experience.skill_usages).selectinload(ExperienceSkillUsage.skill_ref),
+            )
+            .order_by(Experience.start_date.desc())
+        )
+        for exp in exp_result.scalars().all():
+            experiences_by_profile.setdefault(exp.profile_id, []).append(exp)
+
     return [
         {
             "user_id": row.user_id,
@@ -226,6 +255,7 @@ async def list_accessible_candidates(
             "work_mode": row.work_mode,
             "location_preference": row.location_preference,
             "preferred_domains": row.preferred_domains,
+            "experiences": experiences_by_profile.get(row.profile_id, []),
         }
-        for row in result.all()
+        for row in rows
     ]
