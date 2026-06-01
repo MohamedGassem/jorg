@@ -12,7 +12,41 @@ export type SkillKind =
   | "tool"
   | "soft";
 export type LanguageLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | "native";
+export type UsageRole =
+  | "lead"
+  | "implementer"
+  | "contributor"
+  | "user"
+  | "exposed_to";
+export type UsageIntensity = "primary" | "secondary" | "incidental";
 export type ContractType = "freelance" | "cdi" | "both";
+
+export interface AchievementSkillTag {
+  skill_ref_id: string;
+  skill_ref: SkillReference;
+  created_at: string;
+}
+
+export interface Achievement {
+  id: string;
+  experience_id: string;
+  description: string;
+  impact: string | null;
+  order: number;
+  skill_tags: AchievementSkillTag[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExperienceSkillUsage {
+  id: string;
+  experience_id: string;
+  skill_ref_id: string;
+  skill_ref: SkillReference;
+  usage_role: UsageRole;
+  intensity: UsageIntensity;
+  created_at: string;
+}
 
 export interface Experience {
   id: string;
@@ -24,8 +58,9 @@ export interface Experience {
   is_current: boolean;
   description: string | null;
   context: string | null;
-  achievements: string | null;
-  technologies: string[];
+  achievements_summary: string | null;
+  achievements: Achievement[];
+  skill_usages: ExperienceSkillUsage[];
   created_at: string;
   updated_at: string;
 }
@@ -233,6 +268,7 @@ export interface AccessibleCandidateRead {
   work_mode: WorkMode | null;
   location_preference: string | null;
   preferred_domains: string[] | null;
+  experiences: Experience[];
 }
 
 export interface ApiError {
