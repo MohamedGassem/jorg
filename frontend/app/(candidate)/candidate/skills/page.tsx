@@ -77,19 +77,6 @@ function Textarea({
   );
 }
 
-function LevelDots({ rating }: { rating: number }) {
-  return (
-    <span className="flex items-center gap-0.5">
-      {Array.from({ length: 5 }, (_, i) => (
-        <span
-          key={i}
-          className={`h-1.5 w-1.5 rounded-full ${i < rating ? "bg-primary" : "bg-muted-foreground/25"}`}
-        />
-      ))}
-    </span>
-  );
-}
-
 function SectionAddButton({
   adding,
   onToggle,
@@ -861,9 +848,13 @@ function SkillSection() {
               <SectionAddButton
                 adding={adding && !editingId && form.kind === kind}
                 onToggle={() => {
-                  setAdding((v) => !v);
-                  setForm({ ...EMPTY_SKILL, kind });
-                  setEditingId(null);
+                  if (adding && !editingId && form.kind === kind) {
+                    cancelForm();
+                  } else {
+                    cancelForm();
+                    setAdding(true);
+                    setForm({ ...EMPTY_SKILL, kind });
+                  }
                 }}
               />
             </div>
@@ -903,7 +894,9 @@ function SkillSection() {
                     </span>
                     {skill.self_assessed_level && (
                       <span className="text-xs text-muted-foreground">
-                        {skill.self_assessed_level}
+                        {LEVEL_OPTIONS.find(
+                          (l) => l.value === skill.self_assessed_level,
+                        )?.label ?? skill.self_assessed_level}
                       </span>
                     )}
                   </div>
