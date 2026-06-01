@@ -14,6 +14,9 @@ from models.skill import (
     Achievement as AchievementModel,
 )
 from models.skill import (
+    AchievementSkillTag as AchievementSkillTagModel,
+)
+from models.skill import (
     CandidateSkill,
     ExperienceSkillUsage,
     SkillKind,
@@ -22,6 +25,8 @@ from models.skill import (
 from schemas.skill import (
     AchievementCreate,
     AchievementRead,
+    AchievementSkillTagCreate,
+    AchievementSkillTagRead,
     AchievementUpdate,
     CandidateSkillCreate,
     CandidateSkillRead,
@@ -221,24 +226,11 @@ async def add_skill_usage(
     db: DB,
 ) -> ExperienceSkillUsage:
     await _get_experience_or_404(exp_id, profile.id, db)
-    if data.achievement_id is not None:
-        ach_result = await db.execute(
-            select(AchievementModel).where(
-                AchievementModel.id == data.achievement_id,
-                AchievementModel.experience_id == exp_id,
-            )
-        )
-        if ach_result.scalar_one_or_none() is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="achievement not found for this experience",
-            )
     usage = ExperienceSkillUsage(
         experience_id=exp_id,
         skill_ref_id=data.skill_ref_id,
         usage_role=data.usage_role,
         intensity=data.intensity,
-        achievement_id=data.achievement_id,
     )
     try:
         db.add(usage)
@@ -307,8 +299,16 @@ async def create_achievement(
     )
     db.add(achievement)
     await db.commit()
-    await db.refresh(achievement)
-    return achievement
+    result = await db.execute(
+        select(AchievementModel)
+        .where(AchievementModel.id == achievement.id)
+        .options(
+            selectinload(AchievementModel.skill_tags).selectinload(
+                AchievementSkillTagModel.skill_ref
+            )
+        )
+    )
+    return result.scalar_one()
 
 
 @router.get(
@@ -323,6 +323,11 @@ async def list_achievements(
         select(AchievementModel)
         .where(AchievementModel.experience_id == exp_id)
         .order_by(AchievementModel.order)
+        .options(
+            selectinload(AchievementModel.skill_tags).selectinload(
+                AchievementSkillTagModel.skill_ref
+            )
+        )
     )
     return list(result.scalars().all())
 
@@ -351,8 +356,16 @@ async def update_achievement(
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(achievement, field, value)
     await db.commit()
-    await db.refresh(achievement)
-    return achievement
+    result = await db.execute(
+        select(AchievementModel)
+        .where(AchievementModel.id == achievement_id)
+        .options(
+            selectinload(AchievementModel.skill_tags).selectinload(
+                AchievementSkillTagModel.skill_ref
+            )
+        )
+    )
+    return result.scalar_one()
 
 
 @router.delete(
@@ -373,4 +386,90 @@ async def delete_achievement(
     if achievement is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="achievement not found")
     await db.delete(achievement)
+    await db.commit()
+
+
+# ---- AchievementSkillTag -----------------------------------------------------
+
+
+@router.post(
+    "/candidates/me/experiences/{exp_id}/achievements/{ach_id}/skill-tags",
+    response_model=AchievementSkillTagRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_skill_tag(
+    exp_id: UUID,
+    ach_id: UUID,
+    data: AchievementSkillTagCreate,
+    profile: CandidateProfile_dep,
+    db: DB,
+) -> AchievementSkillTagModel:
+    await _get_experience_or_404(exp_id, profile.id, db)
+    # Verify achievement belongs to this experience
+    ach_result = await db.execute(
+        select(AchievementModel).where(
+            AchievementModel.id == ach_id,
+            AchievementModel.experience_id == exp_id,
+        )
+    )
+    if ach_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="achievement not found")
+    # Verify skill is in the experience bouquet
+    usage_result = await db.execute(
+        select(ExperienceSkillUsage).where(
+            ExperienceSkillUsage.experience_id == exp_id,
+            ExperienceSkillUsage.skill_ref_id == data.skill_ref_id,
+        )
+    )
+    if usage_result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="skill_ref_id is not in this experience's skill bouquet",
+        )
+    tag = AchievementSkillTagModel(
+        achievement_id=ach_id,
+        skill_ref_id=data.skill_ref_id,
+    )
+    try:
+        db.add(tag)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="skill already tagged on this achievement",
+        ) from None
+    result = await db.execute(
+        select(AchievementSkillTagModel)
+        .where(
+            AchievementSkillTagModel.achievement_id == ach_id,
+            AchievementSkillTagModel.skill_ref_id == data.skill_ref_id,
+        )
+        .options(selectinload(AchievementSkillTagModel.skill_ref))
+    )
+    return result.scalar_one()
+
+
+@router.delete(
+    "/candidates/me/experiences/{exp_id}/achievements/{ach_id}/skill-tags/{skill_ref_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_skill_tag(
+    exp_id: UUID,
+    ach_id: UUID,
+    skill_ref_id: UUID,
+    profile: CandidateProfile_dep,
+    db: DB,
+) -> None:
+    await _get_experience_or_404(exp_id, profile.id, db)
+    result = await db.execute(
+        select(AchievementSkillTagModel).where(
+            AchievementSkillTagModel.achievement_id == ach_id,
+            AchievementSkillTagModel.skill_ref_id == skill_ref_id,
+        )
+    )
+    tag = result.scalar_one_or_none()
+    if tag is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="skill tag not found")
+    await db.delete(tag)
     await db.commit()
