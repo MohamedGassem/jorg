@@ -9,6 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -509,7 +516,7 @@ function SkillSection() {
   const [items, setItems] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<SkillForm>(EMPTY_SKILL);
   const [saving, setSaving] = useState(false);
@@ -573,16 +580,38 @@ function SkillSection() {
     setSearchResults([]);
   }
 
+  function selectCustomPending(name: string) {
+    skipNextSearch.current = true;
+    setForm((f) => ({
+      ...f,
+      skill_ref_id: "__custom_pending__",
+      skill_ref_name: name,
+      skill_ref_is_custom: true,
+      kind: "",
+    }));
+    setSearchQuery("");
+    setSearchResults([]);
+  }
+
+  function openAddDialog() {
+    setEditingId(null);
+    setForm(EMPTY_SKILL);
+    setSearchQuery("");
+    setSearchResults([]);
+    setError(null);
+    setDialogOpen(true);
+  }
+
   function startEdit(skill: Skill) {
-    setAdding(false);
     setEditingId(skill.id);
     setForm(skillToForm(skill));
     setSearchQuery("");
     setError(null);
+    setDialogOpen(true);
   }
 
   function cancelForm() {
-    setAdding(false);
+    setDialogOpen(false);
     setEditingId(null);
     setForm(EMPTY_SKILL);
     setSearchQuery("");
@@ -609,19 +638,26 @@ function SkillSection() {
           payload,
         );
         setItems((prev) => prev.map((s) => (s.id === editingId ? updated : s)));
-        setEditingId(null);
       } else {
+        let skillRefId = form.skill_ref_id;
+        if (skillRefId === "__custom_pending__") {
+          const ref = await api.post<SkillReference>("/skill-references", {
+            name: form.skill_ref_name,
+            kind: form.kind,
+          });
+          skillRefId = ref.id;
+        }
         const created = await api.post<Skill>("/candidates/me/skills", {
-          skill_ref_id: form.skill_ref_id,
+          skill_ref_id: skillRefId,
           self_assessed_level: form.self_assessed_level || null,
           featured: form.featured,
           notes: form.notes || null,
         });
         setItems((prev) => [...prev, created]);
-        setAdding(false);
       }
       setForm(EMPTY_SKILL);
       setSearchQuery("");
+      setDialogOpen(false);
     } catch (err) {
       setError(extractErrorMessage(err, "Erreur lors de la sauvegarde"));
     } finally {
@@ -652,150 +688,17 @@ function SkillSection() {
     }
   }
 
-  function renderSkillForm() {
-    return (
-      <form onSubmit={handleSubmit} className="space-y-3">
-        {editingId ? (
-          <div className="space-y-1.5">
-            <Label>Compétence</Label>
-            <p className="rounded-md bg-muted/30 px-3 py-2 text-sm">
-              {form.skill_ref_name}
-            </p>
-          </div>
-        ) : (
-          <div className="relative space-y-1.5">
-            <Label htmlFor="skill-search">
-              Compétence <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="skill-search"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setForm((prev) => ({
-                  ...prev,
-                  skill_ref_id: "",
-                  skill_ref_name: "",
-                  skill_ref_is_custom: false,
-                }));
-              }}
-              placeholder="Rechercher une compétence…"
-              autoComplete="off"
-            />
-            {(searchResults.length > 0 || searching) && (
-              <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
-                {searching && searchResults.length === 0 && (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">
-                    Recherche…
-                  </p>
-                )}
-                {searchResults.map((ref) => (
-                  <button
-                    key={ref.id}
-                    type="button"
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
-                    onClick={() => selectSkillRef(ref)}
-                  >
-                    <span>{ref.name}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {KIND_LABELS[ref.kind] ?? ref.kind}
-                    </Badge>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="skill-level">Niveau</Label>
-            <Select
-              value={form.self_assessed_level}
-              onValueChange={(v) => v && set("self_assessed_level", v)}
-            >
-              <SelectTrigger id="skill-level" className="w-full">
-                <SelectValue placeholder="–" />
-              </SelectTrigger>
-              <SelectContent>
-                {LEVEL_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-end pb-2">
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                checked={form.featured}
-                onChange={(e) => set("featured", e.target.checked)}
-                className="h-4 w-4"
-              />
-              <span className="text-sm">Mise en avant</span>
-            </label>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="skill-notes">Notes (facultatif)</Label>
-          <Input
-            id="skill-notes"
-            value={form.notes}
-            onChange={(e) => set("notes", e.target.value)}
-            placeholder="Précisions, contexte…"
-          />
-        </div>
-        {form.skill_ref_is_custom && (
-          <div className="space-y-1.5">
-            <Label htmlFor="skill-kind">Type</Label>
-            <Select
-              value={form.kind}
-              onValueChange={(v) => set("kind", v as SkillKind)}
-            >
-              <SelectTrigger id="skill-kind" className="w-full">
-                <SelectValue placeholder="Choisir un type" />
-              </SelectTrigger>
-              <SelectContent>
-                {KIND_ORDER.map((k) => (
-                  <SelectItem key={k} value={k}>
-                    {KIND_LABELS[k]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <Button
-            type="submit"
-            size="sm"
-            disabled={saving || (!editingId && !form.skill_ref_id)}
-          >
-            {saving
-              ? "Sauvegarde…"
-              : editingId
-                ? "Enregistrer"
-                : "Ajouter la compétence"}
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={cancelForm}>
-            Annuler
-          </Button>
-        </div>
-      </form>
-    );
-  }
-
-  // Compute groups
   const featuredSkills = items.filter((s) => s.featured).slice(0, 6);
   const skillsByKind = KIND_ORDER.map((kind) => ({
     kind,
     label: KIND_LABELS[kind],
     skills: items.filter((s) => s.skill_ref.kind === kind),
-  })).filter((g) => g.skills.length > 0);
+  }));
+
+  const refSelected = !!form.skill_ref_id;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {loading && (
         <Card>
           <CardContent className="py-4">
@@ -810,7 +713,19 @@ function SkillSection() {
           </CardContent>
         </Card>
       )}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {/* ---- Header ---- */}
+      {!loading && !fetchError && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            {items.length} compétence{items.length !== 1 ? "s" : ""}
+          </p>
+          <Button size="sm" onClick={openAddDialog}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Ajouter une compétence
+          </Button>
+        </div>
+      )}
 
       {/* ---- Featured Skills Block ---- */}
       {featuredSkills.length > 0 && (
@@ -839,106 +754,290 @@ function SkillSection() {
         </Card>
       )}
 
-      {/* ---- Sections per type ---- */}
-      {skillsByKind.map(({ kind, label, skills }) => (
-        <Card key={kind}>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">{label}</CardTitle>
-              <SectionAddButton
-                adding={adding && !editingId && form.kind === kind}
-                onToggle={() => {
-                  if (adding && !editingId && form.kind === kind) {
-                    cancelForm();
-                  } else {
-                    cancelForm();
-                    setAdding(true);
-                    setForm({ ...EMPTY_SKILL, kind });
-                  }
-                }}
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {adding && !editingId && form.kind === kind && (
-              <div className="rounded-lg border border-dashed p-4">
-                {renderSkillForm()}
+      {/* ---- 3×2 grid per kind ---- */}
+      {!loading && !fetchError && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {skillsByKind.map(({ kind, label, skills }) => (
+            <Card key={kind} className="flex flex-col">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">{label}</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 space-y-0.5">
+                {skills.length === 0 ? (
+                  <p className="py-1 text-xs text-muted-foreground">
+                    Aucune compétence
+                  </p>
+                ) : (
+                  [...skills]
+                    .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
+                    .map((skill) => (
+                      <div
+                        key={skill.id}
+                        className={`group flex items-center justify-between rounded-md px-2 py-1.5 ${
+                          skill.featured ? "bg-primary/5" : "hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFeatured(skill)}
+                            className={`shrink-0 text-xs transition-colors ${
+                              skill.featured
+                                ? "text-primary"
+                                : "text-muted-foreground/30 hover:text-muted-foreground"
+                            }`}
+                            title={
+                              skill.featured
+                                ? "Retirer des clés"
+                                : "Mettre en avant"
+                            }
+                          >
+                            ★
+                          </button>
+                          <span className="truncate text-sm">
+                            {skill.skill_ref.name}
+                          </span>
+                          {skill.self_assessed_level && (
+                            <span className="shrink-0 text-xs text-muted-foreground">
+                              {skill.self_assessed_level}/5
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(skill)}
+                            className="rounded p-1 hover:bg-muted"
+                            title="Modifier"
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(skill.id)}
+                            className="rounded p-1 hover:bg-destructive/10"
+                            title={`Supprimer ${skill.skill_ref.name}`}
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* ---- Add / Edit Dialog ---- */}
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open) cancelForm();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingId ? "Modifier la compétence" : "Ajouter une compétence"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Skill ref field */}
+            {editingId ? (
+              <div className="space-y-1.5">
+                <Label>Compétence</Label>
+                <div className="flex items-center gap-2">
+                  <p className="flex-1 rounded-md bg-muted/30 px-3 py-2 text-sm">
+                    {form.skill_ref_name}
+                  </p>
+                  {form.kind && !form.skill_ref_is_custom && (
+                    <Badge variant="outline" className="shrink-0 text-xs">
+                      {KIND_LABELS[form.kind as SkillKind] ?? form.kind}
+                    </Badge>
+                  )}
+                </div>
               </div>
-            )}
-            {[...skills]
-              .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
-              .map((skill) => (
-                <div
-                  key={skill.id}
-                  className={`flex items-center justify-between rounded-md px-3 py-2 ${
-                    skill.featured ? "bg-primary/5" : "hover:bg-muted/50"
-                  }`}
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleFeatured(skill)}
-                      className={`shrink-0 text-sm transition-colors ${
-                        skill.featured
-                          ? "text-primary"
-                          : "text-muted-foreground/30 hover:text-muted-foreground"
-                      }`}
-                      title={
-                        skill.featured ? "Retirer des clés" : "Mettre en avant"
-                      }
-                    >
-                      ★
-                    </button>
-                    <span className="truncate text-sm font-medium">
-                      {skill.skill_ref.name}
-                    </span>
-                    {skill.self_assessed_level && (
-                      <span className="text-xs text-muted-foreground">
-                        {LEVEL_OPTIONS.find(
-                          (l) => l.value === skill.self_assessed_level,
-                        )?.label ?? skill.self_assessed_level}
-                      </span>
+            ) : !refSelected ? (
+              <div className="relative space-y-1.5">
+                <Label htmlFor="skill-search">
+                  Compétence <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="skill-search"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setForm((prev) => ({
+                      ...prev,
+                      skill_ref_id: "",
+                      skill_ref_name: "",
+                      skill_ref_is_custom: false,
+                      kind: "",
+                    }));
+                  }}
+                  placeholder="Rechercher une compétence…"
+                  autoComplete="off"
+                  autoFocus
+                />
+                {(searchResults.length > 0 ||
+                  searching ||
+                  searchQuery.length >= 2) && (
+                  <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
+                    {searching && searchResults.length === 0 && (
+                      <p className="px-3 py-2 text-xs text-muted-foreground">
+                        Recherche…
+                      </p>
+                    )}
+                    {searchResults.map((ref) => (
+                      <button
+                        key={ref.id}
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                        onClick={() => selectSkillRef(ref)}
+                      >
+                        <span>{ref.name}</span>
+                        <Badge variant="outline" className="ml-auto text-xs">
+                          {KIND_LABELS[ref.kind] ?? ref.kind}
+                        </Badge>
+                      </button>
+                    ))}
+                    {!searching && searchQuery.length >= 2 && (
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 border-t border-border px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                        onClick={() => selectCustomPending(searchQuery)}
+                      >
+                        <Plus className="h-3.5 w-3.5 shrink-0" />
+                        <span>
+                          Créer «{" "}
+                          <span className="font-medium text-foreground">
+                            {searchQuery}
+                          </span>{" "}
+                          »
+                        </span>
+                      </button>
                     )}
                   </div>
-                  <ItemActions
-                    deleteLabel={`Supprimer ${skill.skill_ref.name}`}
-                    onEdit={() => startEdit(skill)}
-                    onDelete={() => handleDelete(skill.id)}
-                  />
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label>Compétence</Label>
+                <div className="flex items-center gap-2">
+                  <p className="flex-1 rounded-md bg-muted/30 px-3 py-2 text-sm">
+                    {form.skill_ref_name}
+                  </p>
+                  {!form.skill_ref_is_custom && form.kind && (
+                    <Badge variant="outline" className="shrink-0 text-xs">
+                      {KIND_LABELS[form.kind as SkillKind] ?? form.kind}
+                    </Badge>
+                  )}
+                  <button
+                    type="button"
+                    className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted"
+                    onClick={() => {
+                      setForm((prev) => ({
+                        ...prev,
+                        skill_ref_id: "",
+                        skill_ref_name: "",
+                        skill_ref_is_custom: false,
+                        kind: "",
+                      }));
+                      setSearchQuery("");
+                    }}
+                    title="Changer de compétence"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-              ))}
-            {editingId && skills.find((s) => s.id === editingId) && (
-              <div className="rounded-lg border border-dashed p-4">
-                {renderSkillForm()}
               </div>
             )}
-          </CardContent>
-        </Card>
-      ))}
 
-      {/* ---- Empty state ---- */}
-      {!loading && !fetchError && items.length === 0 && (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="mb-3 text-sm text-muted-foreground">
-              Aucune compétence ajoutée
-            </p>
-            <SectionAddButton
-              adding={adding}
-              onToggle={() => {
-                setAdding((v) => !v);
-                setForm(EMPTY_SKILL);
-                setEditingId(null);
-              }}
-            />
-            {adding && (
-              <div className="mt-4 rounded-lg border border-dashed p-4 text-left">
-                {renderSkillForm()}
+            {/* Kind selector — custom skills only */}
+            {form.skill_ref_is_custom && (
+              <div className="space-y-1.5">
+                <Label htmlFor="skill-kind">Catégorie</Label>
+                <Select
+                  value={form.kind}
+                  onValueChange={(v) => set("kind", v as SkillKind)}
+                >
+                  <SelectTrigger id="skill-kind" className="w-full">
+                    <SelectValue placeholder="Choisir une catégorie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {KIND_ORDER.map((k) => (
+                      <SelectItem key={k} value={k}>
+                        {KIND_LABELS[k]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="skill-level">Niveau</Label>
+                <Select
+                  value={form.self_assessed_level}
+                  onValueChange={(v) => v && set("self_assessed_level", v)}
+                >
+                  <SelectTrigger id="skill-level" className="w-full">
+                    <SelectValue placeholder="–" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LEVEL_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end pb-2">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.featured}
+                    onChange={(e) => set("featured", e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm">Compétence clé</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="skill-notes">Notes (facultatif)</Label>
+              <Input
+                id="skill-notes"
+                value={form.notes}
+                onChange={(e) => set("notes", e.target.value)}
+                placeholder="Précisions, contexte…"
+              />
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+
+            <DialogFooter>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={
+                  saving ||
+                  (!editingId &&
+                    (!form.skill_ref_id ||
+                      (form.skill_ref_is_custom && !form.kind)))
+                }
+              >
+                {saving ? "Sauvegarde…" : editingId ? "Enregistrer" : "Ajouter"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -33,7 +33,9 @@ async function request<T>(
 
   if (res.status === 204) return undefined as T;
 
-  const data: unknown = await res.json();
+  const data: unknown = await res.json().catch(() => {
+    throw new ApiError(res.status, res.statusText || "Request failed");
+  });
 
   if (!res.ok) {
     const detail =
@@ -66,7 +68,9 @@ async function upload<T>(
     throw new ApiError(401, "session expired");
   }
 
-  const data: unknown = await res.json();
+  const data: unknown = await res.json().catch(() => {
+    throw new ApiError(res.status, res.statusText || "Upload failed");
+  });
   if (!res.ok) {
     const detail =
       typeof data === "object" && data !== null && "detail" in data
