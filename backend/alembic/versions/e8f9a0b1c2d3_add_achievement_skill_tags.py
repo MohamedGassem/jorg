@@ -48,5 +48,13 @@ def downgrade() -> None:
         "experience_skill_usages",
         sa.Column("achievement_id", sa.Uuid(), nullable=True),
     )
+    op.create_foreign_key(
+        None,
+        "experience_skill_usages",
+        "achievements",
+        ["achievement_id"],
+        ["id"],
+        ondelete="SET NULL",
+    )
     op.drop_index("ix_achievement_skill_tags_achievement_id", table_name="achievement_skill_tags")
     op.drop_table("achievement_skill_tags")
