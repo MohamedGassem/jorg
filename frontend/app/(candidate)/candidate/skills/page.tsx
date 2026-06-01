@@ -181,6 +181,44 @@ type AchForm = {
   impact: string;
 };
 
+function SkillChipPicker({
+  skillUsages,
+  checkedIds,
+  onToggle,
+}: {
+  skillUsages: ExperienceSkillUsage[];
+  checkedIds: Set<string>;
+  onToggle: (id: string) => void;
+}) {
+  if (skillUsages.length === 0) return null;
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs text-muted-foreground">
+        Skills associés à cette réalisation
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {skillUsages.map((u) => {
+          const checked = checkedIds.has(u.skill_ref_id);
+          return (
+            <button
+              key={u.skill_ref_id}
+              type="button"
+              onClick={() => onToggle(u.skill_ref_id)}
+              className={`rounded border px-2 py-1 text-xs font-medium transition-colors ${
+                checked
+                  ? "border-primary/50 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:border-border/80"
+              }`}
+            >
+              {u.skill_ref.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function AchievementRow({
   ach,
   skillUsages,
@@ -210,17 +248,10 @@ function AchievementRow({
   );
 
   function openForm() {
+    syncedTagsRef.current = new Set(ach.skill_tags.map((t) => t.skill_ref_id));
     setForm({ description: ach.description, impact: ach.impact ?? "" });
     setCheckedIds(new Set(ach.skill_tags.map((t) => t.skill_ref_id)));
     setOpen(true);
-  }
-
-  function toggleChip(refId: string) {
-    setCheckedIds((prev) => {
-      const next = new Set(prev);
-      next.has(refId) ? next.delete(refId) : next.add(refId);
-      return next;
-    });
   }
 
   async function handleSave() {
@@ -234,21 +265,60 @@ function AchievementRow({
       const existingIds = new Set(syncedTagsRef.current);
       const toDelete = [...existingIds].filter((id) => !checkedIds.has(id));
       const toAdd = [...checkedIds].filter((id) => !existingIds.has(id));
-      await Promise.all([
-        ...toDelete.map((id) =>
-          api.delete(
-            `/candidates/me/experiences/${expId}/achievements/${ach.id}/skill-tags/${id}`,
-          ),
+
+      const deleteResults = await Promise.allSettled(
+        toDelete.map((id) =>
+          api
+            .delete(
+              `/candidates/me/experiences/${expId}/achievements/${ach.id}/skill-tags/${id}`,
+            )
+            .then(() => ({ op: "delete" as const, id })),
         ),
-        ...toAdd.map((id) =>
-          api.post(
-            `/candidates/me/experiences/${expId}/achievements/${ach.id}/skill-tags`,
-            { skill_ref_id: id },
-          ),
+      );
+      const addResults = await Promise.allSettled(
+        toAdd.map((id) =>
+          api
+            .post(
+              `/candidates/me/experiences/${expId}/achievements/${ach.id}/skill-tags`,
+              { skill_ref_id: id },
+            )
+            .then(() => ({ op: "add" as const, id })),
         ),
-      ]);
-      // Update synced state so retries don't re-attempt already-done operations
-      syncedTagsRef.current = new Set(checkedIds);
+      );
+
+      // Compute what actually succeeded on the server
+      const successfulDeletes = new Set(
+        deleteResults
+          .filter(
+            (r): r is PromiseFulfilledResult<{ op: "delete"; id: string }> =>
+              r.status === "fulfilled",
+          )
+          .map((r) => r.value.id),
+      );
+      const successfulAdds = new Set(
+        addResults
+          .filter(
+            (r): r is PromiseFulfilledResult<{ op: "add"; id: string }> =>
+              r.status === "fulfilled",
+          )
+          .map((r) => r.value.id),
+      );
+
+      // Update syncedTagsRef to reflect actual server state
+      const newSynced = new Set(syncedTagsRef.current);
+      for (const id of successfulDeletes) newSynced.delete(id);
+      for (const id of successfulAdds) newSynced.add(id);
+      syncedTagsRef.current = newSynced;
+
+      const anyFailed =
+        deleteResults.some((r) => r.status === "rejected") ||
+        addResults.some((r) => r.status === "rejected");
+
+      if (anyFailed) {
+        setError("Certains tags n'ont pas pu être synchronisés. Réessayez.");
+        // Don't close the form — let user retry
+        return;
+      }
       const newTags: AchievementSkillTag[] = skillUsages
         .filter((u) => checkedIds.has(u.skill_ref_id))
         .map((u) => ({
@@ -349,32 +419,17 @@ function AchievementRow({
               placeholder="ex: −40% temps de déploiement"
             />
           </div>
-          {skillUsages.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-muted-foreground">
-                Skills associés à cette réalisation
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {skillUsages.map((u) => {
-                  const checked = checkedIds.has(u.skill_ref_id);
-                  return (
-                    <button
-                      key={u.skill_ref_id}
-                      type="button"
-                      onClick={() => toggleChip(u.skill_ref_id)}
-                      className={`rounded border px-2 py-1 text-xs font-medium transition-colors ${
-                        checked
-                          ? "border-primary/50 bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:border-border/80"
-                      }`}
-                    >
-                      {u.skill_ref.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <SkillChipPicker
+            skillUsages={skillUsages}
+            checkedIds={checkedIds}
+            onToggle={(id) =>
+              setCheckedIds((prev) => {
+                const next = new Set(prev);
+                next.has(id) ? next.delete(id) : next.add(id);
+                return next;
+              })
+            }
+          />
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex items-center gap-2">
             <button
@@ -422,14 +477,6 @@ function AddAchievementRow({
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  function toggleChip(refId: string) {
-    setCheckedIds((prev) => {
-      const next = new Set(prev);
-      next.has(refId) ? next.delete(refId) : next.add(refId);
-      return next;
-    });
-  }
 
   async function handleAdd() {
     setSaving(true);
@@ -507,32 +554,17 @@ function AddAchievementRow({
           placeholder="ex: −40% temps de déploiement"
         />
       </div>
-      {skillUsages.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-xs text-muted-foreground">
-            Skills associés à cette réalisation
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {skillUsages.map((u) => {
-              const checked = checkedIds.has(u.skill_ref_id);
-              return (
-                <button
-                  key={u.skill_ref_id}
-                  type="button"
-                  onClick={() => toggleChip(u.skill_ref_id)}
-                  className={`rounded border px-2 py-1 text-xs font-medium transition-colors ${
-                    checked
-                      ? "border-primary/50 bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground hover:border-border/80"
-                  }`}
-                >
-                  {u.skill_ref.name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <SkillChipPicker
+        skillUsages={skillUsages}
+        checkedIds={checkedIds}
+        onToggle={(id) =>
+          setCheckedIds((prev) => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+          })
+        }
+      />
       {error && <p className="text-xs text-destructive">{error}</p>}
       <div className="flex justify-end gap-2">
         <Button
