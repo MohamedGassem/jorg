@@ -482,6 +482,8 @@ type SkillForm = {
   kind: SkillKind | "";
 };
 
+const CUSTOM_PENDING = "__custom_pending__";
+
 const EMPTY_SKILL: SkillForm = {
   skill_ref_id: "",
   skill_ref_name: "",
@@ -545,10 +547,11 @@ function SkillSection() {
     }
     if (!searchQuery || searchQuery.length < 2 || editingId) {
       setSearchResults([]);
+      setSearching(false);
       return;
     }
+    setSearching(true);
     const timer = setTimeout(async () => {
-      setSearching(true);
       try {
         const results = await api.get<SkillReference[]>(
           `/skill-references?q=${encodeURIComponent(searchQuery)}`,
@@ -584,7 +587,7 @@ function SkillSection() {
     skipNextSearch.current = true;
     setForm((f) => ({
       ...f,
-      skill_ref_id: "__custom_pending__",
+      skill_ref_id: CUSTOM_PENDING,
       skill_ref_name: name,
       skill_ref_is_custom: true,
       kind: "",
@@ -638,9 +641,10 @@ function SkillSection() {
           payload,
         );
         setItems((prev) => prev.map((s) => (s.id === editingId ? updated : s)));
+        setEditingId(null);
       } else {
         let skillRefId = form.skill_ref_id;
-        if (skillRefId === "__custom_pending__") {
+        if (skillRefId === CUSTOM_PENDING) {
           const ref = await api.post<SkillReference>("/skill-references", {
             name: form.skill_ref_name,
             kind: form.kind,
@@ -725,6 +729,10 @@ function SkillSection() {
             Ajouter une compétence
           </Button>
         </div>
+      )}
+
+      {error && !dialogOpen && (
+        <p className="text-sm text-destructive">{error}</p>
       )}
 
       {/* ---- Featured Skills Block ---- */}
@@ -881,9 +889,7 @@ function SkillSection() {
                   autoComplete="off"
                   autoFocus
                 />
-                {(searchResults.length > 0 ||
-                  searching ||
-                  searchQuery.length >= 2) && (
+                {(searchResults.length > 0 || searching) && (
                   <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
                     {searching && searchResults.length === 0 && (
                       <p className="px-3 py-2 text-xs text-muted-foreground">
@@ -903,22 +909,27 @@ function SkillSection() {
                         </Badge>
                       </button>
                     ))}
-                    {!searching && searchQuery.length >= 2 && (
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 border-t border-border px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                        onClick={() => selectCustomPending(searchQuery)}
-                      >
-                        <Plus className="h-3.5 w-3.5 shrink-0" />
-                        <span>
-                          Créer «{" "}
-                          <span className="font-medium text-foreground">
-                            {searchQuery}
-                          </span>{" "}
-                          »
-                        </span>
-                      </button>
-                    )}
+                    {!searching &&
+                      !searchResults.some(
+                        (r) =>
+                          r.name.toLowerCase() ===
+                          searchQuery.trim().toLowerCase(),
+                      ) && (
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 border-t border-border px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                          onClick={() => selectCustomPending(searchQuery)}
+                        >
+                          <Plus className="h-3.5 w-3.5 shrink-0" />
+                          <span>
+                            Créer «{" "}
+                            <span className="font-medium text-foreground">
+                              {searchQuery}
+                            </span>{" "}
+                            »
+                          </span>
+                        </button>
+                      )}
                   </div>
                 )}
               </div>
