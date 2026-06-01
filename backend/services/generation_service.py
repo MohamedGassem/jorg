@@ -117,9 +117,19 @@ async def generate_for_candidate(
     storage = get_storage()
     base_filename = f"doc_{candidate_id}_{template_id}"
     if fmt == "pdf":
-        pdf_bytes = await _convert_to_pdf(docx_bytes)
-        storage_key = await storage.save(pdf_bytes, f"{base_filename}.pdf")
-        actual_format: str = "pdf"
+        try:
+            pdf_bytes = await _convert_to_pdf(docx_bytes)
+            storage_key = await storage.save(pdf_bytes, f"{base_filename}.pdf")
+            actual_format: str = "pdf"
+        except BusinessRuleError:
+            # Gotenberg unavailable — fall back to docx and record actual format
+            logger.warning(
+                "pdf_conversion_unavailable",
+                candidate_id=str(candidate_id),
+                fallback="docx",
+            )
+            storage_key = await storage.save(docx_bytes, f"{base_filename}.docx")
+            actual_format = "docx"
     else:
         storage_key = await storage.save(docx_bytes, f"{base_filename}.docx")
         actual_format = "docx"

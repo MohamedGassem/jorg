@@ -150,6 +150,7 @@ def exp_flat(exp: ExperienceProtocol) -> dict[str, str]:
         "context": exp.context or "",
         "achievements_summary": summary,
         "achievements": summary,  # backward-compat alias for existing templates
+        "technologies": "",  # removed in evidence model — alias preserves old templates
     }
 
 
@@ -165,6 +166,8 @@ def skill_flat(sk: SkillProtocol) -> dict[str, str]:
         "level": sk.self_assessed_level or "",  # backward-compat alias for old templates
         "self_assessed_level": sk.self_assessed_level or "",
         "featured": "true" if sk.featured else "false",
+        "category": str(sk.skill_ref.kind.value) if sk.skill_ref.kind else "",  # backward-compat
+        "level_rating": "",  # removed in evidence model — alias preserves old templates
     }
 
 

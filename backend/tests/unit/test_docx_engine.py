@@ -171,6 +171,7 @@ class TestExpFlat:
             "context",
             "achievements_summary",
             "achievements",
+            "technologies",  # backward-compat alias (always empty)
         }
         assert set(exp_flat(exp).keys()) == expected
 
@@ -190,7 +191,15 @@ class TestSkillFlat:
 
     def test_all_expected_keys_present(self):
         sk = _mock_skill()
-        expected = {"name", "kind", "level", "self_assessed_level", "featured"}
+        expected = {
+            "name",
+            "kind",
+            "level",
+            "self_assessed_level",
+            "featured",
+            "category",  # backward-compat alias for kind
+            "level_rating",  # backward-compat alias (always empty)
+        }
         assert set(skill_flat(sk).keys()) == expected
 
     def test_kind_extracts_value(self):

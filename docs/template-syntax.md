@@ -64,34 +64,40 @@ Du {{exp.start_date}} au {{exp.end_date}}
 
 #### Champs disponibles dans la boucle `exp`
 
-| Balise                 | Contenu                                                |
-| ---------------------- | ------------------------------------------------------ |
-| `{{exp.client_name}}`  | Nom du client                                          |
-| `{{exp.role}}`         | Intitulé du poste                                      |
-| `{{exp.start_date}}`   | Date de début (MM/AAAA)                                |
-| `{{exp.end_date}}`     | Date de fin (MM/AAAA) ou `présent` si mission en cours |
-| `{{exp.description}}`  | Description de la mission                              |
-| `{{exp.context}}`      | Contexte                                               |
-| `{{exp.achievements}}` | Réalisations / résultats                               |
-| `{{exp.technologies}}` | Technologies utilisées (liste jointe par virgule)      |
+| Balise                         | Contenu                                                                                                     |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `{{exp.client_name}}`          | Nom du client                                                                                               |
+| `{{exp.role}}`                 | Intitulé du poste                                                                                           |
+| `{{exp.start_date}}`           | Date de début (MM/AAAA)                                                                                     |
+| `{{exp.end_date}}`             | Date de fin (MM/AAAA) ou `présent` si mission en cours                                                      |
+| `{{exp.description}}`          | Description de la mission                                                                                   |
+| `{{exp.context}}`              | Contexte                                                                                                    |
+| `{{exp.achievements}}`         | Réalisations / résultats (alias de `achievements_summary`)                                                  |
+| `{{exp.achievements_summary}}` | Réalisations / résultats                                                                                    |
+| ~~`{{exp.technologies}}`~~     | **Supprimé** — renvoie toujours une chaîne vide. Remplacer par les skills de type `tool` via `skills_tool`. |
 
 ### Bloc compétences
 
 ```
-{%p for sk in skills %}
-{{sk.name}} — {{sk.category}} — Niveau : {{sk.level}}
+{%p for sk in skills_technical %}
+{{sk.name}} — {{sk.kind}} — Niveau : {{sk.level}}
 {%p endfor %}
 ```
 
+> **Variables disponibles :** `skills` (toutes), `skills_technical`, `skills_tool`, `skills_functional`, `skills_methodology`, `skills_sectoral`, `skills_soft`, `skills_featured`.
+
 #### Champs disponibles dans la boucle `sk`
 
-| Balise                       | Contenu                                  |
-| ---------------------------- | ---------------------------------------- |
-| `{{sk.name}}`                | Nom de la compétence                     |
-| `{{sk.category}}`            | Catégorie                                |
-| `{{sk.level}}`               | Niveau (texte)                           |
-| `{{sk.level_rating}}`        | Note numérique                           |
-| `{{sk.years_of_experience}}` | Années d'expérience sur cette compétence |
+| Balise                           | Contenu                                             |
+| -------------------------------- | --------------------------------------------------- |
+| `{{sk.name}}`                    | Nom de la compétence                                |
+| `{{sk.kind}}`                    | Type ESCO (`technical`, `tool`, `functional`, etc.) |
+| `{{sk.level}}`                   | Niveau auto-évalué (texte)                          |
+| `{{sk.self_assessed_level}}`     | Alias de `level`                                    |
+| `{{sk.featured}}`                | `"true"` ou `"false"`                               |
+| ~~`{{sk.category}}`~~            | **Supprimé** — renvoie `kind` pour compatibilité    |
+| ~~`{{sk.level_rating}}`~~        | **Supprimé** — renvoie toujours une chaîne vide     |
+| ~~`{{sk.years_of_experience}}`~~ | **Supprimé** — renvoie toujours une chaîne vide     |
 
 ---
 

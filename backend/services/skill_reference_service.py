@@ -24,7 +24,8 @@ async def get_or_create_by_name(
     kind: SkillKind,
     creator_candidate_id: UUID,
     db: AsyncSession,
-) -> SkillReference:
+) -> tuple[SkillReference, bool]:
+    """Return (ref, was_created). Checks ESCO first, then candidate's custom, then inserts."""
     slug = slugify(name)
     # Check ESCO skills first (creator_candidate_id IS NULL)
     result = await db.execute(
@@ -35,7 +36,7 @@ async def get_or_create_by_name(
     )
     ref = result.scalar_one_or_none()
     if ref is not None:
-        return ref
+        return ref, False
     # Then check candidate's own custom skills
     result = await db.execute(
         select(SkillReference).where(
@@ -44,20 +45,21 @@ async def get_or_create_by_name(
         )
     )
     ref = result.scalar_one_or_none()
-    if ref is None:
-        ref = SkillReference(
-            name=name,
-            slug=slug,
-            kind=kind,
-            is_custom=True,
-            source="manual",
-            aliases=[],
-            creator_candidate_id=creator_candidate_id,
-        )
-        db.add(ref)
-        await db.commit()
-        await db.refresh(ref)
-    return ref
+    if ref is not None:
+        return ref, False
+    ref = SkillReference(
+        name=name,
+        slug=slug,
+        kind=kind,
+        is_custom=True,
+        source="manual",
+        aliases=[],
+        creator_candidate_id=creator_candidate_id,
+    )
+    db.add(ref)
+    await db.commit()
+    await db.refresh(ref)
+    return ref, True
 
 
 async def search(

@@ -88,7 +88,13 @@ async def create_my_experience(
     result = await db.execute(
         select(Experience).where(Experience.id == exp.id).options(*_EXP_OPTIONS)
     )
-    return result.scalar_one()
+    row = result.scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="experience unavailable after create",
+        )
+    return row
 
 
 @router.put("/me/experiences/{experience_id}", response_model=ExperienceRead)
@@ -105,7 +111,13 @@ async def update_my_experience(
     result = await db.execute(
         select(Experience).where(Experience.id == experience_id).options(*_EXP_OPTIONS)
     )
-    return result.scalar_one()
+    row = result.scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="experience not found after update",
+        )
+    return row
 
 
 @router.delete("/me/experiences/{experience_id}", status_code=status.HTTP_204_NO_CONTENT)

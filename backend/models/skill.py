@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
@@ -71,7 +72,7 @@ class SkillReference(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_custom: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     creator_candidate_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("candidate_profiles.id", ondelete="SET NULL"),
+        ForeignKey("candidate_profiles.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )
@@ -91,6 +92,11 @@ class SkillReference(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             "creator_candidate_id",
             unique=True,
             postgresql_where=text("creator_candidate_id IS NOT NULL"),
+        ),
+        # Enforce is_custom = (creator_candidate_id IS NOT NULL)
+        CheckConstraint(
+            "is_custom = (creator_candidate_id IS NOT NULL)",
+            name="ck_skill_ref_custom_consistency",
         ),
     )
 

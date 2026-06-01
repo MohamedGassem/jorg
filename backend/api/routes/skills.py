@@ -62,36 +62,13 @@ async def create_or_get_skill_reference(
     profile: CandidateProfile_dep,
     response: Response,
 ) -> SkillReference:
-    slug = skill_reference_service.slugify(data.name)
-    # Search ESCO shared skills first
-    result = await db.execute(
-        select(SkillReference).where(
-            SkillReference.slug == slug,
-            SkillReference.creator_candidate_id.is_(None),
-        )
-    )
-    existing = result.scalar_one_or_none()
-    if existing:
-        response.status_code = status.HTTP_200_OK
-        return existing
-    # Then private custom skills of this candidate
-    result = await db.execute(
-        select(SkillReference).where(
-            SkillReference.slug == slug,
-            SkillReference.creator_candidate_id == profile.id,
-        )
-    )
-    existing = result.scalar_one_or_none()
-    if existing:
-        response.status_code = status.HTTP_200_OK
-        return existing
     try:
-        ref = await skill_reference_service.get_or_create_by_name(
+        ref, was_created = await skill_reference_service.get_or_create_by_name(
             data.name, data.kind, creator_candidate_id=profile.id, db=db
         )
     except IntegrityError:
         await db.rollback()
-        # Try to find as ESCO first, then as candidate's custom
+        slug = skill_reference_service.slugify(data.name)
         result = await db.execute(
             select(SkillReference).where(
                 SkillReference.slug == slug,
@@ -114,7 +91,7 @@ async def create_or_get_skill_reference(
             ) from None
         response.status_code = status.HTTP_200_OK
         return recovered
-    response.status_code = status.HTTP_201_CREATED
+    response.status_code = status.HTTP_201_CREATED if was_created else status.HTTP_200_OK
     return ref
 
 
