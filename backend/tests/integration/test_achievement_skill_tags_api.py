@@ -174,3 +174,28 @@ async def test_delete_skill_tag_wrong_experience_returns_404(
         headers=candidate_headers,
     )
     assert r.status_code == 404
+
+
+async def test_get_experiences_returns_skill_tags_on_achievements(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    exp_id = await _create_experience(client, candidate_headers)
+    ref_id = await _create_skill_ref(client, candidate_headers, "Terraform")
+    await _add_skill_usage(client, candidate_headers, exp_id, ref_id)
+    ach_id = await _create_achievement(client, candidate_headers, exp_id, "Infra as code")
+
+    await client.post(
+        f"/candidates/me/experiences/{exp_id}/achievements/{ach_id}/skill-tags",
+        headers=candidate_headers,
+        json={"skill_ref_id": ref_id},
+    )
+
+    r = await client.get("/candidates/me/experiences", headers=candidate_headers)
+    assert r.status_code == 200
+    exps = r.json()
+    target = next(e for e in exps if e["id"] == exp_id)
+    assert len(target["achievements"]) == 1
+    ach = target["achievements"][0]
+    assert len(ach["skill_tags"]) == 1
+    assert ach["skill_tags"][0]["skill_ref"]["name"] == "Terraform"
+    assert ach["skill_tags"][0]["skill_ref_id"] == ref_id
