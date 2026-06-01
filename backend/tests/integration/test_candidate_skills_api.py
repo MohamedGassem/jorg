@@ -129,6 +129,7 @@ async def test_update_kind_on_esco_skill_returns_400(
         headers=candidate_headers,
         json={"skill_ref_id": ref_id},
     )
+    assert skill_r.status_code in (201, 409), f"Unexpected status: {skill_r.status_code}"
     if skill_r.status_code == 201:
         skill_id = skill_r.json()["id"]
     else:
