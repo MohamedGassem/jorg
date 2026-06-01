@@ -595,52 +595,36 @@ function AddAchievementRow({
 function AddSkillToBouquet({
   expId,
   existingRefIds,
+  candidateSkills,
   onAdded,
 }: {
   expId: string;
   existingRefIds: Set<string>;
+  candidateSkills: Skill[];
   onAdded: (usage: ExperienceSkillUsage) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SkillReference[]>([]);
-  const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!query || query.length < 2) {
-      setResults([]);
-      return;
-    }
-    setSearching(true);
-    const timer = setTimeout(async () => {
-      try {
-        const res = await api.get<SkillReference[]>(
-          `/skill-references?q=${encodeURIComponent(query)}`,
-        );
-        setResults(res.filter((r) => !existingRefIds.has(r.id)));
-      } catch {
-        // ignore
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [query, existingRefIds]);
+  const available = candidateSkills.filter(
+    (s) =>
+      !existingRefIds.has(s.skill_ref_id) &&
+      (!query || s.skill_ref.name.toLowerCase().includes(query.toLowerCase())),
+  );
 
-  async function handleSelect(ref: SkillReference) {
+  async function handleSelect(skill: Skill) {
     try {
       const usage = await api.post<ExperienceSkillUsage>(
         `/candidates/me/experiences/${expId}/skill-usages`,
         {
-          skill_ref_id: ref.id,
+          skill_ref_id: skill.skill_ref_id,
           usage_role: "implementer",
           intensity: "secondary",
         },
       );
       onAdded(usage);
       setQuery("");
-      setResults([]);
       setOpen(false);
     } catch {
       // ignore — skill might already exist
@@ -672,29 +656,23 @@ function AddSkillToBouquet({
           setTimeout(() => {
             setOpen(false);
             setQuery("");
-            setResults([]);
           }, 200)
         }
-        placeholder="Rechercher…"
+        placeholder="Filtrer…"
         className="h-6 rounded-full border border-primary/40 bg-background px-2.5 text-xs outline-none focus:border-primary w-32"
       />
-      {(results.length > 0 || searching) && (
-        <div className="absolute left-0 top-7 z-20 w-48 rounded-lg border border-border bg-popover shadow-lg">
-          {searching && (
-            <p className="px-3 py-2 text-xs text-muted-foreground">
-              Recherche…
-            </p>
-          )}
-          {results.map((ref) => (
+      {available.length > 0 && (
+        <div className="absolute left-0 top-7 z-20 w-48 rounded-lg border border-border bg-popover shadow-lg max-h-48 overflow-y-auto">
+          {available.map((skill) => (
             <button
-              key={ref.id}
+              key={skill.id}
               type="button"
-              onMouseDown={() => handleSelect(ref)}
+              onMouseDown={() => handleSelect(skill)}
               className="w-full px-3 py-1.5 text-left text-xs hover:bg-muted"
             >
-              {ref.name}
+              {skill.skill_ref.name}
               <span className="ml-1 text-[10px] text-muted-foreground">
-                {ref.kind}
+                {skill.skill_ref.kind}
               </span>
             </button>
           ))}
@@ -706,10 +684,12 @@ function AddSkillToBouquet({
 
 function ExperienceCard({
   exp,
+  candidateSkills,
   onUpdated,
   onDeleted,
 }: {
   exp: Experience;
+  candidateSkills: Skill[];
   onUpdated: (updated: Experience) => void;
   onDeleted: (id: string) => void;
 }) {
@@ -958,6 +938,7 @@ function ExperienceCard({
         <AddSkillToBouquet
           expId={exp.id}
           existingRefIds={new Set(skillUsages.map((u) => u.skill_ref_id))}
+          candidateSkills={candidateSkills}
           onAdded={(usage) => setSkillUsages((prev) => [...prev, usage])}
         />
       </div>
@@ -994,6 +975,7 @@ function ExperienceCard({
 
 function ExperienceSection() {
   const [items, setItems] = useState<Experience[]>([]);
+  const [candidateSkills, setCandidateSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -1002,9 +984,14 @@ function ExperienceSection() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api
-      .get<Experience[]>("/candidates/me/experiences")
-      .then(setItems)
+    Promise.all([
+      api.get<Experience[]>("/candidates/me/experiences"),
+      api.get<Skill[]>("/candidates/me/skills"),
+    ])
+      .then(([exps, skills]) => {
+        setItems(exps);
+        setCandidateSkills(skills);
+      })
       .catch((err) =>
         setFetchError(
           extractErrorMessage(err, "Impossible de charger les expériences"),
@@ -1052,6 +1039,7 @@ function ExperienceSection() {
         <ExperienceCard
           key={exp.id}
           exp={exp}
+          candidateSkills={candidateSkills}
           onUpdated={(updated) =>
             setItems((prev) =>
               prev.map((i) => (i.id === updated.id ? updated : i)),
