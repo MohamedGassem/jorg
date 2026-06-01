@@ -68,6 +68,11 @@ class SkillReference(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     source: Mapped[str] = mapped_column(String(20), default="esco", nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_custom: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    creator_candidate_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("candidate_profiles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
 
 class CandidateSkill(Base, UUIDPrimaryKeyMixin, TimestampMixin):
