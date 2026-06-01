@@ -16,7 +16,7 @@ from models.candidate_profile import (
 )
 from models.generated_document import GeneratedDocument
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
-from models.skill import CandidateSkill, ExperienceSkillUsage
+from models.skill import Achievement, AchievementSkillTag, CandidateSkill, ExperienceSkillUsage
 from models.user import User
 from schemas.candidate import (
     CandidateProfileRead,
@@ -48,7 +48,9 @@ async def export_candidate_data(db: AsyncSession, user: User) -> CandidateExport
             select(Experience)
             .where(Experience.profile_id == profile.id)
             .options(
-                selectinload(Experience.achievements),
+                selectinload(Experience.achievements)
+                .selectinload(Achievement.skill_tags)
+                .selectinload(AchievementSkillTag.skill_ref),
                 selectinload(Experience.skill_usages).selectinload(ExperienceSkillUsage.skill_ref),
             )
         )
