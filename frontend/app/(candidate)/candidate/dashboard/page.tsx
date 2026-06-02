@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Mail, Shield, User } from "lucide-react";
 import { QuickActionCard } from "@/components/ui/QuickActionCard";
 import { StatCard } from "@/components/ui/StatCard";
+import { NotificationBell } from "@/components/notification-bell";
 import { api } from "@/lib/api";
 import type {
   CandidateProfile,
@@ -159,13 +160,16 @@ export default function CandidateDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">
-          Bonjour{firstName ? `, ${firstName}` : ""} 👋
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Voici l&apos;état de votre espace candidat
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">
+            Bonjour{firstName ? `, ${firstName}` : ""} 👋
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Voici l&apos;état de votre espace candidat
+          </p>
+        </div>
+        <NotificationBell portal="candidate" />
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
