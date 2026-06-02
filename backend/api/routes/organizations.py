@@ -13,10 +13,17 @@ import services.recruiter_service as recruiter_service
 import services.template_service as template_service
 from api.deps import get_db, require_role
 from models.candidate_profile import AvailabilityStatus, ContractType, MissionDuration, WorkMode
-from models.recruiter import Organization
+from models.recruiter import Organization, RecruiterProfile
 from models.template import Template
 from models.user import User, UserRole
-from schemas.recruiter import AccessibleCandidateRead, OrganizationCreate, OrganizationRead
+from schemas.recruiter import (
+    AccessibleCandidateRead,
+    OrganizationCreate,
+    OrganizationRead,
+    OrgJoinRequest,
+    OrgMemberRead,
+    RecruiterProfileRead,
+)
 from schemas.template import TemplateMappingsUpdate, TemplateRead
 from services.docx_parser import extract_placeholders
 
@@ -52,12 +59,40 @@ async def _require_org_membership(db: AsyncSession, user_id: UUID, org_id: UUID)
 async def create_organization(
     data: OrganizationCreate, current_user: RecruiterUser, db: DB
 ) -> Organization:
-    return await recruiter_service.create_organization(db, data)
+    return await recruiter_service.create_organization(db, data, created_by_user_id=current_user.id)
 
 
 @router.get("/{org_id}", response_model=OrganizationRead)
 async def get_organization(org_id: UUID, current_user: RecruiterUser, db: DB) -> Organization:
     return await _get_org_or_404(db, org_id)
+
+
+@router.post("/join", response_model=RecruiterProfileRead)
+async def join_organization_by_code(
+    data: OrgJoinRequest, current_user: RecruiterUser, db: DB
+) -> RecruiterProfile:
+    try:
+        return await recruiter_service.join_organization(db, current_user.id, data.code)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="invalid join code"
+        ) from err
+
+
+@router.post("/{org_id}/regenerate-join-code", response_model=OrganizationRead)
+async def regenerate_join_code_route(
+    org_id: UUID, current_user: RecruiterUser, db: DB
+) -> Organization:
+    org = await _get_org_or_404(db, org_id)
+    await _require_org_membership(db, current_user.id, org_id)
+    return await recruiter_service.regenerate_join_code(db, org)
+
+
+@router.get("/{org_id}/members", response_model=list[OrgMemberRead])
+async def list_members(org_id: UUID, current_user: RecruiterUser, db: DB) -> list[dict]:
+    await _get_org_or_404(db, org_id)
+    await _require_org_membership(db, current_user.id, org_id)
+    return await recruiter_service.list_org_members(db, org_id)
 
 
 # ---- Candidates -------------------------------------------------------------

@@ -1,5 +1,6 @@
 # backend/services/recruiter_service.py
 import re
+import secrets
 from typing import Any, Self
 from uuid import UUID
 
@@ -45,10 +46,30 @@ async def _unique_slug(db: AsyncSession, base: str) -> str:
 # ---- Organization -----------------------------------------------------------
 
 
-async def create_organization(db: AsyncSession, data: OrganizationCreate) -> Organization:
+async def _unique_join_code(db: AsyncSession) -> str:
+    while True:
+        code = secrets.token_urlsafe(6)
+        result = await db.execute(select(Organization).where(Organization.join_code == code))
+        if result.scalar_one_or_none() is None:
+            return code
+
+
+async def create_organization(
+    db: AsyncSession,
+    data: OrganizationCreate,
+    created_by_user_id: UUID | None = None,
+) -> Organization:
+    """Create org. If created_by_user_id provided, links that recruiter atomically."""
     slug = await _unique_slug(db, _slugify(data.name))
-    org = Organization(name=data.name, slug=slug, logo_url=data.logo_url)
+    join_code = await _unique_join_code(db)
+    org = Organization(name=data.name, slug=slug, logo_url=data.logo_url, join_code=join_code)
     db.add(org)
+    await db.flush()  # get org.id without committing
+
+    if created_by_user_id is not None:
+        profile = await get_or_create_profile(db, created_by_user_id)
+        profile.organization_id = org.id
+
     await db.commit()
     await db.refresh(org)
     return org
@@ -57,6 +78,50 @@ async def create_organization(db: AsyncSession, data: OrganizationCreate) -> Org
 async def get_organization(db: AsyncSession, org_id: UUID) -> Organization | None:
     result = await db.execute(select(Organization).where(Organization.id == org_id))
     return result.scalar_one_or_none()
+
+
+async def get_organization_by_join_code(db: AsyncSession, code: str) -> Organization | None:
+    result = await db.execute(select(Organization).where(Organization.join_code == code))
+    return result.scalar_one_or_none()
+
+
+async def join_organization(db: AsyncSession, user_id: UUID, code: str) -> RecruiterProfile:
+    """Join org by join_code. Idempotent if already a member. Raises ValueError on bad code."""
+    org = await get_organization_by_join_code(db, code)
+    if org is None:
+        raise ValueError("invalid_code")
+    profile = await get_or_create_profile(db, user_id)
+    if profile.organization_id == org.id:
+        return profile  # already member
+    profile.organization_id = org.id
+    await db.commit()
+    await db.refresh(profile)
+    return profile
+
+
+async def regenerate_join_code(db: AsyncSession, org: Organization) -> Organization:
+    org.join_code = await _unique_join_code(db)
+    await db.commit()
+    await db.refresh(org)
+    return org
+
+
+async def list_org_members(db: AsyncSession, org_id: UUID) -> list[dict[str, Any]]:
+    rows = await db.execute(
+        select(RecruiterProfile, User.email)
+        .join(User, User.id == RecruiterProfile.user_id)
+        .where(RecruiterProfile.organization_id == org_id)
+    )
+    return [
+        {
+            "user_id": row.RecruiterProfile.user_id,
+            "email": row.email,
+            "first_name": row.RecruiterProfile.first_name,
+            "last_name": row.RecruiterProfile.last_name,
+            "job_title": row.RecruiterProfile.job_title,
+        }
+        for row in rows.all()
+    ]
 
 
 # ---- RecruiterProfile -------------------------------------------------------

@@ -261,12 +261,20 @@ async def test_recruiter_cannot_access_other_org_templates(
     client: AsyncClient, recruiter_headers: dict[str, str]
 ) -> None:
     """A recruiter not linked to an org gets 403 on its templates."""
-    # Create org but don't link recruiter to it
-    org = await client.post(
-        "/organizations", headers=recruiter_headers, json={"name": "Other Corp"}
+    # Create a second recruiter that will own the org
+    await client.post(
+        "/auth/register",
+        json={"email": "owner_recruiter@test.com", "password": "pass1234", "role": "recruiter"},
     )
+    owner_login = await client.post(
+        "/auth/login", json={"email": "owner_recruiter@test.com", "password": "pass1234"}
+    )
+    owner_headers = {"Authorization": f"Bearer {owner_login.json()['access_token']}"}
+
+    # Owner creates the org (auto-linked as creator)
+    org = await client.post("/organizations", headers=owner_headers, json={"name": "Other Corp"})
     org_id = org.json()["id"]
-    # recruiter is not linked to this org
+    # Original recruiter is not linked to this org
     r = await client.get(f"/organizations/{org_id}/templates", headers=recruiter_headers)
     assert r.status_code == 403
 
@@ -407,8 +415,19 @@ async def test_list_accessible_candidates_excludes_revoked(
 async def test_list_accessible_candidates_requires_membership(
     client: AsyncClient, recruiter_headers: dict[str, str]
 ) -> None:
-    org = await client.post("/organizations", headers=recruiter_headers, json={"name": "Other Org"})
+    # Create a second recruiter that owns the org
+    await client.post(
+        "/auth/register",
+        json={"email": "owner2@test.com", "password": "pass1234", "role": "recruiter"},
+    )
+    owner_login = await client.post(
+        "/auth/login", json={"email": "owner2@test.com", "password": "pass1234"}
+    )
+    owner_headers = {"Authorization": f"Bearer {owner_login.json()['access_token']}"}
+
+    org = await client.post("/organizations", headers=owner_headers, json={"name": "Other Org"})
     org_id = org.json()["id"]
+    # Original recruiter is not linked to this org
     r = await client.get(f"/organizations/{org_id}/candidates", headers=recruiter_headers)
     assert r.status_code == 403
 
@@ -681,14 +700,108 @@ async def test_list_org_invitations_returns_created_invitations(
 async def test_list_org_invitations_requires_membership(
     client: AsyncClient, recruiter_headers: dict[str, str]
 ) -> None:
-    # Create org but do NOT link recruiter to it
-    org_r = await client.post(
-        "/organizations", headers=recruiter_headers, json={"name": "Other Corp"}
+    # Create a second recruiter that owns the org
+    await client.post(
+        "/auth/register",
+        json={"email": "owner3@test.com", "password": "pass1234", "role": "recruiter"},
     )
+    owner_login = await client.post(
+        "/auth/login", json={"email": "owner3@test.com", "password": "pass1234"}
+    )
+    owner_headers = {"Authorization": f"Bearer {owner_login.json()['access_token']}"}
+
+    org_r = await client.post("/organizations", headers=owner_headers, json={"name": "Other Corp"})
     other_org_id = org_r.json()["id"]
 
+    # Original recruiter (not linked to this org) should get 403
     r = await client.get(f"/organizations/{other_org_id}/invitations", headers=recruiter_headers)
     assert r.status_code == 403
+
+
+# ---- Atomic org creation + join/regen/members (Task 2) ---------------------
+
+
+async def test_create_org_links_creator(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    """Creating an org should automatically set creator's organization_id."""
+    r = await client.post(
+        "/organizations",
+        headers=recruiter_headers,
+        json={"name": "Atomic Corp"},
+    )
+    assert r.status_code == 201
+    org_id = r.json()["id"]
+
+    profile_r = await client.get("/recruiters/me/profile", headers=recruiter_headers)
+    assert profile_r.json()["organization_id"] == org_id
+
+
+async def test_join_organization_by_code(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    second_recruiter_headers: dict[str, str],
+) -> None:
+    """A second recruiter can join an org via its join_code."""
+    r = await client.post(
+        "/organizations",
+        headers=recruiter_headers,
+        json={"name": "Join Test Corp"},
+    )
+    join_code = r.json()["join_code"]
+
+    join_r = await client.post(
+        "/organizations/join",
+        headers=second_recruiter_headers,
+        json={"code": join_code},
+    )
+    assert join_r.status_code == 200
+    assert join_r.json()["organization_id"] == r.json()["id"]
+
+
+async def test_join_invalid_code_returns_404(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/organizations/join",
+        headers=recruiter_headers,
+        json={"code": "INVALID_CODE_XYZ"},
+    )
+    assert r.status_code == 404
+
+
+async def test_regenerate_join_code(client: AsyncClient, recruiter_headers: dict[str, str]) -> None:
+    r = await client.post(
+        "/organizations",
+        headers=recruiter_headers,
+        json={"name": "Regen Corp"},
+    )
+    org_id = r.json()["id"]
+    old_code = r.json()["join_code"]
+
+    regen_r = await client.post(
+        f"/organizations/{org_id}/regenerate-join-code",
+        headers=recruiter_headers,
+    )
+    assert regen_r.status_code == 200
+    assert regen_r.json()["join_code"] != old_code
+
+
+async def test_list_members(client: AsyncClient, recruiter_headers: dict[str, str]) -> None:
+    r = await client.post(
+        "/organizations",
+        headers=recruiter_headers,
+        json={"name": "Members Corp"},
+    )
+    org_id = r.json()["id"]
+
+    members_r = await client.get(
+        f"/organizations/{org_id}/members",
+        headers=recruiter_headers,
+    )
+    assert members_r.status_code == 200
+    assert len(members_r.json()) >= 1
+    assert "email" in members_r.json()[0]
 
 
 async def test_filter_candidates_by_max_daily_rate(

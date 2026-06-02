@@ -173,3 +173,21 @@ async def recruiter_headers(client: AsyncClient) -> dict[str, str]:
     )
     token = login.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+async def second_recruiter_headers(client: AsyncClient) -> dict[str, str]:
+    await client.post(
+        "/auth/register",
+        json={
+            "email": "recruiter2@test.com",
+            "password": "password123",
+            "role": "recruiter",
+        },
+    )
+    login = await client.post(
+        "/auth/login",
+        json={"email": "recruiter2@test.com", "password": "password123"},
+    )
+    token = login.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
