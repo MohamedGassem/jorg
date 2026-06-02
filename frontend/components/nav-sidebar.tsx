@@ -5,17 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   User,
-  Briefcase,
-  Mail,
   Shield,
   Clock,
   Settings,
-  FileText,
-  Send,
   Users,
   Zap,
-  Sparkles,
-  History,
   LayoutDashboard,
   LogOut,
 } from "lucide-react";
@@ -37,18 +31,13 @@ interface NavSidebarProps {
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   "/candidate/dashboard": LayoutDashboard,
   "/candidate/profile": User,
-  "/candidate/skills": Briefcase,
-  "/candidate/requests": Mail,
   "/candidate/access": Shield,
-  "/candidate/history": History,
   "/candidate/settings": Settings,
   "/recruiter/dashboard": LayoutDashboard,
-  "/recruiter/templates": FileText,
-  "/recruiter/invitations": Send,
   "/recruiter/candidates": Users,
   "/recruiter/opportunities": Zap,
-  "/recruiter/generate": Sparkles,
-  "/recruiter/history": Clock,
+  "/recruiter/documents": Clock,
+  "/recruiter/settings": Settings,
 };
 
 export function NavSidebar({ items, title, homeHref }: NavSidebarProps) {

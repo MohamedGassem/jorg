@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Mail, Shield, User } from "lucide-react";
 import { QuickActionCard } from "@/components/ui/QuickActionCard";
 import { StatCard } from "@/components/ui/StatCard";
+import { NotificationBell } from "@/components/notification-bell";
 import { api } from "@/lib/api";
 import type {
   CandidateProfile,
@@ -13,34 +14,7 @@ import type {
   OrganizationInteractionCard,
   Skill,
 } from "@/types/api";
-
-const EVENT_LABELS: Record<string, string> = {
-  invitation_sent: "Invitation envoyée",
-  invitation_accepted: "Invitation acceptée",
-  invitation_rejected: "Invitation refusée",
-  invitation_expired: "Invitation expirée",
-  access_granted: "Accès accordé",
-  access_revoked: "Accès révoqué",
-  document_generated: "Dossier généré",
-};
-
-const EVENT_ICONS: Record<string, string> = {
-  invitation_sent: "✉️",
-  invitation_accepted: "✅",
-  invitation_rejected: "❌",
-  invitation_expired: "⏰",
-  access_granted: "🔓",
-  access_revoked: "🔒",
-  document_generated: "📄",
-};
-
-function relativeDate(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "aujourd'hui";
-  if (days === 1) return "il y a 1j";
-  return `il y a ${days}j`;
-}
+import { EVENT_LABELS, EVENT_ICONS, relativeDate } from "@/lib/labels";
 
 function calcProfileCompletion(
   profile: CandidateProfile,
@@ -186,13 +160,16 @@ export default function CandidateDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">
-          Bonjour{firstName ? `, ${firstName}` : ""} 👋
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Voici l&apos;état de votre espace candidat
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">
+            Bonjour{firstName ? `, ${firstName}` : ""} 👋
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Voici l&apos;état de votre espace candidat
+          </p>
+        </div>
+        <NotificationBell portal="candidate" />
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -239,7 +216,7 @@ export default function CandidateDashboardPage() {
                 ? `${pendingInvitations} en attente de réponse`
                 : "Aucune invitation en attente"
             }
-            href="/candidate/requests"
+            href="/candidate/access"
             badge={pendingInvitations ?? undefined}
           />
           <QuickActionCard

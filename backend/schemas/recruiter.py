@@ -17,6 +17,10 @@ class OrganizationCreate(BaseModel):
     logo_url: str | None = None
 
 
+class OrgJoinRequest(BaseModel):
+    code: str
+
+
 class OrganizationRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -24,7 +28,16 @@ class OrganizationRead(BaseModel):
     name: str
     slug: str
     logo_url: str | None
+    join_code: str
     created_at: datetime
+
+
+class OrgMemberRead(BaseModel):
+    user_id: UUID
+    email: str
+    first_name: str | None
+    last_name: str | None
+    job_title: str | None
 
 
 # ---- RecruiterProfile -------------------------------------------------------

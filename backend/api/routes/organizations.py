@@ -1,22 +1,31 @@
 # backend/api/routes/organizations.py
 import re
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
 import core.storage as storage
 import services.recruiter_service as recruiter_service
 import services.template_service as template_service
 from api.deps import get_db, require_role
+from core.limiter import limiter
 from models.candidate_profile import AvailabilityStatus, ContractType, MissionDuration, WorkMode
-from models.recruiter import Organization
+from models.recruiter import Organization, RecruiterProfile
 from models.template import Template
 from models.user import User, UserRole
-from schemas.recruiter import AccessibleCandidateRead, OrganizationCreate, OrganizationRead
+from schemas.recruiter import (
+    AccessibleCandidateRead,
+    OrganizationCreate,
+    OrganizationRead,
+    OrgJoinRequest,
+    OrgMemberRead,
+    RecruiterProfileRead,
+)
 from schemas.template import TemplateMappingsUpdate, TemplateRead
 from services.docx_parser import extract_placeholders
 
@@ -37,8 +46,8 @@ async def _get_org_or_404(db: AsyncSession, org_id: UUID) -> Organization:
 
 async def _require_org_membership(db: AsyncSession, user_id: UUID, org_id: UUID) -> None:
     """Raise 403 if the recruiter is not linked to the given organization."""
-    profile = await recruiter_service.get_or_create_profile(db, user_id)
-    if profile.organization_id != org_id:
+    profile = await recruiter_service.get_profile(db, user_id)
+    if profile is None or profile.organization_id != org_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="you do not belong to this organization",
@@ -52,12 +61,51 @@ async def _require_org_membership(db: AsyncSession, user_id: UUID, org_id: UUID)
 async def create_organization(
     data: OrganizationCreate, current_user: RecruiterUser, db: DB
 ) -> Organization:
-    return await recruiter_service.create_organization(db, data)
+    return await recruiter_service.create_organization(db, data, created_by_user_id=current_user.id)
 
 
 @router.get("/{org_id}", response_model=OrganizationRead)
 async def get_organization(org_id: UUID, current_user: RecruiterUser, db: DB) -> Organization:
-    return await _get_org_or_404(db, org_id)
+    org = await _get_org_or_404(db, org_id)
+    await _require_org_membership(db, current_user.id, org_id)
+    return org
+
+
+@router.post("/join", response_model=RecruiterProfileRead)
+@limiter.limit("10/minute")
+async def join_organization_by_code(
+    request: Request,
+    data: OrgJoinRequest,
+    current_user: RecruiterUser,
+    db: DB,
+) -> RecruiterProfile:
+    try:
+        return await recruiter_service.join_organization(db, current_user.id, data.code)
+    except ValueError as e:
+        if str(e) == "already_in_org":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="already affiliated with a different organization",
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="invalid join code"
+        ) from e
+
+
+@router.post("/{org_id}/regenerate-join-code", response_model=OrganizationRead)
+async def regenerate_join_code_route(
+    org_id: UUID, current_user: RecruiterUser, db: DB
+) -> Organization:
+    org = await _get_org_or_404(db, org_id)
+    await _require_org_membership(db, current_user.id, org_id)
+    return await recruiter_service.regenerate_join_code(db, org)
+
+
+@router.get("/{org_id}/members", response_model=list[OrgMemberRead])
+async def list_members(org_id: UUID, current_user: RecruiterUser, db: DB) -> list[dict[str, Any]]:
+    await _get_org_or_404(db, org_id)
+    await _require_org_membership(db, current_user.id, org_id)
+    return await recruiter_service.list_org_members(db, org_id)
 
 
 # ---- Candidates -------------------------------------------------------------

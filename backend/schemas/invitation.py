@@ -18,6 +18,7 @@ class InvitationRead(BaseModel):
     id: UUID
     recruiter_id: UUID
     organization_id: UUID
+    organization_name: str | None = None  # joined from Organization
     candidate_email: str
     candidate_id: UUID | None
     token: str

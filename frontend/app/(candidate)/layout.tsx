@@ -4,10 +4,7 @@ import { NavSidebar } from "@/components/nav-sidebar";
 const candidateNav = [
   { href: "/candidate/dashboard", label: "Tableau de bord" },
   { href: "/candidate/profile", label: "Mon profil" },
-  { href: "/candidate/skills", label: "Compétences" },
-  { href: "/candidate/requests", label: "Invitations" },
-  { href: "/candidate/access", label: "Accès accordés" },
-  { href: "/candidate/history", label: "Historique" },
+  { href: "/candidate/access", label: "Accès" },
   { href: "/candidate/settings", label: "Paramètres" },
 ];
 

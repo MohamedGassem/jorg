@@ -66,13 +66,24 @@ async def test_candidate_cannot_create_invitation(
 async def test_unlinked_recruiter_cannot_invite(
     client: AsyncClient, recruiter_headers: dict[str, str]
 ) -> None:
-    # recruiter not linked to org → 403
+    # Create a second recruiter that is NOT linked to the org
+    await client.post(
+        "/auth/register",
+        json={"email": "other_recruiter@test.com", "password": "pass1234", "role": "recruiter"},
+    )
+    login2 = await client.post(
+        "/auth/login", json={"email": "other_recruiter@test.com", "password": "pass1234"}
+    )
+    other_headers = {"Authorization": f"Bearer {login2.json()['access_token']}"}
+
+    # First recruiter creates org (auto-linked as creator)
     org = await client.post("/organizations", headers=recruiter_headers, json={"name": "Other Org"})
     org_id = org.json()["id"]
-    # recruiter did NOT link to this org
+
+    # Other recruiter (not linked to this org) cannot invite
     r = await client.post(
         f"/organizations/{org_id}/invitations",
-        headers=recruiter_headers,
+        headers=other_headers,
         json={"candidate_email": "x@test.com"},
     )
     assert r.status_code == 403

@@ -1,5 +1,5 @@
 # backend/api/routes/invitations.py
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -67,7 +67,7 @@ async def list_org_invitations(
 
 
 @router.get("/invitations/me", response_model=list[InvitationRead])
-async def list_my_invitations(current_user: CandidateUser, db: DB) -> list[Invitation]:
+async def list_my_invitations(current_user: CandidateUser, db: DB) -> list[dict[str, Any]]:
     return await invitation_service.list_candidate_invitations(
         db, current_user.email, current_user.id
     )

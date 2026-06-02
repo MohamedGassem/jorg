@@ -973,7 +973,7 @@ function ExperienceCard({
   );
 }
 
-function ExperienceSection() {
+export function ExperienceSection() {
   const [items, setItems] = useState<Experience[]>([]);
   const [candidateSkills, setCandidateSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1220,7 +1220,7 @@ function skillToForm(skill: Skill): SkillForm {
   };
 }
 
-function SkillSection() {
+export function SkillSection() {
   const [items, setItems] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -1790,7 +1790,7 @@ function eduToForm(edu: Education): EduForm {
   };
 }
 
-function EducationSection() {
+export function EducationSection() {
   const [items, setItems] = useState<Education[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -2036,7 +2036,7 @@ function certToForm(cert: Certification): CertForm {
   };
 }
 
-function CertificationSection() {
+export function CertificationSection() {
   const [items, setItems] = useState<Certification[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -2262,7 +2262,7 @@ function CertificationSection() {
 type LangForm = { name: string; level: LanguageLevel };
 const EMPTY_LANG: LangForm = { name: "", level: "B2" };
 
-function LanguageSection() {
+export function LanguageSection() {
   const [items, setItems] = useState<Language[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -2452,22 +2452,9 @@ function LanguageSection() {
 // ---- Page -------------------------------------------------------------------
 
 export default function SkillsPage() {
-  return (
-    <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          Profil de compétences
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Expériences, compétences, formations et certifications utilisées pour
-          générer vos profils.
-        </p>
-      </div>
-      <ExperienceSection />
-      <SkillSection />
-      <EducationSection />
-      <CertificationSection />
-      <LanguageSection />
-    </div>
-  );
+  // Merged into /candidate/profile?tab=competences (see UX Refonte plan)
+  if (typeof window !== "undefined") {
+    window.location.replace("/candidate/profile?tab=competences");
+  }
+  return null;
 }

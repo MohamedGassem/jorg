@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { FileText, Mail, Sparkles, Users } from "lucide-react";
 import { QuickActionCard } from "@/components/ui/QuickActionCard";
 import { StatCard } from "@/components/ui/StatCard";
+import { OnboardingOrg } from "@/components/onboarding-org";
+import { NotificationBell } from "@/components/notification-bell";
 import { api } from "@/lib/api";
 import { useRecruiterOrg } from "@/lib/hooks";
 import type {
@@ -12,14 +14,7 @@ import type {
   Invitation,
   OpportunityRead,
 } from "@/types/api";
-
-function relativeDate(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "aujourd'hui";
-  if (days === 1) return "il y a 1j";
-  return `il y a ${days}j`;
-}
+import { relativeDate } from "@/lib/labels";
 
 export default function RecruiterDashboardPage() {
   const { orgId, profile, loading: orgLoading } = useRecruiterOrg();
@@ -109,10 +104,14 @@ export default function RecruiterDashboardPage() {
 
   if (!orgId) {
     return (
-      <div className="rounded-xl border border-border bg-card p-6">
-        <p className="text-sm text-muted-foreground">
-          Vous n&apos;êtes pas encore rattaché à une organisation.
-        </p>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Bienvenue sur Jorg 👋</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Commencez par configurer votre organisation.
+          </p>
+        </div>
+        <OnboardingOrg onSuccess={() => window.location.reload()} />
       </div>
     );
   }
@@ -121,13 +120,16 @@ export default function RecruiterDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">
-          Bonjour{firstName ? `, ${firstName}` : ""} 👋
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Aperçu de votre activité recrutement
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">
+            Bonjour{firstName ? `, ${firstName}` : ""} 👋
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Aperçu de votre activité recrutement
+          </p>
+        </div>
+        <NotificationBell portal="recruiter" orgId={orgId} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -164,13 +166,13 @@ export default function RecruiterDashboardPage() {
             icon={Mail}
             label="Inviter un candidat"
             description="Envoyer une invitation par email"
-            href="/recruiter/invitations"
+            href="/recruiter/candidates"
           />
           <QuickActionCard
             icon={Sparkles}
             label="Générer un dossier"
             description="Créer un dossier candidat"
-            href="/recruiter/generate"
+            href="/recruiter/candidates"
           />
           <QuickActionCard
             icon={Users}

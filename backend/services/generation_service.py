@@ -166,6 +166,7 @@ async def list_candidate_documents_view(
             GeneratedDocument.generated_at,
             GeneratedDocument.file_format,
             Organization.name.label("organization_name"),
+            AccessGrant.organization_id.label("organization_id"),
             Template.name.label("template_name"),
         )
         .join(AccessGrant, GeneratedDocument.access_grant_id == AccessGrant.id)
@@ -180,6 +181,7 @@ async def list_candidate_documents_view(
             generated_at=row.generated_at,
             file_format=row.file_format,
             organization_name=row.organization_name,
+            organization_id=row.organization_id,
             template_name=row.template_name,
         )
         for row in rows.all()
