@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -168,9 +169,9 @@ export default function OpportunityDetailPage() {
           {opp.shortlist.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               Aucun candidat. Ajoutez-en depuis la{" "}
-              <a href="/recruiter/candidates" className="underline">
+              <Link href="/recruiter/candidates" className="underline">
                 liste des candidats
-              </a>
+              </Link>
               .
             </p>
           ) : (
