@@ -12,14 +12,7 @@ import type {
   Invitation,
   OpportunityRead,
 } from "@/types/api";
-
-function relativeDate(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "aujourd'hui";
-  if (days === 1) return "il y a 1j";
-  return `il y a ${days}j`;
-}
+import { relativeDate } from "@/lib/labels";
 
 export default function RecruiterDashboardPage() {
   const { orgId, profile, loading: orgLoading } = useRecruiterOrg();

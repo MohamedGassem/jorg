@@ -9,33 +9,11 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { api, ApiError } from "@/lib/api";
 import { useAsyncData } from "@/lib/hooks";
 import type { OrganizationInteractionCard } from "@/types/api";
-
-const STATUS_LABELS: Record<string, string> = {
-  active: "Accès actif",
-  invited: "Invitation en attente",
-  revoked: "Accès révoqué",
-  expired: "Invitation expirée",
-};
-
-const STATUS_VARIANTS: Record<
-  string,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  active: "default",
-  invited: "secondary",
-  revoked: "destructive",
-  expired: "outline",
-};
-
-const EVENT_LABELS: Record<string, string> = {
-  invitation_sent: "Invitation envoyée",
-  invitation_accepted: "Invitation acceptée",
-  invitation_rejected: "Invitation refusée",
-  invitation_expired: "Invitation expirée",
-  access_granted: "Accès accordé",
-  access_revoked: "Accès révoqué",
-  document_generated: "Dossier généré",
-};
+import {
+  ACCESS_STATUS_LABELS as STATUS_LABELS,
+  ACCESS_STATUS_VARIANTS as STATUS_VARIANTS,
+  EVENT_LABELS,
+} from "@/lib/labels";
 
 export default function AccessPage() {
   const {

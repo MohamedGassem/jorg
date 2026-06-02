@@ -13,34 +13,7 @@ import type {
   OrganizationInteractionCard,
   Skill,
 } from "@/types/api";
-
-const EVENT_LABELS: Record<string, string> = {
-  invitation_sent: "Invitation envoyée",
-  invitation_accepted: "Invitation acceptée",
-  invitation_rejected: "Invitation refusée",
-  invitation_expired: "Invitation expirée",
-  access_granted: "Accès accordé",
-  access_revoked: "Accès révoqué",
-  document_generated: "Dossier généré",
-};
-
-const EVENT_ICONS: Record<string, string> = {
-  invitation_sent: "✉️",
-  invitation_accepted: "✅",
-  invitation_rejected: "❌",
-  invitation_expired: "⏰",
-  access_granted: "🔓",
-  access_revoked: "🔒",
-  document_generated: "📄",
-};
-
-function relativeDate(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "aujourd'hui";
-  if (days === 1) return "il y a 1j";
-  return `il y a ${days}j`;
-}
+import { EVENT_LABELS, EVENT_ICONS, relativeDate } from "@/lib/labels";
 
 function calcProfileCompletion(
   profile: CandidateProfile,

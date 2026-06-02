@@ -180,6 +180,7 @@ export interface Organization {
   name: string;
   slug: string;
   logo_url: string | null;
+  join_code: string;
   created_at: string;
 }
 
@@ -192,6 +193,14 @@ export interface RecruiterProfile {
   job_title: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface OrgMember {
+  user_id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  job_title: string | null;
 }
 
 export interface Template {
@@ -213,6 +222,7 @@ export interface Invitation {
   id: string;
   recruiter_id: string;
   organization_id: string;
+  organization_name: string | null;
   candidate_email: string;
   candidate_id: string | null;
   token: string;

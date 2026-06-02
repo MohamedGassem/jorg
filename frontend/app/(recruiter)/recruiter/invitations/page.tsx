@@ -11,23 +11,10 @@ import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
 import { useRecruiterOrg } from "@/lib/hooks";
 import type { Invitation } from "@/types/api";
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: "En attente",
-  accepted: "Acceptée",
-  rejected: "Refusée",
-  expired: "Expirée",
-};
-
-const STATUS_VARIANTS: Record<
-  string,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  pending: "default",
-  accepted: "secondary",
-  rejected: "destructive",
-  expired: "outline",
-};
+import {
+  INVITATION_STATUS_LABELS as STATUS_LABELS,
+  INVITATION_STATUS_VARIANTS as STATUS_VARIANTS,
+} from "@/lib/labels";
 
 export default function InvitationsPage() {
   const { orgId, loading: orgLoading } = useRecruiterOrg();

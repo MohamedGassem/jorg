@@ -10,21 +10,10 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { api, ApiError } from "@/lib/api";
 import { useAsyncData } from "@/lib/hooks";
 import type { Invitation } from "@/types/api";
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: "En attente",
-  accepted: "Acceptée",
-  rejected: "Refusée",
-  expired: "Expirée",
-};
-
-const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive"> =
-  {
-    pending: "default",
-    accepted: "secondary",
-    rejected: "destructive",
-    expired: "secondary",
-  };
+import {
+  INVITATION_STATUS_LABELS as STATUS_LABELS,
+  INVITATION_STATUS_VARIANTS as STATUS_VARIANTS,
+} from "@/lib/labels";
 
 export default function RequestsPage() {
   const {
