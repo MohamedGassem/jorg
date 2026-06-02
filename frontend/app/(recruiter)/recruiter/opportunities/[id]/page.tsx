@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -13,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Breadcrumb } from "@/components/breadcrumb";
 import { api, ApiError } from "@/lib/api";
 import type {
   BulkGenerateResult,
@@ -37,7 +39,10 @@ export default function OpportunityDetailPage() {
   const [genTemplateId, setGenTemplateId] = useState("");
   const [genFormat, setGenFormat] = useState("docx");
   const [generating, setGenerating] = useState(false);
-  const [genResults, setGenResults] = useState<BulkGenerateResult[] | null>(null);
+  const [genResults, setGenResults] = useState<BulkGenerateResult[] | null>(
+    null,
+  );
+  const [bulkError, setBulkError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
 
   useEffect(() => {
@@ -48,25 +53,23 @@ export default function OpportunityDetailPage() {
         if (!p.organization_id) return;
         const [oppData, tmplData] = await Promise.all([
           api.get<OpportunityDetail>(
-            `/organizations/${p.organization_id}/opportunities/${oppId}`
+            `/organizations/${p.organization_id}/opportunities/${oppId}`,
           ),
           api.get<TemplateItem[]>(
-            `/organizations/${p.organization_id}/templates`
+            `/organizations/${p.organization_id}/templates`,
           ),
         ]);
         setOpp(oppData);
         setTemplates(tmplData.filter((t) => t.is_valid));
       })
-      .catch((err) =>
-        setError(err instanceof ApiError ? err.detail : "Erreur")
-      )
+      .catch((err) => setError(err instanceof ApiError ? err.detail : "Erreur"))
       .finally(() => setLoading(false));
   }, [oppId]);
 
   async function handleRemove(candidateId: string) {
     if (!orgId || !opp) return;
     await api.delete(
-      `/organizations/${orgId}/opportunities/${opp.id}/candidates/${candidateId}`
+      `/organizations/${orgId}/opportunities/${opp.id}/candidates/${candidateId}`,
     );
     setOpp((prev) =>
       prev
@@ -74,7 +77,7 @@ export default function OpportunityDetailPage() {
             ...prev,
             shortlist: prev.shortlist.filter((c) => c.user_id !== candidateId),
           }
-        : prev
+        : prev,
     );
   }
 
@@ -85,11 +88,13 @@ export default function OpportunityDetailPage() {
     try {
       const results = await api.post<BulkGenerateResult[]>(
         `/organizations/${orgId}/opportunities/${opp.id}/generate`,
-        { template_id: genTemplateId, format: genFormat }
+        { template_id: genTemplateId, format: genFormat },
       );
       setGenResults(results);
     } catch (err) {
-      alert(err instanceof ApiError ? err.detail : "Erreur");
+      setBulkError(
+        err instanceof ApiError ? err.detail : "Erreur lors de la génération",
+      );
     } finally {
       setGenerating(false);
     }
@@ -101,7 +106,7 @@ export default function OpportunityDetailPage() {
     try {
       const updated = await api.patch<OpportunityDetail>(
         `/organizations/${orgId}/opportunities/${opp.id}`,
-        { status: "closed" }
+        { status: "closed" },
       );
       setOpp((prev) => (prev ? { ...prev, status: updated.status } : prev));
     } finally {
@@ -120,6 +125,12 @@ export default function OpportunityDetailPage() {
 
   return (
     <div className="max-w-3xl space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Opportunités", href: "/recruiter/opportunities" },
+          { label: opp.title },
+        ]}
+      />
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{opp.title}</h1>
@@ -202,7 +213,10 @@ export default function OpportunityDetailPage() {
             <form onSubmit={handleBulkGenerate} className="space-y-4">
               <div className="space-y-2">
                 <Label>Template</Label>
-                <Select value={genTemplateId} onValueChange={(v) => setGenTemplateId(v ?? "")}>
+                <Select
+                  value={genTemplateId}
+                  onValueChange={(v) => setGenTemplateId(v ?? "")}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Choisir un template…" />
                   </SelectTrigger>
@@ -217,7 +231,10 @@ export default function OpportunityDetailPage() {
               </div>
               <div className="space-y-2">
                 <Label>Format</Label>
-                <Select value={genFormat} onValueChange={(v) => setGenFormat(v ?? "docx")}>
+                <Select
+                  value={genFormat}
+                  onValueChange={(v) => setGenFormat(v ?? "docx")}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -227,15 +244,13 @@ export default function OpportunityDetailPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button
-                type="submit"
-                disabled={generating || !genTemplateId}
-              >
+              <Button type="submit" disabled={generating || !genTemplateId}>
                 {generating
                   ? "Génération en cours…"
                   : `Générer pour ${opp.shortlist.length} candidat${opp.shortlist.length > 1 ? "s" : ""}`}
               </Button>
             </form>
+            <ErrorAlert error={bulkError} />
 
             {genResults && (
               <div className="mt-4 space-y-1">
