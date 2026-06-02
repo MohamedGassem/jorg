@@ -1,7 +1,7 @@
 # backend/api/routes/organizations.py
 import re
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
@@ -102,7 +102,7 @@ async def regenerate_join_code_route(
 
 
 @router.get("/{org_id}/members", response_model=list[OrgMemberRead])
-async def list_members(org_id: UUID, current_user: RecruiterUser, db: DB) -> list[dict]:
+async def list_members(org_id: UUID, current_user: RecruiterUser, db: DB) -> list[dict[str, Any]]:
     await _get_org_or_404(db, org_id)
     await _require_org_membership(db, current_user.id, org_id)
     return await recruiter_service.list_org_members(db, org_id)

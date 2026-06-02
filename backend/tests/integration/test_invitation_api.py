@@ -4,8 +4,8 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_candidate_invitations_include_org_name(
-    client: AsyncClient, recruiter_headers: dict, candidate_headers: dict
-):
+    client: AsyncClient, recruiter_headers: dict[str, str], candidate_headers: dict[str, str]
+) -> None:
     # recruiter creates org (auto-linked via atomic creation) + sends invitation
     org_r = await client.post(
         "/organizations",

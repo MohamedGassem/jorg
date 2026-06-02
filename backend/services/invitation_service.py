@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -60,7 +61,7 @@ async def get_invitation_by_token(db: AsyncSession, token: str) -> Invitation | 
 
 async def list_candidate_invitations(
     db: AsyncSession, candidate_email: str, candidate_id: UUID
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Return invitations with org name joined."""
     from models.recruiter import Organization
 
