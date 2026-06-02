@@ -3,12 +3,10 @@ import { NavSidebar } from "@/components/nav-sidebar";
 
 const recruiterNav = [
   { href: "/recruiter/dashboard", label: "Tableau de bord" },
-  { href: "/recruiter/templates", label: "Templates" },
-  { href: "/recruiter/invitations", label: "Invitations" },
   { href: "/recruiter/candidates", label: "Candidats" },
   { href: "/recruiter/opportunities", label: "Opportunités" },
-  { href: "/recruiter/generate", label: "Générer" },
-  { href: "/recruiter/history", label: "Historique" },
+  { href: "/recruiter/documents", label: "Dossiers" },
+  { href: "/recruiter/settings", label: "Configuration" },
 ];
 
 export default function RecruiterLayout({
