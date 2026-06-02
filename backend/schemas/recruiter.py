@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict
 from models.candidate_profile import AvailabilityStatus, ContractType, WorkMode
 from schemas.candidate import ExperienceRead
 
+# ---- Organization -----------------------------------------------------------
+
 
 class OrganizationCreate(BaseModel):
     name: str
@@ -38,7 +40,12 @@ class OrgMemberRead(BaseModel):
     job_title: str | None
 
 
+# ---- RecruiterProfile -------------------------------------------------------
+
+
 class RecruiterProfileUpdate(BaseModel):
+    """Tous les champs optionnels — sémantique PATCH appliquée via PUT."""
+
     first_name: str | None = None
     last_name: str | None = None
     job_title: str | None = None
@@ -58,7 +65,12 @@ class RecruiterProfileRead(BaseModel):
     updated_at: datetime
 
 
+# ---- AccessibleCandidate ----------------------------------------------------
+
+
 class AccessibleCandidateRead(BaseModel):
+    """Candidate exposed to a recruiter via an active AccessGrant."""
+
     model_config = ConfigDict(from_attributes=True)
 
     user_id: UUID

@@ -550,7 +550,7 @@ async def test_create_organization_has_join_code(
     assert r.status_code == 201
     body = r.json()
     assert "join_code" in body
-    assert len(body["join_code"]) >= 6
+    assert len(body["join_code"]) == 8
 
 
 # ---- Candidate filters (C3) -------------------------------------------------
