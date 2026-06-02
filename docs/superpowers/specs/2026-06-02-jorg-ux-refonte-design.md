@@ -89,6 +89,12 @@ Retirés du nav : **Compétences** (→ onglet de Profil), **Invitations** + **H
   `/candidates/me/organizations` (la « Activité récente » du dashboard) ; **recruteur** = dossiers récents +
   candidats nouvellement accessibles (données déjà chargées au dashboard). MVP : lecture + lien vers la page
   concernée, **pas de persistance ni d'état lu/non-lu**.
+
+  > ⚠️ **MVP = centre d'activité rapide, pas un système de notifications.** Sans état lu/non-lu, la cloche
+  > affiche toujours les mêmes éléments entre deux consultations — ce n'est pas une notification, c'est un
+  > raccourci. Communiquer explicitement cela dans les releases notes. La persistance de l'état lu est
+  > hors-périmètre (voir §10).
+
 - **Fils d'Ariane** in-page sur `candidates/[id]`, `opportunities/[id]`, et la zone Templates de Configuration.
 
 ## 5. Portail Recruteur — détail
@@ -116,8 +122,11 @@ La page riche existante (`recruiter/candidates/page.tsx`) enrichie d'actions :
 
 Réutilise `CandidateExperiencePanel` déjà écrit + fil d'Ariane + mêmes actions (Générer, +Opportunité).
 Deep-linkable. **MVP : données via l'endpoint existant `/organizations/{org}/candidates` filtré par `id`
-côté client** (aucun nouveau backend) ; un `GET /organizations/{org}/candidates/{id}` dédié est une
-optimisation ultérieure (hors-périmètre).
+côté client** (aucun nouveau backend).
+
+> ⚠️ **Dette technique connue.** Ce pattern charge toute la liste (N candidats) pour en afficher un seul.
+> Acceptable pour les volumes actuels ; inacceptable à 100+ candidats. **Ticket à créer immédiatement :**
+> `GET /organizations/{org}/candidates/{id}` — endpoint dédié, priorité haute pour le sprint suivant.
 
 ### 5.4 Opportunités
 
@@ -136,6 +145,12 @@ L'actuelle page « Historique » renommée (nav + h1 « Dossiers »). Route dép
 - **Membres** : liste (nouveau `GET /organizations/{id}/members`) + **[Copier le lien d'invitation]**
   (`…/join/<join_code>`) + **[Régénérer le code]**.
 - **Templates** : pages Templates existantes atteintes ici (routes inchangées, dé-promues du nav).
+
+> ⚠️ **Templates dans Configuration = dé-promotion tactique, pas structurelle.** Templates est une
+> fonctionnalité métier à part entière (versioning, catégories, variables, prévisualisation, analytics sont
+> des évolutions naturelles). Il est placé ici car son usage actuel est ponctuel (upload + mapping = config
+> one-shot). **Si les Templates grossissent, ils devront remonter en entrée de navigation de premier niveau.**
+> Documenter explicitement cette dette d'IA lors de toute évolution du module.
 
 ## 6. Portail Candidat — détail
 
@@ -224,10 +239,34 @@ Glossaire centralisé dans **`frontend/lib/labels.ts`** (supprime aussi les `STA
 - Sécurité du join → `join_code` **aléatoire** (jamais le slug) ; régénérable.
 - Migration `join_code` → **backfill** des organisations existantes avec un code généré.
 
+**Dettes produit assumées (à documenter explicitement, à ne pas confondre avec « réglé »)**
+
+- **Absence de rôles et permissions dans les organisations.** Aujourd'hui, tout membre d'une orga peut
+  inviter des candidats, régénérer le code de jonction, et générer des dossiers. Un contexte multi-équipes
+  (RH, manager, prestataire externe) pourrait exiger des permissions différenciées. Ce sujet est
+  explicitement différé — il nécessite un modèle de rôle/ownership complet.
+- **Endpoint détail candidat manquant.** `GET /organizations/{org}/candidates/{id}` est une dette technique
+  identifiée (voir §5.3). Un ticket doit être créé au début du sprint.
+- **Templates dé-promu temporairement.** Voir §5.6 — à réévaluer dès que le module évolue.
+- **Notification Bell = centre d'activité MVP.** Voir §4.3 — pas un système de notifications complet.
+
+**Rôle du Dashboard recruteur après simplification**
+
+Avec les actions déplacées vers Candidats et les dossiers dans Dossiers, le dashboard doit conserver
+une **valeur propre** : vue d'activité récente (candidats nouvellement accessibles, dossiers générés,
+invitations en attente), KPIs (4 compteurs existants), et CTA onboarding si pas d'orga. Il ne doit
+**pas** devenir une simple page d'accueil sans contenu actionnable. Si à l'implémentation le dashboard
+se vide, remonter la question avant de livrer.
+
 **Hors-périmètre (explicite)**
 
 - Hiérarchie de rôles/admin, approbation d'adhésion, invitations d'orga par **email**.
 - Persistance des notifications / état lu-non-lu / temps réel.
+- **Recherche globale transversale** (candidats + opportunités + dossiers) — à forte valeur UX, à
+  planifier en sprint dédié.
+- Permissions avancées par membre d'organisation.
+- Historique d'activité persistant (logs côté admin).
+- Analytics d'usage des dossiers/templates.
 - Réécriture de l'authentification (plan de sécurité séparé).
 
 ## 11. Critères d'acceptation (haut niveau)
