@@ -212,7 +212,7 @@ export default function CandidateDashboardPage() {
                 ? `${pendingInvitations} en attente de réponse`
                 : "Aucune invitation en attente"
             }
-            href="/candidate/requests"
+            href="/candidate/access"
             badge={pendingInvitations ?? undefined}
           />
           <QuickActionCard
