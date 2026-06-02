@@ -215,6 +215,37 @@ async def test_recruiter_org_history(
 # ---- download ---------------------------------------------------------------
 
 
+async def test_candidate_documents_no_file_path(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+) -> None:
+    """Candidate document list must not expose file_path."""
+    r = await client.get("/candidates/me/documents", headers=candidate_headers)
+    assert r.status_code == 200
+    docs = r.json()
+    for doc in docs:
+        assert "file_path" not in doc
+
+
+async def test_candidate_documents_have_org_and_template_name(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> None:
+    """Candidate document list includes organization_name and template_name."""
+    # This test requires a real document to exist. If none exist, it's a no-op.
+    r = await client.get("/candidates/me/documents", headers=candidate_headers)
+    assert r.status_code == 200
+    docs = r.json()
+    for doc in docs:
+        assert "organization_name" in doc
+        assert "template_name" in doc
+        assert "file_path" not in doc
+
+
+# ---- download ---------------------------------------------------------------
+
+
 async def test_download_generated_document(
     client: AsyncClient,
     recruiter_headers: dict[str, str],
