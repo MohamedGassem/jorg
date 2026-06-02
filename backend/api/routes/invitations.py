@@ -67,7 +67,7 @@ async def list_org_invitations(
 
 
 @router.get("/invitations/me", response_model=list[InvitationRead])
-async def list_my_invitations(current_user: CandidateUser, db: DB) -> list[Invitation]:
+async def list_my_invitations(current_user: CandidateUser, db: DB) -> list[dict]:
     return await invitation_service.list_candidate_invitations(
         db, current_user.email, current_user.id
     )

@@ -60,15 +60,36 @@ async def get_invitation_by_token(db: AsyncSession, token: str) -> Invitation | 
 
 async def list_candidate_invitations(
     db: AsyncSession, candidate_email: str, candidate_id: UUID
-) -> list[Invitation]:
-    """Return invitations sent to this candidate (by email or user id)."""
-    result = await db.execute(
-        select(Invitation).where(
+) -> list[dict]:
+    """Return invitations with org name joined."""
+    from models.recruiter import Organization
+
+    rows = await db.execute(
+        select(Invitation, Organization.name.label("organization_name"))
+        .outerjoin(Organization, Invitation.organization_id == Organization.id)
+        .where(
             (Invitation.candidate_email == candidate_email)
             | (Invitation.candidate_id == candidate_id)
         )
     )
-    return list(result.scalars().all())
+    result = []
+    for row in rows.all():
+        inv = row.Invitation
+        result.append(
+            {
+                "id": inv.id,
+                "recruiter_id": inv.recruiter_id,
+                "organization_id": inv.organization_id,
+                "organization_name": row.organization_name,
+                "candidate_email": inv.candidate_email,
+                "candidate_id": inv.candidate_id,
+                "token": inv.token,
+                "status": inv.status,
+                "expires_at": inv.expires_at,
+                "created_at": inv.created_at,
+            }
+        )
+    return result
 
 
 async def list_org_invitations(db: AsyncSession, org_id: UUID) -> list[Invitation]:
