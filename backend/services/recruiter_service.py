@@ -90,13 +90,18 @@ async def get_organization_by_join_code(db: AsyncSession, code: str) -> Organiza
 
 
 async def join_organization(db: AsyncSession, user_id: UUID, code: str) -> RecruiterProfile:
-    """Join org by join_code. Idempotent if already a member. Raises ValueError on bad code."""
+    """Join org by join_code. Idempotent if already a member.
+
+    Raises ValueError on bad code or already_in_org (different org).
+    """
     org = await get_organization_by_join_code(db, code)
     if org is None:
         raise ValueError("invalid_code")
     profile = await get_or_create_profile(db, user_id)
     if profile.organization_id == org.id:
-        return profile  # already member
+        return profile  # already member — idempotent
+    if profile.organization_id is not None:
+        raise ValueError("already_in_org")  # already in a different org
     profile.organization_id = org.id
     await db.commit()
     await db.refresh(profile)

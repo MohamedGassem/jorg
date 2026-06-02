@@ -18,11 +18,17 @@ import {
 import Link from "next/link";
 import { InviteCandidateDialog } from "@/components/invite-candidate-dialog";
 import { GenerateDossierDialog } from "@/components/generate-dossier-dialog";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
+import {
+  INVITATION_STATUS_LABELS,
+  INVITATION_STATUS_VARIANTS,
+} from "@/lib/labels";
 import type {
   AccessibleCandidateRead,
+  Invitation,
   OpportunityRead,
   Template,
 } from "@/types/api";
@@ -211,6 +217,8 @@ export default function CandidatesPage() {
   const [expandedCandidates, setExpandedCandidates] = useState<Set<string>>(
     new Set(),
   );
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [showInvitations, setShowInvitations] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [generateFor, setGenerateFor] = useState<{
     candidateId: string;
@@ -257,6 +265,10 @@ export default function CandidatesPage() {
       api
         .get<Template[]>(`/organizations/${orgId}/templates`)
         .then(setTemplates)
+        .catch(() => {}),
+      api
+        .get<Invitation[]>(`/organizations/${orgId}/invitations`)
+        .then(setInvitations)
         .catch(() => {}),
     ]);
   }, [orgId, fetchCandidates]);
@@ -467,6 +479,45 @@ export default function CandidatesPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Sent invitations collapsible */}
+      {invitations.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowInvitations((v) => !v)}
+            className="text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+          >
+            Invitations envoyées ({invitations.length})
+            {invitations.filter((i) => i.status === "pending").length > 0 &&
+              ` · ${invitations.filter((i) => i.status === "pending").length} en attente`}
+          </button>
+          {showInvitations && (
+            <ul className="mt-2 space-y-1">
+              {invitations.map((inv) => (
+                <li
+                  key={inv.id}
+                  className="flex items-center justify-between rounded border border-border/40 px-3 py-2 text-sm"
+                >
+                  <span className="text-muted-foreground">
+                    {inv.candidate_email}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(inv.expires_at).toLocaleDateString("fr-FR")}
+                    </span>
+                    <StatusBadge
+                      status={inv.status}
+                      labels={INVITATION_STATUS_LABELS}
+                      variants={INVITATION_STATUS_VARIANTS}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <ErrorAlert error={error ?? candidatesError} />
       {candidates.length === 0 ? (

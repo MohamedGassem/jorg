@@ -7,11 +7,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
 import core.storage as storage
 import services.recruiter_service as recruiter_service
 import services.template_service as template_service
 from api.deps import get_db, require_role
+from core.limiter import limiter
 from models.candidate_profile import AvailabilityStatus, ContractType, MissionDuration, WorkMode
 from models.recruiter import Organization, RecruiterProfile
 from models.template import Template
@@ -64,19 +66,30 @@ async def create_organization(
 
 @router.get("/{org_id}", response_model=OrganizationRead)
 async def get_organization(org_id: UUID, current_user: RecruiterUser, db: DB) -> Organization:
-    return await _get_org_or_404(db, org_id)
+    org = await _get_org_or_404(db, org_id)
+    await _require_org_membership(db, current_user.id, org_id)
+    return org
 
 
 @router.post("/join", response_model=RecruiterProfileRead)
+@limiter.limit("10/minute")
 async def join_organization_by_code(
-    data: OrgJoinRequest, current_user: RecruiterUser, db: DB
+    request: Request,
+    data: OrgJoinRequest,
+    current_user: RecruiterUser,
+    db: DB,
 ) -> RecruiterProfile:
     try:
         return await recruiter_service.join_organization(db, current_user.id, data.code)
-    except ValueError as err:
+    except ValueError as e:
+        if str(e) == "already_in_org":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="already affiliated with a different organization",
+            ) from e
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="invalid join code"
-        ) from err
+        ) from e
 
 
 @router.post("/{org_id}/regenerate-join-code", response_model=OrganizationRead)

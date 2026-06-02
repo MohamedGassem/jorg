@@ -509,13 +509,7 @@ const TABS: { key: ProfileTab; label: string }[] = [
   { key: "langues", label: "Langues" },
 ];
 
-const VALID_TABS = new Set<ProfileTab>([
-  "informations",
-  "experiences",
-  "competences",
-  "formation",
-  "langues",
-]);
+const VALID_TABS = new Set(TABS.map((t) => t.key));
 
 function ProfileTabs() {
   const searchParams = useSearchParams();
