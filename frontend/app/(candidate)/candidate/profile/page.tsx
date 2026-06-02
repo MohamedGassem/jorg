@@ -33,11 +33,19 @@ import {
   LanguageSection,
 } from "@/app/(candidate)/candidate/skills/page";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   VALID_DOMAINS,
   type AvailabilityStatus,
   type CandidateProfile,
   type ContractType,
+  type Experience,
   type MissionDuration,
+  type Skill,
   type WorkMode,
 } from "@/types/api";
 
@@ -545,6 +553,31 @@ function ProfileTabs() {
 }
 
 export default function ProfilePage() {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewData, setPreviewData] = useState<{
+    profile: CandidateProfile | null;
+    experiences: Experience[];
+    skills: Skill[];
+  } | null>(null);
+
+  async function loadPreview() {
+    setPreviewLoading(true);
+    setPreviewOpen(true);
+    try {
+      const [profile, experiences, skills] = await Promise.all([
+        api.get<CandidateProfile>("/candidates/me/profile"),
+        api.get<Experience[]>("/candidates/me/experiences"),
+        api.get<Skill[]>("/candidates/me/skills"),
+      ]);
+      setPreviewData({ profile, experiences, skills });
+    } catch {
+      // show partial data on error
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
   return (
     <div className="max-w-3xl space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -556,7 +589,12 @@ export default function ProfilePage() {
             Informations personnelles et profil de compétences.
           </p>
         </div>
-        <NotificationBell portal="candidate" />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={loadPreview}>
+            Aperçu recruteur
+          </Button>
+          <NotificationBell portal="candidate" />
+        </div>
       </div>
       {/* Suspense required for useSearchParams in Next.js App Router */}
       <Suspense
@@ -564,6 +602,78 @@ export default function ProfilePage() {
       >
         <ProfileTabs />
       </Suspense>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Aperçu recruteur</DialogTitle>
+          </DialogHeader>
+          {previewLoading ? (
+            <p className="text-sm text-muted-foreground">Chargement…</p>
+          ) : previewData ? (
+            <div className="space-y-4 text-sm">
+              {previewData.profile && (
+                <div>
+                  <p className="font-semibold text-base">
+                    {previewData.profile.first_name}{" "}
+                    {previewData.profile.last_name}
+                  </p>
+                  {previewData.profile.title && (
+                    <p className="text-muted-foreground">
+                      {previewData.profile.title}
+                    </p>
+                  )}
+                  {previewData.profile.summary && (
+                    <p className="mt-2">{previewData.profile.summary}</p>
+                  )}
+                </div>
+              )}
+              {previewData.skills.filter((s) => s.featured).length > 0 && (
+                <div>
+                  <p className="font-medium mb-1">Compétences clés</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {previewData.skills
+                      .filter((s) => s.featured)
+                      .map((s) => (
+                        <span
+                          key={s.id}
+                          className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary"
+                        >
+                          {s.skill_ref.name}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+              )}
+              {previewData.experiences.length > 0 && (
+                <div>
+                  <p className="font-medium mb-2">Expériences</p>
+                  <div className="space-y-3">
+                    {previewData.experiences.map((exp) => (
+                      <div
+                        key={exp.id}
+                        className="rounded border border-border/40 p-3"
+                      >
+                        <p className="font-medium">
+                          {exp.client_name} — {exp.role}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {exp.start_date}
+                          {exp.end_date
+                            ? ` → ${exp.end_date}`
+                            : exp.is_current
+                              ? " → présent"
+                              : ""}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
