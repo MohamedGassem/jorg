@@ -37,4 +37,5 @@ class GeneratedDocumentCandidateView(BaseModel):
     generated_at: datetime
     file_format: str
     organization_name: str
+    organization_id: UUID
     template_name: str

@@ -256,6 +256,7 @@ export interface GeneratedDocumentCandidateView {
   generated_at: string;
   file_format: string;
   organization_name: string;
+  organization_id: string;
   template_name: string;
 }
 

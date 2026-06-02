@@ -83,17 +83,17 @@ export default function AccessPage() {
     }
   }
 
-  async function loadOrgDocs(orgName: string) {
-    if (orgDocs[orgName] !== undefined) return;
-    setDocsLoading((prev) => ({ ...prev, [orgName]: true }));
+  async function loadOrgDocs(orgId: string) {
+    if (orgDocs[orgId] !== undefined) return;
+    setDocsLoading((prev) => ({ ...prev, [orgId]: true }));
     try {
       const all = await api.get<GeneratedDocumentCandidateView[]>(
         "/candidates/me/documents",
       );
       const byOrg: Record<string, GeneratedDocumentCandidateView[]> = {};
       for (const doc of all) {
-        byOrg[doc.organization_name] = [
-          ...(byOrg[doc.organization_name] ?? []),
+        byOrg[doc.organization_id] = [
+          ...(byOrg[doc.organization_id] ?? []),
           doc,
         ];
       }
@@ -101,7 +101,7 @@ export default function AccessPage() {
     } catch {
       // ignore — docs are a nice-to-have
     } finally {
-      setDocsLoading((prev) => ({ ...prev, [orgName]: false }));
+      setDocsLoading((prev) => ({ ...prev, [orgId]: false }));
     }
   }
 
@@ -165,6 +165,40 @@ export default function AccessPage() {
         </section>
       )}
 
+      {/* Historical invitations (non-pending) */}
+      {(invitations ?? []).filter((inv) => inv.status !== "pending").length >
+        0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
+            Invitations passées
+          </h2>
+          <ul className="space-y-2" role="list">
+            {(invitations ?? [])
+              .filter((inv) => inv.status !== "pending")
+              .map((inv) => (
+                <li key={inv.id}>
+                  <div className="flex items-center justify-between rounded-lg border border-border/40 bg-card px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {inv.organization_name ??
+                          `Organisation ${inv.organization_id.slice(0, 8)}…`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(inv.created_at).toLocaleDateString("fr-FR")}
+                      </p>
+                    </div>
+                    <StatusBadge
+                      status={inv.status}
+                      labels={INVITATION_STATUS_LABELS}
+                      variants={INVITATION_STATUS_VARIANTS}
+                    />
+                  </div>
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
+
       {/* All organisations */}
       <section>
         <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
@@ -175,7 +209,7 @@ export default function AccessPage() {
         ) : (
           <ul className="space-y-4" role="list">
             {orgs.map((org) => {
-              const docs = orgDocs[org.organization_name] ?? [];
+              const docs = orgDocs[org.organization_id] ?? [];
               return (
                 <li key={org.organization_id}>
                   <Card>
@@ -232,21 +266,21 @@ export default function AccessPage() {
                           type="button"
                           className="text-sm text-muted-foreground underline-offset-2 hover:underline"
                           onClick={() => {
-                            const next = !docsExpanded[org.organization_name];
+                            const next = !docsExpanded[org.organization_id];
                             setDocsExpanded((prev) => ({
                               ...prev,
-                              [org.organization_name]: next,
+                              [org.organization_id]: next,
                             }));
-                            if (next) void loadOrgDocs(org.organization_name);
+                            if (next) void loadOrgDocs(org.organization_id);
                           }}
                         >
                           Dossiers générés
-                          {docsLoading[org.organization_name]
+                          {docsLoading[org.organization_id]
                             ? " (chargement…)"
                             : ""}
                         </button>
-                        {docsExpanded[org.organization_name] &&
-                          !docsLoading[org.organization_name] && (
+                        {docsExpanded[org.organization_id] &&
+                          !docsLoading[org.organization_id] && (
                             <div className="mt-2">
                               {docs.length === 0 ? (
                                 <p className="text-xs text-muted-foreground">
