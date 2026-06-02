@@ -536,6 +536,23 @@ async def test_download_template_file_not_found_returns_404(
     assert r.status_code == 404
 
 
+# ---- join_code --------------------------------------------------------------
+
+
+async def test_create_organization_has_join_code(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/organizations",
+        headers=recruiter_headers,
+        json={"name": "JoinCode Corp"},
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert "join_code" in body
+    assert len(body["join_code"]) >= 6
+
+
 # ---- Candidate filters (C3) -------------------------------------------------
 
 

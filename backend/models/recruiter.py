@@ -1,6 +1,7 @@
 # backend/models/recruiter.py
 from __future__ import annotations
 
+import secrets
 from uuid import UUID
 
 from sqlalchemy import ForeignKey, String
@@ -9,12 +10,19 @@ from sqlalchemy.orm import Mapped, mapped_column
 from models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
+def generate_join_code() -> str:
+    return secrets.token_urlsafe(6)
+
+
 class Organization(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "organizations"
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     slug: Mapped[str] = mapped_column(String(200), unique=True, index=True, nullable=False)
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    join_code: Mapped[str] = mapped_column(
+        String(32), unique=True, index=True, nullable=False, default=generate_join_code
+    )
 
 
 class RecruiterProfile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
