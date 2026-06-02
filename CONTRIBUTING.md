@@ -5,8 +5,8 @@ submitting a pull request or patch.
 
 ## Contributor License Agreement
 
-By submitting a contribution to this repository — including code, documentation,
-tests, or any other material — you agree to the following terms:
+By submitting a contribution to this repository (including code, documentation,
+tests, or any other material) you agree to the following terms:
 
 1. **Copyright assignment**: You retain copyright ownership of your contributions.
 
