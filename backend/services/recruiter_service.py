@@ -60,14 +60,18 @@ async def create_organization(
     created_by_user_id: UUID | None = None,
 ) -> Organization:
     """Create org. If created_by_user_id provided, links that recruiter atomically."""
+    # Ensure profile exists FIRST so the final commit is the only one that matters
+    profile = None
+    if created_by_user_id is not None:
+        profile = await get_or_create_profile(db, created_by_user_id)
+
     slug = await _unique_slug(db, _slugify(data.name))
     join_code = await _unique_join_code(db)
     org = Organization(name=data.name, slug=slug, logo_url=data.logo_url, join_code=join_code)
     db.add(org)
-    await db.flush()  # get org.id without committing
+    await db.flush()  # get org.id
 
-    if created_by_user_id is not None:
-        profile = await get_or_create_profile(db, created_by_user_id)
+    if profile is not None:
         profile.organization_id = org.id
 
     await db.commit()

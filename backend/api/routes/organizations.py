@@ -44,8 +44,8 @@ async def _get_org_or_404(db: AsyncSession, org_id: UUID) -> Organization:
 
 async def _require_org_membership(db: AsyncSession, user_id: UUID, org_id: UUID) -> None:
     """Raise 403 if the recruiter is not linked to the given organization."""
-    profile = await recruiter_service.get_or_create_profile(db, user_id)
-    if profile.organization_id != org_id:
+    profile = await recruiter_service.get_profile(db, user_id)
+    if profile is None or profile.organization_id != org_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="you do not belong to this organization",
