@@ -15,10 +15,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Link from "next/link";
+import { InviteCandidateDialog } from "@/components/invite-candidate-dialog";
+import { GenerateDossierDialog } from "@/components/generate-dossier-dialog";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
-import type { AccessibleCandidateRead, OpportunityRead } from "@/types/api";
+import type {
+  AccessibleCandidateRead,
+  OpportunityRead,
+  Template,
+} from "@/types/api";
 import { VALID_DOMAINS } from "@/types/api";
 
 const EMPTY_FILTERS = {
@@ -204,6 +211,12 @@ export default function CandidatesPage() {
   const [expandedCandidates, setExpandedCandidates] = useState<Set<string>>(
     new Set(),
   );
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [generateFor, setGenerateFor] = useState<{
+    candidateId: string;
+    candidateName: string;
+  } | null>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
 
   function toggleCandidateExpand(userId: string) {
     setExpandedCandidates((prev) => {
@@ -240,6 +253,10 @@ export default function CandidatesPage() {
         .then((opps) =>
           setOpportunities(opps.filter((o) => o.status === "open")),
         )
+        .catch(() => {}),
+      api
+        .get<Template[]>(`/organizations/${orgId}/templates`)
+        .then(setTemplates)
         .catch(() => {}),
     ]);
   }, [orgId, fetchCandidates]);
@@ -301,7 +318,29 @@ export default function CandidatesPage() {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <h1 className="text-2xl font-bold">Candidats accessibles</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">Candidats accessibles</h1>
+        <Button onClick={() => setInviteOpen(true)}>Inviter un candidat</Button>
+      </div>
+
+      <InviteCandidateDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        orgId={orgId}
+      />
+
+      {generateFor && (
+        <GenerateDossierDialog
+          open={!!generateFor}
+          onOpenChange={(open) => {
+            if (!open) setGenerateFor(null);
+          }}
+          orgId={orgId}
+          candidateId={generateFor.candidateId}
+          candidateName={generateFor.candidateName}
+          templates={templates}
+        />
+      )}
 
       <Card>
         <CardContent className="pt-4">
@@ -549,6 +588,29 @@ export default function CandidatesPage() {
                         }}
                       />
                     )}
+
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setGenerateFor({
+                            candidateId: c.user_id,
+                            candidateName:
+                              c.first_name && c.last_name
+                                ? `${c.first_name} ${c.last_name}`
+                                : c.email,
+                          })
+                        }
+                      >
+                        Générer un dossier
+                      </Button>
+                      <Link href={`/recruiter/candidates/${c.user_id}`}>
+                        <Button size="sm" variant="ghost">
+                          Voir le profil →
+                        </Button>
+                      </Link>
+                    </div>
 
                     <div className="pt-1 space-y-2">
                       {addFeedback[c.user_id] && (
