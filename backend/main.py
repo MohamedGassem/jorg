@@ -12,6 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
+from api.routes.admin import router as admin_router
 from api.routes.auth import router as auth_router
 from api.routes.candidates import router as candidates_router
 from api.routes.generation import router as generation_router
@@ -77,6 +78,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(RequestIDMiddleware)
+app.include_router(admin_router)
 app.include_router(auth_router)
 app.include_router(candidates_router)
 app.include_router(organizations_router)
