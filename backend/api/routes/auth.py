@@ -107,6 +107,8 @@ async def register(
             detail="email already registered",
         ) from e
 
+    recruiter_profile = None
+
     # For recruiter: consume the alpha code now that the user was created
     # successfully, then create the profile and link used_by.
     if (
@@ -155,7 +157,8 @@ async def register(
         elif user.role == UserRole.RECRUITER:
             from services.recruiter_service import get_or_create_profile
 
-            recruiter_profile = await get_or_create_profile(db, user.id)
+            if recruiter_profile is None:
+                recruiter_profile = await get_or_create_profile(db, user.id)
             if payload.first_name:
                 recruiter_profile.first_name = payload.first_name
             if payload.last_name:
