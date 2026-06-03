@@ -1,4 +1,5 @@
 # backend/tests/integration/test_onboarding_flag.py
+import pytest
 from httpx import AsyncClient
 
 
@@ -62,3 +63,28 @@ async def test_onboarding_completed_can_be_set_via_profile_update(client: AsyncC
     )
     assert resp.status_code == 200
     assert resp.json()["onboarding_completed"] is True
+
+
+@pytest.mark.asyncio
+async def test_recruiter_registration_saves_first_and_last_name(client: AsyncClient) -> None:
+    await client.post(
+        "/auth/register",
+        json={
+            "email": "recruiter_named@test.com",
+            "password": "password123",
+            "role": "recruiter",
+            "first_name": "Bob",
+            "last_name": "Smith",
+        },
+    )
+    login = await client.post(
+        "/auth/login",
+        json={"email": "recruiter_named@test.com", "password": "password123"},
+    )
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    profile_resp = await client.get("/recruiters/me/profile", headers=headers)
+    assert profile_resp.status_code == 200
+    data = profile_resp.json()
+    assert data["first_name"] == "Bob"
+    assert data["last_name"] == "Smith"
