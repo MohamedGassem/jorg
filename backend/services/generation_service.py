@@ -159,6 +159,7 @@ async def list_candidate_documents_view(
     db: AsyncSession, candidate_id: UUID
 ) -> list[GeneratedDocumentCandidateView]:
     from models.invitation import AccessGrant
+    from models.recruiter import RecruiterProfile
 
     rows = await db.execute(
         select(
@@ -168,10 +169,16 @@ async def list_candidate_documents_view(
             Organization.name.label("organization_name"),
             AccessGrant.organization_id.label("organization_id"),
             Template.name.label("template_name"),
+            RecruiterProfile.first_name.label("recruiter_first_name"),
+            RecruiterProfile.last_name.label("recruiter_last_name"),
         )
         .join(AccessGrant, GeneratedDocument.access_grant_id == AccessGrant.id)
         .join(Organization, AccessGrant.organization_id == Organization.id)
         .join(Template, GeneratedDocument.template_id == Template.id)
+        .outerjoin(
+            RecruiterProfile,
+            RecruiterProfile.user_id == GeneratedDocument.generated_by_user_id,
+        )
         .where(AccessGrant.candidate_id == candidate_id)
         .order_by(GeneratedDocument.generated_at.desc())
     )
@@ -183,6 +190,8 @@ async def list_candidate_documents_view(
             organization_name=row.organization_name,
             organization_id=row.organization_id,
             template_name=row.template_name,
+            recruiter_first_name=row.recruiter_first_name,
+            recruiter_last_name=row.recruiter_last_name,
         )
         for row in rows.all()
     ]

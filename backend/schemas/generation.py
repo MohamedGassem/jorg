@@ -39,3 +39,5 @@ class GeneratedDocumentCandidateView(BaseModel):
     organization_name: str
     organization_id: UUID
     template_name: str
+    recruiter_first_name: str | None
+    recruiter_last_name: str | None
