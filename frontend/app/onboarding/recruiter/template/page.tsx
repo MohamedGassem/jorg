@@ -11,24 +11,43 @@ import {
 } from "@/components/ui/card";
 import { api } from "@/lib/api";
 
-async function markOnboardingComplete() {
-  await api
-    .put("/recruiters/me/profile", { onboarding_completed: true })
-    .catch((err) => {
-      console.warn("Failed to mark onboarding complete:", err);
-    });
+async function markOnboardingComplete(): Promise<boolean> {
+  try {
+    await api.put("/recruiters/me/profile", { onboarding_completed: true });
+    return true;
+  } catch (err) {
+    console.warn("Failed to mark onboarding complete:", err);
+    // Retry once
+    try {
+      await api.put("/recruiters/me/profile", { onboarding_completed: true });
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
 
 export default function RecruiterOnboardingTemplatePage() {
   const router = useRouter();
 
   async function handleSkip() {
-    await markOnboardingComplete();
+    const ok = await markOnboardingComplete();
+    if (!ok) {
+      // Still redirect — user can retry from dashboard
+      console.error(
+        "Onboarding flag not persisted; user may see onboarding again on next login",
+      );
+    }
     router.push("/recruiter/dashboard");
   }
 
   async function handleGoToTemplates() {
-    await markOnboardingComplete();
+    const ok = await markOnboardingComplete();
+    if (!ok) {
+      console.error(
+        "Onboarding flag not persisted; user may see onboarding again on next login",
+      );
+    }
     router.push("/recruiter/documents");
   }
 

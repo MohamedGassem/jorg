@@ -14,12 +14,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
 
-async function markOnboardingComplete() {
-  await api
-    .put("/candidates/me/profile", { onboarding_completed: true })
-    .catch((err) => {
-      console.warn("Failed to mark onboarding complete:", err);
-    });
+async function markOnboardingComplete(): Promise<boolean> {
+  try {
+    await api.put("/candidates/me/profile", { onboarding_completed: true });
+    return true;
+  } catch (err) {
+    console.warn("Failed to mark onboarding complete:", err);
+    // Retry once
+    try {
+      await api.put("/candidates/me/profile", { onboarding_completed: true });
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
 
 export default function CandidateOnboardingSkillsPage() {
@@ -45,7 +53,12 @@ export default function CandidateOnboardingSkillsPage() {
         start_date: startDate,
         is_current: true,
       });
-      await markOnboardingComplete();
+      const ok = await markOnboardingComplete();
+      if (!ok) {
+        console.error(
+          "Onboarding flag not persisted; user may see onboarding again on next login",
+        );
+      }
       router.push("/candidate/dashboard");
     } catch (err) {
       setError(
@@ -58,7 +71,13 @@ export default function CandidateOnboardingSkillsPage() {
   }
 
   async function handleSkip() {
-    await markOnboardingComplete();
+    const ok = await markOnboardingComplete();
+    if (!ok) {
+      // Still redirect — user can retry from dashboard
+      console.error(
+        "Onboarding flag not persisted; user may see onboarding again on next login",
+      );
+    }
     router.push("/candidate/dashboard");
   }
 
