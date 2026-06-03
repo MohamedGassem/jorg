@@ -90,9 +90,9 @@ async def register(
                 detail="Un code d'invitation alpha est requis pour créer un compte recruteur.",
             )
         try:
-            await validate_and_consume_code(
-                db, payload.alpha_invite_code, consume=True, recruiter_id=None
-            )
+            # Validate only — do NOT consume yet so the code is not burned if
+            # user creation fails (e.g. EmailAlreadyRegisteredError).
+            await validate_and_consume_code(db, payload.alpha_invite_code, consume=False)
         except InvalidAlphaCodeError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -107,12 +107,22 @@ async def register(
             detail="email already registered",
         ) from e
 
-    # For recruiter: eagerly create profile so we can link the alpha code
+    # For recruiter: consume the alpha code now that the user was created
+    # successfully, then create the profile and link used_by.
     if (
         payload.role == UserRole.RECRUITER
         and payload.alpha_invite_code
         and settings.alpha_invite_required
     ):
+        # Consume the code now that user creation succeeded.
+        # Note: validate_and_consume_code calls db.expire_all() internally, so
+        # we must refresh `user` afterwards to avoid a MissingGreenlet error
+        # when accessing user attributes in async context.
+        await validate_and_consume_code(
+            db, payload.alpha_invite_code, consume=True, recruiter_id=None
+        )
+        await db.refresh(user)
+
         from services.recruiter_service import get_or_create_profile
 
         recruiter_profile = await get_or_create_profile(db, user.id)
