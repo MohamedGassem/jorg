@@ -16,7 +16,7 @@ import {
   EducationSection,
   CertificationSection,
   LanguageSection,
-} from "@/app/(candidate)/candidate/skills/page";
+} from "@/components/candidate/profile-sections";
 import {
   Dialog,
   DialogContent,
