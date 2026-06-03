@@ -216,6 +216,16 @@ async def list_org_documents_view(
     from models.invitation import AccessGrant
     from models.opportunity import Opportunity, ShortlistEntry
 
+    opportunity_subq = (
+        select(Opportunity.title)
+        .join(ShortlistEntry, ShortlistEntry.opportunity_id == Opportunity.id)
+        .where(ShortlistEntry.candidate_id == AccessGrant.candidate_id)
+        .order_by(Opportunity.id)
+        .limit(1)
+        .correlate(AccessGrant)
+        .scalar_subquery()
+    )
+
     rows = await db.execute(
         select(
             GeneratedDocument.id,
@@ -224,15 +234,12 @@ async def list_org_documents_view(
             Template.name.label("template_name"),
             CandidateProfile.first_name.label("candidate_first_name"),
             CandidateProfile.last_name.label("candidate_last_name"),
-            Opportunity.title.label("opportunity_title"),
+            opportunity_subq.label("opportunity_title"),
         )
         .join(AccessGrant, GeneratedDocument.access_grant_id == AccessGrant.id)
         .outerjoin(CandidateProfile, CandidateProfile.user_id == AccessGrant.candidate_id)
         .outerjoin(Template, GeneratedDocument.template_id == Template.id)
-        .outerjoin(ShortlistEntry, ShortlistEntry.candidate_id == AccessGrant.candidate_id)
-        .outerjoin(Opportunity, Opportunity.id == ShortlistEntry.opportunity_id)
         .where(AccessGrant.organization_id == organization_id)
-        .distinct()
         .order_by(GeneratedDocument.generated_at.desc())
     )
     return [

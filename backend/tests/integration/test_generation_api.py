@@ -314,6 +314,45 @@ async def test_org_documents_include_candidate_name(
 # ---- download ---------------------------------------------------------------
 
 
+async def test_org_documents_no_duplicate_when_candidate_on_multiple_shortlists(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> None:
+    """Candidate shortlisted for multiple opportunities must not duplicate generated documents."""
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
+    template_id = await _upload_valid_template(client, recruiter_headers, org_id)
+
+    # Generate one document
+    await client.post(
+        f"/organizations/{org_id}/generate",
+        headers=recruiter_headers,
+        json={"candidate_id": candidate_id, "template_id": template_id, "format": "docx"},
+    )
+
+    # Create two opportunities and add the candidate to both shortlists
+    for title in ("Opportunity Alpha", "Opportunity Beta"):
+        opp_r = await client.post(
+            f"/organizations/{org_id}/opportunities",
+            headers=recruiter_headers,
+            json={"title": title},
+        )
+        assert opp_r.status_code == 201
+        opp_id = opp_r.json()["id"]
+        sl_r = await client.post(
+            f"/organizations/{org_id}/opportunities/{opp_id}/candidates",
+            headers=recruiter_headers,
+            json={"candidate_id": candidate_id},
+        )
+        assert sl_r.status_code == 201
+
+    r = await client.get(f"/organizations/{org_id}/documents", headers=recruiter_headers)
+    assert r.status_code == 200
+    docs = r.json()
+    # Despite being on 2 shortlists, only 1 document should appear
+    assert len(docs) == 1
+
+
 async def test_download_generated_document(
     client: AsyncClient,
     recruiter_headers: dict[str, str],
