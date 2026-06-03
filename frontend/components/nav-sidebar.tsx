@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   User,
   Shield,
-  Clock,
+  FileText,
   Settings,
   Users,
   Zap,
@@ -36,7 +36,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   "/recruiter/dashboard": LayoutDashboard,
   "/recruiter/candidates": Users,
   "/recruiter/opportunities": Zap,
-  "/recruiter/documents": Clock,
+  "/recruiter/documents": FileText,
   "/recruiter/settings": Settings,
 };
 
