@@ -2,7 +2,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -216,6 +216,22 @@ function EditProfileDrawer({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (open) {
+      setTitle(profile.title ?? "");
+      setLocation(profile.location ?? "");
+      setLinkedinUrl(profile.linkedin_url ?? "");
+      setSummary(profile.summary ?? "");
+      setError(null);
+    }
+  }, [
+    open,
+    profile.title,
+    profile.location,
+    profile.linkedin_url,
+    profile.summary,
+  ]);
+
   async function handleSave() {
     setSaving(true);
     setError(null);
@@ -310,6 +326,7 @@ const VALID_TABS = new Set<TabKey>(TABS.map((t) => t.key));
 
 function ProfileTabs() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const rawTab = searchParams.get("tab") as TabKey | null;
   const initialTab: TabKey =
     rawTab && VALID_TABS.has(rawTab) ? rawTab : "experiences";
@@ -317,6 +334,7 @@ function ProfileTabs() {
 
   function setTab(key: TabKey) {
     setActiveTab(key);
+    router.replace(`?tab=${key}`, { scroll: false });
   }
 
   return (
