@@ -553,7 +553,7 @@ export function LandingNav() {
             </Button>
           </Link>
           <Link href="/register?role=recruiter">
-            <Button size="sm">Request recruiter access</Button>
+            <Button size="sm">Demander un accès recruteur</Button>
           </Link>
         </div>
       </div>
@@ -573,28 +573,29 @@ export function LandingHero() {
   return (
     <section className="mx-auto max-w-5xl px-6 py-24 text-center">
       <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-primary">
-        The skill profile platform
+        La plateforme de dossiers de compétences
       </p>
       <h1 className="font-heading text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-        Build your profile once.
+        Construisez votre dossier de compétences une fois.
         <br />
-        Share it securely.
+        Partagez-le en toute sécurité.
         <br />
-        Generate tailored dossiers in seconds.
+        Générez des dossiers sur mesure en quelques secondes.
       </h1>
       <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-        Candidates constantly rewrite the same information across CVs and skill
-        dossiers. Jorg fixes that&nbsp;&mdash; for everyone in the loop.
+        Les candidats réécrivent sans cesse les mêmes informations dans leurs
+        CVs et dossiers de compétences. Jorg simplifie ça&nbsp;&mdash; pour tout
+        le monde.
       </p>
       <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
         <Link href="/register?role=recruiter">
           <Button size="lg" className="w-full sm:w-auto">
-            Request recruiter access
+            Demander un accès recruteur
           </Button>
         </Link>
         <Link href="/register?role=candidate">
           <Button size="lg" variant="outline" className="w-full sm:w-auto">
-            Create your candidate profile
+            Créer mon dossier de compétences
           </Button>
         </Link>
       </div>
