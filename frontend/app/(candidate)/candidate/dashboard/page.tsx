@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Mail, Shield, User } from "lucide-react";
 import { QuickActionCard } from "@/components/ui/QuickActionCard";
 import { StatCard } from "@/components/ui/StatCard";
@@ -45,6 +46,7 @@ function calcProfileCompletion(
 }
 
 export default function CandidateDashboardPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [profileCompletion, setProfileCompletion] = useState<number | null>(
@@ -94,6 +96,11 @@ export default function CandidateDashboardPage() {
     ]).then(([prof, skills, experiences, invitations, orgs, docs]) => {
       if (!mounted) return;
 
+      if (prof && !prof.onboarding_completed) {
+        router.replace("/onboarding/candidate/profile");
+        return;
+      }
+
       if (prof) {
         setProfile(prof);
         const hasSkill = Array.isArray(skills) && skills.length > 0;
@@ -132,7 +139,7 @@ export default function CandidateDashboardPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [router]);
 
   if (loading) {
     return (

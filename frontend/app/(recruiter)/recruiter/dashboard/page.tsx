@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FileText, Mail, Sparkles, Users } from "lucide-react";
 import { QuickActionCard } from "@/components/ui/QuickActionCard";
 import { StatCard } from "@/components/ui/StatCard";
@@ -17,7 +18,15 @@ import type {
 import { relativeDate } from "@/lib/labels";
 
 export default function RecruiterDashboardPage() {
+  const router = useRouter();
   const { orgId, profile, loading: orgLoading } = useRecruiterOrg();
+
+  useEffect(() => {
+    if (orgLoading) return;
+    if (profile && !profile.onboarding_completed) {
+      router.replace("/onboarding/recruiter/organization");
+    }
+  }, [profile, orgLoading, router]);
 
   const [candidateCount, setCandidateCount] = useState<number | null>(null);
   const [openOpportunityCount, setOpenOpportunityCount] = useState<

@@ -172,6 +172,7 @@ export interface CandidateProfile {
   location_preference: string | null;
   preferred_domains: Domain[] | null;
   mission_duration: MissionDuration | null;
+  onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -192,6 +193,7 @@ export interface RecruiterProfile {
   first_name: string | null;
   last_name: string | null;
   job_title: string | null;
+  onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
 }
