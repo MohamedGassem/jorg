@@ -9,6 +9,8 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     role: UserRole
     alpha_invite_code: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
 
 
 class LoginRequest(BaseModel):

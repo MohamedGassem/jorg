@@ -50,6 +50,7 @@ class RecruiterProfileUpdate(BaseModel):
     last_name: str | None = None
     job_title: str | None = None
     organization_id: UUID | None = None
+    onboarding_completed: bool | None = None
 
 
 class RecruiterProfileRead(BaseModel):
@@ -61,6 +62,7 @@ class RecruiterProfileRead(BaseModel):
     first_name: str | None
     last_name: str | None
     job_title: str | None
+    onboarding_completed: bool = False
     created_at: datetime
     updated_at: datetime
 

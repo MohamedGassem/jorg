@@ -71,6 +71,9 @@ class CandidateProfile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     first_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     last_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    onboarding_completed: Mapped[bool] = mapped_column(
+        default=False, nullable=False, server_default="false"
+    )
     title: Mapped[str | None] = mapped_column(String(200), nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)

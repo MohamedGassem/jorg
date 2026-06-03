@@ -54,6 +54,7 @@ class CandidateProfileUpdate(BaseModel):
     location_preference: str | None = None
     preferred_domains: list[str] | None = None
     mission_duration: MissionDuration | None = None
+    onboarding_completed: bool | None = None
 
     @field_validator("preferred_domains")
     @classmethod
@@ -91,6 +92,7 @@ class CandidateProfileRead(BaseModel):
     location_preference: str | None = None
     preferred_domains: list[str] | None = None
     mission_duration: MissionDuration | None = None
+    onboarding_completed: bool = False
     created_at: datetime
     updated_at: datetime
 

@@ -129,6 +129,29 @@ async def register(
             alpha_code.used_by = recruiter_profile.id
             await db.commit()
 
+    # Save first_name / last_name to profile at registration time
+    if payload.first_name or payload.last_name:
+        if user.role == UserRole.CANDIDATE:
+            from services.candidate_service import (
+                get_or_create_profile as get_or_create_candidate_profile,
+            )
+
+            candidate_profile = await get_or_create_candidate_profile(db, user.id)
+            if payload.first_name:
+                candidate_profile.first_name = payload.first_name
+            if payload.last_name:
+                candidate_profile.last_name = payload.last_name
+            await db.commit()
+        elif user.role == UserRole.RECRUITER:
+            from services.recruiter_service import get_or_create_profile
+
+            recruiter_profile = await get_or_create_profile(db, user.id)
+            if payload.first_name:
+                recruiter_profile.first_name = payload.first_name
+            if payload.last_name:
+                recruiter_profile.last_name = payload.last_name
+            await db.commit()
+
     send_verification_email(user)
     return UserRead.model_validate(user)
 
