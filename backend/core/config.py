@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     # Admin secret for privileged endpoints (e.g. alpha code generation)
     admin_secret: str | None = None
 
+    # Alpha invite gate — set to False to allow recruiter registration without a code
+    alpha_invite_required: bool = True
+
     @field_validator("gotenberg_url")
     @classmethod
     def _validate_gotenberg_url(cls, v: str | None) -> str | None:

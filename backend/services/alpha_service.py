@@ -30,9 +30,10 @@ async def validate_and_consume_code(
     consume: bool,
     recruiter_id: UUID | None = None,
 ) -> AlphaInviteCode:
+    db.expire_all()
     result = await db.execute(select(AlphaInviteCode).where(AlphaInviteCode.code == code.upper()))
     obj = result.scalar_one_or_none()
-    if obj is None or obj.used_by is not None:
+    if obj is None or obj.used_at is not None or obj.used_by is not None:
         raise InvalidAlphaCodeError(code)
     if consume:
         obj.used_by = recruiter_id

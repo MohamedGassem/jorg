@@ -21,6 +21,7 @@ from schemas.auth import (
 )
 from schemas.user import UserRead
 from services import oauth_state_service
+from services.alpha_service import InvalidAlphaCodeError, validate_and_consume_code
 from services.auth_service import (
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
@@ -81,6 +82,23 @@ async def register(
     payload: RegisterRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserRead:
+    settings = get_settings()
+    if settings.alpha_invite_required and payload.role == UserRole.RECRUITER:
+        if not payload.alpha_invite_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Un code d'invitation alpha est requis pour créer un compte recruteur.",
+            )
+        try:
+            await validate_and_consume_code(
+                db, payload.alpha_invite_code, consume=True, recruiter_id=None
+            )
+        except InvalidAlphaCodeError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Code d'invitation invalide ou déjà utilisé.",
+            ) from e
+
     try:
         user = await register_user(db, payload.email, payload.password, payload.role)
     except EmailAlreadyRegisteredError as e:
