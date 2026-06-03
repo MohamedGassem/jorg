@@ -17,7 +17,9 @@ import { api, ApiError } from "@/lib/api";
 async function markOnboardingComplete() {
   await api
     .put("/candidates/me/profile", { onboarding_completed: true })
-    .catch(() => {});
+    .catch((err) => {
+      console.warn("Failed to mark onboarding complete:", err);
+    });
 }
 
 export default function CandidateOnboardingSkillsPage() {

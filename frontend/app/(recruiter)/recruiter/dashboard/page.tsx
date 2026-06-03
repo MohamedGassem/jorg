@@ -40,7 +40,7 @@ export default function RecruiterDashboardPage() {
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    if (orgLoading) return;
+    if (orgLoading || !profile?.onboarding_completed) return;
     if (!orgId) return;
 
     const candidatesPromise = api
@@ -89,7 +89,7 @@ export default function RecruiterDashboardPage() {
       }
       setDataLoading(false);
     });
-  }, [orgId, orgLoading]);
+  }, [orgId, orgLoading, profile, profile?.onboarding_completed]);
 
   if (orgLoading || (!!orgId && dataLoading)) {
     return (

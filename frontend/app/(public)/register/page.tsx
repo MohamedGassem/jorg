@@ -61,8 +61,8 @@ export default function RegisterPage() {
         email,
         password,
         role,
-        first_name: firstName || null,
-        last_name: lastName || null,
+        first_name: firstName,
+        last_name: lastName,
         ...(role === "recruiter" && alphaCode
           ? { alpha_invite_code: alphaCode }
           : {}),

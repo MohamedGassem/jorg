@@ -14,7 +14,9 @@ import { api } from "@/lib/api";
 async function markOnboardingComplete() {
   await api
     .put("/recruiters/me/profile", { onboarding_completed: true })
-    .catch(() => {});
+    .catch((err) => {
+      console.warn("Failed to mark onboarding complete:", err);
+    });
 }
 
 export default function RecruiterOnboardingTemplatePage() {
