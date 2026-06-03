@@ -22,7 +22,7 @@ class AlphaInviteCode(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "alpha_invite_codes"
 
     code: Mapped[str] = mapped_column(
-        String(20), unique=True, index=True, nullable=False, default=_generate_code
+        String(20), unique=True, nullable=False, default=_generate_code
     )
     used_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("recruiter_profiles.id", ondelete="SET NULL"),
