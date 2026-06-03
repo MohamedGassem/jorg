@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
+import { TabBar } from "@/components/ui/TabBar";
 import { api, ApiError } from "@/lib/api";
 import { logout } from "@/lib/auth";
 import type { CandidateProfile } from "@/types/api";
@@ -234,21 +235,7 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <h1 className="font-heading text-2xl font-semibold">Paramètres</h1>
-      <div className="flex gap-1 border-b">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === t.key
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <TabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
       {activeTab === "infos" && <InformationsPersonnellesTab />}
       {activeTab === "compte" && <CompteTab />}
       {activeTab === "rgpd" && <RgpdTab />}

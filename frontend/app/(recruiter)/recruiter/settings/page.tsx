@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
+import { TabBar } from "@/components/ui/TabBar";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
@@ -183,22 +184,7 @@ export default function RecruiterSettingsPage() {
       <ErrorAlert error={error} />
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-border">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => setActiveTab(tab.key)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab.key
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {/* Profil personnel tab */}
       {activeTab === "profil" && <ProfilPersonnelTab />}

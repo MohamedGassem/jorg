@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
+import { TabBar } from "@/components/ui/TabBar";
 import {
   ExperienceSection,
   SkillSection,
@@ -340,23 +341,8 @@ function ProfileTabs() {
   return (
     <div className="space-y-6">
       {/* Sticky tab bar */}
-      <div className="sticky top-0 z-10 -mx-8 border-b bg-background px-8">
-        <div className="flex gap-1">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={cn(
-                "border-b-2 px-4 py-3 text-sm font-medium transition-colors",
-                activeTab === t.key
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+      <div className="sticky top-0 z-10 -mx-8 bg-background px-8">
+        <TabBar tabs={[...TABS]} activeTab={activeTab} onChange={setTab} />
       </div>
 
       {/* Tab content — only mounts active section */}
