@@ -277,6 +277,40 @@ async def test_candidate_documents_include_recruiter_name(
     assert doc["recruiter_last_name"] == "Smith"
 
 
+# ---- recruiter org document view --------------------------------------------
+
+
+async def test_org_documents_include_candidate_name(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> None:
+    """Recruiter org document list includes candidate_first_name and candidate_last_name."""
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
+
+    # Set candidate name on their profile
+    await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"first_name": "Bob", "last_name": "Jones"},
+    )
+
+    template_id = await _upload_valid_template(client, recruiter_headers, org_id)
+    await client.post(
+        f"/organizations/{org_id}/generate",
+        headers=recruiter_headers,
+        json={"candidate_id": candidate_id, "template_id": template_id, "format": "docx"},
+    )
+
+    r = await client.get(f"/organizations/{org_id}/documents", headers=recruiter_headers)
+    assert r.status_code == 200
+    docs = r.json()
+    assert len(docs) >= 1
+    doc = docs[0]
+    assert doc["candidate_first_name"] == "Bob"
+    assert doc["candidate_last_name"] == "Jones"
+
+
 # ---- download ---------------------------------------------------------------
 
 

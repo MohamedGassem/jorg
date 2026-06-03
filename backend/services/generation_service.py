@@ -20,7 +20,7 @@ from models.generated_document import GeneratedDocument
 from models.recruiter import Organization
 from models.skill import CandidateSkill
 from models.template import Template
-from schemas.generation import GeneratedDocumentCandidateView
+from schemas.generation import GeneratedDocumentCandidateView, GeneratedDocumentRecruiterView
 from services import invitation_service, template_service
 from services.docx_engine import generate_document
 
@@ -207,6 +207,46 @@ async def list_candidate_documents(db: AsyncSession, candidate_id: UUID) -> list
         .order_by(GeneratedDocument.generated_at.desc())
     )
     return list(result.scalars().all())
+
+
+async def list_org_documents_view(
+    db: AsyncSession, organization_id: UUID
+) -> list[GeneratedDocumentRecruiterView]:
+    from models.candidate_profile import CandidateProfile
+    from models.invitation import AccessGrant
+    from models.opportunity import Opportunity, ShortlistEntry
+
+    rows = await db.execute(
+        select(
+            GeneratedDocument.id,
+            GeneratedDocument.generated_at,
+            GeneratedDocument.file_format,
+            Template.name.label("template_name"),
+            CandidateProfile.first_name.label("candidate_first_name"),
+            CandidateProfile.last_name.label("candidate_last_name"),
+            Opportunity.title.label("opportunity_title"),
+        )
+        .join(AccessGrant, GeneratedDocument.access_grant_id == AccessGrant.id)
+        .outerjoin(CandidateProfile, CandidateProfile.user_id == AccessGrant.candidate_id)
+        .outerjoin(Template, GeneratedDocument.template_id == Template.id)
+        .outerjoin(ShortlistEntry, ShortlistEntry.candidate_id == AccessGrant.candidate_id)
+        .outerjoin(Opportunity, Opportunity.id == ShortlistEntry.opportunity_id)
+        .where(AccessGrant.organization_id == organization_id)
+        .distinct()
+        .order_by(GeneratedDocument.generated_at.desc())
+    )
+    return [
+        GeneratedDocumentRecruiterView(
+            id=row.id,
+            generated_at=row.generated_at,
+            file_format=row.file_format,
+            template_name=row.template_name,
+            candidate_first_name=row.candidate_first_name,
+            candidate_last_name=row.candidate_last_name,
+            opportunity_title=row.opportunity_title,
+        )
+        for row in rows.all()
+    ]
 
 
 async def list_org_documents(db: AsyncSession, organization_id: UUID) -> list[GeneratedDocument]:

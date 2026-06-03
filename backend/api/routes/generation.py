@@ -19,6 +19,7 @@ from models.user import User, UserRole
 from schemas.generation import (
     GeneratedDocumentCandidateView,
     GeneratedDocumentRead,
+    GeneratedDocumentRecruiterView,
     GenerateRequest,
 )
 
@@ -62,18 +63,18 @@ async def generate_document(
 
 @router.get(
     "/organizations/{org_id}/documents",
-    response_model=list[GeneratedDocumentRead],
+    response_model=list[GeneratedDocumentRecruiterView],
 )
 async def list_org_documents(
     org_id: UUID, current_user: RecruiterUser, db: DB
-) -> list[GeneratedDocument]:
+) -> list[GeneratedDocumentRecruiterView]:
     profile = await recruiter_service.get_or_create_profile(db, current_user.id)
     if profile.organization_id != org_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="you do not belong to this organization",
         )
-    return await generation_service.list_org_documents(db, org_id)
+    return await generation_service.list_org_documents_view(db, org_id)
 
 
 @router.get(

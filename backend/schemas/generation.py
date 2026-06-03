@@ -41,3 +41,17 @@ class GeneratedDocumentCandidateView(BaseModel):
     template_name: str
     recruiter_first_name: str | None
     recruiter_last_name: str | None
+
+
+class GeneratedDocumentRecruiterView(BaseModel):
+    """Used for GET /organizations/{id}/documents — includes candidate name and opportunity."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    generated_at: datetime
+    file_format: str
+    template_name: str | None
+    candidate_first_name: str | None
+    candidate_last_name: str | None
+    opportunity_title: str | None
