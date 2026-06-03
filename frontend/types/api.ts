@@ -161,6 +161,7 @@ export interface CandidateProfile {
   email_contact: string | null;
   linkedin_url: string | null;
   location: string | null;
+  avatar_url: string | null;
   years_of_experience: number | null;
   daily_rate: number | null;
   contract_type: ContractType;
@@ -258,6 +259,18 @@ export interface GeneratedDocumentCandidateView {
   organization_name: string;
   organization_id: string;
   template_name: string;
+  recruiter_first_name: string | null;
+  recruiter_last_name: string | null;
+}
+
+export interface GeneratedDocumentRecruiterView {
+  id: string;
+  generated_at: string;
+  file_format: string;
+  template_name: string | null;
+  candidate_first_name: string | null;
+  candidate_last_name: string | null;
+  opportunity_title: string | null;
 }
 
 export interface AccessibleCandidate {
