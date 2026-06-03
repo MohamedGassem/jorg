@@ -33,6 +33,7 @@ function InformationsPersonnellesTab() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -42,7 +43,9 @@ function InformationsPersonnellesTab() {
         setFirstName(p.first_name ?? "");
         setLastName(p.last_name ?? "");
       })
-      .catch(console.error);
+      .catch(() => {
+        setLoadError("Impossible de charger votre profil.");
+      });
   }, []);
 
   async function handleSave(e: React.FormEvent) {
@@ -70,6 +73,7 @@ function InformationsPersonnellesTab() {
     }
   }
 
+  if (loadError) return <ErrorAlert error={loadError} />;
   if (!profile) return <p className="text-muted-foreground">Chargement…</p>;
 
   return (
@@ -98,15 +102,10 @@ function InformationsPersonnellesTab() {
               onChange={(e) => setLastName(e.target.value)}
             />
           </div>
-          {message && (
-            <p
-              className={
-                isError ? "text-sm text-destructive" : "text-sm text-green-600"
-              }
-            >
-              {message}
-            </p>
+          {message && !isError && (
+            <p className="text-sm text-green-600">{message}</p>
           )}
+          <ErrorAlert error={isError ? message : null} />
           <Button type="submit" disabled={saving}>
             {saving ? "Enregistrement…" : "Enregistrer"}
           </Button>
