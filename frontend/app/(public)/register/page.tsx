@@ -1,8 +1,8 @@
 // frontend/app/(public)/register/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, UserCircle, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,18 +40,18 @@ const ROLES: {
   },
 ];
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<Role>("candidate");
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const r = params.get("role");
+    const r = searchParams.get("role");
     if (r === "candidate" || r === "recruiter") setRole(r);
-  }, []);
+  }, [searchParams]);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -266,5 +266,13 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }
