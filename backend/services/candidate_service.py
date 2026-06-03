@@ -19,7 +19,7 @@ from models.candidate_profile import (
 )
 from models.generated_document import GeneratedDocument
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
-from models.recruiter import Organization
+from models.recruiter import Organization, RecruiterProfile
 from models.template import Template
 from schemas.candidate import (
     CandidateProfileUpdate,
@@ -207,11 +207,15 @@ async def list_organization_interactions(
     grants = grant_result.all()
 
     grant_ids = [grant.id for grant, _ in grants]
-    doc_rows: list[Row[tuple[GeneratedDocument, Template]]] = []
+    doc_rows: list[Row[tuple[GeneratedDocument, Template, RecruiterProfile | None]]] = []
     if grant_ids:
         doc_result = await db.execute(
-            select(GeneratedDocument, Template)
+            select(GeneratedDocument, Template, RecruiterProfile)
             .join(Template, Template.id == GeneratedDocument.template_id)
+            .outerjoin(
+                RecruiterProfile,
+                RecruiterProfile.user_id == GeneratedDocument.generated_by_user_id,
+            )
             .where(GeneratedDocument.access_grant_id.in_(grant_ids))
         )
         doc_rows = list(doc_result.all())
@@ -243,7 +247,7 @@ async def list_organization_interactions(
             )
 
     grant_org_map = {str(grant.id): str(org.id) for grant, org in grants}
-    for doc, tmpl in doc_rows:
+    for doc, tmpl, recruiter in doc_rows:
         doc_oid = grant_org_map.get(str(doc.access_grant_id))
         if doc_oid and doc_oid in orgs:
             oid = doc_oid
@@ -254,6 +258,8 @@ async def list_organization_interactions(
                     metadata=InteractionEventMetadata(
                         template_name=tmpl.name,
                         file_format=doc.file_format,
+                        recruiter_first_name=recruiter.first_name if recruiter else None,
+                        recruiter_last_name=recruiter.last_name if recruiter else None,
                     ),
                 )
             )

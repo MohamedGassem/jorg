@@ -14,7 +14,12 @@ import type {
   OrganizationInteractionCard,
   Skill,
 } from "@/types/api";
-import { EVENT_LABELS, EVENT_ICONS, relativeDate } from "@/lib/labels";
+import {
+  EVENT_LABELS,
+  EVENT_ICONS,
+  relativeDate,
+  eventLabel,
+} from "@/lib/labels";
 
 function calcProfileCompletion(
   profile: CandidateProfile,
@@ -246,7 +251,7 @@ export default function CandidateDashboardPage() {
                     {EVENT_ICONS[ev.type] ?? "📋"}
                   </span>
                   <span className="text-sm text-foreground">
-                    {EVENT_LABELS[ev.type] ?? ev.type}
+                    {eventLabel(ev)}
                   </span>
                 </div>
                 <span className="text-xs text-muted-foreground">

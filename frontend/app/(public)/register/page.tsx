@@ -46,6 +46,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<Role>("candidate");
+  const [alphaCode, setAlphaCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -54,7 +55,14 @@ export default function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      await api.post("/auth/register", { email, password, role });
+      await api.post("/auth/register", {
+        email,
+        password,
+        role,
+        ...(role === "recruiter" && alphaCode
+          ? { alpha_invite_code: alphaCode }
+          : {}),
+      });
       router.push("/login?registered=1");
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Inscription échouée");
@@ -179,6 +187,22 @@ export default function RegisterPage() {
                   Minimum 8 caractères
                 </p>
               </div>
+
+              {role === "recruiter" && (
+                <div className="space-y-1">
+                  <Label htmlFor="alpha-code">Code d&apos;accès alpha</Label>
+                  <Input
+                    id="alpha-code"
+                    value={alphaCode}
+                    onChange={(e) => setAlphaCode(e.target.value.toUpperCase())}
+                    placeholder="JORG-XXXX-YYYY"
+                    required={role === "recruiter"}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Code d&apos;invitation requis pendant la phase alpha.
+                  </p>
+                </div>
+              )}
 
               {error && (
                 <p

@@ -346,6 +346,8 @@ export interface InteractionEvent {
   metadata: {
     template_name?: string | null;
     file_format?: string | null;
+    recruiter_first_name?: string | null;
+    recruiter_last_name?: string | null;
   };
 }
 

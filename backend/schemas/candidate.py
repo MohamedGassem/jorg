@@ -252,6 +252,8 @@ OrganizationStatus = Literal["invited", "active", "revoked", "expired"]
 class InteractionEventMetadata(BaseModel):
     template_name: str | None = None
     file_format: str | None = None
+    recruiter_first_name: str | None = None
+    recruiter_last_name: str | None = None
 
 
 class InteractionEvent(BaseModel):

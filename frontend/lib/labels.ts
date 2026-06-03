@@ -1,6 +1,8 @@
 // frontend/lib/labels.ts
 // Single source of truth for all status labels, variants, and event strings.
 
+import type { InteractionEvent } from "@/types/api";
+
 export const INVITATION_STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
   accepted: "Acceptée",
@@ -54,6 +56,20 @@ export const EVENT_ICONS: Record<string, string> = {
   access_revoked: "🔒",
   document_generated: "📄",
 };
+
+export function eventLabel(ev: InteractionEvent): string {
+  if (ev.type === "document_generated") {
+    const parts = [
+      ev.metadata.recruiter_first_name,
+      ev.metadata.recruiter_last_name,
+    ].filter(Boolean);
+    const recruiterName = parts.join(" ");
+    return recruiterName
+      ? `Dossier généré par ${recruiterName}`
+      : "Dossier généré";
+  }
+  return EVENT_LABELS[ev.type] ?? ev.type;
+}
 
 export function relativeDate(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
