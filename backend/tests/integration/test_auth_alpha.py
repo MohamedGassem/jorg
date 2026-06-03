@@ -105,6 +105,38 @@ async def test_recruiter_register_fails_with_invalid_code(
 
 
 @pytest.mark.asyncio
+async def test_alpha_code_links_to_recruiter_profile(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "true")
+    get_settings.cache_clear()
+    try:
+        codes = await create_alpha_codes(db_session, count=1)
+        resp = await client.post(
+            "/auth/register",
+            json={
+                "email": "link_test@test.com",
+                "password": "password123",
+                "role": "recruiter",
+                "alpha_invite_code": codes[0],
+            },
+        )
+        assert resp.status_code == 201
+        # Verify used_by is set
+        from sqlalchemy import select
+
+        from models.alpha import AlphaInviteCode
+
+        result = await db_session.execute(
+            select(AlphaInviteCode).where(AlphaInviteCode.code == codes[0])
+        )
+        code_obj = result.scalar_one()
+        assert code_obj.used_by is not None
+    finally:
+        get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
 async def test_recruiter_register_fails_with_already_used_code(
     client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ):

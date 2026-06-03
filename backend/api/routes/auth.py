@@ -107,6 +107,28 @@ async def register(
             detail="email already registered",
         ) from e
 
+    # For recruiter: eagerly create profile so we can link the alpha code
+    if (
+        payload.role == UserRole.RECRUITER
+        and payload.alpha_invite_code
+        and settings.alpha_invite_required
+    ):
+        from services.recruiter_service import get_or_create_profile
+
+        recruiter_profile = await get_or_create_profile(db, user.id)
+        # Update the consumed alpha code's used_by field
+        from sqlalchemy import select
+
+        from models.alpha import AlphaInviteCode
+
+        result = await db.execute(
+            select(AlphaInviteCode).where(AlphaInviteCode.code == payload.alpha_invite_code.upper())
+        )
+        alpha_code = result.scalar_one_or_none()
+        if alpha_code:
+            alpha_code.used_by = recruiter_profile.id
+            await db.commit()
+
     send_verification_email(user)
     return UserRead.model_validate(user)
 
