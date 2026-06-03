@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # Gotenberg PDF service (empty = disabled)
     gotenberg_url: str | None = None
 
+    # Admin secret for privileged endpoints (e.g. alpha code generation)
+    admin_secret: str | None = None
+
     @field_validator("gotenberg_url")
     @classmethod
     def _validate_gotenberg_url(cls, v: str | None) -> str | None:
