@@ -1,7 +1,7 @@
 // frontend/app/(public)/register/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, UserCircle, Briefcase } from "lucide-react";
@@ -46,6 +46,13 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<Role>("candidate");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const r = params.get("role");
+    if (r === "candidate" || r === "recruiter") setRole(r);
+  }, []);
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [alphaCode, setAlphaCode] = useState("");
