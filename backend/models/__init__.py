@@ -1,4 +1,5 @@
 # backend/models/__init__.py
+from models.alpha import AlphaInviteCode
 from models.base import Base
 from models.candidate_profile import (
     AvailabilityStatus,
@@ -34,6 +35,7 @@ __all__ = [
     "AccessGrant",
     "AccessGrantStatus",
     "Achievement",
+    "AlphaInviteCode",
     "AvailabilityStatus",
     "Base",
     "CandidateProfile",
