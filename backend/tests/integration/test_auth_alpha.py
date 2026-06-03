@@ -4,7 +4,9 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
+from models.user import OAuthProvider
 from services.alpha_service import create_alpha_codes
+from services.oauth_service import OAuthUserInfo, override_oauth_client
 
 
 @pytest.mark.asyncio
@@ -169,3 +171,107 @@ async def test_recruiter_register_fails_with_already_used_code(
         assert resp2.status_code == 400
     finally:
         get_settings.cache_clear()
+
+
+# ---- OAuth alpha gating tests -----------------------------------------------
+
+
+class _FakeGoogleClientAlpha:
+    provider = OAuthProvider.GOOGLE
+
+    def authorization_url(self, state: str) -> str:
+        return f"https://fake-google/auth?state={state}"
+
+    async def exchange_code(self, code: str) -> OAuthUserInfo:
+        return OAuthUserInfo(
+            provider=OAuthProvider.GOOGLE,
+            subject="google-alpha-test",
+            email="oauth_recruiter_alpha@test.com",
+        )
+
+
+@pytest.mark.asyncio
+async def test_oauth_recruiter_callback_blocked_during_alpha(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+):
+    """OAuth recruiter registration must be blocked with 403 when alpha_invite_required=True."""
+    fake = _FakeGoogleClientAlpha()
+    override_oauth_client(OAuthProvider.GOOGLE, fake)
+    monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "true")
+    get_settings.cache_clear()
+    try:
+        # Initiate OAuth login to get a real state token stored in the DB
+        login = await client.get(
+            "/auth/oauth/google/login?role=recruiter",
+            follow_redirects=False,
+        )
+        assert login.status_code == 307
+        state = login.headers["location"].split("state=")[1]
+
+        # Attempt the callback — should be blocked
+        r = await client.get(
+            f"/auth/oauth/google/callback?code=fake-code&state={state}",
+            follow_redirects=False,
+        )
+        assert r.status_code == 403
+        detail = r.json()["detail"].lower()
+        assert "oauth" in detail or "alpha" in detail or "invitation" in detail
+    finally:
+        get_settings.cache_clear()
+        override_oauth_client(OAuthProvider.GOOGLE, None)
+
+
+@pytest.mark.asyncio
+async def test_oauth_recruiter_callback_allowed_when_alpha_disabled(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+):
+    """OAuth recruiter registration must succeed when alpha_invite_required=False."""
+    fake = _FakeGoogleClientAlpha()
+    override_oauth_client(OAuthProvider.GOOGLE, fake)
+    monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "false")
+    get_settings.cache_clear()
+    try:
+        login = await client.get(
+            "/auth/oauth/google/login?role=recruiter",
+            follow_redirects=False,
+        )
+        assert login.status_code == 307
+        state = login.headers["location"].split("state=")[1]
+
+        r = await client.get(
+            f"/auth/oauth/google/callback?code=fake-code&state={state}",
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        assert "access_token" in r.cookies
+    finally:
+        get_settings.cache_clear()
+        override_oauth_client(OAuthProvider.GOOGLE, None)
+
+
+@pytest.mark.asyncio
+async def test_oauth_candidate_callback_not_blocked_during_alpha(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+):
+    """Candidate OAuth registration must NOT be blocked by alpha gating."""
+    fake_candidate = _FakeGoogleClientAlpha()
+    override_oauth_client(OAuthProvider.GOOGLE, fake_candidate)
+    monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "true")
+    get_settings.cache_clear()
+    try:
+        login = await client.get(
+            "/auth/oauth/google/login?role=candidate",
+            follow_redirects=False,
+        )
+        assert login.status_code == 307
+        state = login.headers["location"].split("state=")[1]
+
+        r = await client.get(
+            f"/auth/oauth/google/callback?code=fake-code&state={state}",
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        assert "access_token" in r.cookies
+    finally:
+        get_settings.cache_clear()
+        override_oauth_client(OAuthProvider.GOOGLE, None)

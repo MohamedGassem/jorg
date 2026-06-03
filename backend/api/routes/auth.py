@@ -300,12 +300,23 @@ async def oauth_callback(
     if stored_provider_str != provider.value:
         raise HTTPException(status_code=400, detail="invalid or expired state")
     role = UserRole(role_str)
+
+    # Block OAuth recruiter registration during alpha
+    settings = get_settings()
+    if role == UserRole.RECRUITER and settings.alpha_invite_required:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "L'inscription recruteur via OAuth n'est pas disponible pendant la phase alpha. "
+                "Utilisez l'inscription par email avec votre code d'invitation."
+            ),
+        )
+
     client = get_oauth_client(provider)
     info = await client.exchange_code(code)
     user = await find_or_create_oauth_user(db, info, default_role=role)
 
     access, refresh = await issue_token_pair(db, user)
-    settings = get_settings()
     redirect_url = (
         f"{settings.frontend_url}/candidate/profile"
         if user.role == UserRole.CANDIDATE
