@@ -22,6 +22,64 @@ import type {
   OrganizationInteractionCard,
 } from "@/types/api";
 
+function DocCard({
+  doc,
+  onDownload,
+}: {
+  doc: GeneratedDocumentCandidateView;
+  onDownload: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const recruiterName = [doc.recruiter_first_name, doc.recruiter_last_name]
+    .filter(Boolean)
+    .join(" ");
+  const displayName = recruiterName
+    ? doc.organization_name
+      ? `${recruiterName} de ${doc.organization_name}`
+      : recruiterName
+    : doc.organization_name;
+
+  const relativeDate = (() => {
+    const diff = Date.now() - new Date(doc.generated_at).getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days === 0) return "aujourd'hui";
+    if (days === 1) return "hier";
+    if (days < 7) return `il y a ${days} jours`;
+    return new Date(doc.generated_at).toLocaleDateString("fr-FR");
+  })();
+
+  return (
+    <div className="rounded-lg border bg-card">
+      <button
+        className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left"
+        onClick={() => setExpanded((p) => !p)}
+        aria-expanded={expanded}
+      >
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{displayName}</p>
+          <p className="text-xs text-muted-foreground">{relativeDate}</p>
+        </div>
+        <span className="shrink-0 text-muted-foreground">
+          {expanded ? "▾" : "▸"}
+        </span>
+      </button>
+      {expanded && (
+        <div className="space-y-2 border-t px-4 py-3">
+          {doc.template_name && (
+            <p className="text-xs text-muted-foreground">
+              Template : {doc.template_name}
+            </p>
+          )}
+          <Button size="sm" variant="outline" onClick={onDownload}>
+            Télécharger
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AccessPage() {
   const {
     data: invitations,
@@ -287,36 +345,21 @@ export default function AccessPage() {
                                   Aucun dossier.
                                 </p>
                               ) : (
-                                <ul className="space-y-1">
+                                <div className="space-y-2">
                                   {docs.map((doc) => (
-                                    <li
+                                    <DocCard
                                       key={doc.id}
-                                      className="flex items-center justify-between gap-2 rounded border border-border/40 px-3 py-2"
-                                    >
-                                      <span className="text-xs text-muted-foreground">
-                                        {new Date(
-                                          doc.generated_at,
-                                        ).toLocaleDateString("fr-FR")}{" "}
-                                        · {doc.file_format.toUpperCase()} ·{" "}
-                                        {doc.template_name}
-                                      </span>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-7 text-xs"
-                                        onClick={() =>
-                                          download(
-                                            `/documents/${doc.id}/download`,
-                                            `dossier.${doc.file_format}`,
-                                            doc.id,
-                                          )
-                                        }
-                                      >
-                                        Télécharger
-                                      </Button>
-                                    </li>
+                                      doc={doc}
+                                      onDownload={() =>
+                                        download(
+                                          `/documents/${doc.id}/download`,
+                                          `dossier-${doc.id}.${doc.file_format}`,
+                                          doc.id,
+                                        )
+                                      }
+                                    />
                                   ))}
-                                </ul>
+                                </div>
                               )}
                               {Object.entries(downloadErrors).map(
                                 ([id, err]) => (
