@@ -31,7 +31,9 @@ async def validate_and_consume_code(
     recruiter_id: UUID | None = None,
 ) -> AlphaInviteCode:
     db.expire_all()
-    result = await db.execute(select(AlphaInviteCode).where(AlphaInviteCode.code == code.upper()))
+    result = await db.execute(
+        select(AlphaInviteCode).where(AlphaInviteCode.code == code.upper()).with_for_update()
+    )
     obj = result.scalar_one_or_none()
     if obj is None or obj.used_at is not None or obj.used_by is not None:
         raise InvalidAlphaCodeError(code)
