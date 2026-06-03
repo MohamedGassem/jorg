@@ -231,7 +231,78 @@ La spec UX refonte prévoyait 3 onglets (Organisation / Membres / Templates). **
 
 ---
 
-## 8. Hors-périmètre
+## 9. Onboarding pas à pas (candidat + recruteur)
+
+### 9.1 Principe
+
+L'inscription collecte prénom, nom, email, password (+ code alpha pour recruteur). Immédiatement après, l'utilisateur est guidé sur 2 pages d'onboarding avant d'atteindre son dashboard. L'inscription elle-même constitue l'étape 1.
+
+Un flag `onboarding_completed: bool = False` est ajouté aux deux modèles de profil. À chaque connexion, si ce flag est `false`, l'utilisateur est redirigé vers l'onboarding là où il s'était arrêté.
+
+### 9.2 Inscription enrichie
+
+Le formulaire `frontend/app/(public)/register/page.tsx` ajoute les champs **Prénom** et **Nom** pour les deux rôles. Ces valeurs sont envoyées dans `RegisterRequest` et enregistrées immédiatement sur le profil après création du compte.
+
+Backend : `RegisterRequest` reçoit `first_name: str | None` et `last_name: str | None`. Après `register_user`, la route `register` appelle `get_or_create_profile` et met à jour ces champs sur le profil créé.
+
+### 9.3 Onboarding candidat (2 étapes post-inscription)
+
+```
+Étape 2 / 3  /onboarding/candidate/profile
+  Titre / poste actuel
+  Type de contrat (freelance / CDI / les deux)
+  Disponibilité (statut + date si "disponible à partir du")
+  Localisation
+  [Continuer →]
+
+Étape 3 / 3  /onboarding/candidate/skills
+  Ajouter une expérience (formulaire simplifié : client, rôle, dates)
+  [Terminer]          [Passer cette étape →]
+```
+
+Après l'étape 3 ou skip → `/candidate/dashboard`. Le flag `onboarding_completed` est mis à `true`.
+
+### 9.4 Onboarding recruteur (2 étapes post-inscription)
+
+```
+Étape 2 / 3  /onboarding/recruiter/organization
+  ● Créer une organisation   [Nom]  [Créer]
+  ○ Rejoindre une organisation  [Code]  [Rejoindre]
+  (réutilise le composant OnboardingOrg de la spec UX refonte §5.1)
+  [Continuer →]
+
+Étape 3 / 3  /onboarding/recruiter/template
+  Choisir un template de démarrage parmi les templates système disponibles
+  (liste des templates globaux / d'exemple de la plateforme)
+  [Associer à mon organisation]   [Passer cette étape →]
+```
+
+Après l'étape 3 ou skip → `/recruiter/dashboard`. Le flag `onboarding_completed` est mis à `true`.
+
+### 9.5 Reprise d'onboarding
+
+Si un utilisateur se déconnecte en cours d'onboarding (flag toujours `false`), la prochaine connexion le redirige vers l'étape incomplète. Heuristique de reprise :
+
+- **Candidat** : pas d'org créée → étape 2 ; profil vide (pas de title) → étape 2 ; sinon → étape 3.
+- **Recruteur** : `organization_id == null` → étape 2 ; sinon → étape 3.
+
+### 9.6 Deltas techniques supplémentaires
+
+| #   | Delta                                                                              | Fichier(s)                                                                        | Type    |
+| --- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------- |
+| B8  | `onboarding_completed` sur `CandidateProfile` + migration                          | `backend/models/candidate_profile.py` + Alembic                                   | modif   |
+| B9  | `onboarding_completed` sur `RecruiterProfile` + migration                          | `backend/models/recruiter.py` + Alembic                                           | modif   |
+| B10 | `first_name` + `last_name` dans `RegisterRequest`, profil mis à jour post-création | `backend/schemas/auth.py` + `backend/api/routes/auth.py`                          | modif   |
+| B11 | Endpoint `PUT /candidates/me/onboarding-complete` (set flag)                       | `backend/api/routes/candidates.py`                                                | nouveau |
+| B12 | Endpoint `PUT /recruiters/me/onboarding-complete` (set flag)                       | `backend/api/routes/recruiters.py`                                                | nouveau |
+| F12 | Formulaire d'inscription enrichi (prénom, nom)                                     | `frontend/app/(public)/register/page.tsx`                                         | modif   |
+| F13 | Pages onboarding candidat (étapes 2 + 3)                                           | `frontend/app/(candidate)/onboarding/profile/page.tsx` + `skills/page.tsx`        | nouveau |
+| F14 | Pages onboarding recruteur (étapes 2 + 3)                                          | `frontend/app/(recruiter)/onboarding/organization/page.tsx` + `template/page.tsx` | nouveau |
+| F15 | Redirect onboarding au login si flag `false`                                       | `frontend/middleware.ts` ou layout                                                | modif   |
+
+---
+
+## 10. Hors-périmètre
 
 - Système de notifications ou d'état lu/non-lu pour les codes utilisés.
 - Interface admin graphique pour gérer les codes.
@@ -257,3 +328,7 @@ La spec UX refonte prévoyait 3 onglets (Organisation / Membres / Templates). **
 11. La page Dossiers recruteur affiche le nom du candidat sur chaque dossier, avec lien vers son profil.
 12. Les templates sont accessibles depuis l'onglet Dossiers recruteur, plus depuis Configuration.
 13. Configuration recruteur = 2 onglets uniquement : Profil personnel + Organisation.
+14. Le formulaire d'inscription collecte prénom et nom pour les deux rôles.
+15. Après inscription, le candidat est guidé sur 2 étapes d'onboarding (profil puis expériences skippable).
+16. Après inscription, le recruteur est guidé sur 2 étapes d'onboarding (organisation puis template skippable).
+17. Si `onboarding_completed = false` à la connexion, l'utilisateur est redirigé vers son onboarding.
