@@ -46,6 +46,8 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<Role>("candidate");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [alphaCode, setAlphaCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -59,6 +61,8 @@ export default function RegisterPage() {
         email,
         password,
         role,
+        first_name: firstName || null,
+        last_name: lastName || null,
         ...(role === "recruiter" && alphaCode
           ? { alpha_invite_code: alphaCode }
           : {}),
@@ -138,6 +142,27 @@ export default function RegisterPage() {
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="first-name">Prénom</Label>
+                  <Input
+                    id="first-name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="last-name">Nom</Label>
+                  <Input
+                    id="last-name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                  />
                 </div>
               </div>
 
