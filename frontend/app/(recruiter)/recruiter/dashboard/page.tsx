@@ -11,7 +11,7 @@ import { api } from "@/lib/api";
 import { useRecruiterOrg } from "@/lib/hooks";
 import type {
   AccessibleCandidateRead,
-  GeneratedDocument,
+  GeneratedDocumentRecruiterView,
   Invitation,
   OpportunityRead,
 } from "@/types/api";
@@ -36,7 +36,9 @@ export default function RecruiterDashboardPage() {
     number | null
   >(null);
   const [docCount, setDocCount] = useState<number | null>(null);
-  const [recentDocs, setRecentDocs] = useState<GeneratedDocument[]>([]);
+  const [recentDocs, setRecentDocs] = useState<
+    GeneratedDocumentRecruiterView[]
+  >([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -56,7 +58,9 @@ export default function RecruiterDashboardPage() {
       .catch(() => null);
 
     const documentsPromise = api
-      .get<GeneratedDocument[]>(`/organizations/${orgId}/documents`)
+      .get<
+        GeneratedDocumentRecruiterView[]
+      >(`/organizations/${orgId}/documents`)
       .catch(() => null);
 
     Promise.all([
