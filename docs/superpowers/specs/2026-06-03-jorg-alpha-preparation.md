@@ -170,16 +170,75 @@ Passer `ALPHA_INVITE_REQUIRED=false` dans l'env. Aucune migration nécessaire, l
 | F4  | Taux de complétion calculé côté client                             | Composant dans `profile/page.tsx`                                                        | nouveau (inline) |
 | F5  | Paramètres 3 onglets (Infos perso / Compte / RGPD)                 | `frontend/app/(candidate)/candidate/settings/page.tsx`                                   | modif            |
 | F6  | Champ code alpha sur signup recruteur                              | `frontend/app/(recruiter)/auth/signup/page.tsx` (ou équivalent)                          | modif            |
+| F7  | Dossiers recruteur : nom candidat + opportunité + lien candidat    | `frontend/app/(recruiter)/recruiter/documents/page.tsx`                                  | modif            |
+| F8  | Templates déplacés dans l'onglet Dossiers                          | `frontend/app/(recruiter)/recruiter/documents/page.tsx`                                  | modif            |
+| F9  | Configuration 2 onglets (Profil personnel / Organisation)          | `frontend/app/(recruiter)/recruiter/settings/page.tsx`                                   | modif            |
+| F10 | Accès candidat — carte dossier avec divulgation progressive        | `frontend/app/(candidate)/candidate/access/page.tsx`                                     | modif            |
+| F11 | Activités candidat — recruteur + org sur événements dossier généré | `frontend/app/(candidate)/candidate/dashboard/page.tsx` + `access/page.tsx`              | modif            |
 
 ---
 
-## 6. Hors-périmètre
+## 6. Portail candidat — enrichissements de contenu
+
+### 6.1 Activités récentes (dashboard + page Accès)
+
+Les événements "dossier généré" affichent désormais l'identité du recruteur :
+
+- **Format :** "Dossier généré par [Prénom Nom] de [Organisation]"
+- **Recruteur indépendant** (organization_id null) : "Dossier généré par [Prénom Nom]" — pas de mention organisation.
+- **Delta backend :** les événements/activités candidat doivent inclure `recruiter_first_name`, `recruiter_last_name`, `organization_name` (nullable). À vérifier si déjà porté par la spec UX refonte (B6/B7).
+
+### 6.2 Page Accès — section "Dossiers générés" (divulgation progressive)
+
+Remplace l'affichage actuel "document.docx + [Télécharger]" par une carte avec deux niveaux :
+
+**Vue repliée (toujours visible) :**
+
+- Nom du recruteur + organisation (ou nom seul si indépendant)
+- Date relative ("il y a 3 jours")
+- Chevron `▸` pour développer
+
+**Vue dépliée (sur clic du chevron) :**
+
+- Opportunité associée (nom + lien) si applicable — "Aucune opportunité associée" sinon
+- Bouton `[Télécharger]`
+
+Aucun nouveau backend nécessaire si les données recruteur sont déjà disponibles via l'enrichissement B7.
+
+---
+
+## 7. Portail recruteur — enrichissements de contenu
+
+### 7.1 Page Dossiers `/recruiter/documents`
+
+**Nom du candidat visible sur chaque dossier.** La liste actuelle ne montre pas à quel candidat correspond le dossier. Chaque entrée affiche :
+
+- Nom du candidat (lien vers `/recruiter/candidates/[id]`)
+- Date de génération
+- Opportunité associée (si applicable)
+- Bouton `[Télécharger]`
+
+**Templates déplacés ici.** L'onglet Dossiers devient le hub de tout ce qui concerne la production de documents : dossiers générés + gestion des templates (upload, mapping, prévisualisation). Un sous-onglet ou section dédiée "Templates" remplace l'entrée actuelle dans Configuration.
+
+### 7.2 Configuration `/recruiter/settings` — 2 onglets (amendement §5.6)
+
+La spec UX refonte prévoyait 3 onglets (Organisation / Membres / Templates). **Templates est déplacé vers Dossiers** (§7.1). Configuration passe à 2 onglets :
+
+| Onglet           | Contenu                                                                       |
+| ---------------- | ----------------------------------------------------------------------------- |
+| Profil personnel | Nom, prénom, titre, email du recruteur connecté                               |
+| Organisation     | Nom de l'orga, membres, lien d'invitation (`[Copier]`), `[Régénérer le code]` |
+
+---
+
+## 8. Hors-périmètre
 
 - Système de notifications ou d'état lu/non-lu pour les codes utilisés.
 - Interface admin graphique pour gérer les codes.
 - Expiration temporelle des codes (codes à usage unique suffisent pour l'alpha).
 - Rôles/permissions dans les organisations (hors-périmètre de la spec UX refonte, maintenu ici).
 - Landing page LinkedIn (contenu marketing, hors scope technique).
+- **Opportunités rattachées à un client** : évolution identifiée (portefeuille client — voir toutes les opps, candidats et dossiers par client) mais hors-périmètre alpha. Nécessite un nouveau modèle `Client`, des relations à créer et une UI dédiée. À planifier en sprint post-alpha.
 
 ---
 
@@ -193,3 +252,8 @@ Passer `ALPHA_INVITE_REQUIRED=false` dans l'env. Aucune migration nécessaire, l
 6. Un code alpha ne peut être utilisé qu'une seule fois.
 7. `POST /admin/alpha-codes` génère des codes en lot et les retourne (header secret requis).
 8. `ALPHA_INVITE_REQUIRED=false` désactive la validation sans migration.
+9. Les événements "dossier généré" (dashboard candidat + page Accès) affichent le nom du recruteur et l'organisation (ou nom seul si recruteur indépendant).
+10. La section "Dossiers générés" dans Accès candidat utilise la divulgation progressive : vue repliée (recruteur + org + date relative), vue dépliée (opportunité + téléchargement).
+11. La page Dossiers recruteur affiche le nom du candidat sur chaque dossier, avec lien vers son profil.
+12. Les templates sont accessibles depuis l'onglet Dossiers recruteur, plus depuis Configuration.
+13. Configuration recruteur = 2 onglets uniquement : Profil personnel + Organisation.
