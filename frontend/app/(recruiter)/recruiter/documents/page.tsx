@@ -83,7 +83,9 @@ export default function DocumentsPage() {
         .then((data) => {
           if (!controller.signal.aborted) setTemplates(data);
         })
-        .catch(() => {}),
+        .catch(() => {
+          // Templates are optional — documents tab still works without them
+        }),
     ]).finally(() => {
       if (!controller.signal.aborted) setDocsLoading(false);
     });
