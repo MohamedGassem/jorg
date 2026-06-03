@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Copy, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,19 +13,106 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
-import type { OrgMember, Organization, Template } from "@/types/api";
+import type { OrgMember, Organization } from "@/types/api";
 
-type Tab = "organisation" | "membres" | "templates";
+type Tab = "profil" | "organisation";
+
+function ProfilPersonnelTab() {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .get<{
+        first_name: string | null;
+        last_name: string | null;
+        job_title: string | null;
+      }>("/recruiters/me/profile")
+      .then((p) => {
+        setFirstName(p.first_name ?? "");
+        setLastName(p.last_name ?? "");
+        setJobTitle(p.job_title ?? "");
+      })
+      .catch(() => setLoadError("Impossible de charger votre profil."));
+  }, []);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setMessage(null);
+    try {
+      await api.put("/recruiters/me/profile", {
+        first_name: firstName || null,
+        last_name: lastName || null,
+        job_title: jobTitle || null,
+      });
+      setMessage("Profil mis à jour.");
+    } catch {
+      setMessage("Erreur lors de la sauvegarde.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loadError) return <ErrorAlert error={loadError} />;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Profil personnel</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSave} className="max-w-sm space-y-4">
+          <div className="space-y-1">
+            <Label htmlFor="rec-first-name">Prénom</Label>
+            <Input
+              id="rec-first-name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="rec-last-name">Nom</Label>
+            <Input
+              id="rec-last-name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="rec-job-title">Titre / poste</Label>
+            <Input
+              id="rec-job-title"
+              value={jobTitle}
+              onChange={(e) => setJobTitle(e.target.value)}
+            />
+          </div>
+          {message && (
+            <p className="text-sm text-muted-foreground">{message}</p>
+          )}
+          <Button type="submit" disabled={saving}>
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function RecruiterSettingsPage() {
   const { orgId, loading: orgLoading } = useRecruiterOrg();
-  const [activeTab, setActiveTab] = useState<Tab>("organisation");
+  const [activeTab, setActiveTab] = useState<Tab>("profil");
   const [org, setOrg] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrgMember[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -40,10 +127,6 @@ export default function RecruiterSettingsPage() {
       api
         .get<OrgMember[]>(`/organizations/${orgId}/members`)
         .then(setMembers)
-        .catch(() => {}),
-      api
-        .get<Template[]>(`/organizations/${orgId}/templates`)
-        .then(setTemplates)
         .catch(() => {}),
     ]);
   }, [orgId]);
@@ -72,9 +155,8 @@ export default function RecruiterSettingsPage() {
   }
 
   const tabs: { key: Tab; label: string }[] = [
+    { key: "profil", label: "Profil personnel" },
     { key: "organisation", label: "Organisation" },
-    { key: "membres", label: "Membres" },
-    { key: "templates", label: "Templates" },
   ];
 
   if (orgLoading) return <p className="text-muted-foreground">Chargement…</p>;
@@ -118,21 +200,22 @@ export default function RecruiterSettingsPage() {
         ))}
       </div>
 
-      {/* Organisation tab */}
-      {activeTab === "organisation" && org && (
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>{org.name}</CardTitle>
-              <CardDescription>Slug : {org.slug}</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      )}
+      {/* Profil personnel tab */}
+      {activeTab === "profil" && <ProfilPersonnelTab />}
 
-      {/* Membres tab */}
-      {activeTab === "membres" && (
+      {/* Organisation tab (merged with membres) */}
+      {activeTab === "organisation" && (
         <div className="space-y-4">
+          {/* Org info */}
+          {org && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{org.name}</CardTitle>
+                <CardDescription>Slug : {org.slug}</CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+
           {/* Join code */}
           <Card>
             <CardHeader>
@@ -213,48 +296,6 @@ export default function RecruiterSettingsPage() {
               )}
             </CardContent>
           </Card>
-        </div>
-      )}
-
-      {/* Templates tab */}
-      {activeTab === "templates" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {templates.length} template{templates.length !== 1 ? "s" : ""}
-            </p>
-            <Link
-              href="/recruiter/templates"
-              className={buttonVariants({ size: "sm" })}
-            >
-              Gérer les templates →
-            </Link>
-          </div>
-          {templates.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Aucun template. Cliquez sur &quot;Gérer les templates&quot; pour
-              en uploader un.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {templates.map((t) => (
-                <li
-                  key={t.id}
-                  className="flex items-center justify-between rounded-lg border border-border/40 px-4 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{t.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t.detected_placeholders.length} placeholder(s)
-                    </p>
-                  </div>
-                  <Badge variant={t.is_valid ? "default" : "secondary"}>
-                    {t.is_valid ? "Valide" : "Incomplet"}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       )}
     </div>
