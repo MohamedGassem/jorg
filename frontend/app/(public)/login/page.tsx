@@ -1,11 +1,11 @@
 // frontend/app/(public)/login/page.tsx
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { jwtDecode } from "jwt-decode";
-import { Eye, EyeOff } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,8 +23,11 @@ interface JwtPayload {
   role: "candidate" | "recruiter";
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const justRegistered = searchParams.get("registered") === "1";
+  const justReset = searchParams.get("reset") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -86,6 +89,14 @@ export default function LoginPage() {
             <CardDescription>Accédez à votre espace Jorg</CardDescription>
           </CardHeader>
           <CardContent>
+            {(justRegistered || justReset) && (
+              <div className="mb-4 flex items-start gap-3 rounded-lg bg-primary/10 px-3 py-3 text-sm text-foreground">
+                <CheckCircle2 className="size-5 shrink-0 text-primary" />
+                {justRegistered
+                  ? "Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous."
+                  : "Mot de passe réinitialisé. Vous pouvez maintenant vous connecter."}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
@@ -99,7 +110,15 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="password">Mot de passe</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Mot de passe</Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    Mot de passe oublié ?
+                  </Link>
+                </div>
                 <div className="relative">
                   <Input
                     id="password"
@@ -158,5 +177,13 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

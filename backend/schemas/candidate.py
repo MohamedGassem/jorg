@@ -14,6 +14,7 @@ from models.candidate_profile import (
     MissionDuration,
     WorkMode,
 )
+from models.skill import SkillKind
 from schemas.skill import AchievementRead, ExperienceSkillUsageRead
 
 VALID_DOMAINS = {
@@ -270,3 +271,26 @@ class OrganizationInteractionCard(BaseModel):
     logo_url: str | None
     current_status: OrganizationStatus
     events: list[InteractionEvent]
+
+
+# ---- CV parsing -------------------------------------------------------------
+
+
+class CVSkillSuggestion(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    skill_ref_id: UUID
+    name: str
+    kind: SkillKind
+
+
+class CVParseResult(BaseModel):
+    """Suggestions extracted from an uploaded CV to pre-fill the profile.
+
+    Never written to the DB automatically — the candidate confirms in the UI.
+    """
+
+    email: str | None = None
+    phone: str | None = None
+    linkedin_url: str | None = None
+    skills: list[CVSkillSuggestion] = []

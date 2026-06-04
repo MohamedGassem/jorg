@@ -15,13 +15,13 @@ Candidates control their own data. They can revoke access at any time.
 
 ## Stack
 
-| Layer | Tech |
-|---|---|
-| Backend | Python 3.14, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic v2 |
-| Frontend | Next.js 16 (App Router), React 19, Tailwind CSS 4, Base UI |
-| Database | PostgreSQL 18 |
-| Auth | JWT (access + refresh tokens) |
-| Document generation | python-docx, optional LibreOffice for PDF |
+| Layer               | Tech                                                             |
+| ------------------- | ---------------------------------------------------------------- |
+| Backend             | Python 3.14, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic v2 |
+| Frontend            | Next.js 16 (App Router), React 19, Tailwind CSS 4, Base UI       |
+| Database            | PostgreSQL 18                                                    |
+| Auth                | JWT (access + refresh tokens)                                    |
+| Document generation | python-docx, optional LibreOffice for PDF                        |
 
 ---
 
@@ -65,6 +65,20 @@ uv run uvicorn main:app --reload
 ```
 
 The interactive API docs are available at `http://localhost:8000/docs`.
+
+#### Skill references (ESCO)
+
+Skills are backed by the ESCO taxonomy. Two seeders are available (both idempotent):
+
+```bash
+# Small curated set (~50 skills) from data/esco_seed.csv — enough for tests/dev
+uv run python scripts/seed_skill_references.py
+
+# Full ESCO catalogue (~14k skills) from data/esco/skills_fr.csv
+uv run python scripts/import_esco_full.py
+# Smoke test a subset first if you like:
+uv run python scripts/import_esco_full.py --limit 500
+```
 
 ### 4. Frontend
 
@@ -141,14 +155,14 @@ pre-commit run tsc --hook-stage manual
 
 Copy `.env.example` to `.env` in the project root. The defaults are configured for local development and require no changes to get started.
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `SECRET_KEY` | JWT signing key — change in production |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime (default: 15) |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token lifetime (default: 30) |
-| `EMAIL_BACKEND` | `console` (prints to stdout) or `smtp` |
-| `FRONTEND_URL` | Used in invitation email links |
+| Variable                      | Description                            |
+| ----------------------------- | -------------------------------------- |
+| `DATABASE_URL`                | PostgreSQL connection string           |
+| `SECRET_KEY`                  | JWT signing key — change in production |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime (default: 15)    |
+| `REFRESH_TOKEN_EXPIRE_DAYS`   | Refresh token lifetime (default: 30)   |
+| `EMAIL_BACKEND`               | `console` (prints to stdout) or `smtp` |
+| `FRONTEND_URL`                | Used in invitation email links         |
 
 ---
 

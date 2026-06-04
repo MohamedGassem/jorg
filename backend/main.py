@@ -39,6 +39,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         get_storage()
     except ValueError as exc:
         raise RuntimeError(f"Storage configuration error: {exc}") from exc
+
+    # Build the (effectively static) ESCO skill index once at startup so
+    # /candidates/me/parse-cv doesn't rescan the whole catalogue per request.
+    # On failure, leave it unset — the endpoint falls back to a per-request DB build.
+    log = structlog.get_logger()
+    try:
+        from core.database import AsyncSessionLocal
+        from services.cv_parser_service import build_skill_index
+
+        async with AsyncSessionLocal() as session:
+            app.state.skill_index = await build_skill_index(session)
+        log.info("skill_index.built", entries=len(app.state.skill_index))
+    except Exception as exc:  # startup must not crash on index build
+        app.state.skill_index = None
+        log.warning("skill_index.build_failed", error=str(exc))
+
     yield
 
 
