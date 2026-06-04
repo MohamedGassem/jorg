@@ -22,6 +22,15 @@ import type {
   OrganizationInteractionCard,
 } from "@/types/api";
 
+function docRelativeDate(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "aujourd'hui";
+  if (days === 1) return "hier";
+  if (days < 7) return `il y a ${days} jours`;
+  return new Date(dateStr).toLocaleDateString("fr-FR");
+}
+
 function DocCard({
   doc,
   onDownload,
@@ -40,14 +49,7 @@ function DocCard({
       : recruiterName
     : doc.organization_name;
 
-  const relativeDate = (() => {
-    const diff = Date.now() - new Date(doc.generated_at).getTime();
-    const days = Math.floor(diff / 86400000);
-    if (days === 0) return "aujourd'hui";
-    if (days === 1) return "hier";
-    if (days < 7) return `il y a ${days} jours`;
-    return new Date(doc.generated_at).toLocaleDateString("fr-FR");
-  })();
+  const relativeDate = docRelativeDate(doc.generated_at);
 
   return (
     <div className="rounded-lg border bg-card">
