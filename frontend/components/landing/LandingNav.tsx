@@ -1,18 +1,14 @@
 // frontend/components/landing/LandingNav.tsx
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { JorgWordmark } from "@/components/ui/JorgWordmark";
 
 export function LandingNav() {
   return (
     <nav className="sticky top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur-sm">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2.5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-            J
-          </span>
-          <span className="font-heading text-base font-semibold tracking-tight text-foreground">
-            Jorg
-          </span>
+          <JorgWordmark />
         </Link>
         <div className="flex items-center gap-3">
           <Link href="/login">
