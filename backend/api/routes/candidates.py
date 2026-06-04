@@ -38,6 +38,8 @@ from schemas.candidate import (
     LanguageRead,
     LanguageUpdate,
     OrganizationInteractionCard,
+    validate_certification_dates,
+    validate_education_dates,
     validate_experience_dates,
 )
 from schemas.rgpd import CandidateExport
@@ -209,7 +211,8 @@ async def list_my_education(profile: CandidateProfile_dep, db: DB) -> list[Educa
 async def create_my_education(
     data: EducationCreate, profile: CandidateProfile_dep, db: DB
 ) -> Education:
-    return await candidate_service.create_education(db, profile.id, data)
+    validate_education_dates(data.start_date, data.end_date)
+    return await candidate_service.education_crud.create(db, profile.id, data)
 
 
 @router.put("/me/education/{education_id}", response_model=EducationRead)
@@ -219,18 +222,21 @@ async def update_my_education(
     profile: CandidateProfile_dep,
     db: DB,
 ) -> Education:
-    edu = await candidate_service.get_education_item(db, education_id, profile.id)
+    edu = await candidate_service.education_crud.get(db, education_id, profile.id)
     if edu is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="education not found")
-    return await candidate_service.update_education(db, edu, data)
+    merged_start = data.start_date if data.start_date is not None else edu.start_date
+    merged_end = data.end_date if "end_date" in data.model_fields_set else edu.end_date
+    validate_education_dates(merged_start, merged_end)
+    return await candidate_service.education_crud.update(db, edu, data)
 
 
 @router.delete("/me/education/{education_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_my_education(education_id: UUID, profile: CandidateProfile_dep, db: DB) -> None:
-    edu = await candidate_service.get_education_item(db, education_id, profile.id)
+    edu = await candidate_service.education_crud.get(db, education_id, profile.id)
     if edu is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="education not found")
-    await candidate_service.delete_education(db, edu)
+    await candidate_service.education_crud.delete(db, edu)
 
 
 # ---- Certifications ---------------------------------------------------------
@@ -249,7 +255,8 @@ async def list_my_certifications(profile: CandidateProfile_dep, db: DB) -> list[
 async def create_my_certification(
     data: CertificationCreate, profile: CandidateProfile_dep, db: DB
 ) -> Certification:
-    return await candidate_service.create_certification(db, profile.id, data)
+    validate_certification_dates(data.issue_date, data.expiry_date)
+    return await candidate_service.certification_crud.create(db, profile.id, data)
 
 
 @router.put("/me/certifications/{certification_id}", response_model=CertificationRead)
@@ -259,20 +266,23 @@ async def update_my_certification(
     profile: CandidateProfile_dep,
     db: DB,
 ) -> Certification:
-    cert = await candidate_service.get_certification(db, certification_id, profile.id)
+    cert = await candidate_service.certification_crud.get(db, certification_id, profile.id)
     if cert is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="certification not found")
-    return await candidate_service.update_certification(db, cert, data)
+    merged_issue = data.issue_date if data.issue_date is not None else cert.issue_date
+    merged_expiry = data.expiry_date if "expiry_date" in data.model_fields_set else cert.expiry_date
+    validate_certification_dates(merged_issue, merged_expiry)
+    return await candidate_service.certification_crud.update(db, cert, data)
 
 
 @router.delete("/me/certifications/{certification_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_my_certification(
     certification_id: UUID, profile: CandidateProfile_dep, db: DB
 ) -> None:
-    cert = await candidate_service.get_certification(db, certification_id, profile.id)
+    cert = await candidate_service.certification_crud.get(db, certification_id, profile.id)
     if cert is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="certification not found")
-    await candidate_service.delete_certification(db, cert)
+    await candidate_service.certification_crud.delete(db, cert)
 
 
 # ---- Languages --------------------------------------------------------------

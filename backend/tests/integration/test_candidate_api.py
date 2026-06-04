@@ -290,6 +290,72 @@ async def test_create_experience_happy_path_returns_201(
     assert data["is_current"] is False
 
 
+# ---- Experience model_fields_set guard (end_date null on update) -------------
+
+
+async def test_update_experience_clear_end_date_returns_null(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    create = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={
+            "client_name": "Time Corp",
+            "role": "Dev",
+            "start_date": "2022-01-01",
+            "end_date": "2023-01-01",
+            "is_current": False,
+        },
+    )
+    assert create.status_code == 201
+    exp_id = create.json()["id"]
+
+    r = await client.put(
+        f"/candidates/me/experiences/{exp_id}",
+        headers=candidate_headers,
+        json={"end_date": None},
+    )
+    assert r.status_code == 200
+    assert r.json()["end_date"] is None
+
+
+# ---- Education coherence -----------------------------------------------------
+
+
+async def test_create_education_end_before_start_returns_422(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/education",
+        headers=candidate_headers,
+        json={
+            "school": "Bad School",
+            "start_date": "2020-09-01",
+            "end_date": "2019-06-30",
+        },
+    )
+    assert r.status_code == 422
+
+
+# ---- Certification coherence -------------------------------------------------
+
+
+async def test_create_certification_expiry_before_issue_returns_422(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/certifications",
+        headers=candidate_headers,
+        json={
+            "name": "Bad Cert",
+            "issuer": "Bad Issuer",
+            "issue_date": "2024-06-01",
+            "expiry_date": "2023-01-01",
+        },
+    )
+    assert r.status_code == 422
+
+
 # ---- Education --------------------------------------------------------------
 
 
