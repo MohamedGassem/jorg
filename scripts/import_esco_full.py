@@ -25,6 +25,7 @@ sys.path.insert(0, str(ROOT / "backend"))
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine  # noqa: E402
 
+from core.config import get_settings  # noqa: E402
 from services.esco_import_service import import_esco_skills  # noqa: E402
 
 DEFAULT_CSV = ROOT / "data" / "esco" / "skills_fr.csv"
@@ -47,10 +48,8 @@ async def main() -> None:
         print(f"ERROR: CSV not found: {args.csv}", file=sys.stderr)
         raise SystemExit(1)
 
-    db_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql+asyncpg://jorg:jorg@localhost:5432/jorg",
-    )
+    # Use the same source as the app: DATABASE_URL env var, else backend/.env.
+    db_url = os.environ.get("DATABASE_URL") or get_settings().database_url
     engine = create_async_engine(db_url)
     session_factory = async_sessionmaker(bind=engine, expire_on_commit=False)
     print(f"Importing ESCO skills from {args.csv} …")
