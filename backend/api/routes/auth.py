@@ -228,7 +228,8 @@ async def logout(
         await revoke_refresh_token(db, raw_token)
     response.delete_cookie("access_token", path="/", secure=_SECURE)
     response.delete_cookie("refresh_token", path="/", secure=_SECURE)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
 
 
 @router.post("/verify-email", response_model=UserRead)
