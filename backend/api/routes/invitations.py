@@ -7,15 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import services.invitation_service as invitation_service
-import services.recruiter_service as recruiter_service
-from api.deps import get_db, require_role
+from api.deps import RecruiterOrgMember, get_db, require_role
 from models.invitation import AccessGrant, Invitation, InvitationStatus
 from models.user import User, UserRole
 from schemas.invitation import AccessGrantRead, InvitationCreate, InvitationRead
 
 router = APIRouter(tags=["invitations"])
 
-RecruiterUser = Annotated[User, Depends(require_role(UserRole.RECRUITER))]
 CandidateUser = Annotated[User, Depends(require_role(UserRole.CANDIDATE))]
 DB = Annotated[AsyncSession, Depends(get_db)]
 
@@ -31,17 +29,11 @@ DB = Annotated[AsyncSession, Depends(get_db)]
 async def create_invitation(
     org_id: UUID,
     data: InvitationCreate,
-    current_user: RecruiterUser,
+    member: RecruiterOrgMember,
     db: DB,
 ) -> Invitation:
-    profile = await recruiter_service.get_or_create_profile(db, current_user.id)
-    if profile.organization_id != org_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="you do not belong to this organization",
-        )
     return await invitation_service.create_invitation(
-        db, current_user.id, org_id, str(data.candidate_email)
+        db, member.user_id, org_id, str(data.candidate_email)
     )
 
 
@@ -51,15 +43,9 @@ async def create_invitation(
 )
 async def list_org_invitations(
     org_id: UUID,
-    current_user: RecruiterUser,
+    member: RecruiterOrgMember,
     db: DB,
 ) -> list[Invitation]:
-    profile = await recruiter_service.get_or_create_profile(db, current_user.id)
-    if profile.organization_id != org_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="you do not belong to this organization",
-        )
     return await invitation_service.list_org_invitations(db, org_id)
 
 
