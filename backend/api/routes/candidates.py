@@ -38,6 +38,7 @@ from schemas.candidate import (
     LanguageRead,
     LanguageUpdate,
     OrganizationInteractionCard,
+    validate_experience_dates,
 )
 from schemas.rgpd import CandidateExport
 
@@ -143,7 +144,8 @@ async def create_my_experience(
     profile: CandidateProfile_dep,
     db: DB,
 ) -> Experience:
-    exp = await candidate_service.create_experience(db, profile.id, data)
+    validate_experience_dates(data.start_date, data.end_date, data.is_current)
+    exp = await candidate_service.experience_crud.create(db, profile.id, data)
     result = await db.execute(
         select(Experience).where(Experience.id == exp.id).options(*_EXP_OPTIONS)
     )
@@ -163,10 +165,14 @@ async def update_my_experience(
     profile: CandidateProfile_dep,
     db: DB,
 ) -> Experience:
-    exp = await candidate_service.get_experience(db, experience_id, profile.id)
+    exp = await candidate_service.experience_crud.get(db, experience_id, profile.id)
     if exp is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="experience not found")
-    await candidate_service.update_experience(db, exp, data)
+    merged_start = data.start_date if data.start_date is not None else exp.start_date
+    merged_end = data.end_date if "end_date" in data.model_fields_set else exp.end_date
+    merged_current = data.is_current if data.is_current is not None else exp.is_current
+    validate_experience_dates(merged_start, merged_end, merged_current)
+    await candidate_service.experience_crud.update(db, exp, data)
     result = await db.execute(
         select(Experience).where(Experience.id == experience_id).options(*_EXP_OPTIONS)
     )
@@ -185,10 +191,10 @@ async def delete_my_experience(
     profile: CandidateProfile_dep,
     db: DB,
 ) -> None:
-    exp = await candidate_service.get_experience(db, experience_id, profile.id)
+    exp = await candidate_service.experience_crud.get(db, experience_id, profile.id)
     if exp is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="experience not found")
-    await candidate_service.delete_experience(db, exp)
+    await candidate_service.experience_crud.delete(db, exp)
 
 
 # ---- Education --------------------------------------------------------------

@@ -226,6 +226,70 @@ async def test_update_experience_not_found_returns_404(
     assert r.status_code == 404
 
 
+# ---- Experience coherence ---------------------------------------------------
+
+
+async def test_create_experience_end_before_start_returns_422(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={
+            "client_name": "Bad Corp",
+            "role": "Dev",
+            "start_date": "2023-06-01",
+            "end_date": "2023-01-01",
+        },
+    )
+    assert r.status_code == 422
+
+
+async def test_update_experience_set_is_current_without_clearing_end_date_returns_422(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    create = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={
+            "client_name": "Stable Corp",
+            "role": "Engineer",
+            "start_date": "2022-01-01",
+            "end_date": "2023-01-01",
+            "is_current": False,
+        },
+    )
+    assert create.status_code == 201
+    exp_id = create.json()["id"]
+
+    r = await client.put(
+        f"/candidates/me/experiences/{exp_id}",
+        headers=candidate_headers,
+        json={"is_current": True},
+    )
+    assert r.status_code == 422
+
+
+async def test_create_experience_happy_path_returns_201(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={
+            "client_name": "Good Corp",
+            "role": "Lead Dev",
+            "start_date": "2021-03-01",
+            "end_date": "2022-03-01",
+            "is_current": False,
+        },
+    )
+    assert r.status_code == 201
+    data = r.json()
+    assert data["client_name"] == "Good Corp"
+    assert data["is_current"] is False
+
+
 # ---- Education --------------------------------------------------------------
 
 
