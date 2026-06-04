@@ -13,12 +13,14 @@ from __future__ import annotations
 import io
 import re
 import unicodedata
+from dataclasses import dataclass
 from typing import TypedDict
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.skill import SkillReference
+from models.skill import SkillKind, SkillReference
 
 MAX_CV_BYTES = 5 * 1024 * 1024  # 5 MB
 _MIN_SKILL_LEN = 3  # ignore 1-2 char terms ("R", "C") to avoid false positives
@@ -41,7 +43,10 @@ class CVTextExtractionError(Exception):
 _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 # French / international phone numbers: +33, 0X, with spaces/dots/dashes.
 _PHONE_RE = re.compile(r"(?:(?:\+|00)\d{1,3}[\s.\-]?)?(?:\(?\d{1,4}\)?[\s.\-]?){2,5}\d{2,4}")
-_LINKEDIN_RE = re.compile(r"(?:https?://)?(?:[a-z]{2,3}\.)?linkedin\.com/in/[A-Za-z0-9_%\-]+/?")
+_LINKEDIN_RE = re.compile(
+    r"(?:https?://)?(?:[a-z]{2,3}\.)?linkedin\.com/in/[A-Za-z0-9_%\-]+/?",
+    re.IGNORECASE,
+)
 
 
 def extract_text(filename: str, data: bytes) -> str:
@@ -82,6 +87,19 @@ def _extract_docx(data: bytes) -> str:
     return "\n".join(parts)
 
 
+@dataclass(frozen=True)
+class SkillEntry:
+    """Lightweight, session-detached view of a skill reference for matching."""
+
+    id: UUID
+    name: str
+    kind: SkillKind
+
+
+# Normalised phrase (name or alias) -> the skill it belongs to.
+SkillIndex = dict[str, SkillEntry]
+
+
 class CVContact(TypedDict):
     email: str | None
     phone: str | None
@@ -89,7 +107,7 @@ class CVContact(TypedDict):
 
 
 class CVParseData(CVContact):
-    skills: list[SkillReference]
+    skills: list[SkillEntry]
 
 
 def extract_contact(text: str) -> CVContact:
@@ -138,47 +156,63 @@ def _ngrams(tokens: list[str], max_words: int) -> set[str]:
     return grams
 
 
-async def match_skills(text: str, db: AsyncSession) -> list[SkillReference]:
-    """Match CV text against ESCO/global skill references by name & alias.
+async def build_skill_index(db: AsyncSession) -> SkillIndex:
+    """Build the phrase -> skill index from the global catalogue.
 
-    Uses an n-gram lookup of the CV text against a normalised phrase index, so
-    the cost is roughly linear in the CV length rather than in the catalogue
-    size.
+    The ESCO catalogue is effectively static, so this is built once at startup
+    (see the FastAPI lifespan) and reused across requests. Entries are
+    session-detached (plain dataclasses), so the index is safe to share.
     """
     result = await db.execute(
         select(SkillReference).where(SkillReference.creator_candidate_id.is_(None))
     )
-    refs = list(result.scalars().all())
-
-    # Build a phrase -> ref index from each ref's name + aliases.
-    index: dict[str, SkillReference] = {}
-    for ref in refs:
-        phrases = [ref.name, *ref.aliases]
-        for phrase in phrases:
+    index: SkillIndex = {}
+    for ref in result.scalars().all():
+        entry = SkillEntry(id=ref.id, name=ref.name, kind=ref.kind)
+        for phrase in (ref.name, *ref.aliases):
             norm = _normalise(phrase)
             if len(norm) >= _MIN_SKILL_LEN and norm not in index:
-                index[norm] = ref
+                index[norm] = entry
+    return index
 
-    norm_text = _normalise(text)
-    tokens = norm_text.split(" ")
+
+def match_skills_in_index(text: str, index: SkillIndex) -> list[SkillEntry]:
+    """Match CV text against a prebuilt phrase index (pure, no DB).
+
+    Uses an n-gram lookup of the CV text, so the cost is roughly linear in the
+    CV length rather than in the catalogue size.
+    """
+    tokens = _normalise(text).split(" ")
     candidates = _ngrams(tokens, _MAX_NGRAM_WORDS)
 
-    matched: dict[str, SkillReference] = {}
+    matched: dict[UUID, SkillEntry] = {}
     for gram in candidates:
         hit = index.get(gram)
         if hit is not None:
-            matched[str(hit.id)] = hit
+            matched[hit.id] = hit
 
     # Prefer longer (more specific) skill names first, then alphabetical.
-    ordered = sorted(matched.values(), key=lambda r: (-len(r.name), r.name.lower()))
+    ordered = sorted(matched.values(), key=lambda e: (-len(e.name), e.name.lower()))
     return ordered[:_MAX_SKILL_SUGGESTIONS]
 
 
-async def parse_cv(filename: str, data: bytes, db: AsyncSession) -> CVParseData:
-    """Full pipeline: extract text, contact fields, and matched skills."""
+async def parse_cv(
+    filename: str,
+    data: bytes,
+    db: AsyncSession,
+    index: SkillIndex | None = None,
+) -> CVParseData:
+    """Full pipeline: extract text, contact fields, and matched skills.
+
+    Uses the prebuilt ``index`` when provided (production fast path); otherwise
+    builds it from the DB on the fly (used by tests, where the app lifespan
+    that populates the shared index does not run).
+    """
     text = extract_text(filename, data)
     contact = extract_contact(text)
-    skills = await match_skills(text, db)
+    if index is None:
+        index = await build_skill_index(db)
+    skills = match_skills_in_index(text, index)
     return CVParseData(
         email=contact["email"],
         phone=contact["phone"],

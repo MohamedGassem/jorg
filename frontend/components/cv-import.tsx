@@ -90,20 +90,27 @@ export function CvImport({
     if (!result) return;
     setStatus("adding");
     setError(null);
+    const toAdd = result.skills.filter((s) => selected.has(s.skill_ref_id));
+    const BATCH_SIZE = 8;
     let count = 0;
-    for (const skill of result.skills) {
-      if (!selected.has(skill.skill_ref_id)) continue;
-      try {
-        await api.post("/candidates/me/skills", {
-          skill_ref_id: skill.skill_ref_id,
-        });
-        count += 1;
-      } catch (err) {
-        // 409 = already on profile; ignore and keep going.
-        if (!(err instanceof ApiError && err.status === 409)) {
-          console.warn("Failed to add skill", skill.name, err);
-        }
-      }
+    for (let i = 0; i < toAdd.length; i += BATCH_SIZE) {
+      const outcomes = await Promise.all(
+        toAdd.slice(i, i + BATCH_SIZE).map(async (skill) => {
+          try {
+            await api.post("/candidates/me/skills", {
+              skill_ref_id: skill.skill_ref_id,
+            });
+            return true;
+          } catch (err) {
+            // 409 = already on profile; ignore and keep going.
+            if (!(err instanceof ApiError && err.status === 409)) {
+              console.warn("Failed to add skill", skill.name, err);
+            }
+            return false;
+          }
+        }),
+      );
+      count += outcomes.filter(Boolean).length;
     }
     setAdded(count);
     setStatus("ready");

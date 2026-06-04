@@ -2,7 +2,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -74,6 +74,7 @@ async def update_my_profile(
 
 @router.post("/me/parse-cv", response_model=CVParseResult)
 async def parse_my_cv(
+    request: Request,
     current_user: CandidateUser,
     db: DB,
     file: Annotated[UploadFile, File()],
@@ -83,9 +84,20 @@ async def parse_my_cv(
     Read-only: returns extracted contact details and matched ESCO skills; it
     never mutates the profile — the candidate confirms the suggestions client-side.
     """
-    data = await file.read()
+    # Read at most MAX_CV_BYTES + 1 so an oversized upload never inflates a
+    # multi-MB bytes object in the handler before we reject it.
+    data = await file.read(cv_parser_service.MAX_CV_BYTES + 1)
+    if len(data) > cv_parser_service.MAX_CV_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Le fichier dépasse la taille maximale de 5 Mo.",
+        )
+
+    # Shared catalogue index built at startup; falls back to a DB build if the
+    # lifespan did not run (e.g. under the test ASGI transport).
+    index = getattr(request.app.state, "skill_index", None)
     try:
-        parsed = await cv_parser_service.parse_cv(file.filename or "", data, db)
+        parsed = await cv_parser_service.parse_cv(file.filename or "", data, db, index=index)
     except cv_parser_service.CVTooLargeError as e:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
