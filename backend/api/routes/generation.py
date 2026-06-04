@@ -11,7 +11,7 @@ from starlette.responses import Response
 
 import services.generation_service as generation_service
 import services.recruiter_service as recruiter_service
-from api.deps import CurrentUser, get_db, require_role
+from api.deps import CurrentUser, RecruiterOrgMember, get_db, require_role
 from core.limiter import limiter
 from core.storage import LocalStorageBackend, get_storage
 from models.generated_document import GeneratedDocument
@@ -40,23 +40,15 @@ async def generate_document(
     request: Request,
     org_id: UUID,
     data: GenerateRequest,
-    current_user: RecruiterUser,
+    member: RecruiterOrgMember,
     db: DB,
 ) -> GeneratedDocument:
-    # Verify recruiter belongs to org
-    profile = await recruiter_service.get_or_create_profile(db, current_user.id)
-    if profile.organization_id != org_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="you do not belong to this organization",
-        )
-
     return await generation_service.generate_for_candidate(
         db,
         organization_id=org_id,
         template_id=data.template_id,
         candidate_id=data.candidate_id,
-        generated_by_user_id=current_user.id,
+        generated_by_user_id=member.user_id,
         fmt=data.format,
     )
 
