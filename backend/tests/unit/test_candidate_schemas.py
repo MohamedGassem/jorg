@@ -9,6 +9,7 @@ from schemas.candidate import (
     CertificationCreate,
     EducationCreate,
     ExperienceCreate,
+    ExperienceUpdate,
     LanguageCreate,
 )
 
@@ -36,3 +37,13 @@ def test_certification_blank_issuer_rejected():
 def test_language_blank_name_rejected():
     with pytest.raises(ValidationError):
         LanguageCreate(name="  ", level=LanguageLevel.NATIVE)
+
+
+def test_experience_update_trims_client_name():
+    upd = ExperienceUpdate(client_name="  ACME  ")
+    assert upd.client_name == "ACME"
+
+
+def test_experience_update_allows_none_client_name():
+    upd = ExperienceUpdate()
+    assert upd.client_name is None

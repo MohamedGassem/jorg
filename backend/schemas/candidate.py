@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any, Literal
+from typing import Any, Literal, overload
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -18,6 +18,10 @@ from models.skill import SkillKind
 from schemas.skill import AchievementRead, ExperienceSkillUsageRead
 
 
+@overload
+def _non_empty(v: str) -> str: ...
+@overload
+def _non_empty(v: None) -> None: ...
 def _non_empty(v: str | None) -> str | None:
     """Strip a string; reject if it becomes empty. Passes None through (PATCH)."""
     if v is None:
@@ -125,7 +129,7 @@ class ExperienceCreate(BaseModel):
 
     @field_validator("client_name", "role")
     @classmethod
-    def _strip_required(cls, v: str | None) -> str | None:
+    def _strip_required(cls, v: str) -> str:
         return _non_empty(v)
 
 
@@ -178,7 +182,7 @@ class EducationCreate(BaseModel):
 
     @field_validator("school")
     @classmethod
-    def _strip_required(cls, v: str | None) -> str | None:
+    def _strip_required(cls, v: str) -> str:
         return _non_empty(v)
 
 
@@ -223,7 +227,7 @@ class CertificationCreate(BaseModel):
 
     @field_validator("name", "issuer")
     @classmethod
-    def _strip_required(cls, v: str | None) -> str | None:
+    def _strip_required(cls, v: str) -> str:
         return _non_empty(v)
 
 
@@ -263,7 +267,7 @@ class LanguageCreate(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def _strip_required(cls, v: str | None) -> str | None:
+    def _strip_required(cls, v: str) -> str:
         return _non_empty(v)
 
 
