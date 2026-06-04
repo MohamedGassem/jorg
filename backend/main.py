@@ -30,7 +30,6 @@ from core.logging import configure_logging
 settings = get_settings()
 configure_logging(log_level=settings.log_level)
 
-<<<<<<< HEAD
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
