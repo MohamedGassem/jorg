@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CvImport } from "@/components/cv-import";
 import { api, ApiError } from "@/lib/api";
 import type { ContractType } from "@/types/api";
 
@@ -49,6 +50,23 @@ export default function CandidateOnboardingProfilePage() {
     }
   }
 
+  async function handleContactDetected(contact: {
+    email: string | null;
+    phone: string | null;
+    linkedin_url: string | null;
+  }) {
+    const payload: Record<string, string> = {};
+    if (contact.phone) payload.phone = contact.phone;
+    if (contact.linkedin_url) payload.linkedin_url = contact.linkedin_url;
+    if (contact.email) payload.email_contact = contact.email;
+    if (Object.keys(payload).length === 0) return;
+    try {
+      await api.put("/candidates/me/profile", payload);
+    } catch (err) {
+      console.warn("Failed to save detected contact info:", err);
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -58,7 +76,8 @@ export default function CandidateOnboardingProfilePage() {
           Ces informations enrichissent votre dossier candidat.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        <CvImport onContactDetected={handleContactDetected} />
         <form onSubmit={handleContinue} className="space-y-4">
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="space-y-1">

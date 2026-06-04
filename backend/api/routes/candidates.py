@@ -2,12 +2,13 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 import services.candidate_service as candidate_service
+import services.cv_parser_service as cv_parser_service
 import services.rgpd_service as rgpd_service
 from api.deps import CandidateProfile_dep, get_db, require_role
 from models.candidate_profile import (
@@ -25,6 +26,8 @@ from schemas.candidate import (
     CertificationCreate,
     CertificationRead,
     CertificationUpdate,
+    CVParseResult,
+    CVSkillSuggestion,
     EducationCreate,
     EducationRead,
     EducationUpdate,
@@ -67,6 +70,48 @@ async def update_my_profile(
 ) -> CandidateProfile:
     profile = await candidate_service.get_or_create_profile(db, current_user.id)
     return await candidate_service.update_profile(db, profile, data)
+
+
+@router.post("/me/parse-cv", response_model=CVParseResult)
+async def parse_my_cv(
+    current_user: CandidateUser,
+    db: DB,
+    file: Annotated[UploadFile, File()],
+) -> CVParseResult:
+    """Parse an uploaded CV (PDF/DOCX/TXT) into profile pre-fill suggestions.
+
+    Read-only: returns extracted contact details and matched ESCO skills; it
+    never mutates the profile — the candidate confirms the suggestions client-side.
+    """
+    data = await file.read()
+    try:
+        parsed = await cv_parser_service.parse_cv(file.filename or "", data, db)
+    except cv_parser_service.CVTooLargeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Le fichier dépasse la taille maximale de 5 Mo.",
+        ) from e
+    except cv_parser_service.UnsupportedCVFormatError as e:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=str(e),
+        ) from e
+    except cv_parser_service.CVTextExtractionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
+
+    skills = [
+        CVSkillSuggestion(skill_ref_id=ref.id, name=ref.name, kind=ref.kind)
+        for ref in parsed["skills"]
+    ]
+    return CVParseResult(
+        email=parsed["email"],
+        phone=parsed["phone"],
+        linkedin_url=parsed["linkedin_url"],
+        skills=skills,
+    )
 
 
 # ---- Experiences ------------------------------------------------------------
