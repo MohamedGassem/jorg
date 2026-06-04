@@ -17,6 +17,17 @@ from models.candidate_profile import (
 from models.skill import SkillKind
 from schemas.skill import AchievementRead, ExperienceSkillUsageRead
 
+
+def _non_empty(v: str | None) -> str | None:
+    """Strip a string; reject if it becomes empty. Passes None through (PATCH)."""
+    if v is None:
+        return v
+    stripped = v.strip()
+    if not stripped:
+        raise ValueError("must not be blank")
+    return stripped
+
+
 VALID_DOMAINS = {
     "finance",
     "retail",
@@ -112,6 +123,11 @@ class ExperienceCreate(BaseModel):
     achievements_summary: str | None = None
     # technologies removed
 
+    @field_validator("client_name", "role")
+    @classmethod
+    def _strip_required(cls, v: str | None) -> str | None:
+        return _non_empty(v)
+
 
 class ExperienceUpdate(BaseModel):
     client_name: str | None = None
@@ -123,6 +139,11 @@ class ExperienceUpdate(BaseModel):
     context: str | None = None
     achievements_summary: str | None = None
     # technologies removed
+
+    @field_validator("client_name", "role")
+    @classmethod
+    def _strip_required(cls, v: str | None) -> str | None:
+        return _non_empty(v)
 
 
 class ExperienceRead(BaseModel):
@@ -155,6 +176,11 @@ class EducationCreate(BaseModel):
     end_date: date | None = None
     description: str | None = None
 
+    @field_validator("school")
+    @classmethod
+    def _strip_required(cls, v: str | None) -> str | None:
+        return _non_empty(v)
+
 
 class EducationUpdate(BaseModel):
     school: str | None = None
@@ -163,6 +189,11 @@ class EducationUpdate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     description: str | None = None
+
+    @field_validator("school")
+    @classmethod
+    def _strip_required(cls, v: str | None) -> str | None:
+        return _non_empty(v)
 
 
 class EducationRead(BaseModel):
@@ -190,6 +221,11 @@ class CertificationCreate(BaseModel):
     expiry_date: date | None = None
     credential_url: str | None = None
 
+    @field_validator("name", "issuer")
+    @classmethod
+    def _strip_required(cls, v: str | None) -> str | None:
+        return _non_empty(v)
+
 
 class CertificationUpdate(BaseModel):
     name: str | None = None
@@ -197,6 +233,11 @@ class CertificationUpdate(BaseModel):
     issue_date: date | None = None
     expiry_date: date | None = None
     credential_url: str | None = None
+
+    @field_validator("name", "issuer")
+    @classmethod
+    def _strip_required(cls, v: str | None) -> str | None:
+        return _non_empty(v)
 
 
 class CertificationRead(BaseModel):
@@ -220,10 +261,20 @@ class LanguageCreate(BaseModel):
     name: str
     level: LanguageLevel
 
+    @field_validator("name")
+    @classmethod
+    def _strip_required(cls, v: str | None) -> str | None:
+        return _non_empty(v)
+
 
 class LanguageUpdate(BaseModel):
     name: str | None = None
     level: LanguageLevel | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _strip_required(cls, v: str | None) -> str | None:
+        return _non_empty(v)
 
 
 class LanguageRead(BaseModel):
