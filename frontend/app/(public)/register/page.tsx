@@ -1,8 +1,8 @@
 // frontend/app/(public)/register/page.tsx
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, UserCircle, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,12 +40,17 @@ const ROLES: {
   },
 ];
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<Role>("candidate");
+  const [role, setRole] = useState<Role>(() => {
+    const r = searchParams.get("role");
+    return r === "candidate" || r === "recruiter" ? r : "candidate";
+  });
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [alphaCode, setAlphaCode] = useState("");
@@ -63,7 +68,7 @@ export default function RegisterPage() {
         role,
         first_name: firstName,
         last_name: lastName,
-        ...(role === "recruiter" && alphaCode
+        ...(role === "recruiter" && alphaCode.length > 0
           ? { alpha_invite_code: alphaCode }
           : {}),
       });
@@ -259,5 +264,13 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }

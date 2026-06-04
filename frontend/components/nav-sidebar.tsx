@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   User,
   Shield,
-  Clock,
+  FileText,
   Settings,
   Users,
   Zap,
@@ -14,6 +14,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { JorgWordmark } from "@/components/ui/JorgWordmark";
 import { logout as authLogout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +37,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   "/recruiter/dashboard": LayoutDashboard,
   "/recruiter/candidates": Users,
   "/recruiter/opportunities": Zap,
-  "/recruiter/documents": Clock,
+  "/recruiter/documents": FileText,
   "/recruiter/settings": Settings,
 };
 
@@ -59,12 +60,7 @@ export function NavSidebar({ items, title, homeHref }: NavSidebarProps) {
         href={homeHref ?? "/"}
         className="mb-6 flex items-center gap-2.5 px-3 py-1"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-          J
-        </span>
-        <span className="font-heading text-base font-semibold tracking-tight text-foreground">
-          Jorg
-        </span>
+        <JorgWordmark />
       </Link>
 
       {/* Portal label */}

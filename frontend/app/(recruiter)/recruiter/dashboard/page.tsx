@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Mail, Sparkles, Users } from "lucide-react";
+import { FileText, Mail, Users, Zap } from "lucide-react";
 import { QuickActionCard } from "@/components/ui/QuickActionCard";
 import { StatCard } from "@/components/ui/StatCard";
 import { OnboardingOrg } from "@/components/onboarding-org";
@@ -182,10 +182,10 @@ export default function RecruiterDashboardPage() {
             href="/recruiter/candidates"
           />
           <QuickActionCard
-            icon={Sparkles}
-            label="Générer un dossier"
-            description="Créer un dossier candidat"
-            href="/recruiter/candidates"
+            icon={Zap}
+            label="Créer une opportunité"
+            description="Ouvrir un nouveau poste"
+            href="/recruiter/opportunities"
           />
           <QuickActionCard
             icon={Users}

@@ -145,19 +145,11 @@ export default function DocumentsPage() {
       {/* Templates tab */}
       {activeTab === "templates" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {templates.length} template{templates.length !== 1 ? "s" : ""}
-            </p>
-            <Link
-              href="/recruiter/templates"
-              className="text-sm font-medium text-primary hover:underline"
-            >
-              Gérer les templates →
-            </Link>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            {templates.length} template{templates.length !== 1 ? "s" : ""}
+          </p>
           {templates.length === 0 ? (
-            <EmptyState message="Aucun template. Cliquez sur «Gérer les templates» pour en créer." />
+            <EmptyState message="Aucun template disponible." />
           ) : (
             <ul className="space-y-2" role="list">
               {templates.map((t) => (

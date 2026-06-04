@@ -1,4 +1,4 @@
-// frontend/app/(candidate)/candidate/skills/page.tsx
+// frontend/components/candidate/profile-sections.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -2447,14 +2447,4 @@ export function LanguageSection() {
       </CardContent>
     </Card>
   );
-}
-
-// ---- Page -------------------------------------------------------------------
-
-export default function SkillsPage() {
-  // Merged into /candidate/profile?tab=competences (see UX Refonte plan)
-  if (typeof window !== "undefined") {
-    window.location.replace("/candidate/profile?tab=competences");
-  }
-  return null;
 }
