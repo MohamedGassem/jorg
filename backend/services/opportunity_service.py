@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import ConflictError, ForbiddenError, JorgError
 from models.candidate_profile import CandidateProfile
-from models.invitation import AccessGrant, AccessGrantStatus
+from models.invitation import AccessGrant
 from models.opportunity import Opportunity, ShortlistEntry
 from models.user import User
 from schemas.opportunity import (
@@ -18,7 +18,7 @@ from schemas.opportunity import (
     OpportunityUpdate,
     ShortlistCandidateInfo,
 )
-from services import generation_service
+from services import access_policy, generation_service
 
 logger = structlog.get_logger()
 
@@ -113,7 +113,7 @@ async def add_to_shortlist(
         select(AccessGrant).where(
             AccessGrant.candidate_id == candidate_id,
             AccessGrant.organization_id == organization_id,
-            AccessGrant.status == AccessGrantStatus.ACTIVE,
+            access_policy.active_grant_clause(),
         )
     )
     if grant_result.scalar_one_or_none() is None:
