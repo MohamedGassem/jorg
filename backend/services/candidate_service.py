@@ -218,7 +218,7 @@ async def list_organization_interactions(
             )
             .where(GeneratedDocument.access_grant_id.in_(grant_ids))
         )
-        doc_rows = list(doc_result.all())
+        doc_rows = list(doc_result.all())  # type: ignore[arg-type]
 
     orgs: dict[str, dict[str, Any]] = {}
 
