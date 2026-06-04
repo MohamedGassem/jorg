@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy.exc import IntegrityError
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
@@ -74,6 +75,14 @@ async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONR
 @app.exception_handler(JorgError)
 async def jorg_error_handler(request: Request, exc: JorgError) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
+    # Safety net for unique/constraint violations not handled locally.
+    # Local handlers (skills race-recovery, shortlist conflict) catch their own
+    # IntegrityErrors before this fires.
+    return JSONResponse(status_code=409, content={"detail": "resource already exists"})
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):

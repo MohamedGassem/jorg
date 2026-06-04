@@ -465,26 +465,14 @@ async def test_delete_language(client: AsyncClient, candidate_headers: dict[str,
     assert r.status_code == 204
 
 
-async def test_duplicate_language_name_returns_server_error(
+async def test_duplicate_language_returns_409(
     client: AsyncClient, candidate_headers: dict[str, str]
 ) -> None:
-    # 409 handler arrives in the global IntegrityError handler task
-    from sqlalchemy.exc import IntegrityError
-
-    await client.post(
-        "/candidates/me/languages",
-        headers=candidate_headers,
-        json={"name": "Deutsch", "level": "B1"},
-    )
-    try:
-        resp = await client.post(
-            "/candidates/me/languages",
-            headers=candidate_headers,
-            json={"name": "Deutsch", "level": "C1"},
-        )
-        assert resp.status_code == 500
-    except IntegrityError:
-        pass  # constraint is enforced — global handler (Task 6) will surface this as 409
+    payload = {"name": "Français", "level": "native"}
+    first = await client.post("/candidates/me/languages", headers=candidate_headers, json=payload)
+    assert first.status_code == 201
+    second = await client.post("/candidates/me/languages", headers=candidate_headers, json=payload)
+    assert second.status_code == 409
 
 
 # ---- Interaction timeline ---------------------------------------------------
