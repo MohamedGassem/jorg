@@ -12,7 +12,7 @@ from services.oauth_service import OAuthUserInfo, override_oauth_client
 @pytest.mark.asyncio
 async def test_recruiter_register_requires_code_when_enabled(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "true")
     get_settings.cache_clear()
     try:
@@ -30,7 +30,7 @@ async def test_recruiter_register_requires_code_when_enabled(
 @pytest.mark.asyncio
 async def test_recruiter_register_succeeds_with_valid_code(
     client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "true")
     get_settings.cache_clear()
     try:
@@ -52,7 +52,7 @@ async def test_recruiter_register_succeeds_with_valid_code(
 @pytest.mark.asyncio
 async def test_candidate_register_does_not_require_code(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "true")
     get_settings.cache_clear()
     try:
@@ -68,7 +68,7 @@ async def test_candidate_register_does_not_require_code(
 @pytest.mark.asyncio
 async def test_register_disabled_when_env_false(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "false")
     get_settings.cache_clear()
     try:
@@ -84,7 +84,7 @@ async def test_register_disabled_when_env_false(
 @pytest.mark.asyncio
 async def test_recruiter_register_fails_with_invalid_code(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "true")
     get_settings.cache_clear()
     try:
@@ -109,7 +109,7 @@ async def test_recruiter_register_fails_with_invalid_code(
 @pytest.mark.asyncio
 async def test_alpha_code_links_to_recruiter_profile(
     client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "true")
     get_settings.cache_clear()
     try:
@@ -141,7 +141,7 @@ async def test_alpha_code_links_to_recruiter_profile(
 @pytest.mark.asyncio
 async def test_recruiter_register_fails_with_already_used_code(
     client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "true")
     get_settings.cache_clear()
     try:
@@ -193,7 +193,7 @@ class _FakeGoogleClientAlpha:
 @pytest.mark.asyncio
 async def test_oauth_recruiter_callback_blocked_during_alpha(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     """OAuth recruiter registration must be blocked with 403 when alpha_invite_required=True."""
     fake = _FakeGoogleClientAlpha()
     override_oauth_client(OAuthProvider.GOOGLE, fake)
@@ -224,7 +224,7 @@ async def test_oauth_recruiter_callback_blocked_during_alpha(
 @pytest.mark.asyncio
 async def test_oauth_recruiter_callback_allowed_when_alpha_disabled(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     """OAuth recruiter registration must succeed when alpha_invite_required=False."""
     fake = _FakeGoogleClientAlpha()
     override_oauth_client(OAuthProvider.GOOGLE, fake)
@@ -252,7 +252,7 @@ async def test_oauth_recruiter_callback_allowed_when_alpha_disabled(
 @pytest.mark.asyncio
 async def test_oauth_candidate_callback_not_blocked_during_alpha(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     """Candidate OAuth registration must NOT be blocked by alpha gating."""
     fake_candidate = _FakeGoogleClientAlpha()
     override_oauth_client(OAuthProvider.GOOGLE, fake_candidate)

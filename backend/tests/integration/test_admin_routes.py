@@ -5,13 +5,15 @@ from core.config import get_settings
 
 
 @pytest.mark.asyncio
-async def test_generate_codes_requires_secret(client: AsyncClient):
+async def test_generate_codes_requires_secret(client: AsyncClient) -> None:
     resp = await client.post("/admin/alpha-codes", json={"count": 3})
     assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_generate_codes_returns_codes(client: AsyncClient, monkeypatch):
+async def test_generate_codes_returns_codes(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("ADMIN_SECRET", "test-secret")
     get_settings.cache_clear()
     try:
