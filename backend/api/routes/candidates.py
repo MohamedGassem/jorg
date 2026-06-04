@@ -172,8 +172,15 @@ async def update_my_experience(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="experience not found")
     merged_start = data.start_date if data.start_date is not None else exp.start_date
     merged_end = data.end_date if "end_date" in data.model_fields_set else exp.end_date
-    merged_current = data.is_current if data.is_current is not None else exp.is_current
+    if data.is_current is not None:
+        merged_current = data.is_current
+    elif merged_end is not None:
+        # Setting an end_date implicitly ends a current experience.
+        merged_current = False
+    else:
+        merged_current = exp.is_current
     validate_experience_dates(merged_start, merged_end, merged_current)
+    exp.is_current = merged_current
     await candidate_service.experience_crud.update(db, exp, data)
     result = await db.execute(
         select(Experience).where(Experience.id == experience_id).options(*_EXP_OPTIONS)

@@ -5,7 +5,7 @@ from datetime import date, datetime
 from typing import Any, Literal, overload
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from core.exceptions import BusinessRuleError
 from models.candidate_profile import (
@@ -31,6 +31,20 @@ def _non_empty(v: str | None) -> str | None:
     if not stripped:
         raise ValueError("must not be blank")
     return stripped
+
+
+def _reject_null_required(data: Any, required: tuple[str, ...]) -> Any:
+    """Reject an explicit null for columns that are NOT NULL in the DB.
+
+    PATCH may omit these fields, but setting them to null would otherwise pass
+    schema validation and only fail at write time as an IntegrityError. Catch it
+    here so the client gets a clean 422 instead.
+    """
+    if isinstance(data, dict):
+        for field in required:
+            if field in data and data[field] is None:
+                raise ValueError(f"{field} cannot be null")
+    return data
 
 
 VALID_DOMAINS = {
@@ -173,6 +187,11 @@ class ExperienceUpdate(BaseModel):
     def _strip_required(cls, v: str | None) -> str | None:
         return _non_empty(v)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _no_null_required(cls, data: Any) -> Any:
+        return _reject_null_required(data, ("client_name", "role", "start_date", "is_current"))
+
 
 class ExperienceRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -223,6 +242,11 @@ class EducationUpdate(BaseModel):
     def _strip_required(cls, v: str | None) -> str | None:
         return _non_empty(v)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _no_null_required(cls, data: Any) -> Any:
+        return _reject_null_required(data, ("school",))
+
 
 class EducationRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -267,6 +291,11 @@ class CertificationUpdate(BaseModel):
     def _strip_required(cls, v: str | None) -> str | None:
         return _non_empty(v)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _no_null_required(cls, data: Any) -> Any:
+        return _reject_null_required(data, ("name", "issuer", "issue_date"))
+
 
 class CertificationRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -303,6 +332,11 @@ class LanguageUpdate(BaseModel):
     @classmethod
     def _strip_required(cls, v: str | None) -> str | None:
         return _non_empty(v)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_null_required(cls, data: Any) -> Any:
+        return _reject_null_required(data, ("name", "level"))
 
 
 class LanguageRead(BaseModel):

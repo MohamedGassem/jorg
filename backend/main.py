@@ -79,10 +79,14 @@ async def jorg_error_handler(request: Request, exc: JorgError) -> JSONResponse:
 
 @app.exception_handler(IntegrityError)
 async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
-    # Safety net for unique/constraint violations not handled locally.
+    # Safety net for UNIQUE-constraint violations not handled locally.
     # Local handlers (skills race-recovery, shortlist conflict) catch their own
-    # IntegrityErrors before this fires.
-    return JSONResponse(status_code=409, content={"detail": "resource already exists"})
+    # IntegrityErrors first. Only unique violations (PostgreSQL SQLSTATE 23505)
+    # map to 409; FK / NOT NULL / CHECK violations are bugs or bad requests, so
+    # re-raise them to surface as 500 rather than a misleading conflict.
+    if getattr(exc.orig, "sqlstate", None) == "23505":
+        return JSONResponse(status_code=409, content={"detail": "resource already exists"})
+    raise exc
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):

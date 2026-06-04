@@ -519,3 +519,69 @@ async def test_organizations_requires_candidate_role(
 ) -> None:
     r = await client.get("/candidates/me/organizations", headers=recruiter_headers)
     assert r.status_code == 403
+
+
+# ---- Review fixes: null on required fields + ending a current experience ----
+
+
+async def test_update_certification_explicit_null_issue_date_returns_422(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    created = await client.post(
+        "/candidates/me/certifications",
+        headers=candidate_headers,
+        json={"name": "AWS SAA", "issuer": "AWS", "issue_date": "2021-01-01"},
+    )
+    assert created.status_code == 201
+    cert_id = created.json()["id"]
+    r = await client.put(
+        f"/candidates/me/certifications/{cert_id}",
+        headers=candidate_headers,
+        json={"issue_date": None},
+    )
+    assert r.status_code == 422
+
+
+async def test_update_experience_explicit_null_start_date_returns_422(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    created = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={"client_name": "ACME", "role": "Dev", "start_date": "2020-01-01"},
+    )
+    assert created.status_code == 201
+    exp_id = created.json()["id"]
+    r = await client.put(
+        f"/candidates/me/experiences/{exp_id}",
+        headers=candidate_headers,
+        json={"start_date": None},
+    )
+    assert r.status_code == 422
+
+
+async def test_update_experience_set_end_date_clears_is_current(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    created = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={
+            "client_name": "ACME",
+            "role": "Dev",
+            "start_date": "2020-01-01",
+            "is_current": True,
+        },
+    )
+    assert created.status_code == 201
+    assert created.json()["is_current"] is True
+    exp_id = created.json()["id"]
+    r = await client.put(
+        f"/candidates/me/experiences/{exp_id}",
+        headers=candidate_headers,
+        json={"end_date": "2024-01-01"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["end_date"] == "2024-01-01"
+    assert body["is_current"] is False
