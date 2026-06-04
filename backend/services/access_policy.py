@@ -20,7 +20,7 @@ def active_grant_clause() -> ColumnElement[bool]:
 async def get_live_access_grant(
     db: AsyncSession, organization_id: UUID, candidate_id: UUID
 ) -> AccessGrant | None:
-    """Lookup form, built on the same clause."""
+    """Return the live access grant for (org, candidate), or None if none exists."""
     result = await db.execute(
         select(AccessGrant).where(
             AccessGrant.candidate_id == candidate_id,
@@ -34,6 +34,7 @@ async def get_live_access_grant(
 async def require_live_access(
     db: AsyncSession, organization_id: UUID, candidate_id: UUID
 ) -> AccessGrant:
+    """Return the live access grant for (org, candidate), or raise ForbiddenError if none."""
     grant = await get_live_access_grant(db, organization_id, candidate_id)
     if grant is None:
         raise ForbiddenError("No active access grant for this candidate")
