@@ -297,25 +297,25 @@ async def list_my_languages(profile: CandidateProfile_dep, db: DB) -> list[Langu
 async def create_my_language(
     data: LanguageCreate, profile: CandidateProfile_dep, db: DB
 ) -> Language:
-    return await candidate_service.create_language(db, profile.id, data)
+    return await candidate_service.language_crud.create(db, profile.id, data)
 
 
 @router.put("/me/languages/{language_id}", response_model=LanguageRead)
 async def update_my_language(
     language_id: UUID, data: LanguageUpdate, profile: CandidateProfile_dep, db: DB
 ) -> Language:
-    lang = await candidate_service.get_language(db, language_id, profile.id)
+    lang = await candidate_service.language_crud.get(db, language_id, profile.id)
     if lang is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="language not found")
-    return await candidate_service.update_language(db, lang, data)
+    return await candidate_service.language_crud.update(db, lang, data)
 
 
 @router.delete("/me/languages/{language_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_my_language(language_id: UUID, profile: CandidateProfile_dep, db: DB) -> None:
-    lang = await candidate_service.get_language(db, language_id, profile.id)
+    lang = await candidate_service.language_crud.get(db, language_id, profile.id)
     if lang is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="language not found")
-    await candidate_service.delete_language(db, lang)
+    await candidate_service.language_crud.delete(db, lang)
 
 
 # ---- RGPD -------------------------------------------------------------------
