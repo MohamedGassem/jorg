@@ -1,6 +1,7 @@
 // frontend/app/page.tsx
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { LandingNav } from "@/components/landing/LandingNav";
 import { LandingHero } from "@/components/landing/LandingHero";
 import { LandingBridge } from "@/components/landing/LandingBridge";
@@ -25,8 +26,10 @@ export default async function RootPage() {
         const user = (await res.json()) as { role: string };
         if (user.role === "candidate") redirect("/candidate/dashboard");
         if (user.role === "recruiter") redirect("/recruiter/dashboard");
+        redirect("/login"); // unknown or future role
       }
-    } catch {
+    } catch (err) {
+      if (isRedirectError(err)) throw err;
       // network error -- fall through to landing
     }
   }
