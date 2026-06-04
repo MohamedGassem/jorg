@@ -323,7 +323,7 @@ async def oauth_callback(
     redirect_url = (
         f"{settings.frontend_url}/candidate/profile"
         if user.role == UserRole.CANDIDATE
-        else f"{settings.frontend_url}/recruiter/templates"
+        else f"{settings.frontend_url}/recruiter/dashboard"
     )
     redirect_response = RedirectResponse(url=redirect_url, status_code=302)
     _set_auth_cookies(redirect_response, access, refresh)
