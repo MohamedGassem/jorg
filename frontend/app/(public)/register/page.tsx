@@ -1,7 +1,7 @@
 // frontend/app/(public)/register/page.tsx
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, UserCircle, Briefcase } from "lucide-react";
@@ -46,12 +46,10 @@ function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<Role>("candidate");
-
-  useEffect(() => {
+  const [role, setRole] = useState<Role>(() => {
     const r = searchParams.get("role");
-    if (r === "candidate" || r === "recruiter") setRole(r);
-  }, [searchParams]);
+    return r === "candidate" || r === "recruiter" ? r : "candidate";
+  });
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -70,7 +68,7 @@ function RegisterForm() {
         role,
         first_name: firstName,
         last_name: lastName,
-        ...(role === "recruiter" && alphaCode
+        ...(role === "recruiter" && alphaCode.length > 0
           ? { alpha_invite_code: alphaCode }
           : {}),
       });
