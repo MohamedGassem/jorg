@@ -91,8 +91,9 @@ async def require_org_membership(
     current_user: Annotated[User, Depends(require_role(UserRole.RECRUITER))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> RecruiterProfile:
-    profile = await recruiter_service.get_or_create_profile(db, current_user.id)
-    if not access_policy.is_member(profile, org_id):
+    # Non-creating lookup: never write a profile row on the authorization path.
+    profile = await recruiter_service.get_profile(db, current_user.id)
+    if profile is None or not access_policy.is_member(profile, org_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="you do not belong to this organization",
