@@ -4,6 +4,7 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
+from core.exceptions import BusinessRuleError
 from models.candidate_profile import LanguageLevel
 from schemas.candidate import (
     CertificationCreate,
@@ -11,6 +12,9 @@ from schemas.candidate import (
     ExperienceCreate,
     ExperienceUpdate,
     LanguageCreate,
+    validate_certification_dates,
+    validate_education_dates,
+    validate_experience_dates,
 )
 
 
@@ -47,3 +51,39 @@ def test_experience_update_trims_client_name():
 def test_experience_update_allows_none_client_name():
     upd = ExperienceUpdate()
     assert upd.client_name is None
+
+
+def test_experience_end_before_start_rejected():
+    with pytest.raises(BusinessRuleError):
+        validate_experience_dates(date(2020, 6, 1), date(2020, 1, 1), is_current=False)
+
+
+def test_experience_current_with_end_date_rejected():
+    with pytest.raises(BusinessRuleError):
+        validate_experience_dates(date(2020, 1, 1), date(2021, 1, 1), is_current=True)
+
+
+def test_experience_current_without_end_ok():
+    validate_experience_dates(date(2020, 1, 1), None, is_current=True)
+
+
+def test_experience_past_with_end_ok():
+    validate_experience_dates(date(2020, 1, 1), date(2021, 1, 1), is_current=False)
+
+
+def test_education_end_before_start_rejected():
+    with pytest.raises(BusinessRuleError):
+        validate_education_dates(date(2020, 6, 1), date(2020, 1, 1))
+
+
+def test_education_open_dates_ok():
+    validate_education_dates(None, None)
+
+
+def test_certification_expiry_before_issue_rejected():
+    with pytest.raises(BusinessRuleError):
+        validate_certification_dates(date(2021, 1, 1), date(2020, 1, 1))
+
+
+def test_certification_no_expiry_ok():
+    validate_certification_dates(date(2021, 1, 1), None)

@@ -7,6 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from core.exceptions import BusinessRuleError
 from models.candidate_profile import (
     AvailabilityStatus,
     ContractType,
@@ -43,6 +44,29 @@ VALID_DOMAINS = {
     "energy",
     "other",
 }
+
+
+def validate_experience_dates(
+    start_date: date | None,
+    end_date: date | None,
+    is_current: bool,
+) -> None:
+    """Cross-field coherence for an Experience. Raises BusinessRuleError (422)."""
+    if is_current and end_date is not None:
+        raise BusinessRuleError("a current experience cannot have an end_date")
+    if start_date is not None and end_date is not None and end_date < start_date:
+        raise BusinessRuleError("end_date must be on or after start_date")
+
+
+def validate_education_dates(start_date: date | None, end_date: date | None) -> None:
+    if start_date is not None and end_date is not None and end_date < start_date:
+        raise BusinessRuleError("end_date must be on or after start_date")
+
+
+def validate_certification_dates(issue_date: date | None, expiry_date: date | None) -> None:
+    if issue_date is not None and expiry_date is not None and expiry_date < issue_date:
+        raise BusinessRuleError("expiry_date must be on or after issue_date")
+
 
 # ---- CandidateProfile -------------------------------------------------------
 
