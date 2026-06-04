@@ -204,7 +204,7 @@ async def delete_my_experience(
 
 @router.get("/me/education", response_model=list[EducationRead])
 async def list_my_education(profile: CandidateProfile_dep, db: DB) -> list[Education]:
-    return await candidate_service.list_education(db, profile.id)
+    return await candidate_service.education_crud.list(db, profile.id)
 
 
 @router.post("/me/education", response_model=EducationRead, status_code=status.HTTP_201_CREATED)
@@ -244,7 +244,7 @@ async def delete_my_education(education_id: UUID, profile: CandidateProfile_dep,
 
 @router.get("/me/certifications", response_model=list[CertificationRead])
 async def list_my_certifications(profile: CandidateProfile_dep, db: DB) -> list[Certification]:
-    return await candidate_service.list_certifications(db, profile.id)
+    return await candidate_service.certification_crud.list(db, profile.id)
 
 
 @router.post(
@@ -290,7 +290,7 @@ async def delete_my_certification(
 
 @router.get("/me/languages", response_model=list[LanguageRead])
 async def list_my_languages(profile: CandidateProfile_dep, db: DB) -> list[Language]:
-    return await candidate_service.list_languages(db, profile.id)
+    return await candidate_service.language_crud.list(db, profile.id)
 
 
 @router.post("/me/languages", response_model=LanguageRead, status_code=status.HTTP_201_CREATED)
