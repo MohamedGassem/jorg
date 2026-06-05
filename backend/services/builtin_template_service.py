@@ -3,11 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from models.candidate_profile import AvailabilityStatus, ContractType, MissionDuration, WorkMode
 from models.skill import SkillKind
-from services.docx_engine import generate_document
+from services.docx_engine import SkillProtocol, generate_document
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static" / "builtin_templates"
 
@@ -161,4 +161,9 @@ def render_mock_preview(template: BuiltinTemplate) -> bytes:
             False,
         ),
     ]
-    return generate_document(template.word_file_path, profile, experiences, skills)
+    return generate_document(
+        template.word_file_path,
+        profile,
+        experiences,
+        cast("list[SkillProtocol]", skills),
+    )
