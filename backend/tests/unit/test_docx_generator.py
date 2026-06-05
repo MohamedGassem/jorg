@@ -8,6 +8,8 @@ from unittest.mock import MagicMock
 
 from docx import Document
 
+from models.candidate_profile import LanguageLevel
+from models.skill import SkillKind, UsageIntensity, UsageRole
 from services.docx_engine import generate_document
 
 
@@ -34,6 +36,7 @@ def _mock_profile(**kwargs: object) -> MagicMock:
         "daily_rate": 600,
         "annual_salary": None,
         "availability_status": None,
+        "availability_date": None,
         "work_mode": None,
         "location_preference": None,
         "mission_duration": None,
@@ -56,11 +59,73 @@ def _mock_exp(**kwargs: object) -> MagicMock:
         "description": "Developed REST APIs",
         "context": "Greenfield project",
         "achievements_summary": "Reduced latency by 30%",
+        "skill_usages": [],
+        "achievements": [],
     }
     exp = MagicMock()
     for k, v in {**defaults, **kwargs}.items():
         setattr(exp, k, v)
     return exp
+
+
+def _mock_skill_ref(name: str, kind: SkillKind) -> MagicMock:
+    ref = MagicMock()
+    ref.name = name
+    ref.kind = kind
+    return ref
+
+
+def _mock_skill(name: str, kind: SkillKind, level: str = "", featured: bool = False) -> MagicMock:
+    skill = MagicMock()
+    skill.skill_ref = _mock_skill_ref(name, kind)
+    skill.self_assessed_level = level
+    skill.featured = featured
+    return skill
+
+
+def _mock_usage(name: str, kind: SkillKind) -> MagicMock:
+    usage = MagicMock()
+    usage.skill_ref = _mock_skill_ref(name, kind)
+    usage.usage_role = UsageRole.implementer
+    usage.intensity = UsageIntensity.primary
+    return usage
+
+
+def _mock_education(**kwargs: object) -> MagicMock:
+    defaults: dict[str, object] = {
+        "school": "INSA Lyon",
+        "degree": "Diplome d'ingenieur",
+        "field_of_study": "Informatique",
+        "start_date": date(2010, 9, 1),
+        "end_date": date(2015, 6, 1),
+        "description": None,
+    }
+    edu = MagicMock()
+    for k, v in {**defaults, **kwargs}.items():
+        setattr(edu, k, v)
+    return edu
+
+
+def _mock_certification(**kwargs: object) -> MagicMock:
+    defaults: dict[str, object] = {
+        "name": "AWS Solutions Architect",
+        "issuer": "Amazon Web Services",
+        "issue_date": date(2022, 5, 1),
+        "expiry_date": None,
+        "credential_url": None,
+    }
+    cert = MagicMock()
+    for k, v in {**defaults, **kwargs}.items():
+        setattr(cert, k, v)
+    return cert
+
+
+def _mock_language(**kwargs: object) -> MagicMock:
+    defaults: dict[str, object] = {"name": "Anglais", "level": LanguageLevel.C1}
+    language = MagicMock()
+    for k, v in {**defaults, **kwargs}.items():
+        setattr(language, k, v)
+    return language
 
 
 # ---------------------------------------------------------------------------
@@ -186,3 +251,48 @@ def test_generate_replaces_annual_salary_placeholder() -> None:
     text = "\n".join(p.text for p in out_doc.paragraphs)
     assert "55000" in text
     assert "{{annual_salary}}" not in text
+
+
+def test_complete_dossier_context_uses_per_experience_skills_and_extra_sections() -> None:
+    path = _make_docx_path(
+        [
+            "Disponibilite: {{availability_label}}",
+            "{%p for exp in experiences %}",
+            "{{exp.client_name}} stack {{exp.skills_tool|map(attribute='name')|join(', ')}}",
+            "{%p endfor %}",
+            "{%p for edu in educations %}",
+            "Formation {{edu.degree}} {{edu.school}}",
+            "{%p endfor %}",
+            "{%p for cert in certifications %}",
+            "Certification {{cert.name}} {{cert.issuer}}",
+            "{%p endfor %}",
+            "{%p for lang in languages %}",
+            "Langue {{lang.name}} {{lang.level_label}}",
+            "{%p endfor %}",
+        ]
+    )
+    profile = _mock_profile(availability_status="available_now")
+    exp = _mock_exp(client_name="Alpha", skill_usages=[_mock_usage("Docker", SkillKind.tool)])
+    global_skills = [
+        _mock_skill("PostgreSQL", SkillKind.tool, "avance", True),
+        _mock_skill("Python", SkillKind.technical, "avance", True),
+    ]
+
+    result = generate_document(
+        path,
+        profile,
+        [exp],
+        global_skills,
+        [_mock_education()],
+        [_mock_certification()],
+        [_mock_language()],
+    )
+
+    doc = Document(io.BytesIO(result))
+    text = "\n".join(p.text for p in doc.paragraphs)
+    assert "Disponible immédiatement" in text
+    assert "Alpha stack Docker" in text
+    assert "Alpha stack PostgreSQL" not in text
+    assert "Formation Diplome d'ingenieur INSA Lyon" in text
+    assert "Certification AWS Solutions Architect Amazon Web Services" in text
+    assert "Langue Anglais Avancé" in text
