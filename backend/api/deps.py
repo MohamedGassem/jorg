@@ -8,10 +8,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import services.candidate_service as candidate_service
+import services.recruiter_service as recruiter_service
 from core.database import get_db as get_db
 from core.security import TokenType, decode_token
 from models.candidate_profile import CandidateProfile
+from models.recruiter import RecruiterProfile
 from models.user import User, UserRole
+from services import access_policy
 
 # auto_error=False so we can fall back to cookie when no Authorization header
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
@@ -81,3 +84,21 @@ async def get_candidate_profile(
 
 
 CandidateProfile_dep = Annotated[CandidateProfile, Depends(get_candidate_profile)]
+
+
+async def require_org_membership(
+    org_id: UUID,
+    current_user: Annotated[User, Depends(require_role(UserRole.RECRUITER))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> RecruiterProfile:
+    # Non-creating lookup: never write a profile row on the authorization path.
+    profile = await recruiter_service.get_profile(db, current_user.id)
+    if profile is None or not access_policy.is_member(profile, org_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="you do not belong to this organization",
+        )
+    return profile
+
+
+RecruiterOrgMember = Annotated[RecruiterProfile, Depends(require_org_membership)]

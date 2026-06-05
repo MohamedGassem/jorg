@@ -11,7 +11,7 @@ from starlette.responses import Response
 
 import services.generation_service as generation_service
 import services.recruiter_service as recruiter_service
-from api.deps import CurrentUser, get_db, require_role
+from api.deps import CurrentUser, RecruiterOrgMember, get_db, require_role
 from core.limiter import limiter
 from core.storage import LocalStorageBackend, get_storage
 from models.generated_document import GeneratedDocument
@@ -22,10 +22,10 @@ from schemas.generation import (
     GeneratedDocumentRecruiterView,
     GenerateRequest,
 )
+from services import access_policy
 
 router = APIRouter(tags=["generation"])
 
-RecruiterUser = Annotated[User, Depends(require_role(UserRole.RECRUITER))]
 CandidateUser = Annotated[User, Depends(require_role(UserRole.CANDIDATE))]
 DB = Annotated[AsyncSession, Depends(get_db)]
 
@@ -40,23 +40,15 @@ async def generate_document(
     request: Request,
     org_id: UUID,
     data: GenerateRequest,
-    current_user: RecruiterUser,
+    member: RecruiterOrgMember,
     db: DB,
 ) -> GeneratedDocument:
-    # Verify recruiter belongs to org
-    profile = await recruiter_service.get_or_create_profile(db, current_user.id)
-    if profile.organization_id != org_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="you do not belong to this organization",
-        )
-
     return await generation_service.generate_for_candidate(
         db,
         organization_id=org_id,
         template_id=data.template_id,
         candidate_id=data.candidate_id,
-        generated_by_user_id=current_user.id,
+        generated_by_user_id=member.user_id,
         fmt=data.format,
     )
 
@@ -66,14 +58,8 @@ async def generate_document(
     response_model=list[GeneratedDocumentRecruiterView],
 )
 async def list_org_documents(
-    org_id: UUID, current_user: RecruiterUser, db: DB
+    org_id: UUID, member: RecruiterOrgMember, db: DB
 ) -> list[GeneratedDocumentRecruiterView]:
-    profile = await recruiter_service.get_or_create_profile(db, current_user.id)
-    if profile.organization_id != org_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="you do not belong to this organization",
-        )
     return await generation_service.list_org_documents_view(db, org_id)
 
 
@@ -111,7 +97,7 @@ async def download_document(
     is_recruiter_of_org = False
     if current_user.role == UserRole.RECRUITER:
         profile = await recruiter_service.get_or_create_profile(db, current_user.id)
-        is_recruiter_of_org = profile.organization_id == grant.organization_id
+        is_recruiter_of_org = access_policy.is_member(profile, grant.organization_id)
 
     if not is_candidate and not is_recruiter_of_org:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="access denied")

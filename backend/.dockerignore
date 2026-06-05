@@ -6,7 +6,6 @@ __pycache__
 .mypy_cache
 .ruff_cache
 tests/
-alembic/
 *.md
 .env
 .env.*

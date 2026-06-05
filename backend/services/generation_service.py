@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.config import get_settings
-from core.exceptions import BusinessRuleError, ForbiddenError, NotFoundError
+from core.exceptions import BusinessRuleError, NotFoundError
 from core.storage import get_storage
 from models.candidate_profile import CandidateProfile, Experience
 from models.generated_document import GeneratedDocument
@@ -21,7 +21,7 @@ from models.recruiter import Organization
 from models.skill import CandidateSkill
 from models.template import Template
 from schemas.generation import GeneratedDocumentCandidateView, GeneratedDocumentRecruiterView
-from services import invitation_service, template_service
+from services import access_policy, template_service
 from services.docx_engine import generate_document
 
 logger = structlog.get_logger()
@@ -85,9 +85,7 @@ async def generate_for_candidate(
 ) -> GeneratedDocument:
     """Full pipeline: verify grant → load data → generate → save → record."""
     # 1. Verify active access grant
-    grant = await invitation_service.get_active_grant(db, candidate_id, organization_id)
-    if grant is None:
-        raise ForbiddenError("No active access grant for this candidate")
+    grant = await access_policy.require_live_access(db, organization_id, candidate_id)
 
     # 2. Load template
     tmpl = await template_service.get_template(db, template_id, organization_id)
