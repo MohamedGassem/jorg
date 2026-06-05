@@ -231,6 +231,12 @@ export interface Template {
   updated_at: string;
 }
 
+export interface BuiltinTemplate {
+  key: string;
+  name: string;
+  description: string;
+}
+
 export interface Invitation {
   id: string;
   recruiter_id: string;
@@ -261,6 +267,7 @@ export interface GeneratedDocument {
   generated_by_user_id: string | null;
   file_path: string;
   file_format: FileFormat;
+  template_name: string | null;
   generated_at: string;
 }
 
@@ -269,8 +276,8 @@ export interface GeneratedDocumentCandidateView {
   generated_at: string;
   file_format: string;
   organization_name: string;
-  organization_id: string;
-  template_name: string;
+  organization_id: string | null;
+  template_name: string | null;
   recruiter_first_name: string | null;
   recruiter_last_name: string | null;
 }

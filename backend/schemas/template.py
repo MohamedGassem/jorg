@@ -20,3 +20,9 @@ class TemplateRead(BaseModel):
     is_valid: bool
     created_at: datetime
     updated_at: datetime
+
+
+class BuiltinTemplateRead(BaseModel):
+    key: str
+    name: str
+    description: str

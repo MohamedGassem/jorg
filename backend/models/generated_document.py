@@ -12,10 +12,10 @@ from models.base import Base, UUIDPrimaryKeyMixin
 class GeneratedDocument(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "generated_documents"
 
-    access_grant_id: Mapped[UUID] = mapped_column(
+    access_grant_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("access_grants.id", ondelete="CASCADE"),
         index=True,
-        nullable=False,
+        nullable=True,
     )
     # Nullable — kept for audit even if template is deleted
     template_id: Mapped[UUID | None] = mapped_column(
@@ -31,6 +31,7 @@ class GeneratedDocument(Base, UUIDPrimaryKeyMixin):
     )
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     file_format: Mapped[str] = mapped_column(String(10), nullable=False)  # "docx" | "pdf"
+    template_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

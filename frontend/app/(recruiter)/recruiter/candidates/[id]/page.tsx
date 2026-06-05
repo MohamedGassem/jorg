@@ -12,6 +12,7 @@ import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
 import type {
   AccessibleCandidateRead,
+  BuiltinTemplate,
   OpportunityRead,
   Template,
 } from "@/types/api";
@@ -29,6 +30,9 @@ export default function CandidateDetailPage() {
     null,
   );
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [builtinTemplates, setBuiltinTemplates] = useState<BuiltinTemplate[]>(
+    [],
+  );
   const [opportunities, setOpportunities] = useState<OpportunityRead[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
@@ -49,6 +53,9 @@ export default function CandidateDetailPage() {
       api
         .get<Template[]>(`/organizations/${orgId}/templates`)
         .then(setTemplates),
+      api
+        .get<BuiltinTemplate[]>("/templates/builtin")
+        .then(setBuiltinTemplates),
       api
         .get<OpportunityRead[]>(`/organizations/${orgId}/opportunities`)
         .then((opps) =>
@@ -112,6 +119,7 @@ export default function CandidateDetailPage() {
         candidateId={candidateId}
         candidateName={name}
         templates={templates}
+        builtinTemplates={builtinTemplates}
       />
 
       {/* Profile summary */}

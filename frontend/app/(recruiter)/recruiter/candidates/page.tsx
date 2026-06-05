@@ -28,6 +28,7 @@ import {
 } from "@/lib/labels";
 import type {
   AccessibleCandidateRead,
+  BuiltinTemplate,
   Invitation,
   OpportunityRead,
   Template,
@@ -225,6 +226,9 @@ export default function CandidatesPage() {
     candidateName: string;
   } | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [builtinTemplates, setBuiltinTemplates] = useState<BuiltinTemplate[]>(
+    [],
+  );
 
   function toggleCandidateExpand(userId: string) {
     setExpandedCandidates((prev) => {
@@ -265,6 +269,10 @@ export default function CandidatesPage() {
       api
         .get<Template[]>(`/organizations/${orgId}/templates`)
         .then(setTemplates)
+        .catch(() => {}),
+      api
+        .get<BuiltinTemplate[]>("/templates/builtin")
+        .then(setBuiltinTemplates)
         .catch(() => {}),
       api
         .get<Invitation[]>(`/organizations/${orgId}/invitations`)
@@ -351,6 +359,7 @@ export default function CandidatesPage() {
           candidateId={generateFor.candidateId}
           candidateName={generateFor.candidateName}
           templates={templates}
+          builtinTemplates={builtinTemplates}
         />
       )}
 

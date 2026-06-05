@@ -17,6 +17,7 @@ import {
   CertificationSection,
   LanguageSection,
 } from "@/components/candidate/profile-sections";
+import { CandidateGenerateDossierDialog } from "@/components/candidate-generate-dossier-dialog";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +50,7 @@ function ProfileHero({
   onEdit: () => void;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [generateOpen, setGenerateOpen] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewData, setPreviewData] = useState<{
     profile: CandidateProfile | null;
@@ -114,6 +116,13 @@ function ProfileHero({
           </div>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setGenerateOpen(true)}
+          >
+            Generer un dossier
+          </Button>
           <Button variant="outline" size="sm" onClick={loadPreview}>
             Aperçu recruteur
           </Button>
@@ -195,6 +204,10 @@ function ProfileHero({
           ) : null}
         </DialogContent>
       </Dialog>
+      <CandidateGenerateDossierDialog
+        open={generateOpen}
+        onOpenChange={setGenerateOpen}
+      />
     </div>
   );
 }

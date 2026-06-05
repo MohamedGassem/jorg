@@ -90,6 +90,51 @@ async def test_recruiter_generates_document(
     assert data["template_id"] == template_id
 
 
+async def test_builtin_template_preview_downloads_mock_docx(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+) -> None:
+    templates = await client.get("/templates/builtin", headers=candidate_headers)
+    assert templates.status_code == 200
+    assert {t["key"] for t in templates.json()} == {
+        "compact_esn",
+        "dossier_technique",
+        "profil_premium",
+    }
+
+    preview = await client.get(
+        "/templates/builtin/compact_esn/preview",
+        headers=candidate_headers,
+    )
+    assert preview.status_code == 200
+    doc = Document(io.BytesIO(preview.content))
+    text = "\n".join(p.text for p in doc.paragraphs)
+    assert "joris" in text.lower()
+    assert "{{" not in text
+
+
+async def test_candidate_generates_own_document_from_builtin_template(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+) -> None:
+    await client.get("/candidates/me/profile", headers=candidate_headers)
+
+    r = await client.post(
+        "/candidates/me/generate",
+        headers=candidate_headers,
+        json={"system_template_key": "compact_esn", "format": "docx"},
+    )
+    assert r.status_code == 201, r.text
+    data = r.json()
+    assert data["access_grant_id"] is None
+    assert data["template_id"] is None
+    assert data["template_name"] == "Compact ESN"
+
+    download = await client.get(f"/documents/{data['id']}/download", headers=candidate_headers)
+    assert download.status_code == 200
+    assert download.content.startswith(b"PK")
+
+
 async def test_cannot_generate_without_access_grant(
     client: AsyncClient,
     recruiter_headers: dict[str, str],

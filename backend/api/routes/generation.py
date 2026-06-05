@@ -21,6 +21,7 @@ from schemas.generation import (
     GeneratedDocumentRead,
     GeneratedDocumentRecruiterView,
     GenerateRequest,
+    GenerateSelfRequest,
 )
 from services import access_policy
 
@@ -47,8 +48,29 @@ async def generate_document(
         db,
         organization_id=org_id,
         template_id=data.template_id,
+        system_template_key=data.system_template_key,
         candidate_id=data.candidate_id,
         generated_by_user_id=member.user_id,
+        fmt=data.format,
+    )
+
+
+@router.post(
+    "/candidates/me/generate",
+    response_model=GeneratedDocumentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("5/minute")
+async def generate_my_document(
+    request: Request,
+    data: GenerateSelfRequest,
+    current_user: CandidateUser,
+    db: DB,
+) -> GeneratedDocument:
+    return await generation_service.generate_for_self(
+        db,
+        candidate_id=current_user.id,
+        system_template_key=data.system_template_key,
         fmt=data.format,
     )
 
@@ -86,16 +108,22 @@ async def download_document(
 
     from models.invitation import AccessGrant  # lazy: avoids circular import
 
-    grant_result = await db.execute(
-        select(AccessGrant).where(AccessGrant.id == doc.access_grant_id)
-    )
-    grant = grant_result.scalar_one_or_none()
-    if grant is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="document not found")
+    grant = None
+    if doc.access_grant_id is not None:
+        grant_result = await db.execute(
+            select(AccessGrant).where(AccessGrant.id == doc.access_grant_id)
+        )
+        grant = grant_result.scalar_one_or_none()
+        if grant is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="document not found")
 
-    is_candidate = grant.candidate_id == current_user.id
+    is_candidate = (
+        grant.candidate_id == current_user.id
+        if grant is not None
+        else doc.generated_by_user_id == current_user.id
+    )
     is_recruiter_of_org = False
-    if current_user.role == UserRole.RECRUITER:
+    if current_user.role == UserRole.RECRUITER and grant is not None:
         profile = await recruiter_service.get_or_create_profile(db, current_user.id)
         is_recruiter_of_org = access_policy.is_member(profile, grant.organization_id)
 

@@ -152,6 +152,7 @@ export default function AccessPage() {
       );
       const byOrg: Record<string, GeneratedDocumentCandidateView[]> = {};
       for (const doc of all) {
+        if (!doc.organization_id) continue;
         byOrg[doc.organization_id] = [
           ...(byOrg[doc.organization_id] ?? []),
           doc,
