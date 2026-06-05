@@ -102,11 +102,11 @@ async def list_organization_interactions(
     grants = grant_result.all()
 
     grant_ids = [grant.id for grant, _ in grants]
-    doc_rows: list[Row[tuple[GeneratedDocument, Template, RecruiterProfile | None]]] = []
+    doc_rows: list[Row[tuple[GeneratedDocument, Template | None, RecruiterProfile | None]]] = []
     if grant_ids:
         doc_result = await db.execute(
             select(GeneratedDocument, Template, RecruiterProfile)
-            .join(Template, Template.id == GeneratedDocument.template_id)
+            .outerjoin(Template, Template.id == GeneratedDocument.template_id)
             .outerjoin(
                 RecruiterProfile,
                 RecruiterProfile.user_id == GeneratedDocument.generated_by_user_id,
@@ -151,7 +151,7 @@ async def list_organization_interactions(
                     type="document_generated",
                     occurred_at=doc.generated_at,
                     metadata=InteractionEventMetadata(
-                        template_name=tmpl.name,
+                        template_name=tmpl.name if tmpl else doc.template_name,
                         file_format=doc.file_format,
                         recruiter_first_name=recruiter.first_name if recruiter else None,
                         recruiter_last_name=recruiter.last_name if recruiter else None,

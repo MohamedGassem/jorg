@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,61 +20,49 @@ import {
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useDownload } from "@/lib/hooks";
-import type { BuiltinTemplate, GeneratedDocument, Template } from "@/types/api";
+import type { BuiltinTemplate, GeneratedDocument } from "@/types/api";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  orgId: string;
-  candidateId: string;
-  candidateName: string;
-  templates: Template[];
-  builtinTemplates: BuiltinTemplate[];
 }
 
-export function GenerateDossierDialog({
-  open,
-  onOpenChange,
-  orgId,
-  candidateId,
-  candidateName,
-  templates,
-  builtinTemplates,
-}: Props) {
-  const [templateChoice, setTemplateChoice] = useState("");
+export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
+  const [templates, setTemplates] = useState<BuiltinTemplate[]>([]);
+  const [templateKey, setTemplateKey] = useState("");
   const [format, setFormat] = useState<"docx" | "pdf">("docx");
+  const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<GeneratedDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { download, errors: downloadErrors } = useDownload();
 
-  const validTemplates = templates.filter((t) => t.is_valid);
-  const hasTemplates = builtinTemplates.length > 0 || validTemplates.length > 0;
-  const selectedBuiltin = templateChoice.startsWith("system:")
-    ? builtinTemplates.find((t) => `system:${t.key}` === templateChoice)
-    : null;
+  useEffect(() => {
+    if (!open || templates.length > 0) return;
+    setLoading(true);
+    api
+      .get<BuiltinTemplate[]>("/templates/builtin")
+      .then(setTemplates)
+      .catch((err) =>
+        setError(
+          extractErrorMessage(err, "Impossible de charger les templates"),
+        ),
+      )
+      .finally(() => setLoading(false));
+  }, [open, templates.length]);
+
+  const selected = templates.find((t) => t.key === templateKey) ?? null;
 
   async function handleGenerate() {
-    if (!templateChoice) return;
+    if (!templateKey) return;
     setGenerating(true);
     setError(null);
     setResult(null);
     try {
-      const body = templateChoice.startsWith("system:")
-        ? {
-            candidate_id: candidateId,
-            system_template_key: templateChoice.slice("system:".length),
-            format,
-          }
-        : {
-            candidate_id: candidateId,
-            template_id: templateChoice.slice("org:".length),
-            format,
-          };
-      const doc = await api.post<GeneratedDocument>(
-        `/organizations/${orgId}/generate`,
-        body,
-      );
+      const doc = await api.post<GeneratedDocument>("/candidates/me/generate", {
+        system_template_key: templateKey,
+        format,
+      });
       setResult(doc);
     } catch (err) {
       setError(extractErrorMessage(err, "Erreur de generation"));
@@ -84,7 +72,7 @@ export function GenerateDossierDialog({
   }
 
   function handleClose() {
-    setTemplateChoice("");
+    setTemplateKey("");
     setFormat("docx");
     setResult(null);
     setError(null);
@@ -95,41 +83,34 @@ export function GenerateDossierDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Generer un dossier - {candidateName}</DialogTitle>
+          <DialogTitle>Generer mon dossier</DialogTitle>
         </DialogHeader>
 
-        {!hasTemplates ? (
-          <p className="text-sm text-muted-foreground">
-            Aucun template disponible pour le moment.
-          </p>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Chargement...</p>
         ) : (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Template</Label>
               <Select
-                value={templateChoice}
-                onValueChange={(v) => v && setTemplateChoice(v)}
+                value={templateKey}
+                onValueChange={(v) => v && setTemplateKey(v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Choisir un template..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {builtinTemplates.map((t) => (
-                    <SelectItem key={t.key} value={`system:${t.key}`}>
-                      Jorg - {t.name}
-                    </SelectItem>
-                  ))}
-                  {validTemplates.map((t) => (
-                    <SelectItem key={t.id} value={`org:${t.id}`}>
+                  {templates.map((t) => (
+                    <SelectItem key={t.key} value={t.key}>
                       {t.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {selectedBuiltin && (
+              {selected && (
                 <div className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2">
                   <p className="text-xs text-muted-foreground">
-                    {selectedBuiltin.description}
+                    {selected.description}
                   </p>
                   <Button
                     type="button"
@@ -137,9 +118,9 @@ export function GenerateDossierDialog({
                     variant="outline"
                     onClick={() =>
                       download(
-                        `/templates/builtin/${selectedBuiltin.key}/preview`,
-                        `apercu-${selectedBuiltin.key}.docx`,
-                        `preview-${selectedBuiltin.key}`,
+                        `/templates/builtin/${selected.key}/preview`,
+                        `apercu-${selected.key}.docx`,
+                        `candidate-preview-${selected.key}`,
                       )
                     }
                   >
@@ -177,7 +158,7 @@ export function GenerateDossierDialog({
                   onClick={() =>
                     download(
                       `/documents/${result.id}/download`,
-                      `dossier.${result.file_format}`,
+                      `mon-dossier.${result.file_format}`,
                       result.id,
                     )
                   }
@@ -189,9 +170,9 @@ export function GenerateDossierDialog({
             ) : (
               <Button
                 onClick={handleGenerate}
-                disabled={generating || !templateChoice}
+                disabled={generating || !templateKey}
               >
-                {generating ? "Generation..." : "Generer le dossier"}
+                {generating ? "Generation..." : "Generer mon dossier"}
               </Button>
             )}
           </div>

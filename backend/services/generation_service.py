@@ -8,7 +8,7 @@ from uuid import UUID
 
 import httpx
 import structlog
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -21,7 +21,7 @@ from models.recruiter import Organization
 from models.skill import CandidateSkill
 from models.template import Template
 from schemas.generation import GeneratedDocumentCandidateView, GeneratedDocumentRecruiterView
-from services import access_policy, template_service
+from services import access_policy, builtin_template_service, template_service
 from services.docx_engine import generate_document
 
 logger = structlog.get_logger()
@@ -78,7 +78,8 @@ async def _load_skills(db: AsyncSession, profile_id: UUID) -> list[CandidateSkil
 async def generate_for_candidate(
     db: AsyncSession,
     organization_id: UUID,
-    template_id: UUID,
+    template_id: UUID | None,
+    system_template_key: str | None,
     candidate_id: UUID,
     generated_by_user_id: UUID,
     fmt: Literal["docx", "pdf"],
@@ -88,11 +89,26 @@ async def generate_for_candidate(
     grant = await access_policy.require_live_access(db, organization_id, candidate_id)
 
     # 2. Load template
-    tmpl = await template_service.get_template(db, template_id, organization_id)
-    if tmpl is None:
-        raise NotFoundError("Template not found")
-    if not tmpl.is_valid:
-        raise BusinessRuleError("Template is not fully mapped")
+    resolved_template_id: UUID | None = None
+    if system_template_key:
+        builtin = builtin_template_service.get_builtin_template(system_template_key)
+        if builtin is None:
+            raise NotFoundError("Template not found")
+        template_path = builtin.word_file_path
+        template_name = builtin.name
+        filename_template_token = builtin.key
+    elif template_id:
+        tmpl = await template_service.get_template(db, template_id, organization_id)
+        if tmpl is None:
+            raise NotFoundError("Template not found")
+        if not tmpl.is_valid:
+            raise BusinessRuleError("Template is not fully mapped")
+        template_path = tmpl.word_file_path
+        template_name = tmpl.name
+        resolved_template_id = template_id
+        filename_template_token = str(template_id)
+    else:
+        raise BusinessRuleError("Template is required")
 
     # 3. Load candidate profile
     profile = await _load_profile(db, candidate_id)
@@ -102,7 +118,7 @@ async def generate_for_candidate(
     # 4. Generate document bytes
     try:
         docx_bytes = generate_document(
-            tmpl.word_file_path,
+            template_path,
             profile,  # type: ignore[arg-type]
             experiences,  # type: ignore[arg-type]
             skills,  # type: ignore[arg-type]
@@ -112,7 +128,7 @@ async def generate_for_candidate(
 
     # 5. Save to storage (convert to PDF in memory if requested)
     storage = get_storage()
-    base_filename = f"doc_{candidate_id}_{template_id}"
+    base_filename = f"doc_{candidate_id}_{filename_template_token}"
     if fmt == "pdf":
         try:
             pdf_bytes = await _convert_to_pdf(docx_bytes)
@@ -134,20 +150,86 @@ async def generate_for_candidate(
     # 6. Record generated document
     doc = GeneratedDocument(
         access_grant_id=grant.id,
-        template_id=template_id,
+        template_id=resolved_template_id,
         generated_by_user_id=generated_by_user_id,
         file_path=storage_key,
         file_format=actual_format,
+        template_name=template_name,
     )
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
     logger.info(
         "document.generated",
-        template_id=str(template_id),
+        template_id=str(resolved_template_id) if resolved_template_id else None,
+        system_template_key=system_template_key,
         candidate_id=str(candidate_id),
         format=fmt,
         access_grant_id=str(doc.access_grant_id),
+    )
+    return doc
+
+
+async def generate_for_self(
+    db: AsyncSession,
+    candidate_id: UUID,
+    system_template_key: str,
+    fmt: Literal["docx", "pdf"],
+) -> GeneratedDocument:
+    """Generate a document directly for the candidate, without recruiter access grant."""
+    builtin = builtin_template_service.get_builtin_template(system_template_key)
+    if builtin is None:
+        raise NotFoundError("Template not found")
+
+    profile = await _load_profile(db, candidate_id)
+    experiences = await _load_experiences(db, profile.id)
+    skills = await _load_skills(db, profile.id)
+
+    try:
+        docx_bytes = generate_document(
+            builtin.word_file_path,
+            profile,  # type: ignore[arg-type]
+            experiences,  # type: ignore[arg-type]
+            skills,  # type: ignore[arg-type]
+        )
+    except ValueError as exc:
+        raise BusinessRuleError(str(exc)) from exc
+
+    storage = get_storage()
+    base_filename = f"doc_{candidate_id}_{builtin.key}"
+    if fmt == "pdf":
+        try:
+            pdf_bytes = await _convert_to_pdf(docx_bytes)
+            storage_key = await storage.save(pdf_bytes, f"{base_filename}.pdf")
+            actual_format: str = "pdf"
+        except BusinessRuleError:
+            logger.warning(
+                "pdf_conversion_unavailable",
+                candidate_id=str(candidate_id),
+                fallback="docx",
+            )
+            storage_key = await storage.save(docx_bytes, f"{base_filename}.docx")
+            actual_format = "docx"
+    else:
+        storage_key = await storage.save(docx_bytes, f"{base_filename}.docx")
+        actual_format = "docx"
+
+    doc = GeneratedDocument(
+        access_grant_id=None,
+        template_id=None,
+        generated_by_user_id=candidate_id,
+        file_path=storage_key,
+        file_format=actual_format,
+        template_name=builtin.name,
+    )
+    db.add(doc)
+    await db.commit()
+    await db.refresh(doc)
+    logger.info(
+        "document.generated.self",
+        system_template_key=system_template_key,
+        candidate_id=str(candidate_id),
+        format=fmt,
     )
     return doc
 
@@ -165,18 +247,26 @@ async def list_candidate_documents_view(
             GeneratedDocument.file_format,
             Organization.name.label("organization_name"),
             AccessGrant.organization_id.label("organization_id"),
-            Template.name.label("template_name"),
+            func.coalesce(Template.name, GeneratedDocument.template_name).label("template_name"),
             RecruiterProfile.first_name.label("recruiter_first_name"),
             RecruiterProfile.last_name.label("recruiter_last_name"),
         )
-        .join(AccessGrant, GeneratedDocument.access_grant_id == AccessGrant.id)
-        .join(Organization, AccessGrant.organization_id == Organization.id)
-        .join(Template, GeneratedDocument.template_id == Template.id)
+        .outerjoin(AccessGrant, GeneratedDocument.access_grant_id == AccessGrant.id)
+        .outerjoin(Organization, AccessGrant.organization_id == Organization.id)
+        .outerjoin(Template, GeneratedDocument.template_id == Template.id)
         .outerjoin(
             RecruiterProfile,
             RecruiterProfile.user_id == GeneratedDocument.generated_by_user_id,
         )
-        .where(AccessGrant.candidate_id == candidate_id)
+        .where(
+            or_(
+                AccessGrant.candidate_id == candidate_id,
+                and_(
+                    GeneratedDocument.access_grant_id.is_(None),
+                    GeneratedDocument.generated_by_user_id == candidate_id,
+                ),
+            )
+        )
         .order_by(GeneratedDocument.generated_at.desc())
     )
     return [
@@ -184,7 +274,7 @@ async def list_candidate_documents_view(
             id=row.id,
             generated_at=row.generated_at,
             file_format=row.file_format,
-            organization_name=row.organization_name,
+            organization_name=row.organization_name or "Jorg",
             organization_id=row.organization_id,
             template_name=row.template_name,
             recruiter_first_name=row.recruiter_first_name,
@@ -199,8 +289,16 @@ async def list_candidate_documents(db: AsyncSession, candidate_id: UUID) -> list
 
     result = await db.execute(
         select(GeneratedDocument)
-        .join(AccessGrant, GeneratedDocument.access_grant_id == AccessGrant.id)
-        .where(AccessGrant.candidate_id == candidate_id)
+        .outerjoin(AccessGrant, GeneratedDocument.access_grant_id == AccessGrant.id)
+        .where(
+            or_(
+                AccessGrant.candidate_id == candidate_id,
+                and_(
+                    GeneratedDocument.access_grant_id.is_(None),
+                    GeneratedDocument.generated_by_user_id == candidate_id,
+                ),
+            )
+        )
         .order_by(GeneratedDocument.generated_at.desc())
     )
     return list(result.scalars().all())
@@ -228,7 +326,7 @@ async def list_org_documents_view(
             GeneratedDocument.id,
             GeneratedDocument.generated_at,
             GeneratedDocument.file_format,
-            Template.name.label("template_name"),
+            func.coalesce(Template.name, GeneratedDocument.template_name).label("template_name"),
             CandidateProfile.first_name.label("candidate_first_name"),
             CandidateProfile.last_name.label("candidate_last_name"),
             opportunity_subq.label("opportunity_title"),
