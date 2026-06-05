@@ -35,6 +35,7 @@ import type {
   Education,
   Certification,
   Language,
+  LanguageReference,
   LanguageLevel,
 } from "@/types/api";
 
@@ -2271,6 +2272,8 @@ export function LanguageSection() {
   const [form, setForm] = useState<LangForm>(EMPTY_LANG);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [languageRefs, setLanguageRefs] = useState<LanguageReference[]>([]);
+  const [searchingRefs, setSearchingRefs] = useState(false);
 
   useEffect(() => {
     api
@@ -2284,6 +2287,31 @@ export function LanguageSection() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    const query = form.name.trim();
+    if (query.length < 2) {
+      setLanguageRefs([]);
+      setSearchingRefs(false);
+      return;
+    }
+
+    setSearchingRefs(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await api.get<LanguageReference[]>(
+          `/candidates/language-references?q=${encodeURIComponent(query)}`,
+        );
+        setLanguageRefs(results.filter((ref) => ref.name !== form.name));
+      } catch {
+        setLanguageRefs([]);
+      } finally {
+        setSearchingRefs(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [form.name]);
+
   function startEdit(lang: Language) {
     setAdding(false);
     setEditingId(lang.id);
@@ -2295,7 +2323,13 @@ export function LanguageSection() {
     setAdding(false);
     setEditingId(null);
     setForm(EMPTY_LANG);
+    setLanguageRefs([]);
     setError(null);
+  }
+
+  function selectLanguageRef(ref: LanguageReference) {
+    setForm((prev) => ({ ...prev, name: ref.name }));
+    setLanguageRefs([]);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -2341,7 +2375,7 @@ export function LanguageSection() {
       className="space-y-3 rounded-lg border border-border/60 bg-muted/10 p-4"
     >
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
+        <div className="relative space-y-1.5">
           <Label htmlFor="lang-name">
             Langue <span className="text-destructive">*</span>
           </Label>
@@ -2354,6 +2388,30 @@ export function LanguageSection() {
             placeholder="ex: Français, Anglais…"
             required
           />
+          {(languageRefs.length > 0 || searchingRefs) && (
+            <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-md border border-border bg-popover shadow-md">
+              {languageRefs.map((ref) => (
+                <button
+                  key={ref.id}
+                  type="button"
+                  className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-muted"
+                  onClick={() => selectLanguageRef(ref)}
+                >
+                  <span className="font-medium">{ref.name}</span>
+                  {ref.aliases.length > 0 && (
+                    <span className="line-clamp-1 text-xs text-muted-foreground">
+                      {ref.aliases.slice(0, 3).join(", ")}
+                    </span>
+                  )}
+                </button>
+              ))}
+              {searchingRefs && languageRefs.length === 0 && (
+                <div className="px-3 py-2 text-sm text-muted-foreground">
+                  Recherche...
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="lang-level">
@@ -2394,7 +2452,7 @@ export function LanguageSection() {
   );
 
   return (
-    <Card>
+    <Card className="overflow-visible">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle>Langues</CardTitle>
         <SectionAddButton

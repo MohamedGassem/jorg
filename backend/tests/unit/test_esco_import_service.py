@@ -7,6 +7,7 @@ from services.esco_import_service import (
     map_esco_kind,
     parse_alt_labels,
 )
+from services.esco_language_detection import is_esco_language_reference
 
 
 def test_map_kind_knowledge_is_technical():
@@ -84,3 +85,37 @@ def test_row_to_fields_truncates_long_name():
     fields = esco_row_to_fields(_row(preferredLabel="x" * 300))
     assert fields is not None
     assert len(fields["name"]) == 200
+
+
+def test_row_to_fields_rejects_natural_language_knowledge():
+    assert (
+        esco_row_to_fields(
+            _row(
+                skillType="knowledge",
+                preferredLabel="Fran\u00e7ais",
+                description="La langue fran\u00e7aise. Le fran\u00e7ais est une langue officielle.",
+            )
+        )
+        is None
+    )
+
+
+def test_row_to_fields_keeps_programming_language_knowledge():
+    fields = esco_row_to_fields(
+        _row(
+            skillType="knowledge",
+            preferredLabel="CSS",
+            description="La langue informatique CSS est une langue de feuilles de style.",
+        )
+    )
+    assert fields is not None
+    assert fields["name"] == "CSS"
+    assert fields["kind"] == SkillKind.technical
+
+
+def test_language_detection_keeps_language_related_professional_skill():
+    assert not is_esco_language_reference(
+        "comprendre l'espagnol \u00e9crit",
+        "Lire et comprendre des textes \u00e9crits en espagnol.",
+        "skill/competence",
+    )

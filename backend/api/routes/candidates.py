@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 import services.candidate_service as candidate_service
 import services.cv_parser_service as cv_parser_service
+import services.language_reference_service as language_reference_service
 import services.rgpd_service as rgpd_service
 from api.deps import CandidateProfile_dep, get_db, require_role
 from models.candidate_profile import (
@@ -17,6 +18,7 @@ from models.candidate_profile import (
     Education,
     Experience,
     Language,
+    LanguageReference,
 )
 from models.skill import Achievement, AchievementSkillTag, ExperienceSkillUsage
 from models.user import User, UserRole
@@ -36,6 +38,7 @@ from schemas.candidate import (
     ExperienceUpdate,
     LanguageCreate,
     LanguageRead,
+    LanguageReferenceRead,
     LanguageUpdate,
     OrganizationInteractionCard,
     validate_certification_dates,
@@ -293,6 +296,16 @@ async def delete_my_certification(
 
 
 # ---- Languages --------------------------------------------------------------
+
+
+@router.get("/language-references", response_model=list[LanguageReferenceRead])
+async def search_language_references(
+    q: str,
+    db: DB,
+    profile: CandidateProfile_dep,
+    limit: int = 20,
+) -> list[LanguageReference]:
+    return await language_reference_service.search(q, limit=limit, db=db)
 
 
 @router.get("/me/languages", response_model=list[LanguageRead])

@@ -1,5 +1,8 @@
 # backend/tests/integration/test_candidate_api.py
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from models.candidate_profile import LanguageReference
 
 # ---- Auth & role guards -----------------------------------------------------
 
@@ -428,6 +431,28 @@ async def test_delete_certification(client: AsyncClient, candidate_headers: dict
 
 
 # ---- Language ---------------------------------------------------------------
+
+
+async def test_search_language_references(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    db_session.add(
+        LanguageReference(
+            name="Français",
+            slug="fran-ais",
+            aliases=["French", "francais"],
+            source="seed",
+            description="Langue française",
+        )
+    )
+    await db_session.commit()
+
+    r = await client.get("/candidates/language-references?q=French", headers=candidate_headers)
+
+    assert r.status_code == 200
+    assert [ref["name"] for ref in r.json()] == ["Français"]
 
 
 async def test_create_and_list_languages(

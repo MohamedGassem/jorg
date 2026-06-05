@@ -23,6 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.skill import SkillKind, SkillReference
+from services.esco_language_detection import is_esco_language_reference
 from services.skill_reference_service import slugify
 
 # Column widths from the SkillReference model — truncate to stay within them.
@@ -99,6 +100,8 @@ def esco_row_to_fields(row: dict[str, str]) -> EscoFields | None:
     skill_type = (row.get("skillType") or "").strip()
     reuse_level = (row.get("reuseLevel") or "").strip()
     description = (row.get("description") or "").strip() or None
+    if is_esco_language_reference(name, description, skill_type):
+        return None
 
     return EscoFields(
         name=name[:_NAME_MAX],

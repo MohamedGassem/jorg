@@ -125,6 +125,18 @@ export interface Language {
   updated_at: string;
 }
 
+export interface LanguageReference {
+  id: string;
+  name: string;
+  slug: string;
+  aliases: string[];
+  esco_uri: string | null;
+  source: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AuthResponse {
   access_token: string;
   refresh_token: string;

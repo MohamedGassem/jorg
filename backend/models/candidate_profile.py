@@ -13,6 +13,7 @@ from sqlalchemy import (
     Date,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -195,3 +196,19 @@ class Language(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     level: Mapped[LanguageLevel] = mapped_column(
         Enum(LanguageLevel, name="language_level"), nullable=False
     )
+
+
+class LanguageReference(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "language_references"
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_language_references_slug"),
+        UniqueConstraint("esco_uri", name="uq_language_references_esco_uri"),
+        Index("ix_language_references_name", "name"),
+    )
+
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    slug: Mapped[str] = mapped_column(String(120), nullable=False)
+    aliases: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    esco_uri: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    source: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)

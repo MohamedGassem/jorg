@@ -350,6 +350,20 @@ class LanguageRead(BaseModel):
     updated_at: datetime
 
 
+class LanguageReferenceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    slug: str
+    aliases: list[str]
+    esco_uri: str | None
+    source: str
+    description: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
 # ---- Interaction timeline ----------------------------------------------------
 
 InteractionEventType = Literal[

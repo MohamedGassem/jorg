@@ -55,6 +55,29 @@ docker-compose up -d
 docker-compose exec api alembic upgrade head
 ```
 
+## Maintenance manuelle des langues
+
+Après un deploy qui contient la table `language_references`, lancer d'abord le
+seed et le dry-run de nettoyage :
+
+```bash
+python scripts/manage_language_references.py
+```
+
+Si le rapport confirme des lignes ESCO de langues non référencées dans
+`skill_references`, appliquer le nettoyage :
+
+```bash
+python scripts/manage_language_references.py --apply-prune
+```
+
+L'import des langues ESCO complètes est optionnel et demande un CSV disponible
+dans l'environnement :
+
+```bash
+python scripts/manage_language_references.py --esco-csv data/esco/skills_fr.csv
+```
+
 ## Checklist avant mise en ligne
 
 - [ ] `SECRET_KEY` est aléatoire et ≥ 32 caractères

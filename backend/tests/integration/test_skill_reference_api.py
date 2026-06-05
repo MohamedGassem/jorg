@@ -1,6 +1,9 @@
 # backend/tests/integration/test_skill_reference_api.py
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from models.skill import SkillKind, SkillReference
 
 
 async def test_search_skill_references_requires_auth(client: AsyncClient) -> None:
@@ -33,6 +36,32 @@ async def test_search_filters_by_kind(
     r = await client.get("/skill-references?q=Scrum&kind=technical", headers=candidate_headers)
     assert r.status_code == 200
     assert r.json() == []
+
+
+async def test_search_hides_esco_natural_languages(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    db_session.add(
+        SkillReference(
+            name="Fran\u00e7ais",
+            slug="fran-ais",
+            kind=SkillKind.technical,
+            aliases=[],
+            esco_uri="http://data.europa.eu/esco/skill/e747e77e-0ea1-4001-8b07-1d11946b5f1b",
+            esco_skill_type="knowledge",
+            source="esco",
+            description="La langue fran\u00e7aise. Le fran\u00e7ais est une langue officielle.",
+            is_custom=False,
+        )
+    )
+    await db_session.commit()
+
+    r = await client.get("/skill-references?q=Fran", headers=candidate_headers)
+
+    assert r.status_code == 200
+    assert "Fran\u00e7ais" not in [skill["name"] for skill in r.json()]
 
 
 async def test_create_custom_skill_reference(

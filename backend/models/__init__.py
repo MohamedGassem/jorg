@@ -10,6 +10,7 @@ from models.candidate_profile import (
     Experience,
     Language,
     LanguageLevel,
+    LanguageReference,
     MissionDuration,
     WorkMode,
 )
@@ -50,6 +51,7 @@ __all__ = [
     "InvitationStatus",
     "Language",
     "LanguageLevel",
+    "LanguageReference",
     "MissionDuration",
     "OAuthProvider",
     "OAuthState",

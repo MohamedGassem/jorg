@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.skill import SkillKind, SkillReference
+from services.esco_language_detection import is_esco_language_reference
 
 
 def slugify(name: str) -> str:
@@ -17,6 +18,14 @@ def slugify(name: str) -> str:
     slug = slug.replace("/", "-")  # ASP.NET/MVC → asp-net-mvc
     slug = re.sub(r"[^a-z0-9]+", "-", slug)
     return slug.strip("-")
+
+
+def _is_hidden_esco_language(ref: SkillReference) -> bool:
+    return ref.source == "esco" and is_esco_language_reference(
+        ref.name,
+        ref.description,
+        ref.esco_skill_type,
+    )
 
 
 async def get_or_create_by_name(
@@ -35,7 +44,7 @@ async def get_or_create_by_name(
         )
     )
     ref = result.scalar_one_or_none()
-    if ref is not None:
+    if ref is not None and not _is_hidden_esco_language(ref):
         return ref, False
     # Then check candidate's own custom skills
     result = await db.execute(
@@ -69,12 +78,31 @@ async def search(
     candidate_id: UUID,
     db: AsyncSession,
 ) -> list[SkillReference]:
-    stmt = select(SkillReference).where(
-        SkillReference.name.ilike(f"%{query}%"),
-        (SkillReference.creator_candidate_id.is_(None))
-        | (SkillReference.creator_candidate_id == candidate_id),
+    if limit <= 0:
+        return []
+
+    stmt = (
+        select(SkillReference)
+        .where(
+            SkillReference.name.ilike(f"%{query}%"),
+            (SkillReference.creator_candidate_id.is_(None))
+            | (SkillReference.creator_candidate_id == candidate_id),
+        )
+        .order_by(SkillReference.name, SkillReference.id)
     )
     if kind is not None:
         stmt = stmt.where(SkillReference.kind == kind)
-    result = await db.execute(stmt.limit(limit))
-    return list(result.scalars().all())
+
+    results: list[SkillReference] = []
+    page_size = max(limit * 5, 50)
+    offset = 0
+
+    while len(results) < limit:
+        result = await db.execute(stmt.limit(page_size).offset(offset))
+        page = list(result.scalars().all())
+        if not page:
+            break
+        results.extend(ref for ref in page if not _is_hidden_esco_language(ref))
+        offset += page_size
+
+    return results[:limit]
