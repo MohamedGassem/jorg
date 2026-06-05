@@ -168,7 +168,6 @@ async def test_upload_template_detects_placeholders(
     assert "{{PRENOM}}" in data["detected_placeholders"]
     assert "{{TITRE}}" in data["detected_placeholders"]
     assert data["is_valid"] is False
-    assert data["mappings"] == {}
 
 
 async def test_list_templates(client: AsyncClient, recruiter_headers: dict[str, str]) -> None:
@@ -192,12 +191,12 @@ async def test_list_templates(client: AsyncClient, recruiter_headers: dict[str, 
     assert len(r.json()) == 2
 
 
-async def test_update_mappings_sets_is_valid(
+async def test_upload_template_with_standard_placeholders_is_valid(
     client: AsyncClient, recruiter_headers: dict[str, str]
 ) -> None:
     org_id = await _setup_org_and_link(client, recruiter_headers)
-    docx_bytes = _make_docx_bytes(["{{NOM}} {{PRENOM}}"])
-    upload = await client.post(
+    docx_bytes = _make_docx_bytes(["{{last_name}} {{first_name}}"])
+    r = await client.post(
         f"/organizations/{org_id}/templates",
         headers=recruiter_headers,
         data={"name": "T"},
@@ -209,25 +208,8 @@ async def test_update_mappings_sets_is_valid(
             )
         },
     )
-    template_id = upload.json()["id"]
-
-    # Partial mapping — still invalid
-    r1 = await client.put(
-        f"/organizations/{org_id}/templates/{template_id}/mappings",
-        headers=recruiter_headers,
-        json={"mappings": {"{{NOM}}": "last_name"}, "version": 0},
-    )
-    assert r1.status_code == 200
-    assert r1.json()["is_valid"] is False
-
-    # Full mapping — now valid (version incremented to 1 by previous PUT)
-    r2 = await client.put(
-        f"/organizations/{org_id}/templates/{template_id}/mappings",
-        headers=recruiter_headers,
-        json={"mappings": {"{{NOM}}": "last_name", "{{PRENOM}}": "first_name"}, "version": 1},
-    )
-    assert r2.status_code == 200
-    assert r2.json()["is_valid"] is True
+    assert r.status_code == 201
+    assert r.json()["is_valid"] is True
 
 
 async def test_delete_template(client: AsyncClient, recruiter_headers: dict[str, str]) -> None:

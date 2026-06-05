@@ -48,8 +48,8 @@ async def _upload_valid_template(
     recruiter_headers: dict[str, str],
     org_id: str,
 ) -> str:
-    """Upload a template with {{NOM}} and fully map it. Returns template_id."""
-    docx_bytes = _make_docx_bytes(["Nom: {{NOM}}", "Titre: {{TITRE}}"])
+    """Upload a template with standard docxtpl placeholders. Returns template_id."""
+    docx_bytes = _make_docx_bytes(["Nom: {{last_name}}", "Titre: {{title}}"])
     r = await client.post(
         f"/organizations/{org_id}/templates",
         headers=recruiter_headers,
@@ -62,13 +62,9 @@ async def _upload_valid_template(
             )
         },
     )
-    template_id: str = r.json()["id"]
-    await client.put(
-        f"/organizations/{org_id}/templates/{template_id}/mappings",
-        headers=recruiter_headers,
-        json={"mappings": {"{{NOM}}": "last_name", "{{TITRE}}": "title"}, "version": 0},
-    )
-    return template_id
+    assert r.status_code == 201, r.text
+    assert r.json()["is_valid"] is True
+    return str(r.json()["id"])
 
 
 # ---- generate ---------------------------------------------------------------
@@ -127,7 +123,7 @@ async def test_cannot_generate_with_invalid_template(
     candidate_headers: dict[str, str],
 ) -> None:
     org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
-    # Upload template but do NOT map all placeholders → is_valid=False
+    # Unknown placeholders are unsupported and make the template invalid.
     docx_bytes = _make_docx_bytes(["{{NOM}} {{UNMAPPED}}"])
     r = await client.post(
         f"/organizations/{org_id}/templates",
@@ -142,12 +138,7 @@ async def test_cannot_generate_with_invalid_template(
         },
     )
     template_id = r.json()["id"]
-    # Only map one of two placeholders
-    await client.put(
-        f"/organizations/{org_id}/templates/{template_id}/mappings",
-        headers=recruiter_headers,
-        json={"mappings": {"{{NOM}}": "last_name"}, "version": 0},
-    )
+    assert r.json()["is_valid"] is False
 
     r2 = await client.post(
         f"/organizations/{org_id}/generate",

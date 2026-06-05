@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { TabBar } from "@/components/ui/TabBar";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
@@ -59,7 +60,53 @@ export default function DocumentsPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [templateName, setTemplateName] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [sampleDownloadError, setSampleDownloadError] = useState<string | null>(
+    null,
+  );
   const { download, errors: downloadErrors } = useDownload();
+
+  async function handleUploadTemplate(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!orgId) return;
+    const form = e.currentTarget;
+    const fileInput = form.elements.namedItem("file") as HTMLInputElement;
+    const file = fileInput.files?.[0];
+    if (!file || !templateName.trim()) return;
+
+    const fd = new FormData();
+    fd.append("name", templateName.trim());
+    fd.append("file", file);
+
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const tmpl = await api.upload<Template>(
+        `/organizations/${orgId}/templates`,
+        fd,
+      );
+      setTemplates((prev) => [...prev, tmpl]);
+      setTemplateName("");
+      form.reset();
+    } catch (err) {
+      setUploadError(extractErrorMessage(err, "Erreur lors de l'upload"));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleSampleDownload() {
+    setSampleDownloadError(null);
+    try {
+      await api.download("/templates/sample", "jorg-sample-template.docx");
+    } catch (err) {
+      setSampleDownloadError(
+        extractErrorMessage(err, "Impossible de télécharger l'exemple"),
+      );
+    }
+  }
 
   useEffect(() => {
     if (!orgId) return;
@@ -144,17 +191,84 @@ export default function DocumentsPage() {
 
       {/* Templates tab */}
       {activeTab === "templates" && (
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Upload form */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+              <CardTitle className="text-base">
+                Uploader un nouveau template
+              </CardTitle>
+              <a
+                href="/api/templates/sample"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  await handleSampleDownload();
+                }}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Télécharger un exemple
+              </a>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleUploadTemplate} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tmpl-name">Nom du template</Label>
+                  <Input
+                    id="tmpl-name"
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tmpl-file">Fichier Word (.docx)</Label>
+                  <Input
+                    id="tmpl-file"
+                    name="file"
+                    type="file"
+                    accept=".docx"
+                    required
+                  />
+                </div>
+                <ErrorAlert error={uploadError} />
+                <ErrorAlert error={sampleDownloadError} />
+                <Button type="submit" disabled={uploading}>
+                  {uploading ? "Upload…" : "Uploader"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Template list */}
           <p className="text-sm text-muted-foreground">
             {templates.length} template{templates.length !== 1 ? "s" : ""}
           </p>
           {templates.length === 0 ? (
-            <EmptyState message="Aucun template disponible." />
+            <EmptyState message="Aucun template. Uploadez-en un ci-dessus." />
           ) : (
             <ul className="space-y-2" role="list">
               {templates.map((t) => (
-                <li key={t.id} className="rounded-lg border p-3 text-sm">
-                  <span className="font-medium">{t.name}</span>
+                <li
+                  key={t.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm"
+                >
+                  <div className="space-y-1">
+                    <span className="font-medium">{t.name}</span>
+                    <p className="text-xs text-muted-foreground">
+                      {t.detected_placeholders.length} placeholder(s) détecté(s)
+                    </p>
+                    {!t.is_valid && (
+                      <p className="text-xs text-muted-foreground">
+                        Recréez ce fichier avec les champs standards du modèle
+                        exemple.
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={t.is_valid ? "default" : "secondary"}>
+                      {t.is_valid ? "Valide" : "Non compatible"}
+                    </Badge>
+                  </div>
                 </li>
               ))}
             </ul>

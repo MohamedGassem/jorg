@@ -70,7 +70,7 @@ def _mock_exp(**kwargs: object) -> MagicMock:
 
 def test_simple_placeholder_replaced() -> None:
     path = _make_docx_path(["Nom: {{last_name}}", "Prénom: {{first_name}}"])
-    result = generate_document(path, _mock_profile(), [], [], {})
+    result = generate_document(path, _mock_profile(), [], [])
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "Martin" in texts
@@ -81,7 +81,7 @@ def test_simple_placeholder_replaced() -> None:
 def test_unknown_field_renders_as_empty() -> None:
     """Undefined Jinja2 variables render as empty string."""
     path = _make_docx_path(["Data: {{ghost_field}}"])
-    result = generate_document(path, _mock_profile(), [], [], {})
+    result = generate_document(path, _mock_profile(), [], [])
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "{{ghost_field}}" not in texts
@@ -102,7 +102,7 @@ def test_experience_block_repeated_per_item() -> None:
     )
     exp1 = _mock_exp(client_name="Alpha", role="Dev")
     exp2 = _mock_exp(client_name="Beta", role="Lead")
-    result = generate_document(path, _mock_profile(), [exp1, exp2], [], {})
+    result = generate_document(path, _mock_profile(), [exp1, exp2], [])
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "Alpha" in texts and "Beta" in texts
@@ -119,7 +119,7 @@ def test_no_experiences_removes_block_markers() -> None:
             "Footer",
         ]
     )
-    result = generate_document(path, _mock_profile(), [], [], {})
+    result = generate_document(path, _mock_profile(), [], [])
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "Header" in texts and "Footer" in texts
@@ -135,7 +135,7 @@ def test_experience_current_end_date_shows_present() -> None:
         ]
     )
     exp = _mock_exp(start_date=date(2022, 6, 1), end_date=None, is_current=True)
-    result = generate_document(path, _mock_profile(), [exp], [], {})
+    result = generate_document(path, _mock_profile(), [exp], [])
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "06/2022" in texts and "présent" in texts
@@ -150,7 +150,7 @@ def test_date_formatted_mm_yyyy() -> None:
         ]
     )
     exp = _mock_exp(start_date=date(2021, 3, 15), end_date=date(2023, 11, 1), is_current=False)
-    result = generate_document(path, _mock_profile(), [exp], [], {})
+    result = generate_document(path, _mock_profile(), [exp], [])
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "03/2021" in texts and "11/2023" in texts
@@ -165,7 +165,7 @@ def test_achievements_summary_rendered() -> None:
         ]
     )
     exp = _mock_exp(achievements_summary="Reduced latency by 40%")
-    result = generate_document(path, _mock_profile(), [exp], [], {})
+    result = generate_document(path, _mock_profile(), [exp], [])
     doc = Document(io.BytesIO(result))
     texts = " ".join(p.text for p in doc.paragraphs)
     assert "Reduced latency by 40%" in texts
@@ -181,7 +181,7 @@ def test_generate_replaces_annual_salary_placeholder() -> None:
         template_path = tmp.name
 
     profile = _mock_profile(annual_salary=55000)
-    result = generate_document(template_path, profile, [], [], {})
+    result = generate_document(template_path, profile, [], [])
     out_doc = Document(io.BytesIO(result))
     text = "\n".join(p.text for p in out_doc.paragraphs)
     assert "55000" in text

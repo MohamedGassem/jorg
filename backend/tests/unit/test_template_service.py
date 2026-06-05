@@ -1,34 +1,26 @@
 # backend/tests/unit/test_template_service.py
-"""Unit tests for template_service pure functions (no DB required)."""
+"""Unit tests for template_service pure functions."""
 
-from services.template_service import _auto_mappings, _compute_is_valid
-
-# ---------------------------------------------------------------------------
-# _auto_mappings
-# ---------------------------------------------------------------------------
+from services.template_service import _compute_is_valid
 
 
-def test_auto_mappings_maps_known_placeholders_to_field_names() -> None:
-    result = _auto_mappings(["{{first_name}}", "{{last_name}}"])
-    assert result == {"{{first_name}}": "first_name", "{{last_name}}": "last_name"}
+def test_compute_is_valid_true_when_all_detected_are_known_fields() -> None:
+    assert _compute_is_valid(["{{first_name}}", "{{last_name}}", "{{annual_salary}}"]) is True
 
 
-def test_auto_mappings_skips_unknown_placeholders() -> None:
-    result = _auto_mappings(["{{CUSTOM_FIELD}}", "{{NOM}}"])
-    assert result == {}
+def test_compute_is_valid_false_when_any_placeholder_is_unknown() -> None:
+    assert _compute_is_valid(["{{first_name}}", "{{CUSTOM_HEADER}}"]) is False
 
 
-def test_auto_mappings_mixed_keeps_only_known() -> None:
-    result = _auto_mappings(["{{first_name}}", "{{CUSTOM}}"])
-    assert result == {"{{first_name}}": "first_name"}
+def test_compute_is_valid_false_for_old_mustache_placeholders() -> None:
+    assert _compute_is_valid(["{{NOM}}", "{{PRENOM}}"]) is False
 
 
-def test_auto_mappings_empty_list_returns_empty() -> None:
-    assert _auto_mappings([]) == {}
+def test_compute_is_valid_false_when_empty_detected() -> None:
+    assert _compute_is_valid([]) is False
 
 
-def test_auto_mappings_covers_all_profile_fields() -> None:
-    """Every field exposed by profile_flat() is auto-mappable."""
+def test_compute_is_valid_covers_all_profile_fields() -> None:
     all_profile = [
         "{{first_name}}",
         "{{last_name}}",
@@ -48,50 +40,4 @@ def test_auto_mappings_covers_all_profile_fields() -> None:
         "{{contract_type}}",
         "{{preferred_domains}}",
     ]
-    result = _auto_mappings(all_profile)
-    assert set(result.keys()) == set(all_profile)
-    # Values are bare field names (no braces)
-    assert result["{{first_name}}"] == "first_name"
-    assert result["{{annual_salary}}"] == "annual_salary"
-
-
-# ---------------------------------------------------------------------------
-# _compute_is_valid (behaviour through auto_mappings)
-# ---------------------------------------------------------------------------
-
-
-def test_compute_is_valid_true_when_all_detected_are_mapped() -> None:
-    mappings = {"{{first_name}}": "first_name", "{{last_name}}": "last_name"}
-    assert _compute_is_valid(["{{first_name}}", "{{last_name}}"], mappings) is True
-
-
-def test_compute_is_valid_false_when_some_unmapped() -> None:
-    mappings = {"{{first_name}}": "first_name"}
-    assert _compute_is_valid(["{{first_name}}", "{{CUSTOM}}"], mappings) is False
-
-
-def test_compute_is_valid_false_when_empty_detected() -> None:
-    assert _compute_is_valid([], {}) is False
-
-
-def test_compute_is_valid_false_when_mappings_empty_but_detected_not() -> None:
-    assert _compute_is_valid(["{{first_name}}"], {}) is False
-
-
-# ---------------------------------------------------------------------------
-# Integration: auto_mappings + compute_is_valid together
-# ---------------------------------------------------------------------------
-
-
-def test_all_known_fields_produces_valid_template() -> None:
-    """A template using only standard profile fields is immediately valid."""
-    detected = ["{{first_name}}", "{{last_name}}", "{{title}}", "{{daily_rate}}"]
-    mappings = _auto_mappings(detected)
-    assert _compute_is_valid(detected, mappings) is True
-
-
-def test_unknown_field_produces_invalid_template() -> None:
-    """A template with any unknown placeholder is not auto-valid."""
-    detected = ["{{first_name}}", "{{CUSTOM_HEADER}}"]
-    mappings = _auto_mappings(detected)
-    assert _compute_is_valid(detected, mappings) is False
+    assert _compute_is_valid(all_profile) is True

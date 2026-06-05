@@ -214,9 +214,7 @@ export interface Template {
   description: string | null;
   word_file_path: string;
   detected_placeholders: string[];
-  mappings: Record<string, string>;
   is_valid: boolean;
-  version: number;
   created_at: string;
   updated_at: string;
 }
