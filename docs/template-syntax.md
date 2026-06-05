@@ -14,25 +14,30 @@ Les champs disponibles correspondent directement aux données du profil candidat
 
 ### Champs profil
 
-| Balise                    | Contenu                                      |
-| ------------------------- | -------------------------------------------- |
-| `{{first_name}}`          | Prénom                                       |
-| `{{last_name}}`           | Nom                                          |
-| `{{title}}`               | Titre / intitulé de poste                    |
-| `{{summary}}`             | Résumé / pitch                               |
-| `{{phone}}`               | Téléphone                                    |
-| `{{email_contact}}`       | Email de contact                             |
-| `{{linkedin_url}}`        | URL LinkedIn                                 |
-| `{{location}}`            | Localisation                                 |
-| `{{years_of_experience}}` | Années d'expérience (entier)                 |
-| `{{daily_rate}}`          | TJM en € (entier)                            |
-| `{{annual_salary}}`       | Salaire annuel en € (entier)                 |
-| `{{availability_status}}` | Statut de disponibilité                      |
-| `{{work_mode}}`           | Mode de travail (remote, hybrid, onsite)     |
-| `{{location_preference}}` | Préférence géographique                      |
-| `{{mission_duration}}`    | Durée de mission souhaitée                   |
-| `{{contract_type}}`       | Type de contrat (freelance, CDI…)            |
-| `{{preferred_domains}}`   | Domaines préférés (liste jointe par virgule) |
+| Balise                       | Contenu                                      |
+| ---------------------------- | -------------------------------------------- |
+| `{{first_name}}`             | Prénom                                       |
+| `{{last_name}}`              | Nom                                          |
+| `{{title}}`                  | Titre / intitulé de poste                    |
+| `{{summary}}`                | Résumé / pitch                               |
+| `{{phone}}`                  | Téléphone                                    |
+| `{{email_contact}}`          | Email de contact                             |
+| `{{linkedin_url}}`           | URL LinkedIn                                 |
+| `{{location}}`               | Localisation                                 |
+| `{{years_of_experience}}`    | Années d'expérience (entier)                 |
+| `{{daily_rate}}`             | TJM en € (entier)                            |
+| `{{annual_salary}}`          | Salaire annuel en € (entier)                 |
+| `{{availability_status}}`    | Statut de disponibilité                      |
+| `{{availability_label}}`     | Libellé lisible de disponibilité             |
+| `{{availability_date}}`      | Date de disponibilité (MM/AAAA)              |
+| `{{work_mode}}`              | Mode de travail (remote, hybrid, onsite)     |
+| `{{work_mode_label}}`        | Libellé lisible du mode de travail           |
+| `{{location_preference}}`    | Préférence géographique                      |
+| `{{mission_duration}}`       | Durée de mission souhaitée                   |
+| `{{mission_duration_label}}` | Libellé lisible de durée souhaitée           |
+| `{{contract_type}}`          | Type de contrat (freelance, CDI…)            |
+| `{{contract_type_label}}`    | Libellé lisible du type de contrat           |
+| `{{preferred_domains}}`      | Domaines préférés (liste jointe par virgule) |
 
 **Exemple dans le template :**
 
@@ -64,17 +69,20 @@ Du {{exp.start_date}} au {{exp.end_date}}
 
 #### Champs disponibles dans la boucle `exp`
 
-| Balise                         | Contenu                                                                                                     |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `{{exp.client_name}}`          | Nom du client                                                                                               |
-| `{{exp.role}}`                 | Intitulé du poste                                                                                           |
-| `{{exp.start_date}}`           | Date de début (MM/AAAA)                                                                                     |
-| `{{exp.end_date}}`             | Date de fin (MM/AAAA) ou `présent` si mission en cours                                                      |
-| `{{exp.description}}`          | Description de la mission                                                                                   |
-| `{{exp.context}}`              | Contexte                                                                                                    |
-| `{{exp.achievements}}`         | Réalisations / résultats (alias de `achievements_summary`)                                                  |
-| `{{exp.achievements_summary}}` | Réalisations / résultats                                                                                    |
-| ~~`{{exp.technologies}}`~~     | **Supprimé** — renvoie toujours une chaîne vide. Remplacer par les skills de type `tool` via `skills_tool`. |
+| Balise                                          | Contenu                                                                                                     |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `{{exp.client_name}}`                           | Nom du client                                                                                               |
+| `{{exp.role}}`                                  | Intitulé du poste                                                                                           |
+| `{{exp.start_date}}`                            | Date de début (MM/AAAA)                                                                                     |
+| `{{exp.end_date}}`                              | Date de fin (MM/AAAA) ou `présent` si mission en cours                                                      |
+| `{{exp.description}}`                           | Description de la mission                                                                                   |
+| `{{exp.context}}`                               | Contexte                                                                                                    |
+| `{{exp.achievements}}`                          | Réalisations / résultats (alias de `achievements_summary`)                                                  |
+| `{{exp.achievements_summary}}`                  | Réalisations / résultats                                                                                    |
+| `exp.achievement_items`                         | Liste de réalisations détaillées : `description`, `impact`, `skills`                                        |
+| `exp.skills` / `exp.skill_usages`               | Liste des compétences explicitement associées à cette expérience                                            |
+| `exp.skills_tool`, `exp.skills_technical`, etc. | Compétences de cette expérience filtrées par type                                                           |
+| ~~`{{exp.technologies}}`~~                      | **Supprimé** — renvoie toujours une chaîne vide. Remplacer par les skills de type `tool` via `skills_tool`. |
 
 ### Bloc compétences
 
@@ -91,13 +99,51 @@ Du {{exp.start_date}} au {{exp.end_date}}
 | Balise                           | Contenu                                             |
 | -------------------------------- | --------------------------------------------------- |
 | `{{sk.name}}`                    | Nom de la compétence                                |
-| `{{sk.kind}}`                    | Type ESCO (`technical`, `tool`, `functional`, etc.) |
+| `{{sk.kind}}`                    | Type brut (`technical`, `tool`, `functional`, etc.) |
+| `{{sk.kind_label}}`              | Libellé lisible du type                             |
 | `{{sk.level}}`                   | Niveau auto-évalué (texte)                          |
 | `{{sk.self_assessed_level}}`     | Alias de `level`                                    |
 | `{{sk.featured}}`                | `"true"` ou `"false"`                               |
+| `{{sk.featured_label}}`          | `Clé` si la compétence est mise en avant            |
 | ~~`{{sk.category}}`~~            | **Supprimé** — renvoie `kind` pour compatibilité    |
 | ~~`{{sk.level_rating}}`~~        | **Supprimé** — renvoie toujours une chaîne vide     |
 | ~~`{{sk.years_of_experience}}`~~ | **Supprimé** — renvoie toujours une chaîne vide     |
+
+---
+
+## Formation, certifications et langues
+
+Les sections suivantes sont disponibles en listes dédiées. Utilisez des blocs
+conditionnels pour ne pas afficher une section vide dans un dossier final.
+
+```
+{%p if educations %}
+Formation
+{%p for edu in educations %}
+{{edu.degree}} {{edu.field_of_study}} - {{edu.school}}{% if edu.period %} ({{edu.period}}){% endif %}
+{%p endfor %}
+{%p endif %}
+
+{%p if certifications %}
+Certifications
+{%p for cert in certifications %}
+{{cert.name}} - {{cert.issuer}}{% if cert.issue_date %} ({{cert.issue_date}}){% endif %}
+{%p endfor %}
+{%p endif %}
+
+{%p if languages %}
+Langues
+{%p for lang in languages %}
+{{lang.name}} - {{lang.level}} {{lang.level_label}}
+{%p endfor %}
+{%p endif %}
+```
+
+`educations` et `education` contiennent les mêmes données. Les champs principaux
+sont `school`, `degree`, `field_of_study`, `start_date`, `end_date`, `period`,
+`description`; pour les certifications : `name`, `issuer`, `issue_date`,
+`expiry_date`, `period`, `credential_url`; pour les langues : `name`, `level`,
+`level_label`.
 
 ---
 

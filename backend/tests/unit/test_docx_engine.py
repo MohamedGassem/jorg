@@ -33,6 +33,7 @@ def _mock_profile(**kwargs: object) -> MagicMock:
     profile.daily_rate = kwargs.get("daily_rate")
     profile.annual_salary = kwargs.get("annual_salary")
     profile.availability_status = kwargs.get("availability_status")
+    profile.availability_date = kwargs.get("availability_date")
     profile.work_mode = kwargs.get("work_mode")
     profile.location_preference = kwargs.get("location_preference")
     profile.mission_duration = kwargs.get("mission_duration")
@@ -51,6 +52,8 @@ def _mock_experience(**kwargs: object) -> MagicMock:
     exp.description = kwargs.get("description", "desc")
     exp.context = kwargs.get("context", "ctx")
     exp.achievements_summary = kwargs.get("achievements_summary", "ach")
+    exp.achievements = kwargs.get("achievements", [])
+    exp.skill_usages = kwargs.get("skill_usages", [])
     # technologies removed
     return exp
 
@@ -108,10 +111,15 @@ class TestProfileFlat:
             "daily_rate",
             "annual_salary",
             "availability_status",
+            "availability_label",
+            "availability_date",
             "work_mode",
+            "work_mode_label",
             "location_preference",
             "mission_duration",
+            "mission_duration_label",
             "contract_type",
+            "contract_type_label",
             "preferred_domains",
         }
         assert set(profile_flat(p).keys()) == expected
@@ -170,7 +178,16 @@ class TestExpFlat:
             "context",
             "achievements_summary",
             "achievements",
+            "achievement_items",
             "technologies",  # backward-compat alias (always empty)
+            "skills",
+            "skill_usages",
+            "skills_technical",
+            "skills_functional",
+            "skills_sectoral",
+            "skills_methodology",
+            "skills_tool",
+            "skills_soft",
         }
         assert set(exp_flat(exp).keys()) == expected
 
@@ -196,8 +213,11 @@ class TestSkillFlat:
             "level",
             "self_assessed_level",
             "featured",
+            "featured_label",
+            "kind_label",
             "category",  # backward-compat alias for kind
             "level_rating",  # backward-compat alias (always empty)
+            "years_of_experience",  # backward-compat alias (always empty)
         }
         assert set(skill_flat(sk).keys()) == expected
 

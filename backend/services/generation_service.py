@@ -15,10 +15,16 @@ from sqlalchemy.orm import selectinload
 from core.config import get_settings
 from core.exceptions import BusinessRuleError, NotFoundError
 from core.storage import get_storage
-from models.candidate_profile import CandidateProfile, Experience
+from models.candidate_profile import (
+    CandidateProfile,
+    Certification,
+    Education,
+    Experience,
+    Language,
+)
 from models.generated_document import GeneratedDocument
 from models.recruiter import Organization
-from models.skill import CandidateSkill
+from models.skill import Achievement, AchievementSkillTag, CandidateSkill, ExperienceSkillUsage
 from models.template import Template
 from schemas.generation import GeneratedDocumentCandidateView, GeneratedDocumentRecruiterView
 from services import access_policy, builtin_template_service, template_service
@@ -62,7 +68,17 @@ async def _load_profile(db: AsyncSession, candidate_id: UUID) -> CandidateProfil
 
 
 async def _load_experiences(db: AsyncSession, profile_id: UUID) -> list[Experience]:
-    result = await db.execute(select(Experience).where(Experience.profile_id == profile_id))
+    result = await db.execute(
+        select(Experience)
+        .where(Experience.profile_id == profile_id)
+        .options(
+            selectinload(Experience.skill_usages).selectinload(ExperienceSkillUsage.skill_ref),
+            selectinload(Experience.achievements)
+            .selectinload(Achievement.skill_tags)
+            .selectinload(AchievementSkillTag.skill_ref),
+        )
+        .order_by(Experience.start_date.desc())
+    )
     return list(result.scalars().all())
 
 
@@ -72,6 +88,29 @@ async def _load_skills(db: AsyncSession, profile_id: UUID) -> list[CandidateSkil
         .where(CandidateSkill.candidate_id == profile_id)
         .options(selectinload(CandidateSkill.skill_ref))
     )
+    return list(result.scalars().all())
+
+
+async def _load_education(db: AsyncSession, profile_id: UUID) -> list[Education]:
+    result = await db.execute(
+        select(Education)
+        .where(Education.profile_id == profile_id)
+        .order_by(Education.end_date.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def _load_certifications(db: AsyncSession, profile_id: UUID) -> list[Certification]:
+    result = await db.execute(
+        select(Certification)
+        .where(Certification.profile_id == profile_id)
+        .order_by(Certification.issue_date.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def _load_languages(db: AsyncSession, profile_id: UUID) -> list[Language]:
+    result = await db.execute(select(Language).where(Language.profile_id == profile_id))
     return list(result.scalars().all())
 
 
@@ -114,6 +153,9 @@ async def generate_for_candidate(
     profile = await _load_profile(db, candidate_id)
     experiences = await _load_experiences(db, profile.id)
     skills = await _load_skills(db, profile.id)
+    education = await _load_education(db, profile.id)
+    certifications = await _load_certifications(db, profile.id)
+    languages = await _load_languages(db, profile.id)
 
     # 4. Generate document bytes
     try:
@@ -122,6 +164,9 @@ async def generate_for_candidate(
             profile,  # type: ignore[arg-type]
             experiences,  # type: ignore[arg-type]
             skills,  # type: ignore[arg-type]
+            education,  # type: ignore[arg-type]
+            certifications,  # type: ignore[arg-type]
+            languages,  # type: ignore[arg-type]
         )
     except ValueError as exc:
         raise BusinessRuleError(str(exc)) from exc
@@ -184,6 +229,9 @@ async def generate_for_self(
     profile = await _load_profile(db, candidate_id)
     experiences = await _load_experiences(db, profile.id)
     skills = await _load_skills(db, profile.id)
+    education = await _load_education(db, profile.id)
+    certifications = await _load_certifications(db, profile.id)
+    languages = await _load_languages(db, profile.id)
 
     try:
         docx_bytes = generate_document(
@@ -191,6 +239,9 @@ async def generate_for_self(
             profile,  # type: ignore[arg-type]
             experiences,  # type: ignore[arg-type]
             skills,  # type: ignore[arg-type]
+            education,  # type: ignore[arg-type]
+            certifications,  # type: ignore[arg-type]
+            languages,  # type: ignore[arg-type]
         )
     except ValueError as exc:
         raise BusinessRuleError(str(exc)) from exc

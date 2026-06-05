@@ -5,9 +5,21 @@ from datetime import date
 from pathlib import Path
 from typing import Any, cast
 
-from models.candidate_profile import AvailabilityStatus, ContractType, MissionDuration, WorkMode
-from models.skill import SkillKind
-from services.docx_engine import SkillProtocol, generate_document
+from models.candidate_profile import (
+    AvailabilityStatus,
+    ContractType,
+    LanguageLevel,
+    MissionDuration,
+    WorkMode,
+)
+from models.skill import SkillKind, UsageIntensity, UsageRole
+from services.docx_engine import (
+    CertificationProtocol,
+    EducationProtocol,
+    LanguageProtocol,
+    SkillProtocol,
+    generate_document,
+)
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static" / "builtin_templates"
 
@@ -78,6 +90,7 @@ class _MockProfile:
     availability_status: Any = field(
         default_factory=lambda: _MockEnum(AvailabilityStatus.AVAILABLE_NOW.value)
     )
+    availability_date: date | None = None
     work_mode: Any = field(default_factory=lambda: _MockEnum(WorkMode.HYBRID.value))
     location_preference: str | None = "Paris / remote"
     mission_duration: Any = field(default_factory=lambda: _MockEnum(MissionDuration.LONG.value))
@@ -95,6 +108,8 @@ class _MockExperience:
     description: str | None
     context: str | None
     achievements_summary: str | None
+    skill_usages: list[Any] = field(default_factory=list)
+    achievements: list[Any] = field(default_factory=list)
 
 
 @dataclass
@@ -110,8 +125,60 @@ class _MockSkill:
     featured: bool
 
 
+@dataclass
+class _MockExperienceSkillUsage:
+    skill_ref: _MockSkillRef
+    usage_role: Any = field(default_factory=lambda: _MockEnum(UsageRole.implementer.value))
+    intensity: Any = field(default_factory=lambda: _MockEnum(UsageIntensity.secondary.value))
+
+
+@dataclass
+class _MockAchievementSkillTag:
+    skill_ref: _MockSkillRef
+
+
+@dataclass
+class _MockAchievement:
+    description: str
+    impact: str | None = None
+    skill_tags: list[_MockAchievementSkillTag] = field(default_factory=list)
+
+
+@dataclass
+class _MockEducation:
+    school: str
+    degree: str | None
+    field_of_study: str | None
+    start_date: date | None
+    end_date: date | None
+    description: str | None = None
+
+
+@dataclass
+class _MockCertification:
+    name: str
+    issuer: str
+    issue_date: date
+    expiry_date: date | None = None
+    credential_url: str | None = None
+
+
+@dataclass
+class _MockLanguage:
+    name: str
+    level: Any
+
+
 def render_mock_preview(template: BuiltinTemplate) -> bytes:
     profile = _MockProfile(preferred_domains=["tech", "finance"])
+    python_ref = _MockSkillRef("Python", _MockEnum(SkillKind.technical.value))
+    postgres_ref = _MockSkillRef("PostgreSQL", _MockEnum(SkillKind.tool.value))
+    next_ref = _MockSkillRef("Next.js", _MockEnum(SkillKind.tool.value))
+    architecture_ref = _MockSkillRef(
+        "Architecture logicielle", _MockEnum(SkillKind.methodology.value)
+    )
+    workshops_ref = _MockSkillRef("Ateliers metier", _MockEnum(SkillKind.functional.value))
+    airflow_ref = _MockSkillRef("Airflow", _MockEnum(SkillKind.tool.value))
     experiences = [
         _MockExperience(
             client_name="FlowUp",
@@ -128,6 +195,23 @@ def render_mock_preview(template: BuiltinTemplate) -> bytes:
                 "Reduction du temps de constitution d'un dossier de plusieurs heures "
                 "a quelques minutes, avec generation Word standardisee."
             ),
+            skill_usages=[
+                _MockExperienceSkillUsage(python_ref),
+                _MockExperienceSkillUsage(postgres_ref),
+                _MockExperienceSkillUsage(next_ref),
+            ],
+            achievements=[
+                _MockAchievement(
+                    "Mise en place du moteur de generation Word pour les dossiers candidats.",
+                    "Generation en quelques minutes",
+                    [_MockAchievementSkillTag(python_ref)],
+                ),
+                _MockAchievement(
+                    "Structuration du parcours recruteur et candidat en alpha.",
+                    "Meilleure lisibilite produit",
+                    [_MockAchievementSkillTag(workshops_ref)],
+                ),
+            ],
         ),
         _MockExperience(
             client_name="Nova Consulting",
@@ -140,30 +224,52 @@ def render_mock_preview(template: BuiltinTemplate) -> bytes:
             achievements_summary=(
                 "Fiabilisation des traitements critiques et baisse de 35% des incidents."
             ),
+            skill_usages=[
+                _MockExperienceSkillUsage(python_ref),
+                _MockExperienceSkillUsage(airflow_ref),
+            ],
+            achievements=[
+                _MockAchievement(
+                    "Industrialisation de pipelines data critiques.",
+                    "35% d'incidents en moins",
+                    [_MockAchievementSkillTag(airflow_ref)],
+                )
+            ],
         ),
     ]
     skills = [
-        _MockSkill(_MockSkillRef("Python", _MockEnum(SkillKind.technical.value)), "avance", True),
-        _MockSkill(_MockSkillRef("PostgreSQL", _MockEnum(SkillKind.tool.value)), "avance", True),
-        _MockSkill(
-            _MockSkillRef("Next.js", _MockEnum(SkillKind.tool.value)),
-            "intermediaire",
-            True,
-        ),
-        _MockSkill(
-            _MockSkillRef("Architecture logicielle", _MockEnum(SkillKind.methodology.value)),
-            "avance",
-            True,
-        ),
-        _MockSkill(
-            _MockSkillRef("Ateliers metier", _MockEnum(SkillKind.functional.value)),
-            "",
-            False,
-        ),
+        _MockSkill(python_ref, "avance", True),
+        _MockSkill(postgres_ref, "avance", True),
+        _MockSkill(next_ref, "intermediaire", True),
+        _MockSkill(architecture_ref, "avance", True),
+        _MockSkill(workshops_ref, "", False),
+    ]
+    education = [
+        _MockEducation(
+            "INSA Lyon",
+            "Diplome d'ingenieur",
+            "Informatique",
+            date(2010, 9, 1),
+            date(2015, 6, 1),
+        )
+    ]
+    certifications = [
+        _MockCertification(
+            "AWS Solutions Architect Associate",
+            "Amazon Web Services",
+            date(2022, 5, 1),
+        )
+    ]
+    languages = [
+        _MockLanguage("Francais", _MockEnum(LanguageLevel.NATIVE.value)),
+        _MockLanguage("Anglais", _MockEnum(LanguageLevel.C1.value)),
     ]
     return generate_document(
         template.word_file_path,
         profile,
         experiences,
         cast("list[SkillProtocol]", skills),
+        cast("list[EducationProtocol]", education),
+        cast("list[CertificationProtocol]", certifications),
+        cast("list[LanguageProtocol]", languages),
     )
