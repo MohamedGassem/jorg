@@ -23,16 +23,8 @@ from models.recruiter import Organization, RecruiterProfile
 from models.template import Template
 from schemas.candidate import (
     CandidateProfileUpdate,
-    CertificationCreate,
-    CertificationUpdate,
-    EducationCreate,
-    EducationUpdate,
-    ExperienceCreate,
-    ExperienceUpdate,
     InteractionEvent,
     InteractionEventMetadata,
-    LanguageCreate,
-    LanguageUpdate,
     OrganizationInteractionCard,
 )
 from services.base_crud import CRUDService
@@ -75,103 +67,6 @@ async def update_profile(
     await db.commit()
     await db.refresh(profile)
     return profile
-
-
-# ---- Convenience shims (keep existing route call-sites unchanged) ------------
-
-
-async def list_experiences(db: AsyncSession, profile_id: UUID) -> list[Experience]:
-    return await experience_crud.list(db, profile_id)
-
-
-async def create_experience(
-    db: AsyncSession, profile_id: UUID, data: ExperienceCreate
-) -> Experience:
-    return await experience_crud.create(db, profile_id, data)
-
-
-async def get_experience(
-    db: AsyncSession, experience_id: UUID, profile_id: UUID
-) -> Experience | None:
-    return await experience_crud.get(db, experience_id, profile_id)
-
-
-async def update_experience(
-    db: AsyncSession, exp: Experience, data: ExperienceUpdate
-) -> Experience:
-    return await experience_crud.update(db, exp, data)
-
-
-async def delete_experience(db: AsyncSession, exp: Experience) -> None:
-    return await experience_crud.delete(db, exp)
-
-
-async def list_education(db: AsyncSession, profile_id: UUID) -> list[Education]:
-    return await education_crud.list(db, profile_id)
-
-
-async def create_education(db: AsyncSession, profile_id: UUID, data: EducationCreate) -> Education:
-    return await education_crud.create(db, profile_id, data)
-
-
-async def get_education_item(
-    db: AsyncSession, education_id: UUID, profile_id: UUID
-) -> Education | None:
-    return await education_crud.get(db, education_id, profile_id)
-
-
-async def update_education(db: AsyncSession, edu: Education, data: EducationUpdate) -> Education:
-    return await education_crud.update(db, edu, data)
-
-
-async def delete_education(db: AsyncSession, edu: Education) -> None:
-    return await education_crud.delete(db, edu)
-
-
-async def list_certifications(db: AsyncSession, profile_id: UUID) -> list[Certification]:
-    return await certification_crud.list(db, profile_id)
-
-
-async def create_certification(
-    db: AsyncSession, profile_id: UUID, data: CertificationCreate
-) -> Certification:
-    return await certification_crud.create(db, profile_id, data)
-
-
-async def get_certification(
-    db: AsyncSession, certification_id: UUID, profile_id: UUID
-) -> Certification | None:
-    return await certification_crud.get(db, certification_id, profile_id)
-
-
-async def update_certification(
-    db: AsyncSession, cert: Certification, data: CertificationUpdate
-) -> Certification:
-    return await certification_crud.update(db, cert, data)
-
-
-async def delete_certification(db: AsyncSession, cert: Certification) -> None:
-    return await certification_crud.delete(db, cert)
-
-
-async def list_languages(db: AsyncSession, profile_id: UUID) -> list[Language]:
-    return await language_crud.list(db, profile_id)
-
-
-async def create_language(db: AsyncSession, profile_id: UUID, data: LanguageCreate) -> Language:
-    return await language_crud.create(db, profile_id, data)
-
-
-async def get_language(db: AsyncSession, language_id: UUID, profile_id: UUID) -> Language | None:
-    return await language_crud.get(db, language_id, profile_id)
-
-
-async def update_language(db: AsyncSession, lang: Language, data: LanguageUpdate) -> Language:
-    return await language_crud.update(db, lang, data)
-
-
-async def delete_language(db: AsyncSession, lang: Language) -> None:
-    return await language_crud.delete(db, lang)
 
 
 # ---- Interaction timeline ---------------------------------------------------

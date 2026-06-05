@@ -226,6 +226,136 @@ async def test_update_experience_not_found_returns_404(
     assert r.status_code == 404
 
 
+# ---- Experience coherence ---------------------------------------------------
+
+
+async def test_create_experience_end_before_start_returns_422(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={
+            "client_name": "Bad Corp",
+            "role": "Dev",
+            "start_date": "2023-06-01",
+            "end_date": "2023-01-01",
+        },
+    )
+    assert r.status_code == 422
+
+
+async def test_update_experience_set_is_current_without_clearing_end_date_returns_422(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    create = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={
+            "client_name": "Stable Corp",
+            "role": "Engineer",
+            "start_date": "2022-01-01",
+            "end_date": "2023-01-01",
+            "is_current": False,
+        },
+    )
+    assert create.status_code == 201
+    exp_id = create.json()["id"]
+
+    r = await client.put(
+        f"/candidates/me/experiences/{exp_id}",
+        headers=candidate_headers,
+        json={"is_current": True},
+    )
+    assert r.status_code == 422
+
+
+async def test_create_experience_happy_path_returns_201(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={
+            "client_name": "Good Corp",
+            "role": "Lead Dev",
+            "start_date": "2021-03-01",
+            "end_date": "2022-03-01",
+            "is_current": False,
+        },
+    )
+    assert r.status_code == 201
+    data = r.json()
+    assert data["client_name"] == "Good Corp"
+    assert data["is_current"] is False
+
+
+# ---- Experience model_fields_set guard (end_date null on update) -------------
+
+
+async def test_update_experience_clear_end_date_returns_null(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    create = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={
+            "client_name": "Time Corp",
+            "role": "Dev",
+            "start_date": "2022-01-01",
+            "end_date": "2023-01-01",
+            "is_current": False,
+        },
+    )
+    assert create.status_code == 201
+    exp_id = create.json()["id"]
+
+    r = await client.put(
+        f"/candidates/me/experiences/{exp_id}",
+        headers=candidate_headers,
+        json={"end_date": None},
+    )
+    assert r.status_code == 200
+    assert r.json()["end_date"] is None
+
+
+# ---- Education coherence -----------------------------------------------------
+
+
+async def test_create_education_end_before_start_returns_422(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/education",
+        headers=candidate_headers,
+        json={
+            "school": "Bad School",
+            "start_date": "2020-09-01",
+            "end_date": "2019-06-30",
+        },
+    )
+    assert r.status_code == 422
+
+
+# ---- Certification coherence -------------------------------------------------
+
+
+async def test_create_certification_expiry_before_issue_returns_422(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/candidates/me/certifications",
+        headers=candidate_headers,
+        json={
+            "name": "Bad Cert",
+            "issuer": "Bad Issuer",
+            "issue_date": "2024-06-01",
+            "expiry_date": "2023-01-01",
+        },
+    )
+    assert r.status_code == 422
+
+
 # ---- Education --------------------------------------------------------------
 
 
@@ -335,6 +465,16 @@ async def test_delete_language(client: AsyncClient, candidate_headers: dict[str,
     assert r.status_code == 204
 
 
+async def test_duplicate_language_returns_409(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    payload = {"name": "Français", "level": "native"}
+    first = await client.post("/candidates/me/languages", headers=candidate_headers, json=payload)
+    assert first.status_code == 201
+    second = await client.post("/candidates/me/languages", headers=candidate_headers, json=payload)
+    assert second.status_code == 409
+
+
 # ---- Interaction timeline ---------------------------------------------------
 
 
@@ -379,3 +519,69 @@ async def test_organizations_requires_candidate_role(
 ) -> None:
     r = await client.get("/candidates/me/organizations", headers=recruiter_headers)
     assert r.status_code == 403
+
+
+# ---- Review fixes: null on required fields + ending a current experience ----
+
+
+async def test_update_certification_explicit_null_issue_date_returns_422(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    created = await client.post(
+        "/candidates/me/certifications",
+        headers=candidate_headers,
+        json={"name": "AWS SAA", "issuer": "AWS", "issue_date": "2021-01-01"},
+    )
+    assert created.status_code == 201
+    cert_id = created.json()["id"]
+    r = await client.put(
+        f"/candidates/me/certifications/{cert_id}",
+        headers=candidate_headers,
+        json={"issue_date": None},
+    )
+    assert r.status_code == 422
+
+
+async def test_update_experience_explicit_null_start_date_returns_422(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    created = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={"client_name": "ACME", "role": "Dev", "start_date": "2020-01-01"},
+    )
+    assert created.status_code == 201
+    exp_id = created.json()["id"]
+    r = await client.put(
+        f"/candidates/me/experiences/{exp_id}",
+        headers=candidate_headers,
+        json={"start_date": None},
+    )
+    assert r.status_code == 422
+
+
+async def test_update_experience_set_end_date_clears_is_current(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    created = await client.post(
+        "/candidates/me/experiences",
+        headers=candidate_headers,
+        json={
+            "client_name": "ACME",
+            "role": "Dev",
+            "start_date": "2020-01-01",
+            "is_current": True,
+        },
+    )
+    assert created.status_code == 201
+    assert created.json()["is_current"] is True
+    exp_id = created.json()["id"]
+    r = await client.put(
+        f"/candidates/me/experiences/{exp_id}",
+        headers=candidate_headers,
+        json={"end_date": "2024-01-01"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["end_date"] == "2024-01-01"
+    assert body["is_current"] is False

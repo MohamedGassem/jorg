@@ -16,6 +16,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -183,6 +184,7 @@ class Certification(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
 class Language(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "languages"
+    __table_args__ = (UniqueConstraint("profile_id", "name", name="uq_language_profile_name"),)
 
     profile_id: Mapped[UUID] = mapped_column(
         ForeignKey("candidate_profiles.id", ondelete="CASCADE"),

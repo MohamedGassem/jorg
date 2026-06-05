@@ -38,6 +38,9 @@ from schemas.candidate import (
     LanguageRead,
     LanguageUpdate,
     OrganizationInteractionCard,
+    validate_certification_dates,
+    validate_education_dates,
+    validate_experience_dates,
 )
 from schemas.rgpd import CandidateExport
 
@@ -143,7 +146,8 @@ async def create_my_experience(
     profile: CandidateProfile_dep,
     db: DB,
 ) -> Experience:
-    exp = await candidate_service.create_experience(db, profile.id, data)
+    validate_experience_dates(data.start_date, data.end_date, data.is_current)
+    exp = await candidate_service.experience_crud.create(db, profile.id, data)
     result = await db.execute(
         select(Experience).where(Experience.id == exp.id).options(*_EXP_OPTIONS)
     )
@@ -163,10 +167,21 @@ async def update_my_experience(
     profile: CandidateProfile_dep,
     db: DB,
 ) -> Experience:
-    exp = await candidate_service.get_experience(db, experience_id, profile.id)
+    exp = await candidate_service.experience_crud.get(db, experience_id, profile.id)
     if exp is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="experience not found")
-    await candidate_service.update_experience(db, exp, data)
+    merged_start = data.start_date if data.start_date is not None else exp.start_date
+    merged_end = data.end_date if "end_date" in data.model_fields_set else exp.end_date
+    if data.is_current is not None:
+        merged_current = data.is_current
+    elif merged_end is not None:
+        # Setting an end_date implicitly ends a current experience.
+        merged_current = False
+    else:
+        merged_current = exp.is_current
+    validate_experience_dates(merged_start, merged_end, merged_current)
+    exp.is_current = merged_current
+    await candidate_service.experience_crud.update(db, exp, data)
     result = await db.execute(
         select(Experience).where(Experience.id == experience_id).options(*_EXP_OPTIONS)
     )
@@ -185,10 +200,10 @@ async def delete_my_experience(
     profile: CandidateProfile_dep,
     db: DB,
 ) -> None:
-    exp = await candidate_service.get_experience(db, experience_id, profile.id)
+    exp = await candidate_service.experience_crud.get(db, experience_id, profile.id)
     if exp is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="experience not found")
-    await candidate_service.delete_experience(db, exp)
+    await candidate_service.experience_crud.delete(db, exp)
 
 
 # ---- Education --------------------------------------------------------------
@@ -196,14 +211,15 @@ async def delete_my_experience(
 
 @router.get("/me/education", response_model=list[EducationRead])
 async def list_my_education(profile: CandidateProfile_dep, db: DB) -> list[Education]:
-    return await candidate_service.list_education(db, profile.id)
+    return await candidate_service.education_crud.list(db, profile.id)
 
 
 @router.post("/me/education", response_model=EducationRead, status_code=status.HTTP_201_CREATED)
 async def create_my_education(
     data: EducationCreate, profile: CandidateProfile_dep, db: DB
 ) -> Education:
-    return await candidate_service.create_education(db, profile.id, data)
+    validate_education_dates(data.start_date, data.end_date)
+    return await candidate_service.education_crud.create(db, profile.id, data)
 
 
 @router.put("/me/education/{education_id}", response_model=EducationRead)
@@ -213,18 +229,21 @@ async def update_my_education(
     profile: CandidateProfile_dep,
     db: DB,
 ) -> Education:
-    edu = await candidate_service.get_education_item(db, education_id, profile.id)
+    edu = await candidate_service.education_crud.get(db, education_id, profile.id)
     if edu is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="education not found")
-    return await candidate_service.update_education(db, edu, data)
+    merged_start = data.start_date if data.start_date is not None else edu.start_date
+    merged_end = data.end_date if "end_date" in data.model_fields_set else edu.end_date
+    validate_education_dates(merged_start, merged_end)
+    return await candidate_service.education_crud.update(db, edu, data)
 
 
 @router.delete("/me/education/{education_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_my_education(education_id: UUID, profile: CandidateProfile_dep, db: DB) -> None:
-    edu = await candidate_service.get_education_item(db, education_id, profile.id)
+    edu = await candidate_service.education_crud.get(db, education_id, profile.id)
     if edu is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="education not found")
-    await candidate_service.delete_education(db, edu)
+    await candidate_service.education_crud.delete(db, edu)
 
 
 # ---- Certifications ---------------------------------------------------------
@@ -232,7 +251,7 @@ async def delete_my_education(education_id: UUID, profile: CandidateProfile_dep,
 
 @router.get("/me/certifications", response_model=list[CertificationRead])
 async def list_my_certifications(profile: CandidateProfile_dep, db: DB) -> list[Certification]:
-    return await candidate_service.list_certifications(db, profile.id)
+    return await candidate_service.certification_crud.list(db, profile.id)
 
 
 @router.post(
@@ -243,7 +262,8 @@ async def list_my_certifications(profile: CandidateProfile_dep, db: DB) -> list[
 async def create_my_certification(
     data: CertificationCreate, profile: CandidateProfile_dep, db: DB
 ) -> Certification:
-    return await candidate_service.create_certification(db, profile.id, data)
+    validate_certification_dates(data.issue_date, data.expiry_date)
+    return await candidate_service.certification_crud.create(db, profile.id, data)
 
 
 @router.put("/me/certifications/{certification_id}", response_model=CertificationRead)
@@ -253,20 +273,23 @@ async def update_my_certification(
     profile: CandidateProfile_dep,
     db: DB,
 ) -> Certification:
-    cert = await candidate_service.get_certification(db, certification_id, profile.id)
+    cert = await candidate_service.certification_crud.get(db, certification_id, profile.id)
     if cert is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="certification not found")
-    return await candidate_service.update_certification(db, cert, data)
+    merged_issue = data.issue_date if data.issue_date is not None else cert.issue_date
+    merged_expiry = data.expiry_date if "expiry_date" in data.model_fields_set else cert.expiry_date
+    validate_certification_dates(merged_issue, merged_expiry)
+    return await candidate_service.certification_crud.update(db, cert, data)
 
 
 @router.delete("/me/certifications/{certification_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_my_certification(
     certification_id: UUID, profile: CandidateProfile_dep, db: DB
 ) -> None:
-    cert = await candidate_service.get_certification(db, certification_id, profile.id)
+    cert = await candidate_service.certification_crud.get(db, certification_id, profile.id)
     if cert is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="certification not found")
-    await candidate_service.delete_certification(db, cert)
+    await candidate_service.certification_crud.delete(db, cert)
 
 
 # ---- Languages --------------------------------------------------------------
@@ -274,32 +297,32 @@ async def delete_my_certification(
 
 @router.get("/me/languages", response_model=list[LanguageRead])
 async def list_my_languages(profile: CandidateProfile_dep, db: DB) -> list[Language]:
-    return await candidate_service.list_languages(db, profile.id)
+    return await candidate_service.language_crud.list(db, profile.id)
 
 
 @router.post("/me/languages", response_model=LanguageRead, status_code=status.HTTP_201_CREATED)
 async def create_my_language(
     data: LanguageCreate, profile: CandidateProfile_dep, db: DB
 ) -> Language:
-    return await candidate_service.create_language(db, profile.id, data)
+    return await candidate_service.language_crud.create(db, profile.id, data)
 
 
 @router.put("/me/languages/{language_id}", response_model=LanguageRead)
 async def update_my_language(
     language_id: UUID, data: LanguageUpdate, profile: CandidateProfile_dep, db: DB
 ) -> Language:
-    lang = await candidate_service.get_language(db, language_id, profile.id)
+    lang = await candidate_service.language_crud.get(db, language_id, profile.id)
     if lang is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="language not found")
-    return await candidate_service.update_language(db, lang, data)
+    return await candidate_service.language_crud.update(db, lang, data)
 
 
 @router.delete("/me/languages/{language_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_my_language(language_id: UUID, profile: CandidateProfile_dep, db: DB) -> None:
-    lang = await candidate_service.get_language(db, language_id, profile.id)
+    lang = await candidate_service.language_crud.get(db, language_id, profile.id)
     if lang is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="language not found")
-    await candidate_service.delete_language(db, lang)
+    await candidate_service.language_crud.delete(db, lang)
 
 
 # ---- RGPD -------------------------------------------------------------------

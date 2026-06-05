@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any, Literal
+from typing import Any, Literal, overload
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
+from core.exceptions import BusinessRuleError
 from models.candidate_profile import (
     AvailabilityStatus,
     ContractType,
@@ -16,6 +17,35 @@ from models.candidate_profile import (
 )
 from models.skill import SkillKind
 from schemas.skill import AchievementRead, ExperienceSkillUsageRead
+
+
+@overload
+def _non_empty(v: str) -> str: ...
+@overload
+def _non_empty(v: None) -> None: ...
+def _non_empty(v: str | None) -> str | None:
+    """Strip a string; reject if it becomes empty. Passes None through (PATCH)."""
+    if v is None:
+        return v
+    stripped = v.strip()
+    if not stripped:
+        raise ValueError("must not be blank")
+    return stripped
+
+
+def _reject_null_required(data: Any, required: tuple[str, ...]) -> Any:
+    """Reject an explicit null for columns that are NOT NULL in the DB.
+
+    PATCH may omit these fields, but setting them to null would otherwise pass
+    schema validation and only fail at write time as an IntegrityError. Catch it
+    here so the client gets a clean 422 instead.
+    """
+    if isinstance(data, dict):
+        for field in required:
+            if field in data and data[field] is None:
+                raise ValueError(f"{field} cannot be null")
+    return data
+
 
 VALID_DOMAINS = {
     "finance",
@@ -28,6 +58,29 @@ VALID_DOMAINS = {
     "energy",
     "other",
 }
+
+
+def validate_experience_dates(
+    start_date: date | None,
+    end_date: date | None,
+    is_current: bool,
+) -> None:
+    """Cross-field coherence for an Experience. Raises BusinessRuleError (422)."""
+    if is_current and end_date is not None:
+        raise BusinessRuleError("a current experience cannot have an end_date")
+    if start_date is not None and end_date is not None and end_date < start_date:
+        raise BusinessRuleError("end_date must be on or after start_date")
+
+
+def validate_education_dates(start_date: date | None, end_date: date | None) -> None:
+    if start_date is not None and end_date is not None and end_date < start_date:
+        raise BusinessRuleError("end_date must be on or after start_date")
+
+
+def validate_certification_dates(issue_date: date | None, expiry_date: date | None) -> None:
+    if issue_date is not None and expiry_date is not None and expiry_date < issue_date:
+        raise BusinessRuleError("expiry_date must be on or after issue_date")
+
 
 # ---- CandidateProfile -------------------------------------------------------
 
@@ -112,6 +165,11 @@ class ExperienceCreate(BaseModel):
     achievements_summary: str | None = None
     # technologies removed
 
+    @field_validator("client_name", "role")
+    @classmethod
+    def _strip_required(cls, v: str) -> str:
+        return _non_empty(v)
+
 
 class ExperienceUpdate(BaseModel):
     client_name: str | None = None
@@ -123,6 +181,16 @@ class ExperienceUpdate(BaseModel):
     context: str | None = None
     achievements_summary: str | None = None
     # technologies removed
+
+    @field_validator("client_name", "role")
+    @classmethod
+    def _strip_required(cls, v: str | None) -> str | None:
+        return _non_empty(v)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_null_required(cls, data: Any) -> Any:
+        return _reject_null_required(data, ("client_name", "role", "start_date", "is_current"))
 
 
 class ExperienceRead(BaseModel):
@@ -155,6 +223,11 @@ class EducationCreate(BaseModel):
     end_date: date | None = None
     description: str | None = None
 
+    @field_validator("school")
+    @classmethod
+    def _strip_required(cls, v: str) -> str:
+        return _non_empty(v)
+
 
 class EducationUpdate(BaseModel):
     school: str | None = None
@@ -163,6 +236,16 @@ class EducationUpdate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     description: str | None = None
+
+    @field_validator("school")
+    @classmethod
+    def _strip_required(cls, v: str | None) -> str | None:
+        return _non_empty(v)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_null_required(cls, data: Any) -> Any:
+        return _reject_null_required(data, ("school",))
 
 
 class EducationRead(BaseModel):
@@ -190,6 +273,11 @@ class CertificationCreate(BaseModel):
     expiry_date: date | None = None
     credential_url: str | None = None
 
+    @field_validator("name", "issuer")
+    @classmethod
+    def _strip_required(cls, v: str) -> str:
+        return _non_empty(v)
+
 
 class CertificationUpdate(BaseModel):
     name: str | None = None
@@ -197,6 +285,16 @@ class CertificationUpdate(BaseModel):
     issue_date: date | None = None
     expiry_date: date | None = None
     credential_url: str | None = None
+
+    @field_validator("name", "issuer")
+    @classmethod
+    def _strip_required(cls, v: str | None) -> str | None:
+        return _non_empty(v)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_null_required(cls, data: Any) -> Any:
+        return _reject_null_required(data, ("name", "issuer", "issue_date"))
 
 
 class CertificationRead(BaseModel):
@@ -220,10 +318,25 @@ class LanguageCreate(BaseModel):
     name: str
     level: LanguageLevel
 
+    @field_validator("name")
+    @classmethod
+    def _strip_required(cls, v: str) -> str:
+        return _non_empty(v)
+
 
 class LanguageUpdate(BaseModel):
     name: str | None = None
     level: LanguageLevel | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _strip_required(cls, v: str | None) -> str | None:
+        return _non_empty(v)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_null_required(cls, data: Any) -> Any:
+        return _reject_null_required(data, ("name", "level"))
 
 
 class LanguageRead(BaseModel):
