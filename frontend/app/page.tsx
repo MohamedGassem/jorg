@@ -1,8 +1,6 @@
 // frontend/app/page.tsx
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { LandingNav } from "@/components/landing/LandingNav";
+import { LandingNav, type LandingUser } from "@/components/landing/LandingNav";
 import { LandingHero } from "@/components/landing/LandingHero";
 import { LandingBridge } from "@/components/landing/LandingBridge";
 import { LandingFeatures } from "@/components/landing/LandingFeatures";
@@ -13,6 +11,7 @@ export default async function RootPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("access_token")?.value;
 
+  let user: LandingUser | null = null;
   if (token) {
     try {
       const apiUrl =
@@ -23,20 +22,19 @@ export default async function RootPage() {
       });
 
       if (res.ok) {
-        const user = (await res.json()) as { role: string };
-        if (user.role === "candidate") redirect("/candidate/dashboard");
-        if (user.role === "recruiter") redirect("/recruiter/dashboard");
-        redirect("/login"); // unknown or future role
+        const me = (await res.json()) as { role: string; email: string };
+        if (me.role === "candidate" || me.role === "recruiter") {
+          user = { role: me.role, email: me.email };
+        }
       }
-    } catch (err) {
-      if (isRedirectError(err)) throw err;
-      // network error -- fall through to landing
+    } catch {
+      // network error -- show the landing page as if logged out
     }
   }
 
   return (
     <div className="min-h-dvh bg-background">
-      <LandingNav />
+      <LandingNav user={user} />
       <LandingHero />
       <LandingBridge />
       <LandingFeatures />

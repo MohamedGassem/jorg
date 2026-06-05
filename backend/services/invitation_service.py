@@ -19,6 +19,7 @@ from models.invitation import (
     make_invitation_token,
 )
 from models.user import User
+from services import access_policy
 
 logger = structlog.get_logger()
 
@@ -103,14 +104,7 @@ async def get_active_grant(
     db: AsyncSession, candidate_id: UUID, organization_id: UUID
 ) -> AccessGrant | None:
     """Return the active AccessGrant for a candidate+org pair, or None."""
-    result = await db.execute(
-        select(AccessGrant).where(
-            AccessGrant.candidate_id == candidate_id,
-            AccessGrant.organization_id == organization_id,
-            AccessGrant.status == AccessGrantStatus.ACTIVE,
-        )
-    )
-    return result.scalar_one_or_none()
+    return await access_policy.get_live_access_grant(db, organization_id, candidate_id)
 
 
 async def accept_invitation(

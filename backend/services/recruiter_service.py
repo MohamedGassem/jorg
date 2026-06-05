@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from models.candidate_profile import CandidateProfile, Experience
-from models.invitation import AccessGrant, AccessGrantStatus
+from models.invitation import AccessGrant
 from models.recruiter import Organization, RecruiterProfile
 from models.skill import (
     Achievement,
@@ -21,6 +21,7 @@ from models.skill import (
 )
 from models.user import User
 from schemas.recruiter import OrganizationCreate, RecruiterProfileUpdate
+from services import access_policy
 
 
 def _slugify(name: str) -> str:
@@ -187,7 +188,7 @@ class CandidateQueryBuilder:
             .outerjoin(CandidateProfile, CandidateProfile.user_id == User.id)
             .where(
                 AccessGrant.organization_id == organization_id,
-                AccessGrant.status == AccessGrantStatus.ACTIVE,
+                access_policy.active_grant_clause(),
             )
             .order_by(
                 CandidateProfile.last_name.nulls_last(),

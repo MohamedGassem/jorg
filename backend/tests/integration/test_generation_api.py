@@ -173,6 +173,25 @@ async def test_candidate_cannot_trigger_generation(
     assert r.status_code == 403
 
 
+async def test_non_member_recruiter_cannot_generate(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    second_recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> None:
+    """A recruiter who is not a member of the org gets 403 on POST /organizations/{org_id}/generate."""
+    # recruiter_headers creates and owns the org; second_recruiter_headers is NOT a member
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
+    template_id = await _upload_valid_template(client, recruiter_headers, org_id)
+
+    r = await client.post(
+        f"/organizations/{org_id}/generate",
+        headers=second_recruiter_headers,
+        json={"candidate_id": candidate_id, "template_id": template_id, "format": "docx"},
+    )
+    assert r.status_code == 403
+
+
 # ---- history ----------------------------------------------------------------
 
 
