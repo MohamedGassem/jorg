@@ -29,6 +29,7 @@ Thumbs.db
 # Storage dev
 storage/
 backend/uploads/
+jorg_dump.sql
 
 # Claude Code (project-level settings)
 .claude/

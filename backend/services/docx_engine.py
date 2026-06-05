@@ -36,14 +36,11 @@ Available context variables:
     skills — list of dicts, each with:
         name, category, level, level_rating, years_of_experience
 
-Note: the `mappings` parameter is retained in the function signature for API
-compatibility with existing callers; it is not used by the docxtpl renderer.
 """
 
 from __future__ import annotations
 
 import io
-import warnings
 import zipfile
 from collections.abc import Sequence
 from datetime import date
@@ -193,7 +190,6 @@ def generate_document(
     profile: CandidateProfileProtocol,
     experiences: Sequence[ExperienceProtocol],
     skills: Sequence[SkillProtocol],
-    mappings: dict[str, Any],
 ) -> bytes:
     """Render a docxtpl (Jinja2) Word template and return the result as bytes.
 
@@ -204,13 +200,6 @@ def generate_document(
         ValueError: if the template file is missing/corrupt or contains invalid
             Jinja2 syntax.
     """
-    if mappings:
-        warnings.warn(
-            "The 'mappings' argument is not used by the docxtpl engine and will be removed "
-            "in a future release. Pass an empty dict or update the caller.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
     tpl = DocxTemplate(template_path)
     context: dict[str, Any] = {
         **profile_flat(profile),

@@ -83,9 +83,9 @@ export function GenerateDossierDialog({
 
         {validTemplates.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Aucun template valide. Configurez un template dans{" "}
-            <a href="/recruiter/settings" className="underline">
-              Configuration
+            Aucun template valide. Ajoutez un template compatible dans{" "}
+            <a href="/recruiter/documents" className="underline">
+              Dossiers → Templates
             </a>
             .
           </p>

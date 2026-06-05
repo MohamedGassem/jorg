@@ -26,7 +26,7 @@ from schemas.recruiter import (
     OrgMemberRead,
     RecruiterProfileRead,
 )
-from schemas.template import TemplateMappingsUpdate, TemplateRead
+from schemas.template import TemplateRead
 from services import access_policy
 from services.docx_parser import extract_placeholders
 
@@ -189,21 +189,6 @@ async def get_template(
     if tmpl is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
     return tmpl
-
-
-@router.put("/{org_id}/templates/{template_id}/mappings", response_model=TemplateRead)
-async def update_template_mappings(
-    org_id: UUID,
-    template_id: UUID,
-    data: TemplateMappingsUpdate,
-    member: RecruiterOrgMember,
-    db: DB,
-) -> Template:
-    await _get_org_or_404(db, org_id)
-    tmpl = await template_service.get_template(db, template_id, org_id)
-    if tmpl is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
-    return await template_service.update_mappings(db, tmpl, data.mappings, data.version)
 
 
 @router.delete("/{org_id}/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -4,7 +4,6 @@
 import io
 import pathlib
 import time
-import warnings
 from datetime import date
 from unittest.mock import MagicMock
 
@@ -227,7 +226,7 @@ class TestSimpleFieldReplacement:
         doc.add_paragraph("{{first_name}}")
         doc.save(str(tmpl))
 
-        result = generate_document(str(tmpl), _mock_profile(), [], [], {})
+        result = generate_document(str(tmpl), _mock_profile(), [], [])
         assert isinstance(result, bytes) and len(result) > 0
 
     def test_replaces_field_in_paragraph(self, tmp_path):
@@ -237,7 +236,7 @@ class TestSimpleFieldReplacement:
         doc.save(str(tmpl))
 
         result = generate_document(
-            str(tmpl), _mock_profile(first_name="Alice", last_name="Martin"), [], [], {}
+            str(tmpl), _mock_profile(first_name="Alice", last_name="Martin"), [], []
         )
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
         assert "Alice" in text and "Martin" in text
@@ -251,7 +250,7 @@ class TestSimpleFieldReplacement:
         doc.save(str(tmpl))
 
         result = generate_document(
-            str(tmpl), _mock_profile(first_name="Alice", last_name="Martin"), [], [], {}
+            str(tmpl), _mock_profile(first_name="Alice", last_name="Martin"), [], []
         )
         out = Document(io.BytesIO(result))
         cell_texts = [cell.text for row in out.tables[0].rows for cell in row.cells]
@@ -265,7 +264,7 @@ class TestSimpleFieldReplacement:
         doc.sections[0].header.paragraphs[0].text = "{{title}}"
         doc.save(str(tmpl))
 
-        result = generate_document(str(tmpl), _mock_profile(title="Architecte"), [], [], {})
+        result = generate_document(str(tmpl), _mock_profile(title="Architecte"), [], [])
         out = Document(io.BytesIO(result))
         header_text = out.sections[0].header.paragraphs[0].text
         assert "Architecte" in header_text
@@ -276,7 +275,7 @@ class TestSimpleFieldReplacement:
         doc.add_paragraph("Tél: {{phone}}")
         doc.save(str(tmpl))
 
-        result = generate_document(str(tmpl), _mock_profile(phone=None), [], [], {})
+        result = generate_document(str(tmpl), _mock_profile(phone=None), [], [])
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
         assert "{{phone}}" not in text
         assert "Tél:" in text
@@ -288,7 +287,7 @@ class TestSimpleFieldReplacement:
         doc.add_paragraph("{{nonexistent_field}}")
         doc.save(str(tmpl))
 
-        result = generate_document(str(tmpl), _mock_profile(), [], [], {})
+        result = generate_document(str(tmpl), _mock_profile(), [], [])
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
         assert "{{nonexistent_field}}" not in text
 
@@ -298,7 +297,7 @@ class TestSimpleFieldReplacement:
         doc.add_paragraph("Salaire: {{annual_salary}} €")
         doc.save(str(tmpl))
 
-        result = generate_document(str(tmpl), _mock_profile(annual_salary=55000), [], [], {})
+        result = generate_document(str(tmpl), _mock_profile(annual_salary=55000), [], [])
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
         assert "55000" in text
 
@@ -323,7 +322,7 @@ class TestFragmentedRuns:
         para.add_run("}}")
         doc.save(str(tmpl))
 
-        result = generate_document(str(tmpl), _mock_profile(first_name="Alice"), [], [], {})
+        result = generate_document(str(tmpl), _mock_profile(first_name="Alice"), [], [])
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
         assert "Alice" in text
         assert "{{" not in text
@@ -338,7 +337,7 @@ class TestFragmentedRuns:
         para.add_run("_name}}")
         doc.save(str(tmpl))
 
-        result = generate_document(str(tmpl), _mock_profile(last_name="Martin"), [], [], {})
+        result = generate_document(str(tmpl), _mock_profile(last_name="Martin"), [], [])
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
         assert "Martin" in text
 
@@ -359,7 +358,7 @@ class TestExperienceBlockParagraphs:
 
         exp1 = _mock_experience(role="Engineer", client_name="Alpha")
         exp2 = _mock_experience(role="Architect", client_name="Beta")
-        result = generate_document(str(tmpl), _mock_profile(), [exp1, exp2], [], {})
+        result = generate_document(str(tmpl), _mock_profile(), [exp1, exp2], [])
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs if p.text)
         assert "Engineer" in text and "Alpha" in text
         assert "Architect" in text and "Beta" in text
@@ -374,7 +373,7 @@ class TestExperienceBlockParagraphs:
         doc.add_paragraph("Footer")
         doc.save(str(tmpl))
 
-        result = generate_document(str(tmpl), _mock_profile(), [], [], {})
+        result = generate_document(str(tmpl), _mock_profile(), [], [])
         texts = [p.text for p in Document(io.BytesIO(result)).paragraphs if p.text]
         assert "Header" in texts
         assert "Footer" in texts
@@ -389,7 +388,7 @@ class TestExperienceBlockParagraphs:
         doc.save(str(tmpl))
 
         exp = _mock_experience(start_date=date(2022, 6, 1), end_date=None, is_current=True)
-        result = generate_document(str(tmpl), _mock_profile(), [exp], [], {})
+        result = generate_document(str(tmpl), _mock_profile(), [exp], [])
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
         assert "06/2022" in text and "présent" in text
 
@@ -402,7 +401,7 @@ class TestExperienceBlockParagraphs:
         doc.save(str(tmpl))
 
         exp = _mock_experience(achievements_summary="Reduced latency by 40%")
-        result = generate_document(str(tmpl), _mock_profile(), [exp], [], {})
+        result = generate_document(str(tmpl), _mock_profile(), [exp], [])
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs)
         assert "Reduced latency by 40%" in text
 
@@ -430,7 +429,7 @@ class TestExperienceBlockTableRows:
         exp1 = _mock_experience(client_name="Alpha", role="Dev")
         exp2 = _mock_experience(client_name="Beta", role="Lead")
 
-        result = generate_document(tmpl, _mock_profile(), [exp1, exp2], [], {})
+        result = generate_document(tmpl, _mock_profile(), [exp1, exp2], [])
         out = Document(io.BytesIO(result))
         assert len(out.tables) == 1
         assert len(out.tables[0].rows) == 2
@@ -440,7 +439,7 @@ class TestExperienceBlockTableRows:
         exp1 = _mock_experience(client_name="Alpha", role="Dev")
         exp2 = _mock_experience(client_name="Beta", role="Lead")
 
-        result = generate_document(tmpl, _mock_profile(), [exp1, exp2], [], {})
+        result = generate_document(tmpl, _mock_profile(), [exp1, exp2], [])
         out = Document(io.BytesIO(result))
         all_text = " ".join(cell.text for row in out.tables[0].rows for cell in row.cells)
         assert "Alpha" in all_text and "Dev" in all_text
@@ -448,7 +447,7 @@ class TestExperienceBlockTableRows:
 
     def test_empty_list_produces_zero_rows(self, tmp_path):
         tmpl = self._make_row_block_template(tmp_path)
-        result = generate_document(tmpl, _mock_profile(), [], [], {})
+        result = generate_document(tmpl, _mock_profile(), [], [])
         out = Document(io.BytesIO(result))
         assert len(out.tables[0].rows) == 0
 
@@ -456,7 +455,7 @@ class TestExperienceBlockTableRows:
         tmpl = self._make_row_block_template(tmp_path)
         exp = _mock_experience(client_name="Alpha", role="Dev")
 
-        result = generate_document(tmpl, _mock_profile(), [exp], [], {})
+        result = generate_document(tmpl, _mock_profile(), [exp], [])
         out = Document(io.BytesIO(result))
         all_text = " ".join(cell.text for row in out.tables[0].rows for cell in row.cells)
         assert "{%tr" not in all_text
@@ -481,7 +480,7 @@ class TestSkillsBlockTableRows:
 
         sk1 = _mock_skill(name="Python", kind=_FakeEnum("technical"))
         sk2 = _mock_skill(name="Django", kind=_FakeEnum("technical"))
-        result = generate_document(str(tmpl), _mock_profile(), [], [sk1, sk2], {})
+        result = generate_document(str(tmpl), _mock_profile(), [], [sk1, sk2])
         out = Document(io.BytesIO(result))
         assert len(out.tables[0].rows) == 2
         all_text = " ".join(cell.text for row in out.tables[0].rows for cell in row.cells)
@@ -498,7 +497,7 @@ class TestSkillsBlockTableRows:
 
         sk1 = _mock_skill(name="Python", kind=_FakeEnum("technical"))
         sk2 = _mock_skill(name="Django", kind=_FakeEnum("technical"))
-        result = generate_document(str(tmpl), _mock_profile(), [], [sk1, sk2], {})
+        result = generate_document(str(tmpl), _mock_profile(), [], [sk1, sk2])
         text = " ".join(p.text for p in Document(io.BytesIO(result)).paragraphs if p.text)
         assert "Python" in text and "Django" in text
         assert "{%p" not in text
@@ -512,7 +511,7 @@ class TestSkillsBlockTableRows:
         table.rows[2].cells[0].paragraphs[0].text = "{%tr endfor %}"
         doc.save(str(tmpl))
 
-        result = generate_document(str(tmpl), _mock_profile(), [], [], {})
+        result = generate_document(str(tmpl), _mock_profile(), [], [])
         out = Document(io.BytesIO(result))
         assert len(out.tables[0].rows) == 0
 
@@ -535,7 +534,7 @@ class TestPerformance:
 
         exps = [_mock_experience(role=f"Role {i}", client_name=f"Client {i}") for i in range(100)]
         start = time.monotonic()
-        result = generate_document(str(tmpl), _mock_profile(), exps, [], {})
+        result = generate_document(str(tmpl), _mock_profile(), exps, [])
         elapsed = time.monotonic() - start
 
         assert isinstance(result, bytes) and len(result) > 0
@@ -550,13 +549,13 @@ class TestPerformance:
 class TestErrorHandling:
     def test_missing_template_file_raises_value_error(self):
         with pytest.raises(ValueError, match="unreadable"):
-            generate_document("/nonexistent/path/to/template.docx", _mock_profile(), [], [], {})
+            generate_document("/nonexistent/path/to/template.docx", _mock_profile(), [], [])
 
     def test_corrupt_file_raises_value_error(self, tmp_path):
         bad = tmp_path / "bad.docx"
         bad.write_bytes(b"this is not a zip/docx file at all")
         with pytest.raises(ValueError, match="unreadable"):
-            generate_document(str(bad), _mock_profile(), [], [], {})
+            generate_document(str(bad), _mock_profile(), [], [])
 
     def test_invalid_jinja2_syntax_raises_value_error(self, tmp_path):
         tmpl = tmp_path / "t.docx"
@@ -566,26 +565,7 @@ class TestErrorHandling:
         # intentionally missing endfor — Jinja2 will raise TemplateSyntaxError
         doc.save(str(tmpl))
         with pytest.raises(ValueError, match=r"[Jj]inja2|syntax|template"):
-            generate_document(str(tmpl), _mock_profile(), [], [], {})
-
-    def test_nonempty_mappings_emits_deprecation_warning(self, tmp_path):
-        tmpl = tmp_path / "t.docx"
-        doc = Document()
-        doc.add_paragraph("{{first_name}}")
-        doc.save(str(tmpl))
-        with pytest.warns(DeprecationWarning, match="mappings"):
-            generate_document(str(tmpl), _mock_profile(), [], [], {"{{first_name}}": "first_name"})
-
-    def test_empty_mappings_does_not_warn(self, tmp_path):
-
-        tmpl = tmp_path / "t.docx"
-        doc = Document()
-        doc.add_paragraph("{{first_name}}")
-        doc.save(str(tmpl))
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            # should not raise
-            generate_document(str(tmpl), _mock_profile(), [], [], {})
+            generate_document(str(tmpl), _mock_profile(), [], [])
 
 
 # ---------------------------------------------------------------------------

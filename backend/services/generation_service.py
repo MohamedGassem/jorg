@@ -106,7 +106,6 @@ async def generate_for_candidate(
             profile,  # type: ignore[arg-type]
             experiences,  # type: ignore[arg-type]
             skills,  # type: ignore[arg-type]
-            tmpl.mappings,
         )
     except ValueError as exc:
         raise BusinessRuleError(str(exc)) from exc
