@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { api, ApiError } from "@/lib/api";
+import { mapBusinessError } from "@/lib/errors";
 import type {
   BulkGenerateResult,
   OpportunityDetail,
@@ -28,6 +29,17 @@ interface TemplateItem {
   id: string;
   name: string;
   is_valid: boolean;
+}
+
+function shortlistCandidateName(
+  shortlist: ShortlistCandidateInfo[],
+  candidateId: string,
+): string {
+  const candidate = shortlist.find((c) => c.user_id === candidateId);
+  if (!candidate) return "Candidat";
+  return candidate.first_name && candidate.last_name
+    ? `${candidate.first_name} ${candidate.last_name}`
+    : candidate.email;
 }
 
 export default function OpportunityDetailPage() {
@@ -63,7 +75,11 @@ export default function OpportunityDetailPage() {
         setOpp(oppData);
         setTemplates(tmplData.filter((t) => t.is_valid));
       })
-      .catch((err) => setError(err instanceof ApiError ? err.detail : "Erreur"))
+      .catch((err) =>
+        setError(
+          err instanceof ApiError ? mapBusinessError(err.detail) : "Erreur",
+        ),
+      )
       .finally(() => setLoading(false));
   }, [oppId]);
 
@@ -94,7 +110,9 @@ export default function OpportunityDetailPage() {
       setGenResults(results);
     } catch (err) {
       setBulkError(
-        err instanceof ApiError ? err.detail : "Erreur lors de la génération",
+        err instanceof ApiError
+          ? mapBusinessError(err.detail)
+          : "Erreur lors de la génération",
       );
     } finally {
       setGenerating(false);
@@ -258,13 +276,15 @@ export default function OpportunityDetailPage() {
                 <p className="text-sm font-medium">Résultats :</p>
                 {genResults.map((r) => (
                   <p key={r.candidate_id} className="text-sm">
-                    {r.candidate_id.slice(0, 8)}…{" "}
+                    {shortlistCandidateName(opp.shortlist, r.candidate_id)}{" "}
                     <span
                       className={
                         r.status === "ok" ? "text-success" : "text-destructive"
                       }
                     >
-                      {r.status === "ok" ? "✓ Généré" : `✗ ${r.error}`}
+                      {r.status === "ok"
+                        ? "Dossier généré"
+                        : `Échec - ${mapBusinessError(r.error ?? "Erreur")}`}
                     </span>
                   </p>
                 ))}

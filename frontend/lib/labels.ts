@@ -3,6 +3,44 @@
 
 import type { InteractionEvent } from "@/types/api";
 
+export const AVAILABILITY_LABELS: Record<string, string> = {
+  available_now: "Immédiatement",
+  available_from: "Disponible prochainement",
+  not_available: "Non disponible",
+};
+
+export const WORK_MODE_LABELS: Record<string, string> = {
+  remote: "Télétravail",
+  onsite: "Présentiel",
+  hybrid: "Hybride",
+};
+
+export const CONTRACT_TYPE_LABELS: Record<string, string> = {
+  freelance: "Freelance",
+  cdi: "CDI",
+  both: "Freelance ou CDI",
+};
+
+export const DOMAIN_LABELS: Record<string, string> = {
+  finance: "Finance",
+  retail: "Distribution",
+  industry: "Industrie",
+  public: "Secteur public",
+  health: "Santé",
+  tech: "Tech",
+  telecom: "Telecom",
+  energy: "Énergie",
+  other: "Autre",
+};
+
+export function labelFor(
+  labels: Record<string, string>,
+  value: string | null | undefined,
+): string | null {
+  if (!value) return null;
+  return labels[value] ?? value;
+}
+
 export const INVITATION_STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
   accepted: "Acceptée",

@@ -234,8 +234,8 @@ export default function RecruiterDashboardPage() {
             {pendingInvitationCount !== null ? pendingInvitationCount : "-"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            demande{pendingInvitationCount === 1 ? "" : "s"} d&apos;accès pas
-            encore acceptée{pendingInvitationCount === 1 ? "" : "s"}.
+            invitation{pendingInvitationCount === 1 ? "" : "s"} en attente
+            d&apos;acceptation.
           </p>
           <div className="mt-4">
             <Link href="/recruiter/candidates">
