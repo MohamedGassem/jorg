@@ -156,7 +156,7 @@ export default function RecruiterDashboardPage() {
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Votre activite dossiers</h1>
+          <h1 className="text-2xl font-bold">Accueil recruteur</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {firstName ? `${firstName}, suivez` : "Suivez"} le passage des
             candidats autorisés aux missions, puis aux dossiers générés.
@@ -220,7 +220,7 @@ export default function RecruiterDashboardPage() {
           <div className="mt-4">
             <Link href="/recruiter/opportunities">
               <Button variant="outline" size="sm">
-                Gerer les missions
+                Gérer les missions
               </Button>
             </Link>
           </div>
@@ -251,7 +251,7 @@ export default function RecruiterDashboardPage() {
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="font-heading text-base font-semibold">
-              Dossiers recents
+              Dossiers récents
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {hasDocs
@@ -280,7 +280,7 @@ export default function RecruiterDashboardPage() {
                       .join(" ") || "Candidat"}
                   </p>
                   <p className="text-muted-foreground">
-                    {doc.template_name ?? "Modele de dossier"} -{" "}
+                    {doc.template_name ?? "Modèle de dossier"} -{" "}
                     {doc.file_format.toUpperCase()}
                   </p>
                 </div>
