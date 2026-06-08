@@ -420,25 +420,25 @@ export function CvImport({
             proposedLanguages.length > 0) && (
             <div className="space-y-3 rounded-md border border-border/60 bg-background p-3">
               <p className="text-sm font-medium text-foreground">
-                Proposition de profil structurÃ©
+                Proposition de profil structuré
               </p>
 
               {proposedExperiences.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground">
-                    ExpÃ©riences Ã  relire
+                    Expériences à relire
                   </p>
                   {proposedExperiences.slice(0, 4).map((item, index) => {
                     const label =
                       fieldValue(item.role) ||
                       fieldValue(item.description) ||
-                      `ExpÃ©rience ${index + 1}`;
+                      `Expérience ${index + 1}`;
                     return (
                       <p
                         key={`experience-${index}-${label}`}
                         className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground"
                       >
-                        {label} Â· Ã  complÃ©ter avant ajout
+                        {label} · à compléter avant ajout
                       </p>
                     );
                   })}
@@ -472,7 +472,7 @@ export function CvImport({
                           {degree ? (
                             <span className="text-muted-foreground">
                               {" "}
-                              Â· {degree}
+                              · {degree}
                             </span>
                           ) : null}
                         </span>
@@ -515,7 +515,7 @@ export function CvImport({
                             }))
                           }
                         >
-                          <option value="">Niveau Ã  choisir</option>
+                          <option value="">Niveau à choisir</option>
                           {LANGUAGE_LEVELS.map((level) => (
                             <option key={level} value={level}>
                               {level === "native" ? "Natif" : level}
@@ -531,7 +531,7 @@ export function CvImport({
               {proposedCertifications.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground">
-                    Certifications Ã  relire
+                    Certifications à relire
                   </p>
                   {proposedCertifications.slice(0, 4).map((item, index) => {
                     const name =
@@ -543,8 +543,7 @@ export function CvImport({
                         className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground"
                       >
                         {name}
-                        {issuer ? ` Â· ${issuer}` : ""} Â· Ã  complÃ©ter avant
-                        ajout
+                        {issuer ? ` · ${issuer}` : ""} · à compléter avant ajout
                       </p>
                     );
                   })}
@@ -561,7 +560,7 @@ export function CvImport({
                 {status === "adding" ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Ajoutâ€¦
+                    Ajout…
                   </>
                 ) : (
                   `Ajouter ${addableProfileCount} proposition${
@@ -571,7 +570,7 @@ export function CvImport({
               </Button>
               {selectedLanguages.size > addableLanguageCount && (
                 <p className="text-xs text-muted-foreground">
-                  Choisissez un niveau pour chaque langue Ã  ajouter.
+                  Choisissez un niveau pour chaque langue à ajouter.
                 </p>
               )}
               {addedProfileItems && (

@@ -221,10 +221,7 @@ def test_structured_parser_builds_cv_blocks_for_mohamed_sample():
     assert proposal.education[0].start_date.value == "2018-09"
 
     languages = {language.name.value: language.level.value for language in proposal.languages}
-    assert languages == {"FranÃ§ais": "native", "Anglais": "C1"} or languages == {
-        "Français": "native",
-        "Anglais": "C1",
-    }
+    assert languages == {"Français": "native", "Anglais": "C1"}
 
     skill_names = {skill.name for skill in proposal.skills if skill.name}
     assert {"Python", "SQL", "PyTorch", "Docker", "FastAPI", "scikit-learn"} <= skill_names

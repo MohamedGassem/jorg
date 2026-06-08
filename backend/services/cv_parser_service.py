@@ -89,8 +89,8 @@ _HUMAN_LANGUAGES = {
     "english": "Anglais",
     "espagnol": "Espagnol",
     "spanish": "Espagnol",
-    "francais": "FranÃ§ais",
-    "french": "FranÃ§ais",
+    "francais": "Français",
+    "french": "Français",
     "allemand": "Allemand",
     "german": "Allemand",
     "italien": "Italien",
@@ -163,7 +163,7 @@ _MONTHS = {
 }
 _DATE_RANGE_RE = re.compile(
     r"(?P<start>(?:[^\W\d_]+\.?\s+)?(?:19|20)\d{2})\s*[-\u2013\u2014]\s*"
-    r"(?P<end>actuel|present|prÃ©sent|(?:[^\W\d_]+\.?\s+)?(?:19|20)\d{2})",
+    r"(?P<end>actuel|present|présent|(?:[^\W\d_]+\.?\s+)?(?:19|20)\d{2})",
     re.IGNORECASE,
 )
 
@@ -1049,7 +1049,7 @@ def _is_block_header_candidate(text: str) -> bool:
     stripped = text.strip()
     if not stripped or _parse_date_range(stripped) is not None or _is_year_only(stripped):
         return False
-    if stripped.startswith(("•", "-", "â€¢")):
+    if stripped.startswith(("•", "-")):
         return False
     if _EMAIL_RE.search(stripped):
         return False
@@ -1074,11 +1074,11 @@ def _is_description_line(text: str) -> bool:
         return False
     if _normalise(stripped) in {"lyon fr", "angers", "nancy", "le creusot", "sarreguemines"}:
         return False
-    return not _is_block_header_candidate(stripped) or stripped.startswith(("•", "-", "â€¢"))
+    return not _is_block_header_candidate(stripped) or stripped.startswith(("•", "-"))
 
 
 def _strip_bullet(text: str) -> str:
-    return re.sub(r"^\s*(?:[•â€¢\\-]+)\s*", "", text).strip()
+    return re.sub(r"^\s*(?:[•\\-]+)\s*", "", text).strip()
 
 
 def _is_year_only(text: str) -> bool:
