@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { TabBar } from "@/components/ui/TabBar";
 import {
@@ -121,13 +120,13 @@ function ProfileHero({
             size="sm"
             onClick={() => setGenerateOpen(true)}
           >
-            Générer un dossier
+            Générer un dossier depuis mon profil
           </Button>
           <Button variant="outline" size="sm" onClick={loadPreview}>
-            Aperçu recruteur
+            Voir ce qu&apos;un recruteur verra
           </Button>
           <Button variant="ghost" size="sm" onClick={onEdit}>
-            ✏ Modifier
+            Modifier l&apos;identité
           </Button>
         </div>
       </div>
@@ -394,6 +393,13 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-3xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Mon profil structuré</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Complétez les informations qui rendent votre profil exploitable par
+          les organisations autorisées et par les dossiers générés.
+        </p>
+      </div>
       <ProfileHero profile={profile} onEdit={() => setEditOpen(true)} />
       <Suspense
         fallback={<div className="h-10 animate-pulse rounded-lg bg-muted" />}
