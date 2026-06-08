@@ -315,7 +315,12 @@ export default function DocumentsPage() {
                       <div>
                         <p className="font-medium">{template.name}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {template.detected_placeholders.length} placeholder(s)
+                          {template.detected_placeholders.length} champ
+                          {template.detected_placeholders.length > 1
+                            ? "s"
+                            : ""}{" "}
+                          détecté
+                          {template.detected_placeholders.length > 1 ? "s" : ""}
                         </p>
                       </div>
                       <Badge
