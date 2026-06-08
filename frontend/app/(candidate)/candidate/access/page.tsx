@@ -169,8 +169,14 @@ export default function AccessPage() {
   if (loading) return <p className="text-muted-foreground">Chargement…</p>;
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">Qui a accès à votre dossier</h1>
+    <div className="max-w-3xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Accès à votre profil</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Contrôlez les organisations autorisées à consulter votre profil
+          structuré et suivez les dossiers générés à partir de vos données.
+        </p>
+      </div>
       <ErrorAlert error={invError ?? orgsError ?? actionError} />
 
       {/* Pending invitations — shown prominently */}
@@ -200,8 +206,10 @@ export default function AccessPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <p className="text-sm text-muted-foreground">
-                      Expire le{" "}
-                      {new Date(inv.expires_at).toLocaleDateString("fr-FR")}
+                      Cette organisation demande à consulter votre profil
+                      structuré. Vous gardez la possibilité de révoquer
+                      l&apos;accès après acceptation. Expire le{" "}
+                      {new Date(inv.expires_at).toLocaleDateString("fr-FR")}.
                     </p>
                     <div className="flex gap-2">
                       <Button
@@ -263,12 +271,12 @@ export default function AccessPage() {
       {/* All organisations */}
       <section>
         <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-          Organisations
+          Organisations autorisées
         </h2>
         {!orgs || orgs.length === 0 ? (
           <EmptyState
-            message="Aucune organisation n'a accès à votre dossier."
-            description="Les recruteurs apparaîtront ici uniquement après une invitation acceptée. Vous pourrez ensuite suivre les accès, les actions et les dossiers générés."
+            message="Aucune organisation n'a accès à votre profil."
+            description="Les recruteurs apparaîtront ici uniquement après une invitation acceptée. Vous pourrez ensuite suivre les accès, les actions et les dossiers générés à partir de vos données."
           />
         ) : (
           <ul className="space-y-4" role="list">
@@ -338,7 +346,7 @@ export default function AccessPage() {
                             if (next) void loadOrgDocs(org.organization_id);
                           }}
                         >
-                          Dossiers générés
+                          Dossiers générés depuis votre profil
                           {docsLoading[org.organization_id]
                             ? " (chargement…)"
                             : ""}
