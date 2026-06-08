@@ -26,7 +26,6 @@ export default function OpportunitiesPage() {
 
   useEffect(() => {
     if (!orgId) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOppsLoading(true);
     api
       .get<OpportunityRead[]>(`/organizations/${orgId}/opportunities`)
@@ -66,8 +65,14 @@ export default function OpportunitiesPage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Missions</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Missions</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Regroupez les candidats autorisés autour d&apos;un besoin client
+            pour préparer des dossiers adaptés à l&apos;opportunité.
+          </p>
+        </div>
         <Button onClick={() => setShowForm((v) => !v)}>
           {showForm ? "Annuler" : "Nouvelle mission"}
         </Button>
@@ -78,7 +83,7 @@ export default function OpportunitiesPage() {
           <CardContent className="pt-4">
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="opp-title">Titre</Label>
+                <Label htmlFor="opp-title">Titre de la mission</Label>
                 <Input
                   id="opp-title"
                   value={title}
@@ -88,7 +93,7 @@ export default function OpportunitiesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="opp-desc">Description (optionnel)</Label>
+                <Label htmlFor="opp-desc">Contexte du besoin (optionnel)</Label>
                 <textarea
                   id="opp-desc"
                   value={description}
@@ -99,7 +104,7 @@ export default function OpportunitiesPage() {
               </div>
               <ErrorAlert error={orgError ?? error} />
               <Button type="submit" disabled={creating || !title.trim()}>
-                {creating ? "Création…" : "Créer"}
+                {creating ? "Création…" : "Créer la mission"}
               </Button>
             </form>
           </CardContent>
@@ -141,7 +146,7 @@ export default function OpportunitiesPage() {
                   )}
                   <Link href={`/recruiter/opportunities/${opp.id}`}>
                     <Button size="sm" variant="outline">
-                      Voir les candidats associes
+                      Voir les candidats associés
                     </Button>
                   </Link>
                 </CardContent>
