@@ -23,8 +23,13 @@ import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
 import {
+  AVAILABILITY_LABELS,
+  CONTRACT_TYPE_LABELS,
+  DOMAIN_LABELS,
   INVITATION_STATUS_LABELS,
   INVITATION_STATUS_VARIANTS,
+  WORK_MODE_LABELS,
+  labelFor,
 } from "@/lib/labels";
 import type {
   AccessibleCandidateRead,
@@ -398,13 +403,11 @@ export default function CandidatesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Toutes</SelectItem>
-                  <SelectItem value="available_now">
-                    Disponible maintenant
-                  </SelectItem>
-                  <SelectItem value="available_from">
-                    Disponible prochainement
-                  </SelectItem>
-                  <SelectItem value="not_available">Non disponible</SelectItem>
+                  {Object.entries(AVAILABILITY_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -419,9 +422,11 @@ export default function CandidatesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Tous</SelectItem>
-                  <SelectItem value="remote">Télétravail</SelectItem>
-                  <SelectItem value="onsite">Présentiel</SelectItem>
-                  <SelectItem value="hybrid">Hybride</SelectItem>
+                  {Object.entries(WORK_MODE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -436,9 +441,13 @@ export default function CandidatesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Tous</SelectItem>
-                  <SelectItem value="freelance">Freelance</SelectItem>
-                  <SelectItem value="cdi">CDI</SelectItem>
-                  <SelectItem value="both">Les deux</SelectItem>
+                  {Object.entries(CONTRACT_TYPE_LABELS).map(
+                    ([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -481,8 +490,8 @@ export default function CandidatesPage() {
                 <SelectContent>
                   <SelectItem value="">Tous</SelectItem>
                   {VALID_DOMAINS.map((d) => (
-                    <SelectItem key={d} value={d} className="capitalize">
-                      {d}
+                    <SelectItem key={d} value={d}>
+                      {DOMAIN_LABELS[d] ?? d}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -567,6 +576,11 @@ export default function CandidatesPage() {
         <ul className="space-y-3" role="list">
           {candidates.map((c) => {
             const isActive = activeSkillFilter?.candidateId === c.user_id;
+            const availabilityLabel = labelFor(
+              AVAILABILITY_LABELS,
+              c.availability_status,
+            );
+            const workModeLabel = labelFor(WORK_MODE_LABELS, c.work_mode);
 
             // Collect unique skills from all experiences
             const skillMap = new Map<string, string>();
@@ -618,10 +632,10 @@ export default function CandidatesPage() {
                     {c.title && <p>{c.title}</p>}
                     <div className="flex flex-wrap gap-3">
                       {c.daily_rate && <span>TJM : {c.daily_rate} €/j</span>}
-                      {c.availability_status && (
-                        <span>Dispo : {c.availability_status}</span>
+                      {availabilityLabel && (
+                        <span>Dispo : {availabilityLabel}</span>
                       )}
-                      {c.work_mode && <span>{c.work_mode}</span>}
+                      {workModeLabel && <span>{workModeLabel}</span>}
                     </div>
 
                     {expSkills.length > 0 && (

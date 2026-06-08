@@ -9,6 +9,28 @@ export class ApiError extends Error {
   }
 }
 
+// FastAPI puts a human string under `detail` for business errors, but an array
+// of {loc, msg, type} objects for 422 validation errors. Stringifying the array
+// naively yields "[object Object]"; join the messages instead.
+function parseErrorDetail(data: unknown, fallback: string): string {
+  if (typeof data !== "object" || data === null || !("detail" in data)) {
+    return fallback;
+  }
+  const detail = (data as { detail: unknown }).detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) =>
+        item && typeof item === "object" && "msg" in item
+          ? String((item as { msg: unknown }).msg)
+          : null,
+      )
+      .filter((msg): msg is string => Boolean(msg));
+    if (messages.length > 0) return messages.join(" · ");
+  }
+  return fallback;
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -38,11 +60,7 @@ async function request<T>(
   });
 
   if (!res.ok) {
-    const detail =
-      typeof data === "object" && data !== null && "detail" in data
-        ? String((data as { detail: unknown }).detail)
-        : "Request failed";
-    throw new ApiError(res.status, detail);
+    throw new ApiError(res.status, parseErrorDetail(data, "Request failed"));
   }
 
   return data as T;
@@ -72,11 +90,7 @@ async function upload<T>(
     throw new ApiError(res.status, res.statusText || "Upload failed");
   });
   if (!res.ok) {
-    const detail =
-      typeof data === "object" && data !== null && "detail" in data
-        ? String((data as { detail: unknown }).detail)
-        : "Upload failed";
-    throw new ApiError(res.status, detail);
+    throw new ApiError(res.status, parseErrorDetail(data, "Upload failed"));
   }
   return data as T;
 }
@@ -102,11 +116,7 @@ async function downloadRequest(
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    const detail =
-      typeof data === "object" && data !== null && "detail" in data
-        ? String((data as { detail: unknown }).detail)
-        : "Download failed";
-    throw new ApiError(res.status, detail);
+    throw new ApiError(res.status, parseErrorDetail(data, "Download failed"));
   }
 
   const blob = await res.blob();

@@ -16,7 +16,10 @@ Compétences
 Python, Java, JavaScript
 
 Expérience
-Développement backend 2020 2024
+Acme, Développeur backend
+2020 - 2024
+- Migration d'une plateforme Python vers FastAPI
+- Réduction du temps de traitement de 30%
 
 Formation
 Ecole Ingénieur 2016 2019
@@ -57,6 +60,17 @@ async def test_parse_cv_extracts_structured_proposal_and_skills(
     assert data["phone"] is not None
     assert data["proposed_profile"]["identity"]["email"]["needs_review"] is False
     assert data["proposed_profile"]["experiences"]
+    experience = data["proposed_profile"]["experiences"][0]
+    assert experience["client_name"]["value"] == "Acme"
+    assert experience["role"]["value"] == "Développeur backend"
+    assert experience["start_date"]["value"] == "2020"
+    assert experience["end_date"]["value"] == "2024"
+    assert [a["value"] for a in experience["achievements"]] == [
+        "Migration d'une plateforme Python vers FastAPI",
+        "Réduction du temps de traitement de 30%",
+    ]
+    # Bulleted lines become achievements only; nothing is duplicated into description.
+    assert experience["description"]["value"] is None
 
     names = {s["name"] for s in data["skills"]}
     assert "Python" in names

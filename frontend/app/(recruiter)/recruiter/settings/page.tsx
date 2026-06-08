@@ -202,7 +202,9 @@ export default function RecruiterSettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>{org.name}</CardTitle>
-                <CardDescription>Slug : {org.slug}</CardDescription>
+                <CardDescription>
+                  Espace organisation configuré pour votre équipe.
+                </CardDescription>
               </CardHeader>
             </Card>
           )}

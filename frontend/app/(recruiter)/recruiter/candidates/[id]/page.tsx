@@ -10,6 +10,7 @@ import { GenerateDossierDialog } from "@/components/generate-dossier-dialog";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
+import { AVAILABILITY_LABELS, WORK_MODE_LABELS, labelFor } from "@/lib/labels";
 import type {
   AccessibleCandidateRead,
   BuiltinTemplate,
@@ -88,6 +89,11 @@ export default function CandidateDetailPage() {
   if (!candidate) return <p className="text-muted-foreground">Chargement…</p>;
 
   const name = candidateName(candidate);
+  const availabilityLabel = labelFor(
+    AVAILABILITY_LABELS,
+    candidate.availability_status,
+  );
+  const workModeLabel = labelFor(WORK_MODE_LABELS, candidate.work_mode);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -133,10 +139,8 @@ export default function CandidateDetailPage() {
             candidat.
           </p>
           {candidate.daily_rate && <p>TJM : {candidate.daily_rate} EUR/j</p>}
-          {candidate.availability_status && (
-            <p>Disponibilité : {candidate.availability_status}</p>
-          )}
-          {candidate.work_mode && <p>Mode : {candidate.work_mode}</p>}
+          {availabilityLabel && <p>Disponibilité : {availabilityLabel}</p>}
+          {workModeLabel && <p>Mode : {workModeLabel}</p>}
           {candidate.location_preference && (
             <p>Localisation : {candidate.location_preference}</p>
           )}

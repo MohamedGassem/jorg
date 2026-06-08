@@ -9,7 +9,7 @@ import { Check, FileText, Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { LanguageLevel } from "@/types/api";
+import type { Experience, LanguageLevel } from "@/types/api";
 
 interface CvExtractedField {
   value: string | null;
@@ -24,7 +24,10 @@ interface CvExperienceProposal {
   client_name?: CvExtractedField;
   start_date?: CvExtractedField;
   end_date?: CvExtractedField;
+  is_current?: boolean;
   description?: CvExtractedField;
+  achievements_summary?: CvExtractedField;
+  achievements?: CvExtractedField[];
 }
 
 interface CvEducationProposal {
@@ -87,8 +90,64 @@ function fieldValue(field?: CvExtractedField): string | null {
   return field?.value?.trim() || null;
 }
 
-function isoDateOrNull(value: string | null): string | null {
-  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+// A 409 means the item is already on the profile — benign, not a failure.
+function isBenignConflict(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 409;
+}
+
+function cvDateToInputValue(value: string | null): string {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  if (/^\d{4}-\d{2}$/.test(value)) return `${value}-01`;
+  if (/^\d{4}$/.test(value)) return `${value}-01-01`;
+  return "";
+}
+
+interface CvExperienceDraft {
+  client_name: string;
+  role: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+  description: string;
+  achievements: string[];
+}
+
+function experienceDraftFromProposal(
+  item: CvExperienceProposal,
+): CvExperienceDraft {
+  const endDate = cvDateToInputValue(fieldValue(item.end_date));
+  const achievements = (item.achievements ?? [])
+    .map((field) => fieldValue(field))
+    .filter((value): value is string => Boolean(value));
+  const summary = fieldValue(item.achievements_summary);
+  if (summary && achievements.length === 0) {
+    achievements.push(
+      ...summary
+        .split(/\n|[•-]\s+/)
+        .map((line) => line.trim())
+        .filter(Boolean),
+    );
+  }
+  // is_current comes from the backend ("actuel"/"présent"); an empty end_date
+  // alone must NOT flip a finished role to "current" — it often just means the
+  // end date failed to parse.
+  const isCurrent = Boolean(item.is_current);
+  return {
+    client_name: fieldValue(item.client_name) ?? "",
+    role: fieldValue(item.role) ?? "",
+    start_date: cvDateToInputValue(fieldValue(item.start_date)),
+    end_date: isCurrent ? "" : endDate,
+    is_current: isCurrent,
+    description: fieldValue(item.description) ?? "",
+    achievements,
+  };
+}
+
+function isDraftAddable(draft: CvExperienceDraft | undefined): boolean {
+  return Boolean(
+    draft?.client_name.trim() && draft.role.trim() && draft.start_date,
+  );
 }
 
 function detectedLanguageLevel(value: string | null): LanguageLevel | "" {
@@ -124,6 +183,12 @@ export function CvImport({
   );
   const [result, setResult] = useState<CvParseResult | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedExperiences, setSelectedExperiences] = useState<Set<number>>(
+    new Set(),
+  );
+  const [experienceDrafts, setExperienceDrafts] = useState<
+    Record<number, CvExperienceDraft>
+  >({});
   const [selectedEducation, setSelectedEducation] = useState<Set<number>>(
     new Set(),
   );
@@ -146,6 +211,8 @@ export function CvImport({
     setAdded(null);
     setAddedProfileItems(null);
     setResult(null);
+    setSelectedExperiences(new Set());
+    setExperienceDrafts({});
     setStatus("parsing");
     try {
       const formData = new FormData();
@@ -160,6 +227,25 @@ export function CvImport({
           parsed.skills
             .map((s) => s.skill_ref_id)
             .filter((id): id is string => Boolean(id)),
+        ),
+      );
+      const parsedExperienceDrafts = Object.fromEntries(
+        (parsed.proposed_profile.experiences ?? []).map((item, index) => [
+          index,
+          experienceDraftFromProposal(item),
+        ]),
+      );
+      setExperienceDrafts(parsedExperienceDrafts);
+      setSelectedExperiences(
+        new Set(
+          Object.entries(parsedExperienceDrafts)
+            .filter(
+              ([, draft]) =>
+                draft.role ||
+                draft.description ||
+                draft.achievements.length > 0,
+            )
+            .map(([index]) => Number(index)),
         ),
       );
       setSelectedEducation(
@@ -220,6 +306,39 @@ export function CvImport({
     });
   }
 
+  function toggleExperience(index: number) {
+    setSelectedExperiences((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  function updateExperienceDraft(
+    index: number,
+    patch: Partial<CvExperienceDraft>,
+  ) {
+    setExperienceDrafts((prev) => ({
+      ...prev,
+      [index]: { ...prev[index], ...patch },
+    }));
+  }
+
+  function updateExperienceAchievement(
+    expIndex: number,
+    achievementIndex: number,
+    value: string,
+  ) {
+    setExperienceDrafts((prev) => {
+      const draft = prev[expIndex];
+      if (!draft) return prev;
+      const achievements = [...draft.achievements];
+      achievements[achievementIndex] = value;
+      return { ...prev, [expIndex]: { ...draft, achievements } };
+    });
+  }
+
   function toggleLanguage(index: number) {
     setSelectedLanguages((prev) => {
       const next = new Set(prev);
@@ -264,11 +383,72 @@ export function CvImport({
 
   async function handleAddProfileItems() {
     if (!result) return;
+    const incompleteExperience = [...selectedExperiences].find(
+      (index) => !isDraftAddable(experienceDrafts[index]),
+    );
+    if (incompleteExperience !== undefined) {
+      setError(
+        "Complétez au minimum client, rôle et date de début pour chaque expérience sélectionnée.",
+      );
+      return;
+    }
     setStatus("adding");
     setError(null);
     setAddedProfileItems(null);
+    let experienceCount = 0;
+    let achievementCount = 0;
     let educationCount = 0;
     let languageCount = 0;
+    // Anything other than a 409 (already on profile) is a real failure the
+    // candidate must hear about — never report a silent success.
+    let failedCount = 0;
+
+    for (const index of selectedExperiences) {
+      const draft = experienceDrafts[index];
+      if (!isDraftAddable(draft)) continue;
+      const achievementTexts = draft.achievements
+        .map((value) => value.trim())
+        .filter(Boolean);
+      try {
+        const created = await api.post<Experience>(
+          "/candidates/me/experiences",
+          {
+            client_name: draft.client_name.trim(),
+            role: draft.role.trim(),
+            start_date: draft.start_date,
+            end_date: draft.is_current ? null : draft.end_date || null,
+            is_current: draft.is_current,
+            description: draft.description.trim() || null,
+            achievements_summary: achievementTexts.join("\n") || null,
+          },
+        );
+        experienceCount += 1;
+        // Achievements are independent and carry their own order — add them
+        // concurrently instead of serially.
+        const outcomes = await Promise.allSettled(
+          achievementTexts.map((description, order) =>
+            api.post(`/candidates/me/experiences/${created.id}/achievements`, {
+              description,
+              impact: null,
+              order,
+            }),
+          ),
+        );
+        for (const outcome of outcomes) {
+          if (outcome.status === "fulfilled") achievementCount += 1;
+          else if (!isBenignConflict(outcome.reason)) failedCount += 1;
+        }
+      } catch (err) {
+        if (!isBenignConflict(err)) {
+          failedCount += 1;
+          console.warn(
+            "Failed to add experience proposal",
+            draft.client_name,
+            err,
+          );
+        }
+      }
+    }
 
     for (const index of selectedEducation) {
       const item = result.proposed_profile.education?.[index];
@@ -279,12 +459,15 @@ export function CvImport({
           school,
           degree: fieldValue(item?.degree),
           field_of_study: fieldValue(item?.field_of_study),
-          start_date: isoDateOrNull(fieldValue(item?.start_date)),
-          end_date: isoDateOrNull(fieldValue(item?.end_date)),
+          // Partial CV dates (YYYY / YYYY-MM) are padded to the period start so
+          // the year/month is kept instead of being dropped entirely.
+          start_date: cvDateToInputValue(fieldValue(item?.start_date)) || null,
+          end_date: cvDateToInputValue(fieldValue(item?.end_date)) || null,
         });
         educationCount += 1;
       } catch (err) {
-        if (!(err instanceof ApiError && err.status === 409)) {
+        if (!isBenignConflict(err)) {
+          failedCount += 1;
           console.warn("Failed to add education proposal", school, err);
         }
       }
@@ -299,17 +482,29 @@ export function CvImport({
         await api.post("/candidates/me/languages", { name, level });
         languageCount += 1;
       } catch (err) {
-        if (!(err instanceof ApiError && err.status === 409)) {
+        if (!isBenignConflict(err)) {
+          failedCount += 1;
           console.warn("Failed to add language proposal", name, err);
         }
       }
     }
 
-    setAddedProfileItems(
-      `${educationCount} formation${educationCount > 1 ? "s" : ""} et ${languageCount} langue${
-        languageCount > 1 ? "s" : ""
-      } ajoutée${educationCount + languageCount > 1 ? "s" : ""}.`,
-    );
+    const addedTotal =
+      experienceCount + achievementCount + educationCount + languageCount;
+    if (addedTotal > 0) {
+      setAddedProfileItems(
+        `${experienceCount} expérience${experienceCount > 1 ? "s" : ""}, ${achievementCount} réalisation${achievementCount > 1 ? "s" : ""}, ${educationCount} formation${educationCount > 1 ? "s" : ""} et ${languageCount} langue${
+          languageCount > 1 ? "s" : ""
+        } ajoutée${addedTotal > 1 ? "s" : ""}.`,
+      );
+    }
+    if (failedCount > 0) {
+      setError(
+        `${failedCount} élément${failedCount > 1 ? "s n'ont" : " n'a"} pas pu être ajouté${
+          failedCount > 1 ? "s" : ""
+        }. Réessayez ou complétez-les manuellement.`,
+      );
+    }
     setStatus("ready");
   }
 
@@ -320,7 +515,11 @@ export function CvImport({
   const addableLanguageCount = [...selectedLanguages].filter(
     (index) => languageLevels[index],
   ).length;
-  const addableProfileCount = selectedEducation.size + addableLanguageCount;
+  const addableExperienceCount = [...selectedExperiences].filter((index) =>
+    isDraftAddable(experienceDrafts[index]),
+  ).length;
+  const addableProfileCount =
+    addableExperienceCount + selectedEducation.size + addableLanguageCount;
 
   return (
     <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
@@ -424,22 +623,126 @@ export function CvImport({
               </p>
 
               {proposedExperiences.length > 0 && (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">
                     Expériences à relire
                   </p>
-                  {proposedExperiences.slice(0, 4).map((item, index) => {
-                    const label =
-                      fieldValue(item.role) ||
-                      fieldValue(item.description) ||
-                      `Expérience ${index + 1}`;
+                  <p className="text-xs text-muted-foreground">
+                    Les dates partielles sont préremplies au premier jour de la
+                    période détectée. Vérifiez-les avant ajout.
+                  </p>
+                  {proposedExperiences.map((item, index) => {
+                    const draft =
+                      experienceDrafts[index] ??
+                      experienceDraftFromProposal(item);
+                    const label = draft.role || `Expérience ${index + 1}`;
                     return (
-                      <p
+                      <div
                         key={`experience-${index}-${label}`}
-                        className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground"
+                        className="space-y-2 rounded-md bg-muted/40 px-2 py-2 text-xs"
                       >
-                        {label} · à compléter avant ajout
-                      </p>
+                        <label className="flex items-center gap-2 font-medium text-foreground">
+                          <input
+                            type="checkbox"
+                            checked={selectedExperiences.has(index)}
+                            onChange={() => toggleExperience(index)}
+                          />
+                          {label}
+                        </label>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <input
+                            className="h-8 rounded-md border border-input bg-background px-2"
+                            value={draft.client_name}
+                            placeholder="Client ou entreprise *"
+                            onChange={(event) =>
+                              updateExperienceDraft(index, {
+                                client_name: event.target.value,
+                              })
+                            }
+                          />
+                          <input
+                            className="h-8 rounded-md border border-input bg-background px-2"
+                            value={draft.role}
+                            placeholder="Rôle *"
+                            onChange={(event) =>
+                              updateExperienceDraft(index, {
+                                role: event.target.value,
+                              })
+                            }
+                          />
+                          <input
+                            className="h-8 rounded-md border border-input bg-background px-2"
+                            type="date"
+                            value={draft.start_date}
+                            onChange={(event) =>
+                              updateExperienceDraft(index, {
+                                start_date: event.target.value,
+                              })
+                            }
+                          />
+                          <input
+                            className="h-8 rounded-md border border-input bg-background px-2"
+                            type="date"
+                            value={draft.end_date}
+                            disabled={draft.is_current}
+                            onChange={(event) =>
+                              updateExperienceDraft(index, {
+                                end_date: event.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <label className="flex items-center gap-2 text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={draft.is_current}
+                            onChange={(event) =>
+                              updateExperienceDraft(index, {
+                                is_current: event.target.checked,
+                                end_date: event.target.checked
+                                  ? ""
+                                  : draft.end_date,
+                              })
+                            }
+                          />
+                          Expérience en cours
+                        </label>
+                        <textarea
+                          className="min-h-16 w-full rounded-md border border-input bg-background px-2 py-1"
+                          value={draft.description}
+                          placeholder="Description"
+                          onChange={(event) =>
+                            updateExperienceDraft(index, {
+                              description: event.target.value,
+                            })
+                          }
+                        />
+                        <div className="space-y-1">
+                          <p className="font-medium text-muted-foreground">
+                            Réalisations
+                          </p>
+                          {draft.achievements.length === 0 ? (
+                            <p className="text-muted-foreground">
+                              Aucune réalisation détectée.
+                            </p>
+                          ) : (
+                            draft.achievements.map((achievement, achIndex) => (
+                              <textarea
+                                key={`experience-${index}-achievement-${achIndex}`}
+                                className="min-h-10 w-full rounded-md border border-input bg-background px-2 py-1"
+                                value={achievement}
+                                onChange={(event) =>
+                                  updateExperienceAchievement(
+                                    index,
+                                    achIndex,
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                            ))
+                          )}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -531,7 +834,12 @@ export function CvImport({
               {proposedCertifications.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground">
-                    Certifications à relire
+                    Certifications détectées
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    L&apos;ajout automatique des certifications n&apos;est pas
+                    encore disponible. Vous pouvez les reprendre dans
+                    l&apos;onglet Formation.
                   </p>
                   {proposedCertifications.slice(0, 4).map((item, index) => {
                     const name =
@@ -543,7 +851,7 @@ export function CvImport({
                         className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground"
                       >
                         {name}
-                        {issuer ? ` · ${issuer}` : ""} · à compléter avant ajout
+                        {issuer ? ` · ${issuer}` : ""}
                       </p>
                     );
                   })}
