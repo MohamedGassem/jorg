@@ -17,6 +17,7 @@ from services.cv_parser_service import (
     SkillEntry,
     TextExtractionResult,
     UnsupportedCVFormatError,
+    _split_description_and_achievements,
     build_structured_proposal,
     extract_contact,
     extract_text,
@@ -328,3 +329,50 @@ def test_match_skills_in_index_matches_and_dedupes():
 def test_match_skills_in_index_no_match():
     index = {"python": SkillEntry(id=uuid4(), name="Python", kind=SkillKind.technical)}
     assert match_skills_in_index("Rien de pertinent ici", index) == []
+
+
+def test_split_bullets_keeps_preamble_as_description():
+    description, achievements = _split_description_and_achievements(
+        [
+            "Au sein de l'équipe data, en charge de la plateforme.",
+            "• Migration vers FastAPI",
+            "• Réduction du temps de traitement de 30%",
+        ]
+    )
+    assert description == "Au sein de l'équipe data, en charge de la plateforme."
+    assert achievements == ["Migration vers FastAPI", "Réduction du temps de traitement de 30%"]
+
+
+def test_split_bullets_folds_wrapped_line_into_previous_achievement():
+    description, achievements = _split_description_and_achievements(
+        [
+            "- Conception d'un pipeline de traitement",
+            "temps réel pour 3 usines",
+            "- Encadrement de 2 alternants",
+        ]
+    )
+    assert description is None
+    assert achievements == [
+        "Conception d'un pipeline de traitement temps réel pour 3 usines",
+        "Encadrement de 2 alternants",
+    ]
+
+
+def test_split_without_glyphs_makes_one_achievement_per_line():
+    description, achievements = _split_description_and_achievements(
+        [
+            "Responsable du suivi budgétaire de 3 agences",
+            "Animation de comités hebdomadaires",
+            "Reporting mensuel à la direction",
+        ]
+    )
+    assert description is None
+    assert achievements == [
+        "Responsable du suivi budgétaire de 3 agences",
+        "Animation de comités hebdomadaires",
+        "Reporting mensuel à la direction",
+    ]
+
+
+def test_split_empty_block_returns_nothing():
+    assert _split_description_and_achievements(["   ", ""]) == (None, [])

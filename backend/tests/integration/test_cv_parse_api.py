@@ -69,6 +69,8 @@ async def test_parse_cv_extracts_structured_proposal_and_skills(
         "Migration d'une plateforme Python vers FastAPI",
         "Réduction du temps de traitement de 30%",
     ]
+    # Bulleted lines become achievements only; nothing is duplicated into description.
+    assert experience["description"]["value"] is None
 
     names = {s["name"] for s in data["skills"]}
     assert "Python" in names

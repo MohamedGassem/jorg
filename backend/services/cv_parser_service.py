@@ -166,6 +166,10 @@ _DATE_RANGE_RE = re.compile(
     r"(?P<end>actuel|present|présent|(?:[^\W\d_]+\.?\s+)?(?:19|20)\d{2})",
     re.IGNORECASE,
 )
+_BULLET_CHARS = "•‣▪·◦●○∙*-\u2013\u2014"
+# A bullet is a leading glyph (optionally followed by space) or a lone "o"
+# sub-bullet that must be followed by whitespace, to avoid matching words.
+_BULLET_PREFIX_RE = re.compile(rf"^\s*(?:[{re.escape(_BULLET_CHARS)}]+\s*|o\s+)")
 
 
 class ExtractedField(BaseModel):
@@ -683,22 +687,19 @@ class ExperienceBlockParser:
                 date_positions.append((idx, date_range))
         experiences: list[ExperienceProposal] = []
         if not date_positions:
-            description_lines = [_strip_bullet(line.text) for line in lines if len(line.text) > 8]
-            description = " ".join(description_lines)
-            return (
-                [
-                    ExperienceProposal(
-                        description=_field(description, description, "experience", 0.42, True),
-                        achievements=[
-                            _field(line, line, "experience", 0.56, True)
-                            for line in description_lines
-                            if _looks_like_achievement(line)
-                        ],
-                    )
-                ]
-                if description
-                else []
+            description, achievement_texts = _split_description_and_achievements(
+                [line.text for line in lines if len(line.text) > 8]
             )
+            if not description and not achievement_texts:
+                return []
+            return [
+                ExperienceProposal(
+                    description=_field(description, description, "experience", 0.42, True),
+                    achievements=[
+                        _field(text, text, "experience", 0.56, True) for text in achievement_texts
+                    ],
+                )
+            ]
         for order, (date_idx, date_range) in enumerate(date_positions):
             prev_date_idx = date_positions[order - 1][0] if order > 0 else -1
             next_date_idx = (
@@ -724,11 +725,9 @@ class ExperienceBlockParser:
                 company = company_after.text
                 description_start = after.index(company_after) + 1
 
-            description_lines = [
-                _strip_bullet(line.text)
-                for line in after[description_start:]
-                if _is_description_line(line.text)
-            ]
+            description, achievement_texts = _split_description_and_achievements(
+                [line.text for line in after[description_start:] if _is_description_line(line.text)]
+            )
             confidence = 0.78 if (role or company) else 0.55
             role_evidence = header.text if header else None
             company_evidence = company_after.text if company_after is not None else role_evidence
@@ -757,16 +756,14 @@ class ExperienceBlockParser:
                         date_range.is_current,
                     ),
                     description=_field(
-                        " ".join(description_lines) or None,
-                        "\n".join(description_lines) or None,
+                        description,
+                        description,
                         "experience",
-                        0.72 if description_lines else 0,
+                        0.72 if description else 0,
                         True,
                     ),
                     achievements=[
-                        _field(line, line, "experience", 0.68, True)
-                        for line in description_lines
-                        if _looks_like_achievement(line)
+                        _field(text, text, "experience", 0.68, True) for text in achievement_texts
                     ],
                 )
             )
@@ -1094,42 +1091,41 @@ def _is_description_line(text: str) -> bool:
     return not _is_block_header_candidate(stripped) or stripped.startswith(("•", "-"))
 
 
-def _looks_like_achievement(text: str) -> bool:
-    stripped = text.strip()
-    if len(stripped) < 12:
-        return False
-    normalized = _normalise(stripped)
-    action_verbs = (
-        "anime",
-        "automatise",
-        "concu",
-        "cree",
-        "deploye",
-        "developpe",
-        "encadre",
-        "genere",
-        "industrialise",
-        "livre",
-        "migre",
-        "migration",
-        "optimise",
-        "pilote",
-        "reduit",
-        "reduction",
-        "refondu",
-        "built",
-        "delivered",
-        "improved",
-        "reduced",
-        "shipped",
-    )
-    return stripped.startswith(("•", "-")) or any(
-        re.search(rf"\b{verb}\b", normalized) for verb in action_verbs
-    )
+def _is_bullet_line(text: str) -> bool:
+    return bool(_BULLET_PREFIX_RE.match(text)) and bool(_strip_bullet(text))
 
 
 def _strip_bullet(text: str) -> str:
-    return re.sub(r"^\s*(?:[•\\-]+)\s*", "", text).strip()
+    return _BULLET_PREFIX_RE.sub("", text, count=1).strip()
+
+
+def _split_description_and_achievements(
+    raw_lines: list[str],
+) -> tuple[str | None, list[str]]:
+    """Split an experience body into a preamble and one achievement per bullet.
+
+    When the block contains typographic bullets, the lines before the first
+    bullet become the description and each bulleted line becomes an achievement
+    (a non-bulleted line after a bullet is folded into the previous achievement,
+    handling wrapped lines). When no bullet glyph survives extraction (e.g. Word
+    auto-numbered lists), every line becomes its own achievement and the
+    description stays empty, since a preamble cannot be told apart reliably.
+    """
+    lines = [line for line in raw_lines if line.strip()]
+    if not lines:
+        return None, []
+    bullet_flags = [_is_bullet_line(line) for line in lines]
+    if any(bullet_flags):
+        first_bullet = bullet_flags.index(True)
+        description = " ".join(line.strip() for line in lines[:first_bullet]).strip() or None
+        achievements: list[str] = []
+        for line, is_bullet in zip(lines[first_bullet:], bullet_flags[first_bullet:], strict=True):
+            if is_bullet:
+                achievements.append(_strip_bullet(line))
+            elif achievements:
+                achievements[-1] = f"{achievements[-1]} {line.strip()}".strip()
+        return description, [text for text in achievements if text]
+    return None, [text for line in lines if (text := _strip_bullet(line))]
 
 
 def _is_year_only(text: str) -> bool:

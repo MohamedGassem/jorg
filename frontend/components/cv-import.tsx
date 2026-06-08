@@ -233,7 +233,12 @@ export function CvImport({
       setSelectedExperiences(
         new Set(
           Object.entries(parsedExperienceDrafts)
-            .filter(([, draft]) => draft.role || draft.description)
+            .filter(
+              ([, draft]) =>
+                draft.role ||
+                draft.description ||
+                draft.achievements.length > 0,
+            )
             .map(([index]) => Number(index)),
         ),
       );
