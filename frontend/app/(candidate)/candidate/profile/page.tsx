@@ -3,6 +3,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,7 +82,7 @@ function ProfileHero({
   return (
     <div className="rounded-xl border bg-card p-6 shadow-sm">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4">
           <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border bg-muted">
             {profile.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -96,8 +97,22 @@ function ProfileHero({
               </span>
             )}
           </div>
-          <div>
-            <h1 className="font-heading text-2xl font-semibold">{fullName}</h1>
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-start gap-2">
+              <h1 className="min-w-0 break-words font-heading text-2xl font-semibold leading-tight">
+                {fullName}
+              </h1>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onEdit}
+                aria-label="Modifier l'identité"
+                title="Modifier l'identité"
+                className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            </div>
             {profile.title && (
               <p className="text-sm text-muted-foreground">{profile.title}</p>
             )}
@@ -114,19 +129,22 @@ function ProfileHero({
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex min-w-0 flex-wrap gap-2 sm:justify-end">
           <Button
             variant="outline"
             size="sm"
+            className="max-w-full whitespace-normal"
             onClick={() => setGenerateOpen(true)}
           >
             Générer un dossier depuis mon profil
           </Button>
-          <Button variant="outline" size="sm" onClick={loadPreview}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="max-w-full whitespace-normal"
+            onClick={loadPreview}
+          >
             Voir ce qu&apos;un recruteur verra
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onEdit}>
-            Modifier l&apos;identité
           </Button>
         </div>
       </div>
@@ -353,7 +371,7 @@ function ProfileTabs() {
   return (
     <div className="space-y-6">
       {/* Sticky tab bar */}
-      <div className="sticky top-0 z-10 -mx-8 bg-background px-8">
+      <div className="sticky top-0 z-10 -mx-5 bg-background px-5 md:-mx-6 md:px-6 xl:-mx-8 xl:px-8">
         <TabBar tabs={[...TABS]} activeTab={activeTab} onChange={setTab} />
       </div>
 

@@ -356,7 +356,7 @@ export default function CandidateDashboardPage() {
             <div key={i} className="h-28 rounded-lg bg-muted" />
           ))}
         </div>
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(720px,1fr)_360px] 2xl:grid-cols-[minmax(900px,1fr)_380px]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
           <div className="h-[520px] rounded-lg bg-muted" />
           <div className="h-[520px] rounded-lg bg-muted" />
         </div>
@@ -494,7 +494,7 @@ export default function CandidateDashboardPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(720px,1fr)_360px] 2xl:grid-cols-[minmax(900px,1fr)_380px]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
         <main className="min-w-0 space-y-5">
           <section className="rounded-lg border border-accent-amber-border bg-accent-amber-soft p-5 2xl:p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
