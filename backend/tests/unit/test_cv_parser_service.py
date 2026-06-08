@@ -75,7 +75,7 @@ def test_extract_text_docx():
     assert "Jean Dupont" in extract_text("cv.docx", _docx_bytes("Jean Dupont\nPython"))
 
 
-def test_extract_text_pdf_uses_pymupdf(monkeypatch: pytest.MonkeyPatch):
+def test_extract_text_pdf_uses_pymupdf(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "services.cv_parser_service._extract_pdf_layout",
         lambda data: "PDF text Python",
@@ -265,13 +265,15 @@ def test_skill_category_lines_are_split_without_generic_prefixes():
     assert {"Python", "Machine Learning", "Deep Learning", "scikit-learn", "FastAPI"} <= labels
 
 
-def test_cv_content_not_logged(caplog: pytest.LogCaptureFixture):
+def test_cv_content_not_logged(caplog: pytest.LogCaptureFixture) -> None:
     secret_text = "Jean Dupont secret CV content"
     score_text_quality(secret_text)
     assert secret_text not in caplog.text
 
 
-async def test_missing_proposal_table_becomes_service_error(monkeypatch: pytest.MonkeyPatch):
+async def test_missing_proposal_table_becomes_service_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class FakeDb:
         def __init__(self) -> None:
             self.add = Mock()

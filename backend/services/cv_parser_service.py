@@ -392,12 +392,11 @@ def extract_text_with_metadata(
 
     try:
         text = selected.extract(data)
+        fast_error: Exception | None = None
     except Exception as exc:
         warnings.append("L'extraction rapide a échoué.")
         text = ""
         fast_error = exc
-    else:
-        fast_error = None
 
     quality = score_text_quality(text)
     if quality.score < 45 and fallback_parser is not None and fallback_parser.supports(filename):
@@ -423,7 +422,7 @@ def extract_text_with_metadata(
 
 
 def _extract_pdf_layout(data: bytes) -> str:
-    import fitz
+    import fitz  # type: ignore[import-untyped]
 
     document = fitz.open(stream=data, filetype="pdf")
     pages: list[str] = []
@@ -676,8 +675,11 @@ class SectionDetector:
 
 class ExperienceBlockParser:
     def parse(self, lines: list[DocumentLine]) -> list[ExperienceProposal]:
-        date_positions = [(idx, _parse_date_range_at(lines, idx)) for idx in range(len(lines))]
-        date_positions = [(idx, date_range) for idx, date_range in date_positions if date_range]
+        date_positions: list[tuple[int, DateRange]] = []
+        for idx in range(len(lines)):
+            date_range = _parse_date_range_at(lines, idx)
+            if date_range is not None:
+                date_positions.append((idx, date_range))
         experiences: list[ExperienceProposal] = []
         if not date_positions:
             description = " ".join(_strip_bullet(line.text) for line in lines if len(line.text) > 8)
@@ -761,8 +763,11 @@ class ExperienceBlockParser:
 
 class EducationBlockParser:
     def parse(self, lines: list[DocumentLine]) -> list[EducationProposal]:
-        date_positions = [(idx, _parse_date_range_at(lines, idx)) for idx in range(len(lines))]
-        date_positions = [(idx, date_range) for idx, date_range in date_positions if date_range]
+        date_positions: list[tuple[int, DateRange]] = []
+        for idx in range(len(lines)):
+            date_range = _parse_date_range_at(lines, idx)
+            if date_range is not None:
+                date_positions.append((idx, date_range))
         education: list[EducationProposal] = []
         used: set[int] = set()
         for date_idx, date_range in date_positions:
