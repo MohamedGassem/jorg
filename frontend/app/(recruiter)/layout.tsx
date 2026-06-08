@@ -2,10 +2,10 @@ import { NavSidebar } from "@/components/nav-sidebar";
 
 const recruiterNav = [
   { href: "/recruiter/dashboard", label: "Accueil" },
-  { href: "/recruiter/candidates", label: "Candidats autorisés" },
+  { href: "/recruiter/candidates", label: "Candidats" },
   { href: "/recruiter/opportunities", label: "Missions" },
   { href: "/recruiter/documents", label: "Dossiers & modèles" },
-  { href: "/recruiter/settings", label: "Équipe & organisation" },
+  { href: "/recruiter/settings", label: "Organisation" },
 ];
 
 export default function RecruiterLayout({
@@ -20,7 +20,10 @@ export default function RecruiterLayout({
         title="Espace recruteur"
         homeHref="/recruiter/dashboard"
       />
-      <main className="flex-1 overflow-auto p-8" id="main-content">
+      <main
+        className="min-w-0 flex-1 overflow-auto p-5 md:p-6 xl:p-8"
+        id="main-content"
+      >
         {children}
       </main>
     </div>

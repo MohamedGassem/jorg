@@ -2,8 +2,8 @@ import { NavSidebar } from "@/components/nav-sidebar";
 
 const candidateNav = [
   { href: "/candidate/dashboard", label: "Accueil" },
-  { href: "/candidate/profile", label: "Mon dossier" },
-  { href: "/candidate/access", label: "Qui a accès" },
+  { href: "/candidate/profile", label: "Mon profil" },
+  { href: "/candidate/access", label: "Accès" },
   { href: "/candidate/settings", label: "Compte & données" },
 ];
 
