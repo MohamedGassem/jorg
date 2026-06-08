@@ -192,6 +192,7 @@ class ExperienceProposal(BaseModel):
     start_date: ExtractedField = Field(default_factory=ExtractedField)
     end_date: ExtractedField = Field(default_factory=ExtractedField)
     description: ExtractedField = Field(default_factory=ExtractedField)
+    achievements: list[ExtractedField] = []
 
 
 class EducationProposal(BaseModel):
@@ -682,11 +683,17 @@ class ExperienceBlockParser:
                 date_positions.append((idx, date_range))
         experiences: list[ExperienceProposal] = []
         if not date_positions:
-            description = " ".join(_strip_bullet(line.text) for line in lines if len(line.text) > 8)
+            description_lines = [_strip_bullet(line.text) for line in lines if len(line.text) > 8]
+            description = " ".join(description_lines)
             return (
                 [
                     ExperienceProposal(
-                        description=_field(description, description, "experience", 0.42, True)
+                        description=_field(description, description, "experience", 0.42, True),
+                        achievements=[
+                            _field(line, line, "experience", 0.56, True)
+                            for line in description_lines
+                            if _looks_like_achievement(line)
+                        ],
                     )
                 ]
                 if description
@@ -756,6 +763,11 @@ class ExperienceBlockParser:
                         0.72 if description_lines else 0,
                         True,
                     ),
+                    achievements=[
+                        _field(line, line, "experience", 0.68, True)
+                        for line in description_lines
+                        if _looks_like_achievement(line)
+                    ],
                 )
             )
         return experiences
@@ -1080,6 +1092,40 @@ def _is_description_line(text: str) -> bool:
     if _normalise(stripped) in {"lyon fr", "angers", "nancy", "le creusot", "sarreguemines"}:
         return False
     return not _is_block_header_candidate(stripped) or stripped.startswith(("•", "-"))
+
+
+def _looks_like_achievement(text: str) -> bool:
+    stripped = text.strip()
+    if len(stripped) < 12:
+        return False
+    normalized = _normalise(stripped)
+    action_verbs = (
+        "anime",
+        "automatise",
+        "concu",
+        "cree",
+        "deploye",
+        "developpe",
+        "encadre",
+        "genere",
+        "industrialise",
+        "livre",
+        "migre",
+        "migration",
+        "optimise",
+        "pilote",
+        "reduit",
+        "reduction",
+        "refondu",
+        "built",
+        "delivered",
+        "improved",
+        "reduced",
+        "shipped",
+    )
+    return stripped.startswith(("•", "-")) or any(
+        re.search(rf"\b{verb}\b", normalized) for verb in action_verbs
+    )
 
 
 def _strip_bullet(text: str) -> str:
