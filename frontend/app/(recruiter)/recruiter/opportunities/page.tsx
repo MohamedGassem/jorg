@@ -67,9 +67,9 @@ export default function OpportunitiesPage() {
   return (
     <div className="max-w-3xl space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Opportunités</h1>
+        <h1 className="text-2xl font-bold">Missions</h1>
         <Button onClick={() => setShowForm((v) => !v)}>
-          {showForm ? "Annuler" : "Nouvelle opportunité"}
+          {showForm ? "Annuler" : "Nouvelle mission"}
         </Button>
       </div>
 
@@ -109,7 +109,15 @@ export default function OpportunitiesPage() {
       {!showForm && <ErrorAlert error={orgError ?? error} />}
 
       {opportunities.length === 0 ? (
-        <EmptyState message="Aucune opportunité. Créez-en une ci-dessus." />
+        <EmptyState
+          message="Aucune mission ouverte."
+          description="Créez une mission pour regrouper des candidats autorisés et générer les dossiers adaptés au besoin client."
+          action={
+            <Button size="sm" onClick={() => setShowForm(true)}>
+              Créer une mission
+            </Button>
+          }
+        />
       ) : (
         <ul className="space-y-3" role="list">
           {opportunities.map((opp) => (
@@ -133,7 +141,7 @@ export default function OpportunitiesPage() {
                   )}
                   <Link href={`/recruiter/opportunities/${opp.id}`}>
                     <Button size="sm" variant="outline">
-                      Voir la shortlist
+                      Voir les candidats associes
                     </Button>
                   </Link>
                 </CardContent>

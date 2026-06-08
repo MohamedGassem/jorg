@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { TabBar } from "@/components/ui/TabBar";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
@@ -19,6 +17,27 @@ import type {
 } from "@/types/api";
 
 type DocTab = "dossiers" | "templates";
+
+const MODEL_META: Record<
+  string,
+  { recommendedFor: string; value: string; badge: string }
+> = {
+  compact_esn: {
+    recommendedFor: "Premier envoi client",
+    value: "Format court pour qualifier rapidement un profil.",
+    badge: "Compact",
+  },
+  dossier_technique: {
+    recommendedFor: "Validation technique",
+    value: "Met en avant missions, compétences et environnement technique.",
+    badge: "Détaillé",
+  },
+  profil_premium: {
+    recommendedFor: "Profil senior ou rare",
+    value: "Présentation plus soignée pour valoriser un profil clé.",
+    badge: "Premium",
+  },
+};
 
 function DocumentCard({
   doc,
@@ -44,7 +63,7 @@ function DocumentCard({
             </p>
             {doc.template_name && (
               <p className="mt-1 text-xs text-muted-foreground">
-                Template : {doc.template_name}
+                Modèle de dossier : {doc.template_name}
               </p>
             )}
           </div>
@@ -55,10 +74,61 @@ function DocumentCard({
       </CardHeader>
       <CardContent>
         <Button size="sm" variant="outline" onClick={onDownload}>
-          Telecharger
+          Télécharger
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+function DocumentModelCard({
+  template,
+  onPreview,
+}: {
+  template: BuiltinTemplate;
+  onPreview: () => void;
+}) {
+  const meta = MODEL_META[template.key] ?? {
+    recommendedFor: "Génération de dossier",
+    value: template.description,
+    badge: "Jorg",
+  };
+
+  return (
+    <li className="rounded-lg border border-border bg-surface p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-heading text-base font-semibold">
+              {template.name}
+            </h3>
+            <Badge variant="primary-soft">{meta.badge}</Badge>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {template.description}
+          </p>
+        </div>
+      </div>
+      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+        <div>
+          <dt className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Usage recommandé
+          </dt>
+          <dd className="mt-1 text-foreground">{meta.recommendedFor}</dd>
+        </div>
+        <div>
+          <dt className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Apport dossier
+          </dt>
+          <dd className="mt-1 text-foreground">{meta.value}</dd>
+        </div>
+      </dl>
+      <div className="mt-4">
+        <Button type="button" size="sm" variant="outline" onClick={onPreview}>
+          Aperçu du modèle
+        </Button>
+      </div>
+    </li>
   );
 }
 
@@ -116,28 +186,47 @@ export default function DocumentsPage() {
   if (!orgId)
     return (
       <p className="text-muted-foreground">
-        Associez votre compte a une organisation.
+        Associez votre compte à une organisation.
       </p>
     );
 
   const tabs: { key: DocTab; label: string }[] = [
-    { key: "dossiers", label: "Dossiers generes" },
-    { key: "templates", label: "Templates" },
+    { key: "dossiers", label: "Dossiers générés" },
+    { key: "templates", label: "Modèles de dossier" },
   ];
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">Dossiers</h1>
+    <div className="max-w-5xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Dossiers & modèles</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Retrouvez les documents générés et les modèles Jorg disponibles pour
+          produire des dossiers candidats.
+        </p>
+      </div>
       <ErrorAlert error={orgError ?? fetchError} />
 
       <TabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === "dossiers" && (
-        <>
+        <section>
           {docs.length === 0 ? (
-            <EmptyState message="Aucun dossier genere par votre organisation." />
+            <EmptyState
+              message="Aucun dossier généré pour le moment."
+              description="Les dossiers créés depuis les candidats autorisés apparaîtront ici avec le modèle utilisé et le format de fichier."
+              action={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActiveTab("templates")}
+                >
+                  Voir les modèles disponibles
+                </Button>
+              }
+            />
           ) : (
-            <ul className="space-y-3" role="list">
+            <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2" role="list">
               {docs.map((doc) => (
                 <li key={doc.id}>
                   <DocumentCard
@@ -155,103 +244,91 @@ export default function DocumentsPage() {
               ))}
             </ul>
           )}
-        </>
+        </section>
       )}
 
       {activeTab === "templates" && (
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Uploader un nouveau template
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="rounded-md border border-dashed border-border/70 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-                Les templates personnalises ne sont pas disponibles pendant
-                l&apos;alpha. Utilisez les templates Jorg integres ci-dessous.
-              </p>
-              <div className="space-y-2">
-                <Label htmlFor="tmpl-name">Nom du template</Label>
-                <Input id="tmpl-name" disabled />
+          <section className="rounded-lg border border-border bg-surface p-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h2 className="font-heading text-base font-semibold">
+                  Modèles Jorg intégrés
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Trois formats prêts pour l&apos;alpha : compact, technique et
+                  premium.
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="tmpl-file">Fichier Word (.docx)</Label>
-                <Input id="tmpl-file" type="file" accept=".docx" disabled />
-              </div>
-              <Button type="button" disabled>
-                Indisponible en alpha
-              </Button>
-            </CardContent>
-          </Card>
+              <Badge variant="primary-soft">Disponible alpha</Badge>
+            </div>
 
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Templates Jorg integres
-            </p>
             {builtinTemplates.length === 0 ? (
-              <EmptyState message="Aucun template Jorg disponible." />
+              <div className="mt-4">
+                <EmptyState
+                  message="Aucun modèle Jorg disponible."
+                  description="Les modèles intégrés seront affichés ici dès qu'ils seront chargés."
+                />
+              </div>
             ) : (
-              <ul className="space-y-2" role="list">
-                {builtinTemplates.map((t) => (
-                  <li
-                    key={t.key}
-                    className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm"
-                  >
-                    <div className="space-y-1">
-                      <span className="font-medium">{t.name}</span>
-                      <p className="text-xs text-muted-foreground">
-                        {t.description}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        download(
-                          `/templates/builtin/${t.key}/preview`,
-                          `apercu-${t.key}.docx`,
-                          `builtin-${t.key}`,
-                        )
-                      }
-                    >
-                      Apercu
-                    </Button>
-                  </li>
+              <ul className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                {builtinTemplates.map((template) => (
+                  <DocumentModelCard
+                    key={template.key}
+                    template={template}
+                    onPreview={() =>
+                      download(
+                        `/templates/builtin/${template.key}/preview`,
+                        `apercu-${template.key}.docx`,
+                        `builtin-${template.key}`,
+                      )
+                    }
+                  />
                 ))}
               </ul>
             )}
-          </div>
+          </section>
 
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              {templates.length} template{templates.length !== 1 ? "s" : ""}{" "}
-              personnalise{templates.length !== 1 ? "s" : ""}
-            </p>
-            {templates.length === 0 ? (
-              <EmptyState message="Aucun template personnalise." />
-            ) : (
-              <ul className="space-y-2" role="list">
-                {templates.map((t) => (
+          <section className="rounded-lg border border-dashed border-border bg-muted/20 p-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h2 className="font-heading text-base font-semibold">
+                  Modèles personnalisés
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  L&apos;import de modèles personnalisés est volontairement
+                  fermé pendant l&apos;alpha pour garantir la qualité des
+                  dossiers générés.
+                </p>
+              </div>
+              <Badge variant="warning">Post-alpha</Badge>
+            </div>
+
+            {templates.length > 0 && (
+              <ul className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+                {templates.map((template) => (
                   <li
-                    key={t.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm"
+                    key={template.id}
+                    className="rounded-lg border border-border bg-background p-3 text-sm"
                   >
-                    <div className="space-y-1">
-                      <span className="font-medium">{t.name}</span>
-                      <p className="text-xs text-muted-foreground">
-                        {t.detected_placeholders.length} placeholder(s)
-                      </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium">{template.name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {template.detected_placeholders.length} placeholder(s)
+                        </p>
+                      </div>
+                      <Badge
+                        variant={template.is_valid ? "success" : "warning"}
+                      >
+                        {template.is_valid ? "Valide" : "À vérifier"}
+                      </Badge>
                     </div>
-                    <Badge variant={t.is_valid ? "default" : "secondary"}>
-                      {t.is_valid ? "Valide" : "Non compatible"}
-                    </Badge>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
+          </section>
         </div>
       )}
     </div>

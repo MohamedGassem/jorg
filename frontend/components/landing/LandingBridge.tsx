@@ -4,7 +4,7 @@ export function LandingBridge() {
     <section className="border-y border-border bg-muted/30">
       <div className="mx-auto grid max-w-5xl grid-cols-1 sm:grid-cols-2">
         <div className="border-b border-border px-8 py-12 sm:border-b-0 sm:border-r">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-amber-600">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary">
             Pour les candidats
           </p>
           <p className="text-base text-foreground">

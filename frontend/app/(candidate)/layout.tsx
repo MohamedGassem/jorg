@@ -1,11 +1,10 @@
-// frontend/app/(candidate)/layout.tsx
 import { NavSidebar } from "@/components/nav-sidebar";
 
 const candidateNav = [
-  { href: "/candidate/dashboard", label: "Tableau de bord" },
+  { href: "/candidate/dashboard", label: "Accueil" },
   { href: "/candidate/profile", label: "Mon dossier" },
-  { href: "/candidate/access", label: "Accès" },
-  { href: "/candidate/settings", label: "Paramètres" },
+  { href: "/candidate/access", label: "Qui a accès" },
+  { href: "/candidate/settings", label: "Compte & données" },
 ];
 
 export default function CandidateLayout({

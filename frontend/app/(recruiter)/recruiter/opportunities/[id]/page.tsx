@@ -128,7 +128,7 @@ export default function OpportunityDetailPage() {
     <div className="max-w-3xl space-y-6">
       <Breadcrumb
         items={[
-          { label: "Opportunités", href: "/recruiter/opportunities" },
+          { label: "Missions", href: "/recruiter/opportunities" },
           { label: opp.title },
         ]}
       />
@@ -213,13 +213,13 @@ export default function OpportunityDetailPage() {
           <CardContent>
             <form onSubmit={handleBulkGenerate} className="space-y-4">
               <div className="space-y-2">
-                <Label>Template</Label>
+                <Label>Modele de dossier</Label>
                 <Select
                   value={genTemplateId}
                   onValueChange={(v) => setGenTemplateId(v ?? "")}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choisir un template…" />
+                    <SelectValue placeholder="Choisir un modèle de dossier..." />
                   </SelectTrigger>
                   <SelectContent>
                     {templates.map((t) => (
@@ -261,9 +261,7 @@ export default function OpportunityDetailPage() {
                     {r.candidate_id.slice(0, 8)}…{" "}
                     <span
                       className={
-                        r.status === "ok"
-                          ? "text-green-600"
-                          : "text-destructive"
+                        r.status === "ok" ? "text-success" : "text-destructive"
                       }
                     >
                       {r.status === "ok" ? "✓ Généré" : `✗ ${r.error}`}

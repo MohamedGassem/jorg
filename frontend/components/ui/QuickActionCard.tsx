@@ -19,10 +19,10 @@ export function QuickActionCard({
   return (
     <Link
       href={href}
-      className="relative cursor-pointer rounded-xl border border-border bg-card p-4 transition-colors hover:bg-accent"
+      className="relative cursor-pointer rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
     >
       {badge !== undefined && badge > 0 && (
-        <div className="absolute right-3 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white">
+        <div className="absolute right-3 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-warning text-xs font-bold text-warning-foreground">
           {badge}
         </div>
       )}

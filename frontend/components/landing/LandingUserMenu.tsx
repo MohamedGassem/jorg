@@ -1,4 +1,3 @@
-// frontend/components/landing/LandingUserMenu.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -8,9 +7,7 @@ import { logout as authLogout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 interface LandingUserMenuProps {
-  /** Where the dashboard link points, based on the user's role. */
   dashboardHref: string;
-  /** Used to derive the avatar initial. */
   email: string;
 }
 
@@ -24,14 +21,17 @@ export function LandingUserMenu({
 
   useEffect(() => {
     if (!open) return;
+
     function handlePointerDown(event: MouseEvent) {
       if (!containerRef.current?.contains(event.target as Node)) {
         setOpen(false);
       }
     }
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
     }
+
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -55,7 +55,7 @@ export function LandingUserMenu({
         >
           {initial || <User className="size-4" />}
         </span>
-        <span className="hidden sm:inline">Dashboard</span>
+        <span className="hidden sm:inline">Accueil</span>
         <ChevronDown
           className={cn(
             "size-4 text-muted-foreground transition-transform",
@@ -68,7 +68,7 @@ export function LandingUserMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-border/60 bg-popover p-1 shadow-lg"
+          className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-lg border border-border/60 bg-popover p-1 shadow-lg"
         >
           <div className="border-b border-border/40 px-3 py-2">
             <p className="truncate text-xs text-muted-foreground">{email}</p>
@@ -80,7 +80,7 @@ export function LandingUserMenu({
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
           >
             <LayoutDashboard className="size-4 text-muted-foreground" />
-            Tableau de bord
+            Accueil
           </Link>
           <button
             type="button"

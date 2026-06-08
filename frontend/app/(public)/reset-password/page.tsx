@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { JorgWordmark } from "@/components/ui/JorgWordmark";
 import { api, ApiError } from "@/lib/api";
 
 function ResetPasswordForm() {
@@ -144,12 +145,7 @@ export default function ResetPasswordPage() {
     <div className="min-h-dvh flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground shadow-lg shadow-primary/20">
-            J
-          </div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
-            Jorg
-          </h1>
+          <JorgWordmark />
         </div>
 
         <Card>

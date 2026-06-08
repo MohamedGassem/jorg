@@ -1,12 +1,11 @@
-// frontend/app/(recruiter)/layout.tsx
 import { NavSidebar } from "@/components/nav-sidebar";
 
 const recruiterNav = [
-  { href: "/recruiter/dashboard", label: "Tableau de bord" },
-  { href: "/recruiter/candidates", label: "Candidats" },
-  { href: "/recruiter/opportunities", label: "Opportunités" },
-  { href: "/recruiter/documents", label: "Dossiers" },
-  { href: "/recruiter/settings", label: "Configuration" },
+  { href: "/recruiter/dashboard", label: "Accueil" },
+  { href: "/recruiter/candidates", label: "Candidats autorisés" },
+  { href: "/recruiter/opportunities", label: "Missions" },
+  { href: "/recruiter/documents", label: "Dossiers & modèles" },
+  { href: "/recruiter/settings", label: "Équipe & organisation" },
 ];
 
 export default function RecruiterLayout({

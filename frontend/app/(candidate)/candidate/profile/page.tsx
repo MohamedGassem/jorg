@@ -121,7 +121,7 @@ function ProfileHero({
             size="sm"
             onClick={() => setGenerateOpen(true)}
           >
-            Generer un dossier
+            Générer un dossier
           </Button>
           <Button variant="outline" size="sm" onClick={loadPreview}>
             Aperçu recruteur

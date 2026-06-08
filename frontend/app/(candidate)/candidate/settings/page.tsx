@@ -104,7 +104,7 @@ function InformationsPersonnellesTab() {
             />
           </div>
           {message && !isError && (
-            <p className="text-sm text-green-600">{message}</p>
+            <p className="text-sm text-success">{message}</p>
           )}
           <ErrorAlert error={isError ? message : null} />
           <Button type="submit" disabled={saving}>

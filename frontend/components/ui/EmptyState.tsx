@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { Inbox } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 interface EmptyStateProps {
@@ -13,27 +12,31 @@ interface EmptyStateProps {
 export function EmptyState({
   message,
   description,
-  icon: Icon = Inbox,
+  icon: Icon,
   className,
   action,
 }: EmptyStateProps) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/60 bg-muted/20 px-6 py-12 text-center",
+        "flex flex-col items-start justify-center gap-3 rounded-lg border border-dashed border-border/70 bg-muted/20 px-5 py-6 text-left",
         className,
       )}
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
-        <Icon className="size-5 text-muted-foreground/60" />
-      </div>
+      {Icon && (
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-soft">
+          <Icon className="size-4 text-primary" />
+        </div>
+      )}
       <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground/80">{message}</p>
+        <p className="text-sm font-medium text-foreground">{message}</p>
         {description && (
-          <p className="text-xs text-muted-foreground">{description}</p>
+          <p className="max-w-prose text-sm text-muted-foreground">
+            {description}
+          </p>
         )}
       </div>
-      {action && <div className="mt-1">{action}</div>}
+      {action && <div>{action}</div>}
     </div>
   );
 }

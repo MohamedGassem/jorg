@@ -4,14 +4,24 @@ interface StatCardProps {
   label: string;
   value: number | string;
   subtitle?: string;
-  color?: "primary" | "amber" | "emerald" | "neutral";
+  color?:
+    | "primary"
+    | "warning"
+    | "success"
+    | "danger"
+    | "neutral"
+    | "amber"
+    | "emerald";
 }
 
 const COLOR_MAP: Record<NonNullable<StatCardProps["color"]>, string> = {
   primary: "text-primary",
-  amber: "text-amber-500",
-  emerald: "text-emerald-500",
+  warning: "text-warning",
+  success: "text-success",
+  danger: "text-danger",
   neutral: "text-foreground",
+  amber: "text-warning",
+  emerald: "text-success",
 };
 
 export function StatCard({

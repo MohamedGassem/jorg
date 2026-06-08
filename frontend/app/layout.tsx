@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { DM_Sans, Space_Grotesk } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-// Design system: Space Grotesk (headings) + DM Sans (body)
 const dmSans = DM_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
@@ -16,8 +16,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Jorg — Skill Profile Platform",
-  description: "Generate consulting skill profiles in your clients' formats.",
+  title: "Jorg - Dossiers candidats contrôlés",
+  description:
+    "Structurez votre profil, contrôlez les accès et générez des dossiers candidats.",
 };
 
 export default function RootLayout({
@@ -28,9 +29,12 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
+      suppressHydrationWarning
       className={`${dmSans.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

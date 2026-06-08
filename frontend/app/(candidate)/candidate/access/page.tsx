@@ -70,7 +70,7 @@ function DocCard({
         <div className="space-y-2 border-t px-4 py-3">
           {doc.template_name && (
             <p className="text-xs text-muted-foreground">
-              Template : {doc.template_name}
+              Modele de dossier : {doc.template_name}
             </p>
           )}
           <Button size="sm" variant="outline" onClick={onDownload}>
@@ -170,21 +170,21 @@ export default function AccessPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">Accès</h1>
+      <h1 className="text-2xl font-bold">Qui a accès à votre dossier</h1>
       <ErrorAlert error={invError ?? orgsError ?? actionError} />
 
       {/* Pending invitations — shown prominently */}
       {pendingInvitations.length > 0 && (
         <section>
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-600">
-            <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-warning">
+            <span className="inline-block h-2 w-2 rounded-full bg-warning" />
             {pendingInvitations.length} invitation
             {pendingInvitations.length > 1 ? "s" : ""} en attente
           </h2>
           <ul className="space-y-3" role="list">
             {pendingInvitations.map((inv) => (
               <li key={inv.id}>
-                <Card className="border-amber-200 bg-amber-50/30">
+                <Card className="border-warning/30 bg-warning/10">
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-base">
@@ -266,7 +266,10 @@ export default function AccessPage() {
           Organisations
         </h2>
         {!orgs || orgs.length === 0 ? (
-          <EmptyState message="Aucune interaction avec une organisation pour l'instant." />
+          <EmptyState
+            message="Aucune organisation n'a accès à votre dossier."
+            description="Les recruteurs apparaîtront ici uniquement après une invitation acceptée. Vous pourrez ensuite suivre les accès, les actions et les dossiers générés."
+          />
         ) : (
           <ul className="space-y-4" role="list">
             {orgs.map((org) => {
@@ -344,9 +347,11 @@ export default function AccessPage() {
                           !docsLoading[org.organization_id] && (
                             <div className="mt-2">
                               {docs.length === 0 ? (
-                                <p className="text-xs text-muted-foreground">
-                                  Aucun dossier.
-                                </p>
+                                <EmptyState
+                                  message="Aucun dossier généré pour cette organisation."
+                                  description="Lorsqu'un recruteur générera un dossier depuis votre profil, il apparaîtra ici avec son modèle et sa date."
+                                  className="px-4 py-4"
+                                />
                               ) : (
                                 <div className="space-y-2">
                                   {docs.map((doc) => (

@@ -224,7 +224,7 @@ export default function RecruiterSettingsPage() {
                     className="gap-1.5"
                   >
                     {codeCopied ? (
-                      <Check className="size-3.5 text-emerald-500" />
+                      <Check className="size-3.5 text-success" />
                     ) : (
                       <Copy className="size-3.5" />
                     )}

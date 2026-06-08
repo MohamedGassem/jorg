@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,17 +10,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useDownload } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 import type { BuiltinTemplate, GeneratedDocument, Template } from "@/types/api";
 
 interface Props {
@@ -31,6 +25,12 @@ interface Props {
   templates: Template[];
   builtinTemplates: BuiltinTemplate[];
 }
+
+const MODEL_BADGES: Record<string, string> = {
+  compact_esn: "Compact",
+  dossier_technique: "Technique",
+  profil_premium: "Premium",
+};
 
 export function GenerateDossierDialog({
   open,
@@ -50,9 +50,6 @@ export function GenerateDossierDialog({
 
   const validTemplates = templates.filter((t) => t.is_valid);
   const hasTemplates = builtinTemplates.length > 0 || validTemplates.length > 0;
-  const selectedBuiltin = templateChoice.startsWith("system:")
-    ? builtinTemplates.find((t) => `system:${t.key}` === templateChoice)
-    : null;
 
   async function handleGenerate() {
     if (!templateChoice) return;
@@ -77,7 +74,7 @@ export function GenerateDossierDialog({
       );
       setResult(doc);
     } catch (err) {
-      setError(extractErrorMessage(err, "Erreur de generation"));
+      setError(extractErrorMessage(err, "Erreur de génération"));
     } finally {
       setGenerating(false);
     }
@@ -93,84 +90,148 @@ export function GenerateDossierDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Generer un dossier - {candidateName}</DialogTitle>
+          <DialogTitle>
+            Générer un dossier candidat - {candidateName}
+          </DialogTitle>
         </DialogHeader>
 
         {!hasTemplates ? (
           <p className="text-sm text-muted-foreground">
-            Aucun template disponible pour le moment.
+            Aucun modèle de dossier disponible pour le moment.
           </p>
         ) : (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Template</Label>
-              <Select
-                value={templateChoice}
-                onValueChange={(v) => v && setTemplateChoice(v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir un template..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {builtinTemplates.map((t) => (
-                    <SelectItem key={t.key} value={`system:${t.key}`}>
-                      Jorg - {t.name}
-                    </SelectItem>
-                  ))}
-                  {validTemplates.map((t) => (
-                    <SelectItem key={t.id} value={`org:${t.id}`}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedBuiltin && (
-                <div className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2">
-                  <p className="text-xs text-muted-foreground">
-                    {selectedBuiltin.description}
+          <div className="space-y-5">
+            <section className="space-y-3">
+              <div>
+                <p className="text-sm font-medium">Modèle de dossier</p>
+                <p className="text-sm text-muted-foreground">
+                  Sélectionnez le modèle qui correspond au niveau de détail
+                  attendu par le client.
+                </p>
+              </div>
+
+              {builtinTemplates.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Modèles Jorg
                   </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      download(
-                        `/templates/builtin/${selectedBuiltin.key}/preview`,
-                        `apercu-${selectedBuiltin.key}.docx`,
-                        `preview-${selectedBuiltin.key}`,
-                      )
-                    }
-                  >
-                    Apercu
-                  </Button>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    {builtinTemplates.map((template) => {
+                      const value = `system:${template.key}`;
+                      const selected = templateChoice === value;
+                      return (
+                        <div
+                          key={template.key}
+                          className={cn(
+                            "rounded-lg border bg-surface p-3 transition-colors",
+                            selected
+                              ? "border-primary ring-2 ring-primary/20"
+                              : "border-border",
+                          )}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setTemplateChoice(value)}
+                            className="w-full text-left"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-semibold">
+                                {template.name}
+                              </p>
+                              <Badge variant="primary-soft">
+                                {MODEL_BADGES[template.key] ?? "Jorg"}
+                              </Badge>
+                            </div>
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              {template.description}
+                            </p>
+                          </button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="mt-3"
+                            onClick={() =>
+                              download(
+                                `/templates/builtin/${template.key}/preview`,
+                                `apercu-${template.key}.docx`,
+                                `preview-${template.key}`,
+                              )
+                            }
+                          >
+                            Aperçu
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
-            </div>
 
-            <div className="space-y-2">
-              <Label>Format</Label>
-              <Select
-                value={format}
-                onValueChange={(v) => v && setFormat(v as "docx" | "pdf")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="docx">Word (.docx)</SelectItem>
-                  <SelectItem value="pdf">PDF</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              {validTemplates.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Modèles organisation
+                  </p>
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    {validTemplates.map((template) => {
+                      const value = `org:${template.id}`;
+                      const selected = templateChoice === value;
+                      return (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => setTemplateChoice(value)}
+                          className={cn(
+                            "rounded-lg border bg-surface p-3 text-left transition-colors",
+                            selected
+                              ? "border-primary ring-2 ring-primary/20"
+                              : "border-border",
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold">
+                              {template.name}
+                            </p>
+                            <Badge variant="secondary">Organisation</Badge>
+                          </div>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {template.description ??
+                              "Modèle valide fourni par votre organisation."}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-2">
+              <p className="text-sm font-medium">Format de sortie</p>
+              <div className="flex gap-2">
+                {(["docx", "pdf"] as const).map((option) => (
+                  <Button
+                    key={option}
+                    type="button"
+                    size="sm"
+                    variant={format === option ? "default" : "outline"}
+                    onClick={() => setFormat(option)}
+                  >
+                    {option === "docx" ? "Word (.docx)" : "PDF"}
+                  </Button>
+                ))}
+              </div>
+            </section>
 
             <ErrorAlert error={error} />
 
             {result ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-emerald-600">
-                  Dossier genere avec succes.
+              <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-sm font-medium text-success">
+                  Dossier généré avec succès.
                 </p>
                 <Button
                   variant="outline"
@@ -182,7 +243,7 @@ export function GenerateDossierDialog({
                     )
                   }
                 >
-                  Telecharger ({result.file_format.toUpperCase()})
+                  Télécharger ({result.file_format.toUpperCase()})
                 </Button>
                 <ErrorAlert error={downloadErrors[result.id] ?? null} />
               </div>
@@ -191,7 +252,9 @@ export function GenerateDossierDialog({
                 onClick={handleGenerate}
                 disabled={generating || !templateChoice}
               >
-                {generating ? "Generation..." : "Generer le dossier"}
+                {generating
+                  ? "Génération..."
+                  : `Générer le dossier ${format.toUpperCase()}`}
               </Button>
             )}
           </div>
