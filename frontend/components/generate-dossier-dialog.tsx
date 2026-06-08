@@ -29,7 +29,7 @@ interface Props {
 const MODEL_BADGES: Record<string, string> = {
   compact_esn: "Compact",
   dossier_technique: "Technique",
-  profil_premium: "Premium",
+  profil_premium: "Complet",
 };
 
 export function GenerateDossierDialog({

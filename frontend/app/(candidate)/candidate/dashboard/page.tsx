@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CandidateGenerateDossierDialog } from "@/components/candidate-generate-dossier-dialog";
 import { NotificationBell } from "@/components/notification-bell";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
-import { StatCard } from "@/components/ui/StatCard";
 import { api } from "@/lib/api";
 import { relativeDate } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -22,10 +22,9 @@ import type {
 type DashboardAction = {
   title: string;
   description: string;
-  href: string;
   cta: string;
-  status: string;
-  tone: "primary" | "warning" | "neutral";
+  href?: string;
+  onClick?: () => void;
 };
 
 type ChecklistItem = {
@@ -39,11 +38,51 @@ type ActivityEvent = InteractionEvent & {
   organizationName: string;
 };
 
+type ActivityGroup = {
+  key: string;
+  type: InteractionEvent["type"];
+  organizationName: string;
+  latestAt: string;
+  count: number;
+  latestEvent: ActivityEvent;
+};
+
 function isFilled(value: string | null | undefined): boolean {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function eventTitle(event: ActivityEvent): string {
+function compactActivity(events: ActivityEvent[]): ActivityGroup[] {
+  const groups = new Map<string, ActivityGroup>();
+  for (const event of events) {
+    const key = [
+      event.type,
+      event.organizationId,
+      event.metadata.template_name ?? "",
+    ].join(":");
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, {
+        key,
+        type: event.type,
+        organizationName: event.organizationName,
+        latestAt: event.occurred_at,
+        count: 1,
+        latestEvent: event,
+      });
+      continue;
+    }
+    existing.count += 1;
+    if (new Date(event.occurred_at) > new Date(existing.latestAt)) {
+      existing.latestAt = event.occurred_at;
+      existing.latestEvent = event;
+    }
+  }
+  return Array.from(groups.values()).sort(
+    (a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime(),
+  );
+}
+
+function activityTitle(group: ActivityGroup): string {
   const labels: Record<InteractionEvent["type"], string> = {
     invitation_sent: "Invitation envoyée",
     invitation_accepted: "Invitation acceptée",
@@ -53,7 +92,8 @@ function eventTitle(event: ActivityEvent): string {
     access_revoked: "Accès révoqué",
     document_generated: "Dossier généré",
   };
-  return `${labels[event.type]} - ${event.organizationName}`;
+  const count = group.count > 1 ? ` (${group.count})` : "";
+  return `${labels[group.type]}${count} - ${group.organizationName}`;
 }
 
 function recruiterName(event: InteractionEvent): string | null {
@@ -85,49 +125,50 @@ function eventDetail(event: ActivityEvent): string {
     : "Organisation liée à votre dossier.";
 }
 
-function toneClasses(tone: DashboardAction["tone"]): string {
-  if (tone === "warning") {
-    return "border-warning/45 bg-warning/10 text-warning";
+function ActionCta({
+  action,
+  variant = "outline",
+  className,
+}: {
+  action: DashboardAction;
+  variant?: "default" | "outline";
+  className?: string;
+}) {
+  const classes = cn(
+    buttonVariants({
+      variant,
+      size: variant === "default" ? "default" : "sm",
+    }),
+    className,
+  );
+
+  if (action.onClick) {
+    return (
+      <button type="button" onClick={action.onClick} className={classes}>
+        {action.cta}
+      </button>
+    );
   }
-  if (tone === "primary") {
-    return "border-primary/35 bg-primary/10 text-primary";
+
+  if (action.href) {
+    return (
+      <Link href={action.href} className={classes}>
+        {action.cta}
+      </Link>
+    );
   }
-  return "border-border bg-muted text-muted-foreground";
+
+  return null;
 }
 
 function ActionCard({ action }: { action: DashboardAction }) {
   return (
     <article className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p
-            className={cn(
-              "inline-flex rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-widest",
-              toneClasses(action.tone),
-            )}
-          >
-            {action.status}
-          </p>
-          <h3 className="mt-3 font-heading text-base font-semibold">
-            {action.title}
-          </h3>
-        </div>
-      </div>
+      <h3 className="font-heading text-base font-semibold">{action.title}</h3>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
         {action.description}
       </p>
-      <Link
-        href={action.href}
-        className={cn(
-          buttonVariants({
-            variant: "outline",
-            size: "sm",
-          }),
-          "mt-4",
-        )}
-      >
-        {action.cta}
-      </Link>
+      <ActionCta action={action} className="mt-4" />
     </article>
   );
 }
@@ -155,25 +196,24 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
 }
 
 function ProfileProgressBar({ value }: { value: number }) {
+  const progressColor =
+    value < 40 ? "bg-danger" : value < 75 ? "bg-warning" : "bg-success";
+
   return (
     <div
-      className="relative mt-4 h-2 overflow-hidden rounded-full bg-gradient-to-r from-danger via-warning to-success"
+      className="mt-4 h-2 overflow-hidden rounded-full bg-muted"
       aria-label={`Progression du profil ${value}%`}
     >
       <div
-        className="absolute inset-y-0 right-0 bg-muted/85"
-        style={{ left: `${value}%` }}
-      />
-      <div
-        className="absolute top-1/2 size-3 -translate-y-1/2 rounded-full border-2 border-background bg-foreground shadow-sm"
-        style={{ left: `calc(${value}% - 6px)` }}
+        className={cn("h-full rounded-full transition-all", progressColor)}
+        style={{ width: `${value}%` }}
       />
     </div>
   );
 }
 
-function ActivityList({ events }: { events: ActivityEvent[] }) {
-  if (events.length === 0) {
+function ActivityList({ groups }: { groups: ActivityGroup[] }) {
+  if (groups.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
         <p className="text-sm font-medium">Aucune activité récente</p>
@@ -186,19 +226,19 @@ function ActivityList({ events }: { events: ActivityEvent[] }) {
 
   return (
     <ul className="space-y-2">
-      {events.slice(0, 6).map((event, index) => (
+      {groups.slice(0, 5).map((group) => (
         <li
-          key={`${event.occurred_at}-${index}`}
+          key={group.key}
           className="flex items-start justify-between gap-3 rounded-lg border border-border/70 bg-background px-3 py-2.5"
         >
           <div>
-            <p className="text-sm font-medium">{eventTitle(event)}</p>
+            <p className="text-sm font-medium">{activityTitle(group)}</p>
             <p className="text-xs text-muted-foreground">
-              {eventDetail(event)}
+              {eventDetail(group.latestEvent)}
             </p>
           </div>
           <span className="text-xs text-muted-foreground">
-            {relativeDate(event.occurred_at)}
+            {relativeDate(group.latestAt)}
           </span>
         </li>
       ))}
@@ -213,11 +253,12 @@ export default function CandidateDashboardPage() {
   const [hasSkill, setHasSkill] = useState(false);
   const [hasExperience, setHasExperience] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
-  const [pendingInvitations, setPendingInvitations] = useState<number | null>(
-    null,
-  );
-  const [activeGrants, setActiveGrants] = useState<number | null>(null);
-  const [generatedDocs, setGeneratedDocs] = useState<number | null>(null);
+  const [pendingInvitations, setPendingInvitations] = useState<
+    Invitation[] | null
+  >(null);
+  const [organizations, setOrganizations] = useState<
+    OrganizationInteractionCard[] | null
+  >(null);
   const [recentEvents, setRecentEvents] = useState<ActivityEvent[]>([]);
 
   useEffect(() => {
@@ -243,18 +284,13 @@ export default function CandidateDashboardPage() {
       .get<OrganizationInteractionCard[]>("/candidates/me/organizations")
       .catch(() => null);
 
-    const docsPromise = api
-      .get<unknown[]>("/candidates/me/documents")
-      .catch(() => null);
-
     Promise.all([
       profilePromise,
       skillsPromise,
       experiencesPromise,
       invitationsPromise,
       orgsPromise,
-      docsPromise,
-    ]).then(([prof, skills, experiences, invitations, orgs, docs]) => {
+    ]).then(([prof, skills, experiences, invitations, orgs]) => {
       if (!mounted) return;
 
       if (prof && !prof.onboarding_completed) {
@@ -274,14 +310,12 @@ export default function CandidateDashboardPage() {
 
       if (invitations !== null) {
         setPendingInvitations(
-          invitations.filter((inv) => inv.status === "pending").length,
+          invitations.filter((inv) => inv.status === "pending"),
         );
       }
 
       if (orgs !== null) {
-        setActiveGrants(
-          orgs.filter((o) => o.current_status === "active").length,
-        );
+        setOrganizations(orgs);
         const allEvents: ActivityEvent[] = orgs
           .flatMap((o) =>
             o.events.map((event) => ({
@@ -297,10 +331,6 @@ export default function CandidateDashboardPage() {
           )
           .slice(0, 6);
         setRecentEvents(allEvents);
-      }
-
-      if (docs !== null) {
-        setGeneratedDocs(docs.length);
       }
 
       setLoading(false);
@@ -335,9 +365,6 @@ export default function CandidateDashboardPage() {
   }
 
   const firstName = profile?.first_name ?? "";
-  const pendingCount = pendingInvitations ?? 0;
-  const activeCount = activeGrants ?? 0;
-  const docsCount = generatedDocs ?? 0;
   const checklist: ChecklistItem[] = [
     {
       label: "Identité professionnelle",
@@ -376,47 +403,57 @@ export default function CandidateDashboardPage() {
     (completedChecklist / checklist.length) * 100,
   );
   const profileProgressPct = checklistPct;
+  const pendingCount = pendingInvitations?.length ?? 0;
+  const activeOrganizations = (organizations ?? []).filter(
+    (org) => org.current_status === "active",
+  );
+  const activeCount = activeOrganizations.length;
+  const activityGroups = compactActivity(recentEvents);
+  const pendingOrgNames = (pendingInvitations ?? [])
+    .map((inv) => inv.organization_name)
+    .filter(Boolean);
 
   const primaryAction: DashboardAction =
     pendingCount > 0
       ? {
-          title: "Répondre aux invitations en attente",
+          title: `${pendingCount} invitation${pendingCount > 1 ? "s" : ""} en attente`,
           description:
-            "Décidez quelles organisations peuvent consulter votre profil et générer un dossier.",
+            pendingOrgNames.length > 0
+              ? `Décidez si ${pendingOrgNames.slice(0, 2).join(", ")} peut accéder à vos données structurées candidat.`
+              : "Décidez quelles organisations peuvent accéder à vos données structurées candidat.",
           href: "/candidate/access",
           cta: "Voir les invitations",
-          status: "Action requise",
-          tone: "warning",
         }
       : profileProgressPct < 100
         ? {
             title: "Compléter votre profil structuré",
             description:
-              "Ajoutez les informations qui rendent votre dossier clair, contrôlé et exploitable.",
+              "Ajoutez ou vérifiez vos expériences, compétences et informations clés. Ces données serviront à générer vos dossiers candidat.",
             href: "/candidate/profile",
-            cta: "Continuer le profil",
-            status: "Prochaine étape",
-            tone: "primary",
+            cta: "Continuer mon profil",
           }
-        : {
-            title: "Contrôler les accès actifs",
-            description:
-              "Votre dossier est prêt. Vérifiez régulièrement qui peut y accéder et ce qui a été généré.",
-            href: "/candidate/access",
-            cta: "Gérer les accès",
-            status: "À surveiller",
-            tone: "neutral",
-          };
+        : activeCount > 0
+          ? {
+              title: "Gardez le contrôle sur vos accès",
+              description: `${activeCount} organisation${activeCount > 1 ? "s" : ""} ${activeCount > 1 ? "peuvent" : "peut"} consulter votre profil et générer des documents. Vous pouvez révoquer un accès à tout moment.`,
+              href: "/candidate/access",
+              cta: "Gérer les accès",
+            }
+          : {
+              title: "Prévisualisez votre dossier",
+              description:
+                "Votre profil est complet. Vérifiez comment vos informations peuvent être présentées dans un dossier généré.",
+              cta: "Prévisualiser mon dossier",
+              onClick: () => setModelDialogOpen(true),
+            };
 
   const secondaryActions: DashboardAction[] = [
     {
-      title: "Mettre à jour le dossier",
+      title: "Mettre à jour le profil",
       description:
-        "Gardez votre profil, vos expériences et vos compétences alignés avec votre situation actuelle.",
+        "Gardez vos données structurées candidat alignées avec votre situation actuelle.",
       href: "/candidate/profile",
-      cta: "Ouvrir mon dossier",
-      status: profileProgressPct >= 100 ? "À jour" : "À compléter",
-      tone: profileProgressPct >= 100 ? "neutral" : "primary",
+      cta: "Ouvrir mon profil",
     },
     {
       title: "Vérifier qui a accès",
@@ -424,17 +461,13 @@ export default function CandidateDashboardPage() {
         "Consultez les accès actifs, les invitations reçues et l’historique associé.",
       href: "/candidate/access",
       cta: "Voir les accès",
-      status: pendingCount > 0 ? `${pendingCount} en attente` : "Contrôlé",
-      tone: pendingCount > 0 ? "warning" : "neutral",
     },
     {
-      title: "Préparer un dossier",
+      title: "Prévisualiser un dossier",
       description:
-        "Générez une version partageable depuis votre profil lorsque le contenu est suffisamment complet.",
-      href: "/candidate/profile",
-      cta: "Préparer",
-      status: `${docsCount} généré${docsCount === 1 ? "" : "s"}`,
-      tone: "neutral",
+        "Ouvrez les modèles disponibles pour voir comment vos informations peuvent être présentées.",
+      cta: "Prévisualiser",
+      onClick: () => setModelDialogOpen(true),
     },
   ];
 
@@ -455,47 +488,18 @@ export default function CandidateDashboardPage() {
             derniers événements liés à votre dossier.
           </p>
         </div>
-        <NotificationBell portal="candidate" />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <NotificationBell portal="candidate" />
+        </div>
       </header>
-
-      <section
-        className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
-        aria-label="Indicateurs candidat"
-      >
-        <StatCard
-          label="Profil structuré"
-          value={`${profileProgressPct}%`}
-          subtitle={`${completedChecklist}/${checklist.length} blocs essentiels`}
-          color="primary"
-        />
-        <StatCard
-          label="Invitations"
-          value={pendingInvitations !== null ? pendingCount : "-"}
-          subtitle={
-            pendingCount > 0 ? "à traiter maintenant" : "aucune attente"
-          }
-          color={pendingCount > 0 ? "warning" : "neutral"}
-        />
-        <StatCard
-          label="Activité récente"
-          value={recentEvents.length}
-          subtitle="événements suivis"
-          color={recentEvents.length > 0 ? "primary" : "neutral"}
-        />
-        <StatCard
-          label="Dossiers"
-          value={generatedDocs !== null ? docsCount : "-"}
-          subtitle="documents générés"
-          color="neutral"
-        />
-      </section>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(720px,1fr)_360px] 2xl:grid-cols-[minmax(900px,1fr)_380px]">
         <main className="min-w-0 space-y-5">
-          <section className="rounded-lg border border-border bg-surface p-5 2xl:p-6">
+          <section className="rounded-lg border border-accent-amber-border bg-accent-amber-soft p-5 2xl:p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-widest text-warning">
                   À faire maintenant
                 </p>
                 <h2 className="mt-2 font-heading text-xl font-semibold">
@@ -505,15 +509,11 @@ export default function CandidateDashboardPage() {
                   {primaryAction.description}
                 </p>
               </div>
-              <Link
-                href={primaryAction.href}
-                className={cn(
-                  buttonVariants({ variant: "default", size: "default" }),
-                  "w-fit",
-                )}
-              >
-                {primaryAction.cta}
-              </Link>
+              <ActionCta
+                action={primaryAction}
+                variant="default"
+                className="w-fit"
+              />
             </div>
             <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3 2xl:gap-4">
               {secondaryActions.map((action) => (
@@ -530,39 +530,48 @@ export default function CandidateDashboardPage() {
                     Accès candidat
                   </p>
                   <h2 className="mt-2 font-heading text-lg font-semibold">
-                    Qui peut consulter votre dossier ?
+                    Qui peut accéder à votre profil ?
                   </h2>
                 </div>
-                <span
-                  className={cn(
-                    "rounded-full border px-2 py-1 text-xs font-medium",
-                    pendingCount > 0
-                      ? "border-warning/45 bg-warning/10 text-warning"
-                      : "border-border bg-muted text-muted-foreground",
-                  )}
-                >
-                  {pendingCount > 0 ? "À valider" : "Sous contrôle"}
-                </span>
               </div>
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-border bg-background p-3">
-                  <p className="text-2xl font-semibold">{activeCount}</p>
+              <div className="mt-5 space-y-2">
+                {activeOrganizations.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3">
+                    <p className="text-sm font-medium">
+                      Aucune organisation autorisée
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      Un accès est une autorisation donnée à une organisation
+                      pour consulter votre profil et générer un dossier.
+                    </p>
+                  </div>
+                ) : (
+                  activeOrganizations.slice(0, 4).map((org) => (
+                    <div
+                      key={org.organization_id}
+                      className="rounded-lg border border-border bg-background p-3"
+                    >
+                      <p className="text-sm font-medium">
+                        {org.organization_name}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        Peut consulter vos données structurées candidat et
+                        générer un document de dossier.
+                      </p>
+                    </div>
+                  ))
+                )}
+                {activeOrganizations.length > 4 && (
                   <p className="text-xs text-muted-foreground">
-                    accès actif{activeCount === 1 ? "" : "s"}
+                    +{activeOrganizations.length - 4} organisation
+                    {activeOrganizations.length - 4 > 1 ? "s" : ""} à consulter
+                    dans l’historique.
                   </p>
-                </div>
-                <div className="rounded-lg border border-border bg-background p-3">
-                  <p className="text-2xl font-semibold text-warning">
-                    {pendingCount}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    invitation{pendingCount === 1 ? "" : "s"} en attente
-                  </p>
-                </div>
+                )}
               </div>
               <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                Vous gardez la main sur les organisations autorisées et sur les
-                dossiers générés à partir de votre profil.
+                Vous pouvez révoquer un accès à tout moment depuis la page
+                dédiée.
               </p>
               <Link
                 href="/candidate/access"
@@ -585,14 +594,19 @@ export default function CandidateDashboardPage() {
                     Ce qui s’est passé
                   </h2>
                 </div>
-                <span className="rounded-full border border-border bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-                  {recentEvents.length} événement
-                  {recentEvents.length === 1 ? "" : "s"}
-                </span>
               </div>
               <div className="mt-4">
-                <ActivityList events={recentEvents} />
+                <ActivityList groups={activityGroups} />
               </div>
+              <Link
+                href="/candidate/access"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "mt-4",
+                )}
+              >
+                Voir tout l’historique
+              </Link>
             </article>
           </section>
         </main>
@@ -629,17 +643,16 @@ export default function CandidateDashboardPage() {
             </ul>
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-5 2xl:p-6">
+          <section className="rounded-lg border border-border bg-muted/20 p-4">
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Modèles de dossier
+              Ressource
             </p>
-            <h2 className="mt-2 font-heading text-lg font-semibold">
-              Trouver le format qui vous correspond
+            <h2 className="mt-2 font-heading text-base font-semibold">
+              Modèles de dossier
             </h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Parcourez les modèles de dossier de compétences Jorg, comparez
-              leur niveau de détail et ouvrez celui qui raconte le mieux votre
-              profil.
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Quand l’essentiel est traité, comparez les formats de documents
+              générés depuis votre profil.
             </p>
             <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
               <span className="rounded-lg border border-border bg-background px-2 py-2">
@@ -649,7 +662,7 @@ export default function CandidateDashboardPage() {
                 Technique
               </span>
               <span className="rounded-lg border border-border bg-background px-2 py-2">
-                Premium
+                Complet
               </span>
             </div>
             <button

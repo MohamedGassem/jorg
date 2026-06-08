@@ -35,7 +35,7 @@ const MODEL_META: Record<
   profil_premium: {
     recommendedFor: "Profil senior ou rare",
     value: "Présentation plus soignée pour valoriser un profil clé.",
-    badge: "Premium",
+    badge: "Complet",
   },
 };
 
@@ -257,7 +257,7 @@ export default function DocumentsPage() {
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Trois formats prêts pour l&apos;alpha : compact, technique et
-                  premium.
+                  complet.
                 </p>
               </div>
               <Badge variant="primary-soft">Disponible alpha</Badge>
