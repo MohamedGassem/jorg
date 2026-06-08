@@ -82,7 +82,7 @@ function InformationsPersonnellesTab() {
       <CardHeader>
         <CardTitle>Informations personnelles</CardTitle>
         <CardDescription>
-          Nom et prénom associés à votre compte.
+          Ces informations identifient votre profil candidat dans Jorg.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -104,7 +104,7 @@ function InformationsPersonnellesTab() {
             />
           </div>
           {message && !isError && (
-            <p className="text-sm text-green-600">{message}</p>
+            <p className="text-sm text-success">{message}</p>
           )}
           <ErrorAlert error={isError ? message : null} />
           <Button type="submit" disabled={saving}>
@@ -146,7 +146,8 @@ function CompteTab() {
       <CardHeader>
         <CardTitle className="text-destructive">Supprimer le compte</CardTitle>
         <CardDescription>
-          Cette action est irréversible. Toutes vos données seront supprimées.
+          Cette action est irréversible. Votre profil, vos accès et
+          l&apos;historique lié à votre compte seront supprimés.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -210,7 +211,8 @@ function RgpdTab() {
       <CardHeader>
         <CardTitle>Données personnelles (RGPD)</CardTitle>
         <CardDescription>
-          Téléchargez une copie de toutes vos données au format JSON.
+          Téléchargez une copie de votre profil structuré, de vos accès et des
+          données associées à votre compte.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -234,7 +236,15 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="font-heading text-2xl font-semibold">Paramètres</h1>
+      <div>
+        <h1 className="font-heading text-2xl font-semibold">
+          Compte & données
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Gérez votre identité candidat, l&apos;export de vos données et les
+          actions sensibles liées à votre compte.
+        </p>
+      </div>
       <TabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
       {activeTab === "infos" && <InformationsPersonnellesTab />}
       {activeTab === "compte" && <CompteTab />}

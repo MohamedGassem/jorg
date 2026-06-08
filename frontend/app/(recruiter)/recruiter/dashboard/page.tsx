@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Mail, Users, Zap } from "lucide-react";
-import { QuickActionCard } from "@/components/ui/QuickActionCard";
-import { StatCard } from "@/components/ui/StatCard";
+import { Button } from "@/components/ui/button";
 import { OnboardingOrg } from "@/components/onboarding-org";
 import { NotificationBell } from "@/components/notification-bell";
 import { api } from "@/lib/api";
@@ -98,17 +97,12 @@ export default function RecruiterDashboardPage() {
   if (orgLoading || (!!orgId && dataLoading)) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-10 w-64 rounded-lg bg-muted" />
-        <div className="h-5 w-80 rounded-lg bg-muted" />
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 rounded-xl bg-muted" />
-          ))}
-        </div>
-        <div className="h-6 w-40 rounded-lg bg-muted" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="h-10 w-72 rounded-lg bg-muted" />
+        <div className="h-5 w-96 rounded-lg bg-muted" />
+        <div className="h-40 rounded-lg bg-muted" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-28 rounded-xl bg-muted" />
+            <div key={i} className="h-40 rounded-lg bg-muted" />
           ))}
         </div>
       </div>
@@ -119,9 +113,10 @@ export default function RecruiterDashboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Bienvenue sur Jorg 👋</h1>
+          <h1 className="text-2xl font-bold">Configurer votre organisation</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Commencez par configurer votre organisation.
+            Votre espace recruteur a besoin d&apos;une organisation pour inviter
+            des candidats et générer des dossiers.
           </p>
         </div>
         <OnboardingOrg onSuccess={() => window.location.reload()} />
@@ -130,93 +125,164 @@ export default function RecruiterDashboardPage() {
   }
 
   const firstName = profile?.first_name ?? "";
+  const hasCandidates = (candidateCount ?? 0) > 0;
+  const hasOpenMissions = (openOpportunityCount ?? 0) > 0;
+  const hasDocs = (docCount ?? 0) > 0;
+  const primaryAction = !hasCandidates
+    ? {
+        title: "Inviter un candidat autorisé",
+        description:
+          "Commencez par obtenir l'accord d'un candidat avant de générer un dossier.",
+        href: "/recruiter/candidates",
+        cta: "Inviter un candidat",
+      }
+    : !hasOpenMissions
+      ? {
+          title: "Créer une mission",
+          description:
+            "Ajoutez le contexte client pour relier les candidats autorisés à un besoin.",
+          href: "/recruiter/opportunities",
+          cta: "Créer une mission",
+        }
+      : {
+          title: "Générer un dossier candidat",
+          description:
+            "Choisissez un candidat autorisé et un modèle de dossier adapté.",
+          href: "/recruiter/candidates",
+          cta: "Générer un dossier",
+        };
 
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">
-            Bonjour{firstName ? `, ${firstName}` : ""} 👋
-          </h1>
+          <h1 className="text-2xl font-bold">Accueil recruteur</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Aperçu de votre activité recrutement
+            {firstName ? `${firstName}, suivez` : "Suivez"} le passage des
+            candidats autorisés aux missions, puis aux dossiers générés.
           </p>
         </div>
         <NotificationBell portal="recruiter" orgId={orgId} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard
-          label="Candidats accessibles"
-          value={candidateCount !== null ? candidateCount : "—"}
-          subtitle="Accessibles"
-          color="primary"
-        />
-        <StatCard
-          label="Opportunités ouvertes"
-          value={openOpportunityCount !== null ? openOpportunityCount : "—"}
-          subtitle="Ouvertes"
-          color="emerald"
-        />
-        <StatCard
-          label="Invitations en attente"
-          value={pendingInvitationCount !== null ? pendingInvitationCount : "—"}
-          subtitle="En attente"
-          color="amber"
-        />
-        <StatCard
-          label="Dossiers générés"
-          value={docCount !== null ? docCount : "—"}
-          subtitle="Ce mois"
-          color="neutral"
-        />
-      </div>
-
-      <section>
-        <h2 className="mb-4 text-base font-semibold">Actions rapides</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <QuickActionCard
-            icon={Mail}
-            label="Inviter un candidat"
-            description="Envoyer une invitation par email"
-            href="/recruiter/candidates"
-          />
-          <QuickActionCard
-            icon={Zap}
-            label="Créer une opportunité"
-            description="Ouvrir un nouveau poste"
-            href="/recruiter/opportunities"
-          />
-          <QuickActionCard
-            icon={Users}
-            label="Voir les candidats"
-            description={
-              candidateCount !== null
-                ? `${candidateCount} profil${candidateCount > 1 ? "s" : ""} accessible${candidateCount > 1 ? "s" : ""}`
-                : "Voir les profils accessibles"
-            }
-            href="/recruiter/candidates"
-          />
+      <section className="rounded-lg border border-border bg-surface p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Prochaine action
+            </p>
+            <h2 className="mt-2 font-heading text-xl font-semibold">
+              {primaryAction.title}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              {primaryAction.description}
+            </p>
+          </div>
+          <Link href={primaryAction.href}>
+            <Button>{primaryAction.cta}</Button>
+          </Link>
         </div>
       </section>
 
-      {recentDocs.length > 0 && (
-        <section>
-          <h2 className="mb-4 text-base font-semibold">Dossiers récents</h2>
-          <ul className="space-y-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <section className="rounded-lg border border-border bg-surface p-5">
+          <h2 className="font-heading text-base font-semibold">
+            Candidats autorisés
+          </h2>
+          <p className="mt-4 text-3xl font-semibold text-primary">
+            {candidateCount !== null ? candidateCount : "-"}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            profil{candidateCount === 1 ? "" : "s"} exploitable
+            {candidateCount === 1 ? "" : "s"} avec accord candidat.
+          </p>
+          <div className="mt-4">
+            <Link href="/recruiter/candidates">
+              <Button variant="outline" size="sm">
+                Voir les candidats
+              </Button>
+            </Link>
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-border bg-surface p-5">
+          <h2 className="font-heading text-base font-semibold">
+            Missions ouvertes
+          </h2>
+          <p className="mt-4 text-3xl font-semibold text-primary">
+            {openOpportunityCount !== null ? openOpportunityCount : "-"}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            contexte{openOpportunityCount === 1 ? "" : "s"} de besoin client
+            prêt{openOpportunityCount === 1 ? "" : "s"} à recevoir des
+            candidats.
+          </p>
+          <div className="mt-4">
+            <Link href="/recruiter/opportunities">
+              <Button variant="outline" size="sm">
+                Gérer les missions
+              </Button>
+            </Link>
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-border bg-surface p-5">
+          <h2 className="font-heading text-base font-semibold">
+            Invitations en attente
+          </h2>
+          <p className="mt-4 text-3xl font-semibold text-warning">
+            {pendingInvitationCount !== null ? pendingInvitationCount : "-"}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            demande{pendingInvitationCount === 1 ? "" : "s"} d&apos;accès pas
+            encore acceptée{pendingInvitationCount === 1 ? "" : "s"}.
+          </p>
+          <div className="mt-4">
+            <Link href="/recruiter/candidates">
+              <Button variant="outline" size="sm">
+                Suivre les invitations
+              </Button>
+            </Link>
+          </div>
+        </section>
+      </div>
+
+      <section className="rounded-lg border border-border bg-surface p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="font-heading text-base font-semibold">
+              Dossiers récents
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {hasDocs
+                ? `${docCount} dossier${docCount === 1 ? "" : "s"} généré${docCount === 1 ? "" : "s"} par votre organisation.`
+                : "Les dossiers générés depuis les candidats autorisés apparaîtront ici."}
+            </p>
+          </div>
+          <Link href="/recruiter/documents">
+            <Button variant="outline" size="sm">
+              Ouvrir Dossiers & modèles
+            </Button>
+          </Link>
+        </div>
+
+        {recentDocs.length > 0 && (
+          <ul className="mt-4 divide-y divide-border rounded-lg border border-border">
             {recentDocs.map((doc) => (
               <li
                 key={doc.id}
-                className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3"
+                className="flex flex-col gap-1 px-4 py-3 text-sm md:flex-row md:items-center md:justify-between"
               >
-                <div className="flex items-center gap-3">
-                  <FileText
-                    className="h-4 w-4 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <span className="text-sm text-foreground">
-                    Dossier {doc.file_format.toUpperCase()}
-                  </span>
+                <div>
+                  <p className="font-medium">
+                    {[doc.candidate_first_name, doc.candidate_last_name]
+                      .filter(Boolean)
+                      .join(" ") || "Candidat"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {doc.template_name ?? "Modèle de dossier"} -{" "}
+                    {doc.file_format.toUpperCase()}
+                  </p>
                 </div>
                 <span className="text-xs text-muted-foreground">
                   {relativeDate(doc.generated_at)}
@@ -224,8 +290,8 @@ export default function RecruiterDashboardPage() {
               </li>
             ))}
           </ul>
-        </section>
-      )}
+        )}
+      </section>
     </div>
   );
 }

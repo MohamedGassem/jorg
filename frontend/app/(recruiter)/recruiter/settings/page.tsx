@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Copy, RefreshCw } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -69,7 +68,7 @@ function ProfilPersonnelTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Profil personnel</CardTitle>
+        <CardTitle>Profil recruteur</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSave} className="max-w-sm space-y-4">
@@ -180,7 +179,13 @@ export default function RecruiterSettingsPage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <h1 className="text-2xl font-bold">Configuration</h1>
+      <div>
+        <h1 className="text-2xl font-bold">Organisation</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Gérez votre profil recruteur, votre organisation et les accès de
+          l&apos;équipe à l&apos;espace Jorg.
+        </p>
+      </div>
       <ErrorAlert error={error} />
 
       {/* Tab bar */}
@@ -205,7 +210,7 @@ export default function RecruiterSettingsPage() {
           {/* Join code */}
           <Card>
             <CardHeader>
-              <CardTitle>Code d&apos;invitation</CardTitle>
+              <CardTitle>Code d&apos;invitation équipe</CardTitle>
               <CardDescription>
                 Partagez ce code pour permettre à un collègue de rejoindre votre
                 organisation.
@@ -224,7 +229,7 @@ export default function RecruiterSettingsPage() {
                     className="gap-1.5"
                   >
                     {codeCopied ? (
-                      <Check className="size-3.5 text-emerald-500" />
+                      <Check className="size-3.5 text-success" />
                     ) : (
                       <Copy className="size-3.5" />
                     )}
@@ -256,7 +261,9 @@ export default function RecruiterSettingsPage() {
             <CardContent>
               {members.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Aucun membre pour l&apos;instant.
+                  Aucun membre pour l&apos;instant. Partagez le code
+                  d&apos;invitation pour ajouter un collègue à
+                  l&apos;organisation.
                 </p>
               ) : (
                 <ul className="space-y-2">

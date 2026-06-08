@@ -233,7 +233,11 @@ export default function CandidatesPage() {
   function toggleCandidateExpand(userId: string) {
     setExpandedCandidates((prev) => {
       const next = new Set(prev);
-      next.has(userId) ? next.delete(userId) : next.add(userId);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
       return next;
     });
   }
@@ -338,8 +342,14 @@ export default function CandidatesPage() {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">Candidats accessibles</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Candidats</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Consultez les profils autorisés, filtrez les compétences utiles et
+            générez un dossier à partir du modèle adapté.
+          </p>
+        </div>
         <Button onClick={() => setInviteOpen(true)}>Inviter un candidat</Button>
       </div>
 
@@ -365,6 +375,15 @@ export default function CandidatesPage() {
 
       <Card>
         <CardContent className="pt-4">
+          <div className="mb-4">
+            <h2 className="text-sm font-semibold">
+              Trouver un profil autorisé
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Les filtres agissent uniquement sur les candidats qui ont déjà
+              donné leur accord d&apos;accès.
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <div className="space-y-1">
               <Label>Disponibilité</Label>
@@ -530,7 +549,20 @@ export default function CandidatesPage() {
 
       <ErrorAlert error={error ?? candidatesError} />
       {candidates.length === 0 ? (
-        <EmptyState message="Aucun candidat ne correspond aux filtres." />
+        <EmptyState
+          message="Aucun candidat autorisé ne correspond à cette recherche."
+          description="Essayez d'élargir les filtres ou invitez un candidat pour obtenir son accord d'accès."
+          action={
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={resetFilters}>
+                Réinitialiser les filtres
+              </Button>
+              <Button size="sm" onClick={() => setInviteOpen(true)}>
+                Inviter un candidat
+              </Button>
+            </div>
+          }
+        />
       ) : (
         <ul className="space-y-3" role="list">
           {candidates.map((c) => {
@@ -681,11 +713,11 @@ export default function CandidatesPage() {
                       {pickingFor === c.user_id ? (
                         <div className="rounded border p-2 space-y-1">
                           <p className="text-xs font-medium text-muted-foreground">
-                            Choisir une opportunité :
+                            Choisir une mission :
                           </p>
                           {opportunities.length === 0 ? (
                             <p className="text-xs text-muted-foreground">
-                              Aucune opportunité ouverte.
+                              Aucune mission ouverte.
                             </p>
                           ) : (
                             opportunities.map((opp) => (
@@ -724,7 +756,7 @@ export default function CandidatesPage() {
                             }));
                           }}
                         >
-                          + Opportunité
+                          + Mission
                         </Button>
                       )}
                     </div>

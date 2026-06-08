@@ -1,20 +1,13 @@
-// frontend/app/(public)/register/page.tsx
 "use client";
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, UserCircle, Briefcase } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { JorgWordmark } from "@/components/ui/JorgWordmark";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -24,21 +17,52 @@ const ROLES: {
   value: Role;
   label: string;
   description: string;
-  icon: typeof UserCircle;
+  detail: string;
 }[] = [
   {
     value: "candidate",
     label: "Candidat",
-    description: "Je gère mon profil de compétences",
-    icon: UserCircle,
+    description: "Je construis mon dossier de compétences",
+    detail: "Structurez votre profil et gardez le contrôle des accès.",
   },
   {
     value: "recruiter",
     label: "Recruteur",
-    description: "Je génère des CVs pour mes clients",
-    icon: Briefcase,
+    description: "Je génère des dossiers candidats",
+    detail: "Travaillez depuis des profils autorisés et des modèles Jorg.",
   },
 ];
+
+function RegisterTrustPanel({ role }: { role: Role }) {
+  return (
+    <aside className="rounded-lg border border-border bg-surface p-6">
+      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        Alpha privee Jorg
+      </p>
+      <h2 className="mt-3 font-heading text-xl font-semibold">
+        {role === "candidate"
+          ? "Votre profil devient un dossier fiable, partageable sous contrôle."
+          : "Vos dossiers candidats partent de profils autorisés, pas de copies dispersées."}
+      </h2>
+      <div className="mt-6 space-y-4 text-sm text-muted-foreground">
+        <div>
+          <p className="font-medium text-foreground">1. Profil structure</p>
+          <p>
+            Les informations utiles sont rangees pour alimenter les dossiers.
+          </p>
+        </div>
+        <div>
+          <p className="font-medium text-foreground">2. Accès contrôlé</p>
+          <p>Les candidats savent quelles organisations peuvent agir.</p>
+        </div>
+        <div>
+          <p className="font-medium text-foreground">3. Dossier généré</p>
+          <p>Les documents sont produits depuis les modèles de dossier Jorg.</p>
+        </div>
+      </div>
+    </aside>
+  );
+}
 
 function RegisterForm() {
   const router = useRouter();
@@ -81,189 +105,168 @@ function RegisterForm() {
   }
 
   return (
-    <div className="min-h-dvh flex items-center justify-center bg-background px-4 py-8">
-      <div className="w-full max-w-sm space-y-6">
-        {/* Wordmark */}
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground shadow-lg shadow-primary/20">
-            J
-          </div>
-          <div className="text-center">
-            <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
-              Jorg
+    <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
+      <div className="grid w-full max-w-5xl grid-cols-1 gap-8 lg:grid-cols-[minmax(0,460px)_1fr]">
+        <section className="rounded-lg border border-border bg-surface p-6">
+          <JorgWordmark />
+          <div className="mt-8">
+            <h1 className="font-heading text-2xl font-semibold tracking-tight">
+              Créer mon espace Jorg
             </h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Créez votre compte gratuitement
+            <p className="mt-2 text-sm text-muted-foreground">
+              Choisissez votre parcours avant de renseigner vos informations.
             </p>
           </div>
-        </div>
 
-        <Card>
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-lg font-semibold">
-              Créer un compte
-            </CardTitle>
-            <CardDescription>
-              Rejoignez Jorg en tant que candidat ou recruteur
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Role picker */}
-              <div className="space-y-1.5">
-                <Label>Je suis</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {ROLES.map(({ value, label, description, icon: Icon }) => {
-                    const selected = role === value;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setRole(value)}
-                        className={cn(
-                          "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all duration-150",
-                          selected
-                            ? "border-primary bg-primary/5 ring-1 ring-primary/40"
-                            : "border-border bg-muted/20 hover:border-border/80 hover:bg-muted/40",
-                        )}
-                      >
-                        <Icon
-                          className={cn(
-                            "size-4",
-                            selected ? "text-primary" : "text-muted-foreground",
-                          )}
-                        />
-                        <span
-                          className={cn(
-                            "text-sm font-medium",
-                            selected ? "text-foreground" : "text-foreground/80",
-                          )}
-                        >
-                          {label}
-                        </span>
-                        <span className="text-xs text-muted-foreground leading-tight">
-                          {description}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <div className="space-y-2">
+              <Label>Votre parcours</Label>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {ROLES.map(({ value, label, description, detail }) => {
+                  const selected = role === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setRole(value)}
+                      className={cn(
+                        "rounded-lg border p-3 text-left transition-colors",
+                        selected
+                          ? "border-primary bg-primary-soft text-foreground"
+                          : "border-border bg-background hover:bg-muted/60",
+                      )}
+                    >
+                      <span className="text-sm font-semibold">{label}</span>
+                      <span className="mt-1 block text-sm text-foreground">
+                        {description}
+                      </span>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        {detail}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="first-name">Prénom</Label>
-                  <Input
-                    id="first-name"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="last-name">Nom</Label>
-                  <Input
-                    id="last-name"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="first-name">Prénom</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="first-name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
                   required
                 />
               </div>
+              <div className="space-y-1">
+                <Label htmlFor="last-name">Nom</Label>
+                <Input
+                  id="last-name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Mot de passe</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="new-password"
-                    minLength={8}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pr-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={
-                      showPassword
-                        ? "Masquer le mot de passe"
-                        : "Afficher le mot de passe"
-                    }
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="size-4" />
-                    ) : (
-                      <Eye className="size-4" />
-                    )}
-                  </button>
-                </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Mot de passe</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  minLength={8}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={
+                    showPassword
+                      ? "Masquer le mot de passe"
+                      : "Afficher le mot de passe"
+                  }
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Minimum 8 caractères.
+              </p>
+            </div>
+
+            {role === "recruiter" && (
+              <div className="space-y-1.5 rounded-lg border border-warning/30 bg-warning/10 p-3">
+                <Label htmlFor="alpha-code">Code d&apos;accès alpha</Label>
+                <Input
+                  id="alpha-code"
+                  value={alphaCode}
+                  onChange={(e) => setAlphaCode(e.target.value.toUpperCase())}
+                  placeholder="JORG-XXXX-YYYY"
+                  required={role === "recruiter"}
+                />
                 <p className="text-xs text-muted-foreground">
-                  Minimum 8 caractères
+                  L&apos;espace recruteur est ouvert sur invitation pendant
+                  l&apos;alpha. Ce code rattache votre compte à votre
+                  organisation.
                 </p>
               </div>
+            )}
 
-              {role === "recruiter" && (
-                <div className="space-y-1">
-                  <Label htmlFor="alpha-code">Code d&apos;accès alpha</Label>
-                  <Input
-                    id="alpha-code"
-                    value={alphaCode}
-                    onChange={(e) => setAlphaCode(e.target.value.toUpperCase())}
-                    placeholder="JORG-XXXX-YYYY"
-                    required={role === "recruiter"}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Code d&apos;invitation requis pendant la phase alpha.
-                  </p>
-                </div>
-              )}
+            {error && (
+              <p
+                role="alert"
+                className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {error}
+              </p>
+            )}
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? "Création..." : "Créer mon compte Jorg"}
+            </Button>
+          </form>
 
-              {error && (
-                <p
-                  role="alert"
-                  className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
-                >
-                  {error}
-                </p>
-              )}
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full"
-                disabled={loading}
-              >
-                {loading ? "Création…" : "Créer mon compte"}
-              </Button>
-            </form>
-            <p className="mt-4 text-center text-sm text-muted-foreground">
-              Déjà inscrit ?{" "}
-              <Link
-                href="/login"
-                className="font-medium text-primary underline-offset-4 hover:underline"
-              >
-                Se connecter
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
+          <p className="mt-5 text-sm text-muted-foreground">
+            Déjà inscrit ?{" "}
+            <Link
+              href="/login"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Se connecter
+            </Link>
+          </p>
+        </section>
+
+        <RegisterTrustPanel role={role} />
       </div>
-    </div>
+    </main>
   );
 }
 

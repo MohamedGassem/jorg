@@ -17,7 +17,6 @@ async function markOnboardingComplete(): Promise<boolean> {
     return true;
   } catch (err) {
     console.warn("Failed to mark onboarding complete:", err);
-    // Retry once
     try {
       await api.put("/recruiters/me/profile", { onboarding_completed: true });
       return true;
@@ -33,7 +32,6 @@ export default function RecruiterOnboardingTemplatePage() {
   async function handleSkip() {
     const ok = await markOnboardingComplete();
     if (!ok) {
-      // Still redirect — user can retry from dashboard
       console.error(
         "Onboarding flag not persisted; user may see onboarding again on next login",
       );
@@ -54,25 +52,23 @@ export default function RecruiterOnboardingTemplatePage() {
   return (
     <Card>
       <CardHeader>
-        <p className="text-xs font-medium text-muted-foreground">Étape 3 / 3</p>
-        <CardTitle>Votre premier template</CardTitle>
+        <p className="text-xs font-medium text-muted-foreground">Etape 3 / 3</p>
+        <CardTitle>Vos modèles de dossier</CardTitle>
         <CardDescription>
-          Configurez vos templates depuis la page Dossiers. Vous pouvez le faire
-          maintenant ou plus tard.
+          Retrouvez les modèles Jorg depuis la page Dossiers & modèles. Vous
+          pouvez le faire maintenant ou plus tard.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Les templates permettent de générer des dossiers personnalisés pour
-          vos clients. Rendez-vous dans <strong>Dossiers → Templates</strong>{" "}
-          pour en créer ou en importer un.
+          Les modèles de dossier permettent de générer des documents candidats
+          adaptes a vos clients. Rendez-vous dans{" "}
+          <strong>Dossiers & modèles</strong> pour consulter les modèles Jorg.
         </p>
         <div className="flex flex-col gap-2">
-          <Button onClick={handleGoToTemplates}>
-            Configurer mes templates →
-          </Button>
+          <Button onClick={handleGoToTemplates}>Voir les modèles</Button>
           <Button variant="ghost" onClick={handleSkip}>
-            Passer cette étape →
+            Passer cette etape
           </Button>
         </div>
       </CardContent>

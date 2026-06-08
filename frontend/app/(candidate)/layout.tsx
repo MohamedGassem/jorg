@@ -1,11 +1,10 @@
-// frontend/app/(candidate)/layout.tsx
 import { NavSidebar } from "@/components/nav-sidebar";
 
 const candidateNav = [
-  { href: "/candidate/dashboard", label: "Tableau de bord" },
-  { href: "/candidate/profile", label: "Mon dossier" },
+  { href: "/candidate/dashboard", label: "Accueil" },
+  { href: "/candidate/profile", label: "Mon profil" },
   { href: "/candidate/access", label: "Accès" },
-  { href: "/candidate/settings", label: "Paramètres" },
+  { href: "/candidate/settings", label: "Compte & données" },
 ];
 
 export default function CandidateLayout({
@@ -20,7 +19,10 @@ export default function CandidateLayout({
         title="Espace candidat"
         homeHref="/candidate/dashboard"
       />
-      <main className="flex-1 overflow-auto p-8" id="main-content">
+      <main
+        className="min-w-0 flex-1 overflow-auto p-5 md:p-6 xl:p-8"
+        id="main-content"
+      >
         {children}
       </main>
     </div>

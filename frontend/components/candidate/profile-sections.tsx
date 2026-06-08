@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type {
   Achievement,
   AchievementSkillTag,
@@ -1480,7 +1481,7 @@ export function SkillSection() {
               <CardContent className="flex-1 space-y-0.5">
                 {skills.length === 0 ? (
                   <p className="py-1 text-xs text-muted-foreground">
-                    Aucune compétence
+                    Aucune compétence dans cette famille.
                   </p>
                 ) : (
                   [...skills]
@@ -1971,9 +1972,11 @@ export function EducationSection() {
         {loading && <div className="h-16 animate-pulse rounded-lg bg-muted" />}
         {fetchError && <p className="text-sm text-destructive">{fetchError}</p>}
         {!loading && !fetchError && items.length === 0 && !adding && (
-          <p className="py-2 text-sm text-muted-foreground">
-            Aucune formation ajoutée.
-          </p>
+          <EmptyState
+            message="Aucune formation ajoutee."
+            description="Ajoutez les diplomes ou parcours qui renforcent la lecture de votre dossier."
+            className="px-4 py-4"
+          />
         )}
         {items.map((edu) =>
           editingId === edu.id ? (
@@ -2214,9 +2217,11 @@ export function CertificationSection() {
         {loading && <div className="h-16 animate-pulse rounded-lg bg-muted" />}
         {fetchError && <p className="text-sm text-destructive">{fetchError}</p>}
         {!loading && !fetchError && items.length === 0 && !adding && (
-          <p className="py-2 text-sm text-muted-foreground">
-            Aucune certification ajoutée.
-          </p>
+          <EmptyState
+            message="Aucune certification ajoutee."
+            description="Les certifications servent de preuves complémentaires dans les dossiers générés."
+            className="px-4 py-4"
+          />
         )}
         {items.map((cert) =>
           editingId === cert.id ? (
@@ -2467,9 +2472,11 @@ export function LanguageSection() {
         {loading && <div className="h-16 animate-pulse rounded-lg bg-muted" />}
         {fetchError && <p className="text-sm text-destructive">{fetchError}</p>}
         {!loading && !fetchError && items.length === 0 && !adding && (
-          <p className="py-2 text-sm text-muted-foreground">
-            Aucune langue ajoutée.
-          </p>
+          <EmptyState
+            message="Aucune langue ajoutee."
+            description="Ajoutez les langues utiles pour les missions et les dossiers presentes aux recruteurs."
+            className="px-4 py-4"
+          />
         )}
         {items.map((lang) =>
           editingId === lang.id ? (

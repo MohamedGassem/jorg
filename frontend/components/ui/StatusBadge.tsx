@@ -1,6 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 
-type Variant = "default" | "secondary" | "destructive" | "outline";
+type Variant =
+  | "default"
+  | "secondary"
+  | "destructive"
+  | "outline"
+  | "primary-soft"
+  | "success"
+  | "warning"
+  | "danger";
 
 interface StatusBadgeProps {
   status: string;

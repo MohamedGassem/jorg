@@ -80,7 +80,7 @@ export function InviteCandidateDialog({
           </div>
           <ErrorAlert error={error} />
           {success && (
-            <p role="status" className="text-sm text-emerald-600">
+            <p role="status" className="text-sm text-success">
               {success}
             </p>
           )}

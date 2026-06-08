@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,23 +10,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useDownload } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 import type { BuiltinTemplate, GeneratedDocument } from "@/types/api";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const MODEL_BADGES: Record<string, string> = {
+  compact_esn: "Compact",
+  dossier_technique: "Technique",
+  profil_premium: "Complet",
+};
 
 export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
   const [templates, setTemplates] = useState<BuiltinTemplate[]>([]);
@@ -45,13 +45,14 @@ export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
       .then(setTemplates)
       .catch((err) =>
         setError(
-          extractErrorMessage(err, "Impossible de charger les templates"),
+          extractErrorMessage(
+            err,
+            "Impossible de charger les modèles de dossier",
+          ),
         ),
       )
       .finally(() => setLoading(false));
   }, [open, templates.length]);
-
-  const selected = templates.find((t) => t.key === templateKey) ?? null;
 
   async function handleGenerate() {
     if (!templateKey) return;
@@ -65,7 +66,7 @@ export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
       });
       setResult(doc);
     } catch (err) {
-      setError(extractErrorMessage(err, "Erreur de generation"));
+      setError(extractErrorMessage(err, "Erreur de génération"));
     } finally {
       setGenerating(false);
     }
@@ -81,77 +82,96 @@ export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Generer mon dossier</DialogTitle>
+          <DialogTitle>Générer mon dossier Jorg</DialogTitle>
         </DialogHeader>
 
         {loading ? (
           <p className="text-sm text-muted-foreground">Chargement...</p>
         ) : (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Template</Label>
-              <Select
-                value={templateKey}
-                onValueChange={(v) => v && setTemplateKey(v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir un template..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((t) => (
-                    <SelectItem key={t.key} value={t.key}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selected && (
-                <div className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2">
-                  <p className="text-xs text-muted-foreground">
-                    {selected.description}
-                  </p>
+          <div className="space-y-5">
+            <section className="space-y-3">
+              <div>
+                <p className="text-sm font-medium">Modèle de dossier</p>
+                <p className="text-sm text-muted-foreground">
+                  Choisissez le format de présentation adapté à votre dossier.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                {templates.map((template) => {
+                  const selected = template.key === templateKey;
+                  return (
+                    <div
+                      key={template.key}
+                      className={cn(
+                        "rounded-lg border bg-surface p-3 transition-colors",
+                        selected
+                          ? "border-primary ring-2 ring-primary/20"
+                          : "border-border",
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setTemplateKey(template.key)}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold">
+                            {template.name}
+                          </p>
+                          <Badge variant="primary-soft">
+                            {MODEL_BADGES[template.key] ?? "Jorg"}
+                          </Badge>
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {template.description}
+                        </p>
+                      </button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-3"
+                        onClick={() =>
+                          download(
+                            `/templates/builtin/${template.key}/preview`,
+                            `apercu-${template.key}.docx`,
+                            `candidate-preview-${template.key}`,
+                          )
+                        }
+                      >
+                        Aperçu
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="space-y-2">
+              <p className="text-sm font-medium">Format de sortie</p>
+              <div className="flex gap-2">
+                {(["docx", "pdf"] as const).map((option) => (
                   <Button
+                    key={option}
                     type="button"
                     size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      download(
-                        `/templates/builtin/${selected.key}/preview`,
-                        `apercu-${selected.key}.docx`,
-                        `candidate-preview-${selected.key}`,
-                      )
-                    }
+                    variant={format === option ? "default" : "outline"}
+                    onClick={() => setFormat(option)}
                   >
-                    Apercu
+                    {option === "docx" ? "Word (.docx)" : "PDF"}
                   </Button>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Format</Label>
-              <Select
-                value={format}
-                onValueChange={(v) => v && setFormat(v as "docx" | "pdf")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="docx">Word (.docx)</SelectItem>
-                  <SelectItem value="pdf">PDF</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                ))}
+              </div>
+            </section>
 
             <ErrorAlert error={error} />
 
             {result ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-emerald-600">
-                  Dossier genere avec succes.
+              <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-sm font-medium text-success">
+                  Dossier généré avec succès.
                 </p>
                 <Button
                   variant="outline"
@@ -163,7 +183,7 @@ export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
                     )
                   }
                 >
-                  Telecharger ({result.file_format.toUpperCase()})
+                  Télécharger ({result.file_format.toUpperCase()})
                 </Button>
                 <ErrorAlert error={downloadErrors[result.id] ?? null} />
               </div>
@@ -172,7 +192,9 @@ export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
                 onClick={handleGenerate}
                 disabled={generating || !templateKey}
               >
-                {generating ? "Generation..." : "Generer mon dossier"}
+                {generating
+                  ? "Génération..."
+                  : `Générer mon dossier ${format.toUpperCase()}`}
               </Button>
             )}
           </div>

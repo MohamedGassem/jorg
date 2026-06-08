@@ -74,7 +74,7 @@ export default function CandidateDetailPage() {
         `/organizations/${orgId}/opportunities/${oppId}/candidates`,
         { candidate_id: candidateId },
       );
-      setAddFeedback("Candidat ajouté à l'opportunité ✓");
+      setAddFeedback("Candidat ajoute a la mission.");
       setPickingOpp(false);
     } catch (err) {
       setAddFeedback(extractErrorMessage(err, "Erreur"));
@@ -125,10 +125,14 @@ export default function CandidateDetailPage() {
       {/* Profile summary */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Informations</CardTitle>
+          <CardTitle className="text-base">Profil autorisé</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1 text-sm text-muted-foreground">
-          {candidate.daily_rate && <p>TJM : {candidate.daily_rate} €/j</p>}
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            Données consultables par votre organisation avec l&apos;accord du
+            candidat.
+          </p>
+          {candidate.daily_rate && <p>TJM : {candidate.daily_rate} EUR/j</p>}
           {candidate.availability_status && (
             <p>Disponibilité : {candidate.availability_status}</p>
           )}
@@ -190,11 +194,12 @@ export default function CandidateDetailPage() {
         {pickingOpp ? (
           <div className="rounded border p-3 space-y-2">
             <p className="text-xs font-medium text-muted-foreground">
-              Choisir une opportunité :
+              Choisir une mission pour contextualiser ce profil :
             </p>
             {opportunities.length === 0 ? (
               <p className="text-xs text-muted-foreground">
-                Aucune opportunité ouverte.
+                Aucune mission ouverte. Créez une mission pour relier ce profil
+                à un besoin client.
               </p>
             ) : (
               opportunities.map((opp) => (
@@ -228,7 +233,7 @@ export default function CandidateDetailPage() {
               setAddFeedback(null);
             }}
           >
-            + Ajouter à une opportunité
+            + Ajouter à une mission
           </Button>
         )}
       </div>
