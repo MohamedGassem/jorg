@@ -24,6 +24,7 @@ interface CvExperienceProposal {
   client_name?: CvExtractedField;
   start_date?: CvExtractedField;
   end_date?: CvExtractedField;
+  is_current?: boolean;
   description?: CvExtractedField;
   achievements_summary?: CvExtractedField;
   achievements?: CvExtractedField[];
@@ -89,8 +90,9 @@ function fieldValue(field?: CvExtractedField): string | null {
   return field?.value?.trim() || null;
 }
 
-function isoDateOrNull(value: string | null): string | null {
-  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+// A 409 means the item is already on the profile — benign, not a failure.
+function isBenignConflict(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 409;
 }
 
 function cvDateToInputValue(value: string | null): string {
@@ -127,12 +129,16 @@ function experienceDraftFromProposal(
         .filter(Boolean),
     );
   }
+  // is_current comes from the backend ("actuel"/"présent"); an empty end_date
+  // alone must NOT flip a finished role to "current" — it often just means the
+  // end date failed to parse.
+  const isCurrent = Boolean(item.is_current);
   return {
     client_name: fieldValue(item.client_name) ?? "",
     role: fieldValue(item.role) ?? "",
     start_date: cvDateToInputValue(fieldValue(item.start_date)),
-    end_date: endDate,
-    is_current: !endDate,
+    end_date: isCurrent ? "" : endDate,
+    is_current: isCurrent,
     description: fieldValue(item.description) ?? "",
     achievements,
   };
@@ -393,10 +399,16 @@ export function CvImport({
     let achievementCount = 0;
     let educationCount = 0;
     let languageCount = 0;
+    // Anything other than a 409 (already on profile) is a real failure the
+    // candidate must hear about — never report a silent success.
+    let failedCount = 0;
 
     for (const index of selectedExperiences) {
       const draft = experienceDrafts[index];
       if (!isDraftAddable(draft)) continue;
+      const achievementTexts = draft.achievements
+        .map((value) => value.trim())
+        .filter(Boolean);
       try {
         const created = await api.post<Experience>(
           "/candidates/me/experiences",
@@ -407,30 +419,28 @@ export function CvImport({
             end_date: draft.is_current ? null : draft.end_date || null,
             is_current: draft.is_current,
             description: draft.description.trim() || null,
-            achievements_summary:
-              draft.achievements
-                .map((a) => a.trim())
-                .filter(Boolean)
-                .join("\n") || null,
+            achievements_summary: achievementTexts.join("\n") || null,
           },
         );
         experienceCount += 1;
-        for (const [order, achievement] of draft.achievements
-          .map((value) => value.trim())
-          .filter(Boolean)
-          .entries()) {
-          await api.post(
-            `/candidates/me/experiences/${created.id}/achievements`,
-            {
-              description: achievement,
+        // Achievements are independent and carry their own order — add them
+        // concurrently instead of serially.
+        const outcomes = await Promise.allSettled(
+          achievementTexts.map((description, order) =>
+            api.post(`/candidates/me/experiences/${created.id}/achievements`, {
+              description,
               impact: null,
               order,
-            },
-          );
-          achievementCount += 1;
+            }),
+          ),
+        );
+        for (const outcome of outcomes) {
+          if (outcome.status === "fulfilled") achievementCount += 1;
+          else if (!isBenignConflict(outcome.reason)) failedCount += 1;
         }
       } catch (err) {
-        if (!(err instanceof ApiError && err.status === 409)) {
+        if (!isBenignConflict(err)) {
+          failedCount += 1;
           console.warn(
             "Failed to add experience proposal",
             draft.client_name,
@@ -449,12 +459,15 @@ export function CvImport({
           school,
           degree: fieldValue(item?.degree),
           field_of_study: fieldValue(item?.field_of_study),
-          start_date: isoDateOrNull(fieldValue(item?.start_date)),
-          end_date: isoDateOrNull(fieldValue(item?.end_date)),
+          // Partial CV dates (YYYY / YYYY-MM) are padded to the period start so
+          // the year/month is kept instead of being dropped entirely.
+          start_date: cvDateToInputValue(fieldValue(item?.start_date)) || null,
+          end_date: cvDateToInputValue(fieldValue(item?.end_date)) || null,
         });
         educationCount += 1;
       } catch (err) {
-        if (!(err instanceof ApiError && err.status === 409)) {
+        if (!isBenignConflict(err)) {
+          failedCount += 1;
           console.warn("Failed to add education proposal", school, err);
         }
       }
@@ -469,17 +482,29 @@ export function CvImport({
         await api.post("/candidates/me/languages", { name, level });
         languageCount += 1;
       } catch (err) {
-        if (!(err instanceof ApiError && err.status === 409)) {
+        if (!isBenignConflict(err)) {
+          failedCount += 1;
           console.warn("Failed to add language proposal", name, err);
         }
       }
     }
 
-    setAddedProfileItems(
-      `${experienceCount} expérience${experienceCount > 1 ? "s" : ""}, ${achievementCount} réalisation${achievementCount > 1 ? "s" : ""}, ${educationCount} formation${educationCount > 1 ? "s" : ""} et ${languageCount} langue${
-        languageCount > 1 ? "s" : ""
-      } ajoutée${experienceCount + achievementCount + educationCount + languageCount > 1 ? "s" : ""}.`,
-    );
+    const addedTotal =
+      experienceCount + achievementCount + educationCount + languageCount;
+    if (addedTotal > 0) {
+      setAddedProfileItems(
+        `${experienceCount} expérience${experienceCount > 1 ? "s" : ""}, ${achievementCount} réalisation${achievementCount > 1 ? "s" : ""}, ${educationCount} formation${educationCount > 1 ? "s" : ""} et ${languageCount} langue${
+          languageCount > 1 ? "s" : ""
+        } ajoutée${addedTotal > 1 ? "s" : ""}.`,
+      );
+    }
+    if (failedCount > 0) {
+      setError(
+        `${failedCount} élément${failedCount > 1 ? "s n'ont" : " n'a"} pas pu être ajouté${
+          failedCount > 1 ? "s" : ""
+        }. Réessayez ou complétez-les manuellement.`,
+      );
+    }
     setStatus("ready");
   }
 

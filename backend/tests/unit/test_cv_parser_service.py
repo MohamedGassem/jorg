@@ -14,6 +14,8 @@ from services.cv_parser_service import (
     CVPersistenceUnavailableError,
     CVTextExtractionError,
     CVTooLargeError,
+    DocumentLine,
+    LanguageParser,
     SkillEntry,
     TextExtractionResult,
     UnsupportedCVFormatError,
@@ -211,11 +213,13 @@ def test_structured_parser_builds_cv_blocks_for_mohamed_sample():
     assert freelance.start_date.value == "2026-03"
     assert freelance.end_date.value is None
     assert freelance.end_date.needs_review is True
+    assert freelance.is_current is True
 
     jtekt = proposal.experiences[1]
     assert jtekt.client_name.value == "JTEKT Europe"
     assert jtekt.start_date.value == "2023-05"
     assert jtekt.end_date.value == "2026-02"
+    assert jtekt.is_current is False
 
     assert proposal.education[0].school.value == "Polytech Lyon"
     assert proposal.education[0].degree.value is not None
@@ -376,3 +380,11 @@ def test_split_without_glyphs_makes_one_achievement_per_line():
 
 def test_split_empty_block_returns_nothing():
     assert _split_description_and_achievements(["   ", ""]) == (None, [])
+
+
+def test_language_level_stays_attached_to_language_across_dash():
+    lines = [DocumentLine(text="Anglais - C1, Espagnol - B2", line_index=0)]
+    parsed = {
+        language.name.value: language.level.value for language in LanguageParser().parse(lines)
+    }
+    assert parsed == {"Anglais": "C1", "Espagnol": "B2"}

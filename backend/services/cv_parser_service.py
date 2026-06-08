@@ -195,6 +195,10 @@ class ExperienceProposal(BaseModel):
     client_name: ExtractedField = Field(default_factory=ExtractedField)
     start_date: ExtractedField = Field(default_factory=ExtractedField)
     end_date: ExtractedField = Field(default_factory=ExtractedField)
+    # Authoritative "ongoing role" flag derived from the CV ("actuel"/"présent").
+    # The front must not re-infer this from an empty end_date, which also matches
+    # a finished role whose end date simply failed to parse.
+    is_current: bool = False
     description: ExtractedField = Field(default_factory=ExtractedField)
     achievements: list[ExtractedField] = []
 
@@ -755,6 +759,7 @@ class ExperienceBlockParser:
                         date_range.confidence,
                         date_range.is_current,
                     ),
+                    is_current=date_range.is_current,
                     description=_field(
                         description,
                         description,
@@ -847,7 +852,10 @@ class LanguageParser:
     def parse(self, lines: list[DocumentLine]) -> list[LanguageProposal]:
         languages: dict[str, LanguageProposal] = {}
         for line in lines:
-            for raw_part in re.split(r"[,;]|\\s+-\\s+", line.text):
+            # Split only on list separators, NOT on " - ": the dash usually joins
+            # a language to its level ("Anglais - C1"), which must stay together
+            # so _extract_language_level can read the level from the same part.
+            for raw_part in re.split(r"[,;]", line.text):
                 normalized_part = _normalise(raw_part)
                 for normalized_language, display in _HUMAN_LANGUAGES.items():
                     if re.search(rf"\b{re.escape(normalized_language)}\b", normalized_part):
