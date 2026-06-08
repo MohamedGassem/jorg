@@ -19,7 +19,10 @@ export default function CandidateLayout({
         title="Espace candidat"
         homeHref="/candidate/dashboard"
       />
-      <main className="flex-1 overflow-auto p-8" id="main-content">
+      <main
+        className="min-w-0 flex-1 overflow-auto p-5 md:p-6 xl:p-8"
+        id="main-content"
+      >
         {children}
       </main>
     </div>

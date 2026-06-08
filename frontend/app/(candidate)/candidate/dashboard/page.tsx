@@ -267,7 +267,7 @@ export default function CandidateDashboardPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-[1500px] space-y-5 animate-pulse">
+      <div className="w-full space-y-5 animate-pulse">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-3">
             <div className="h-8 w-64 rounded-lg bg-muted" />
@@ -280,7 +280,7 @@ export default function CandidateDashboardPage() {
             <div key={i} className="h-28 rounded-lg bg-muted" />
           ))}
         </div>
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(720px,1fr)_360px] 2xl:grid-cols-[minmax(900px,1fr)_380px]">
           <div className="h-[520px] rounded-lg bg-muted" />
           <div className="h-[520px] rounded-lg bg-muted" />
         </div>
@@ -393,7 +393,7 @@ export default function CandidateDashboardPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-5">
+    <div className="w-full space-y-5">
       <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -444,9 +444,9 @@ export default function CandidateDashboardPage() {
         />
       </section>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <main className="space-y-5">
-          <section className="rounded-lg border border-border bg-surface p-5">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(720px,1fr)_360px] 2xl:grid-cols-[minmax(900px,1fr)_380px]">
+        <main className="min-w-0 space-y-5">
+          <section className="rounded-lg border border-border bg-surface p-5 2xl:p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -469,15 +469,15 @@ export default function CandidateDashboardPage() {
                 {primaryAction.cta}
               </Link>
             </div>
-            <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3 2xl:gap-4">
               {secondaryActions.map((action) => (
                 <ActionCard key={action.title} action={action} />
               ))}
             </div>
           </section>
 
-          <section className="grid grid-cols-1 gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-            <article className="rounded-lg border border-border bg-surface p-5">
+          <section className="grid grid-cols-1 gap-5 lg:grid-cols-[0.9fr_1.1fr] 2xl:grid-cols-[0.8fr_1.2fr]">
+            <article className="rounded-lg border border-border bg-surface p-5 2xl:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -529,7 +529,7 @@ export default function CandidateDashboardPage() {
               </Link>
             </article>
 
-            <article className="rounded-lg border border-border bg-surface p-5">
+            <article className="rounded-lg border border-border bg-surface p-5 2xl:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -551,8 +551,8 @@ export default function CandidateDashboardPage() {
           </section>
         </main>
 
-        <aside className="space-y-5 xl:sticky xl:top-8 xl:self-start">
-          <section className="rounded-lg border border-border bg-surface p-5">
+        <aside className="min-w-0 space-y-5 xl:sticky xl:top-8 xl:self-start">
+          <section className="rounded-lg border border-border bg-surface p-5 2xl:p-6">
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Progression
             </p>
@@ -591,7 +591,7 @@ export default function CandidateDashboardPage() {
             </ul>
           </section>
 
-          <section className="rounded-lg border border-border bg-surface p-5">
+          <section className="rounded-lg border border-border bg-surface p-5 2xl:p-6">
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Repères
             </p>
