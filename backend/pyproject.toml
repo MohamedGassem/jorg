@@ -22,6 +22,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "slowapi>=0.1.9",
     "boto3>=1.35",
+    "pymupdf>=1.26.0",
     "pypdf>=6.12.2",
 ]
 

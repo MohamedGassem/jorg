@@ -85,10 +85,10 @@ async def parse_my_cv(
     db: DB,
     file: Annotated[UploadFile, File()],
 ) -> CVParseResult:
-    """Parse an uploaded CV (PDF/DOCX/TXT) into profile pre-fill suggestions.
+    """Parse an uploaded CV (PDF/DOCX) into a candidate-reviewed proposal.
 
-    Read-only: returns extracted contact details and matched ESCO skills; it
-    never mutates the profile — the candidate confirms the suggestions client-side.
+    The profile is never mutated here. The stored proposal remains pending
+    until the candidate confirms or edits it in the UI.
     """
     # Read at most MAX_CV_BYTES + 1 so an oversized upload never inflates a
     # multi-MB bytes object in the handler before we reject it.
@@ -103,7 +103,14 @@ async def parse_my_cv(
     # lifespan did not run (e.g. under the test ASGI transport).
     index = getattr(request.app.state, "skill_index", None)
     try:
-        parsed = await cv_parser_service.parse_cv(file.filename or "", data, db, index=index)
+        profile = await candidate_service.get_or_create_profile(db, current_user.id)
+        proposal = await cv_parser_service.parse_and_store_cv_proposal(
+            profile.id,
+            file.filename or "",
+            data,
+            db,
+            index=index,
+        )
     except cv_parser_service.CVTooLargeError as e:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -119,15 +126,46 @@ async def parse_my_cv(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e),
         ) from e
+    except cv_parser_service.CVPersistenceUnavailableError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e),
+        ) from e
 
-    skills = [
-        CVSkillSuggestion(skill_ref_id=ref.id, name=ref.name, kind=ref.kind)
-        for ref in parsed["skills"]
-    ]
+    payload = proposal.proposed_profile
+    identity = payload.get("identity", {})
+
+    def field_value(name: str) -> str | None:
+        field = identity.get(name, {})
+        return field.get("value") if isinstance(field, dict) else None
+
+    skills = []
+    for skill in payload.get("skills", []):
+        skills.append(
+            CVSkillSuggestion(
+                skill_ref_id=skill.get("skill_ref_id"),
+                name=skill.get("name"),
+                kind=skill.get("kind"),
+                original_label=skill.get("original_label"),
+                normalized_label=skill.get("normalized_label"),
+                match_type=skill.get("match_type", "normalized"),
+                confidence=skill.get("confidence", 0.7),
+                evidence_text=skill.get("evidence_text"),
+                source_section=skill.get("source_section"),
+                needs_review=skill.get("needs_review", True),
+            )
+        )
     return CVParseResult(
-        email=parsed["email"],
-        phone=parsed["phone"],
-        linkedin_url=parsed["linkedin_url"],
+        proposal_id=proposal.id,
+        status=proposal.status,
+        extraction_method=proposal.extraction_method,
+        quality_score=proposal.quality_score,
+        quality_details=proposal.quality_details,
+        warnings=proposal.warnings,
+        proposed_profile=payload,
+        email=field_value("email"),
+        phone=field_value("phone"),
+        linkedin_url=field_value("linkedin_url"),
         skills=skills,
     )
 

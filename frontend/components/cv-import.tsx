@@ -1,26 +1,110 @@
 "use client";
 
-// CvImport — upload a CV (PDF/DOCX/TXT) and pre-fill the candidate profile.
-// The backend extracts contact details + ESCO skills and returns them as
-// *suggestions*; nothing is persisted until the candidate confirms here.
+// CvImport — upload a CV (PDF/DOCX) and review profile suggestions.
+// The backend stores a pending proposal; nothing is applied to the profile
+// until the candidate confirms here.
 
 import { useRef, useState } from "react";
 import { Check, FileText, Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import type { LanguageLevel } from "@/types/api";
+
+interface CvExtractedField {
+  value: string | null;
+  confidence?: number;
+  evidence_text?: string | null;
+  source_section?: string | null;
+  needs_review?: boolean;
+}
+
+interface CvExperienceProposal {
+  role?: CvExtractedField;
+  client_name?: CvExtractedField;
+  start_date?: CvExtractedField;
+  end_date?: CvExtractedField;
+  description?: CvExtractedField;
+}
+
+interface CvEducationProposal {
+  school?: CvExtractedField;
+  degree?: CvExtractedField;
+  field_of_study?: CvExtractedField;
+  start_date?: CvExtractedField;
+  end_date?: CvExtractedField;
+}
+
+interface CvCertificationProposal {
+  name?: CvExtractedField;
+  issuer?: CvExtractedField;
+  issue_date?: CvExtractedField;
+  expiry_date?: CvExtractedField;
+}
+
+interface CvLanguageProposal {
+  name?: CvExtractedField;
+  level?: CvExtractedField;
+}
 
 interface CvSkillSuggestion {
-  skill_ref_id: string;
-  name: string;
-  kind: string;
+  skill_ref_id: string | null;
+  name: string | null;
+  original_label?: string | null;
+  match_type?: "explicit" | "inferred" | "normalized" | "unmatched";
+  kind: string | null;
 }
 
 interface CvParseResult {
+  proposal_id: string | null;
+  status: "pending_review" | "reviewed" | "failed";
+  extraction_method: string | null;
+  quality_score: number | null;
+  warnings: string[];
+  proposed_profile: {
+    experiences?: CvExperienceProposal[];
+    education?: CvEducationProposal[];
+    certifications?: CvCertificationProposal[];
+    languages?: CvLanguageProposal[];
+  };
   email: string | null;
   phone: string | null;
   linkedin_url: string | null;
   skills: CvSkillSuggestion[];
+}
+
+const LANGUAGE_LEVELS: LanguageLevel[] = [
+  "A1",
+  "A2",
+  "B1",
+  "B2",
+  "C1",
+  "C2",
+  "native",
+];
+
+function fieldValue(field?: CvExtractedField): string | null {
+  return field?.value?.trim() || null;
+}
+
+function isoDateOrNull(value: string | null): string | null {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
+function detectedLanguageLevel(value: string | null): LanguageLevel | "" {
+  if (!value) return "";
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === "native" ||
+    normalized === "natif" ||
+    normalized === "native speaker"
+  ) {
+    return "native";
+  }
+  const upper = normalized.toUpperCase();
+  return LANGUAGE_LEVELS.includes(upper as LanguageLevel)
+    ? (upper as LanguageLevel)
+    : "";
 }
 
 interface CvContactPrefill {
@@ -40,14 +124,27 @@ export function CvImport({
   );
   const [result, setResult] = useState<CvParseResult | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedEducation, setSelectedEducation] = useState<Set<number>>(
+    new Set(),
+  );
+  const [selectedLanguages, setSelectedLanguages] = useState<Set<number>>(
+    new Set(),
+  );
+  const [languageLevels, setLanguageLevels] = useState<
+    Record<number, LanguageLevel | "">
+  >({});
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<number | null>(null);
+  const [addedProfileItems, setAddedProfileItems] = useState<string | null>(
+    null,
+  );
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
     setAdded(null);
+    setAddedProfileItems(null);
     setResult(null);
     setStatus("parsing");
     try {
@@ -58,7 +155,35 @@ export function CvImport({
         formData,
       );
       setResult(parsed);
-      setSelected(new Set(parsed.skills.map((s) => s.skill_ref_id)));
+      setSelected(
+        new Set(
+          parsed.skills
+            .map((s) => s.skill_ref_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+      setSelectedEducation(
+        new Set(
+          (parsed.proposed_profile.education ?? [])
+            .map((item, index) => (fieldValue(item.school) ? index : null))
+            .filter((index): index is number => index !== null),
+        ),
+      );
+      setSelectedLanguages(
+        new Set(
+          (parsed.proposed_profile.languages ?? [])
+            .map((item, index) => (fieldValue(item.name) ? index : null))
+            .filter((index): index is number => index !== null),
+        ),
+      );
+      setLanguageLevels(
+        Object.fromEntries(
+          (parsed.proposed_profile.languages ?? []).map((item, index) => [
+            index,
+            detectedLanguageLevel(fieldValue(item.level)),
+          ]),
+        ),
+      );
       setStatus("ready");
       onContactDetected?.({
         email: parsed.email,
@@ -70,7 +195,7 @@ export function CvImport({
       setError(
         err instanceof ApiError
           ? err.detail
-          : "Impossible de lire ce fichier. Réessayez avec un PDF, DOCX ou TXT.",
+          : "Impossible de lire ce fichier. Réessayez avec un PDF ou DOCX.",
       );
     } finally {
       if (inputRef.current) inputRef.current.value = "";
@@ -86,11 +211,32 @@ export function CvImport({
     });
   }
 
+  function toggleEducation(index: number) {
+    setSelectedEducation((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  function toggleLanguage(index: number) {
+    setSelectedLanguages((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
   async function handleAddSkills() {
     if (!result) return;
     setStatus("adding");
     setError(null);
-    const toAdd = result.skills.filter((s) => selected.has(s.skill_ref_id));
+    const toAdd = result.skills.filter(
+      (s): s is CvSkillSuggestion & { skill_ref_id: string } =>
+        Boolean(s.skill_ref_id && selected.has(s.skill_ref_id)),
+    );
     const BATCH_SIZE = 8;
     let count = 0;
     for (let i = 0; i < toAdd.length; i += BATCH_SIZE) {
@@ -116,6 +262,66 @@ export function CvImport({
     setStatus("ready");
   }
 
+  async function handleAddProfileItems() {
+    if (!result) return;
+    setStatus("adding");
+    setError(null);
+    setAddedProfileItems(null);
+    let educationCount = 0;
+    let languageCount = 0;
+
+    for (const index of selectedEducation) {
+      const item = result.proposed_profile.education?.[index];
+      const school = fieldValue(item?.school);
+      if (!school) continue;
+      try {
+        await api.post("/candidates/me/education", {
+          school,
+          degree: fieldValue(item?.degree),
+          field_of_study: fieldValue(item?.field_of_study),
+          start_date: isoDateOrNull(fieldValue(item?.start_date)),
+          end_date: isoDateOrNull(fieldValue(item?.end_date)),
+        });
+        educationCount += 1;
+      } catch (err) {
+        if (!(err instanceof ApiError && err.status === 409)) {
+          console.warn("Failed to add education proposal", school, err);
+        }
+      }
+    }
+
+    for (const index of selectedLanguages) {
+      const item = result.proposed_profile.languages?.[index];
+      const name = fieldValue(item?.name);
+      const level = languageLevels[index];
+      if (!name || !level) continue;
+      try {
+        await api.post("/candidates/me/languages", { name, level });
+        languageCount += 1;
+      } catch (err) {
+        if (!(err instanceof ApiError && err.status === 409)) {
+          console.warn("Failed to add language proposal", name, err);
+        }
+      }
+    }
+
+    setAddedProfileItems(
+      `${educationCount} formation${educationCount > 1 ? "s" : ""} et ${languageCount} langue${
+        languageCount > 1 ? "s" : ""
+      } ajoutée${educationCount + languageCount > 1 ? "s" : ""}.`,
+    );
+    setStatus("ready");
+  }
+
+  const proposedExperiences = result?.proposed_profile.experiences ?? [];
+  const proposedEducation = result?.proposed_profile.education ?? [];
+  const proposedCertifications = result?.proposed_profile.certifications ?? [];
+  const proposedLanguages = result?.proposed_profile.languages ?? [];
+  const addableLanguageCount = [...selectedLanguages].filter(
+    (index) => languageLevels[index],
+  ).length;
+  const addableProfileCount = selectedEducation.size + addableLanguageCount;
+
   return (
     <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
       <div className="flex items-start gap-3">
@@ -134,7 +340,7 @@ export function CvImport({
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         className="hidden"
         onChange={handleFile}
       />
@@ -176,6 +382,204 @@ export function CvImport({
             </p>
           )}
 
+          <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            Proposition en attente de validation
+            {result.extraction_method ? ` · ${result.extraction_method}` : ""}
+            {typeof result.quality_score === "number"
+              ? ` · qualité ${result.quality_score}/100`
+              : ""}
+          </div>
+
+          {result.warnings.length > 0 && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              {result.warnings.slice(0, 3).map((warning) => (
+                <p key={warning}>{warning}</p>
+              ))}
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Sections proposées :{" "}
+            {[
+              ["expériences", result.proposed_profile.experiences?.length ?? 0],
+              ["formations", result.proposed_profile.education?.length ?? 0],
+              [
+                "certifications",
+                result.proposed_profile.certifications?.length ?? 0,
+              ],
+              ["langues", result.proposed_profile.languages?.length ?? 0],
+            ]
+              .filter(([, count]) => Number(count) > 0)
+              .map(([label, count]) => `${count} ${label}`)
+              .join(" · ") || "coordonnées et compétences"}
+          </p>
+
+          {(proposedExperiences.length > 0 ||
+            proposedEducation.length > 0 ||
+            proposedCertifications.length > 0 ||
+            proposedLanguages.length > 0) && (
+            <div className="space-y-3 rounded-md border border-border/60 bg-background p-3">
+              <p className="text-sm font-medium text-foreground">
+                Proposition de profil structurÃ©
+              </p>
+
+              {proposedExperiences.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    ExpÃ©riences Ã  relire
+                  </p>
+                  {proposedExperiences.slice(0, 4).map((item, index) => {
+                    const label =
+                      fieldValue(item.role) ||
+                      fieldValue(item.description) ||
+                      `ExpÃ©rience ${index + 1}`;
+                    return (
+                      <p
+                        key={`experience-${index}-${label}`}
+                        className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground"
+                      >
+                        {label} Â· Ã  complÃ©ter avant ajout
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
+
+              {proposedEducation.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Formations
+                  </p>
+                  {proposedEducation.map((item, index) => {
+                    const school = fieldValue(item.school);
+                    const degree = fieldValue(item.degree);
+                    if (!school) return null;
+                    return (
+                      <label
+                        key={`education-${index}-${school}`}
+                        className="flex items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs"
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-0.5"
+                          checked={selectedEducation.has(index)}
+                          onChange={() => toggleEducation(index)}
+                        />
+                        <span>
+                          <span className="font-medium text-foreground">
+                            {school}
+                          </span>
+                          {degree ? (
+                            <span className="text-muted-foreground">
+                              {" "}
+                              Â· {degree}
+                            </span>
+                          ) : null}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
+              {proposedLanguages.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Langues
+                  </p>
+                  {proposedLanguages.map((item, index) => {
+                    const name = fieldValue(item.name);
+                    if (!name) return null;
+                    return (
+                      <div
+                        key={`language-${index}-${name}`}
+                        className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs"
+                      >
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedLanguages.has(index)}
+                            onChange={() => toggleLanguage(index)}
+                          />
+                          <span className="font-medium text-foreground">
+                            {name}
+                          </span>
+                        </label>
+                        <select
+                          className="h-7 rounded-md border border-input bg-background px-2 text-xs"
+                          value={languageLevels[index] ?? ""}
+                          onChange={(event) =>
+                            setLanguageLevels((prev) => ({
+                              ...prev,
+                              [index]: event.target.value as LanguageLevel | "",
+                            }))
+                          }
+                        >
+                          <option value="">Niveau Ã  choisir</option>
+                          {LANGUAGE_LEVELS.map((level) => (
+                            <option key={level} value={level}>
+                              {level === "native" ? "Natif" : level}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {proposedCertifications.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Certifications Ã  relire
+                  </p>
+                  {proposedCertifications.slice(0, 4).map((item, index) => {
+                    const name =
+                      fieldValue(item.name) || `Certification ${index + 1}`;
+                    const issuer = fieldValue(item.issuer);
+                    return (
+                      <p
+                        key={`certification-${index}-${name}`}
+                        className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground"
+                      >
+                        {name}
+                        {issuer ? ` Â· ${issuer}` : ""} Â· Ã  complÃ©ter avant
+                        ajout
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={status === "adding" || addableProfileCount === 0}
+                onClick={handleAddProfileItems}
+              >
+                {status === "adding" ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Ajoutâ€¦
+                  </>
+                ) : (
+                  `Ajouter ${addableProfileCount} proposition${
+                    addableProfileCount > 1 ? "s" : ""
+                  }`
+                )}
+              </Button>
+              {selectedLanguages.size > addableLanguageCount && (
+                <p className="text-xs text-muted-foreground">
+                  Choisissez un niveau pour chaque langue Ã  ajouter.
+                </p>
+              )}
+              {addedProfileItems && (
+                <p className="text-xs text-primary">{addedProfileItems}</p>
+              )}
+            </div>
+          )}
+
           {result.skills.length > 0 ? (
             <>
               <p className="text-sm font-medium text-foreground">
@@ -186,12 +590,25 @@ export function CvImport({
               </p>
               <div className="flex flex-wrap gap-2">
                 {result.skills.map((skill) => {
-                  const isSelected = selected.has(skill.skill_ref_id);
+                  const id = skill.skill_ref_id;
+                  const label =
+                    skill.name ?? skill.original_label ?? "Compétence";
+                  if (!id) {
+                    return (
+                      <span
+                        key={`unmatched-${label}`}
+                        className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground"
+                      >
+                        {label} · non reconnue
+                      </span>
+                    );
+                  }
+                  const isSelected = selected.has(id);
                   return (
                     <button
-                      key={skill.skill_ref_id}
+                      key={id}
                       type="button"
-                      onClick={() => toggle(skill.skill_ref_id)}
+                      onClick={() => toggle(id)}
                       className={cn(
                         "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition-colors",
                         isSelected
@@ -204,7 +621,7 @@ export function CvImport({
                       ) : (
                         <X className="size-3" />
                       )}
-                      {skill.name}
+                      {label}
                     </button>
                   );
                 })}

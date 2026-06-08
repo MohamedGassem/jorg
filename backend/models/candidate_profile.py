@@ -1,7 +1,7 @@
 # backend/models/candidate_profile.py
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -60,6 +60,12 @@ class MissionDuration(StrEnum):
     MEDIUM = "medium"  # 3-6 mois
     LONG = "long"  # 6 mois+
     PERMANENT = "permanent"
+
+
+class CVExtractionStatus(StrEnum):
+    PENDING_REVIEW = "pending_review"
+    REVIEWED = "reviewed"
+    FAILED = "failed"
 
 
 class CandidateProfile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -212,3 +218,32 @@ class LanguageReference(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     esco_uri: Mapped[str | None] = mapped_column(String(500), nullable=True)
     source: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class CVExtractionProposal(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "cv_extraction_proposals"
+
+    candidate_id: Mapped[UUID] = mapped_column(
+        ForeignKey("candidate_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    raw_text: Mapped[str] = mapped_column(Text, nullable=False)
+    extraction_method: Mapped[str] = mapped_column(String(40), nullable=False)
+    quality_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    quality_details: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    proposed_profile: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    warnings: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    status: Mapped[CVExtractionStatus] = mapped_column(
+        Enum(
+            CVExtractionStatus,
+            name="cv_extraction_status",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
+        default=CVExtractionStatus.PENDING_REVIEW,
+        nullable=False,
+        index=True,
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(nullable=True)

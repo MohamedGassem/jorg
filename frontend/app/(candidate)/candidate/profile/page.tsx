@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CvImport } from "@/components/cv-import";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
@@ -400,6 +401,27 @@ export default function ProfilePage() {
       .catch(console.error);
   }, []);
 
+  async function handleContactDetected(contact: {
+    email: string | null;
+    phone: string | null;
+    linkedin_url: string | null;
+  }) {
+    const payload: Record<string, string> = {};
+    if (contact.phone) payload.phone = contact.phone;
+    if (contact.linkedin_url) payload.linkedin_url = contact.linkedin_url;
+    if (contact.email) payload.email_contact = contact.email;
+    if (Object.keys(payload).length === 0) return;
+    try {
+      const updated = await api.put<CandidateProfile>(
+        "/candidates/me/profile",
+        payload,
+      );
+      setProfile(updated);
+    } catch (err) {
+      console.warn("Failed to save detected contact info:", err);
+    }
+  }
+
   if (!profile) {
     return (
       <div className="max-w-3xl space-y-6">
@@ -419,6 +441,7 @@ export default function ProfilePage() {
         </p>
       </div>
       <ProfileHero profile={profile} onEdit={() => setEditOpen(true)} />
+      <CvImport onContactDetected={handleContactDetected} />
       <Suspense
         fallback={<div className="h-10 animate-pulse rounded-lg bg-muted" />}
       >

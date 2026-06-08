@@ -11,6 +11,7 @@ from core.exceptions import BusinessRuleError
 from models.candidate_profile import (
     AvailabilityStatus,
     ContractType,
+    CVExtractionStatus,
     LanguageLevel,
     MissionDuration,
     WorkMode,
@@ -406,9 +407,16 @@ class OrganizationInteractionCard(BaseModel):
 class CVSkillSuggestion(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    skill_ref_id: UUID
-    name: str
-    kind: SkillKind
+    skill_ref_id: UUID | None = None
+    name: str | None = None
+    kind: SkillKind | None = None
+    original_label: str | None = None
+    normalized_label: str | None = None
+    match_type: Literal["explicit", "inferred", "normalized", "unmatched"] = "normalized"
+    confidence: float = 0.7
+    evidence_text: str | None = None
+    source_section: str | None = None
+    needs_review: bool = True
 
 
 class CVParseResult(BaseModel):
@@ -417,6 +425,13 @@ class CVParseResult(BaseModel):
     Never written to the DB automatically — the candidate confirms in the UI.
     """
 
+    proposal_id: UUID | None = None
+    status: CVExtractionStatus = CVExtractionStatus.PENDING_REVIEW
+    extraction_method: str | None = None
+    quality_score: int | None = None
+    quality_details: dict[str, Any] = {}
+    warnings: list[str] = []
+    proposed_profile: dict[str, Any] = {}
     email: str | None = None
     phone: str | None = None
     linkedin_url: str | None = None
