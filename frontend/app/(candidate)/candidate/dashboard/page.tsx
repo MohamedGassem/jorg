@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CandidateGenerateDossierDialog } from "@/components/candidate-generate-dossier-dialog";
 import { NotificationBell } from "@/components/notification-bell";
 import { buttonVariants } from "@/components/ui/button";
 import { StatCard } from "@/components/ui/StatCard";
 import { api } from "@/lib/api";
-import { eventLabel, relativeDate } from "@/lib/labels";
+import { relativeDate } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type {
   CandidateProfile,
@@ -17,29 +18,6 @@ import type {
   OrganizationInteractionCard,
   Skill,
 } from "@/types/api";
-
-function calcProfileCompletion(
-  profile: CandidateProfile,
-  hasSkill: boolean,
-  hasExperience: boolean,
-): number {
-  const fields: (string | null | undefined)[] = [
-    profile.first_name,
-    profile.last_name,
-    profile.title,
-    profile.summary,
-    profile.phone,
-    profile.location,
-    profile.work_mode,
-    profile.linkedin_url,
-  ];
-  let filled = fields.filter(
-    (f) => typeof f === "string" && f.trim().length > 0,
-  ).length;
-  if (hasSkill) filled++;
-  if (hasExperience) filled++;
-  return Math.round((filled / 10) * 100);
-}
 
 type DashboardAction = {
   title: string;
@@ -56,8 +34,55 @@ type ChecklistItem = {
   done: boolean;
 };
 
+type ActivityEvent = InteractionEvent & {
+  organizationId: string;
+  organizationName: string;
+};
+
 function isFilled(value: string | null | undefined): boolean {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function eventTitle(event: ActivityEvent): string {
+  const labels: Record<InteractionEvent["type"], string> = {
+    invitation_sent: "Invitation envoyée",
+    invitation_accepted: "Invitation acceptée",
+    invitation_rejected: "Invitation refusée",
+    invitation_expired: "Invitation expirée",
+    access_granted: "Accès accordé",
+    access_revoked: "Accès révoqué",
+    document_generated: "Dossier généré",
+  };
+  return `${labels[event.type]} - ${event.organizationName}`;
+}
+
+function recruiterName(event: InteractionEvent): string | null {
+  const parts = [
+    event.metadata.recruiter_first_name,
+    event.metadata.recruiter_last_name,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
+function eventDetail(event: ActivityEvent): string {
+  const recruiter = recruiterName(event);
+  if (event.type === "document_generated") {
+    const details = [
+      event.metadata.template_name
+        ? `Modèle : ${event.metadata.template_name}`
+        : null,
+      recruiter ? `Recruteur : ${recruiter}` : null,
+      event.metadata.file_format
+        ? `Format : ${event.metadata.file_format.toUpperCase()}`
+        : null,
+    ].filter(Boolean);
+    return details.length > 0
+      ? details.join(" · ")
+      : "Document produit depuis votre profil.";
+  }
+  return recruiter
+    ? `Recruteur : ${recruiter}`
+    : "Organisation liée à votre dossier.";
 }
 
 function toneClasses(tone: DashboardAction["tone"]): string {
@@ -129,7 +154,25 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
   );
 }
 
-function ActivityList({ events }: { events: InteractionEvent[] }) {
+function ProfileProgressBar({ value }: { value: number }) {
+  return (
+    <div
+      className="relative mt-4 h-2 overflow-hidden rounded-full bg-gradient-to-r from-danger via-warning to-success"
+      aria-label={`Progression du profil ${value}%`}
+    >
+      <div
+        className="absolute inset-y-0 right-0 bg-muted/85"
+        style={{ left: `${value}%` }}
+      />
+      <div
+        className="absolute top-1/2 size-3 -translate-y-1/2 rounded-full border-2 border-background bg-foreground shadow-sm"
+        style={{ left: `calc(${value}% - 6px)` }}
+      />
+    </div>
+  );
+}
+
+function ActivityList({ events }: { events: ActivityEvent[] }) {
   if (events.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
@@ -149,12 +192,14 @@ function ActivityList({ events }: { events: InteractionEvent[] }) {
           className="flex items-start justify-between gap-3 rounded-lg border border-border/70 bg-background px-3 py-2.5"
         >
           <div>
-            <p className="text-sm font-medium">{eventLabel(event)}</p>
+            <p className="text-sm font-medium">{eventTitle(event)}</p>
             <p className="text-xs text-muted-foreground">
-              {relativeDate(event.occurred_at)}
+              {eventDetail(event)}
             </p>
           </div>
-          <span className="mt-1 size-2 shrink-0 rounded-full bg-primary/70" />
+          <span className="text-xs text-muted-foreground">
+            {relativeDate(event.occurred_at)}
+          </span>
         </li>
       ))}
     </ul>
@@ -165,17 +210,15 @@ export default function CandidateDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
-  const [profileCompletion, setProfileCompletion] = useState<number | null>(
-    null,
-  );
   const [hasSkill, setHasSkill] = useState(false);
   const [hasExperience, setHasExperience] = useState(false);
+  const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [pendingInvitations, setPendingInvitations] = useState<number | null>(
     null,
   );
   const [activeGrants, setActiveGrants] = useState<number | null>(null);
   const [generatedDocs, setGeneratedDocs] = useState<number | null>(null);
-  const [recentEvents, setRecentEvents] = useState<InteractionEvent[]>([]);
+  const [recentEvents, setRecentEvents] = useState<ActivityEvent[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -227,9 +270,6 @@ export default function CandidateDashboardPage() {
 
       if (prof) {
         setProfile(prof);
-        setProfileCompletion(
-          calcProfileCompletion(prof, skillPresent, experiencePresent),
-        );
       }
 
       if (invitations !== null) {
@@ -242,8 +282,14 @@ export default function CandidateDashboardPage() {
         setActiveGrants(
           orgs.filter((o) => o.current_status === "active").length,
         );
-        const allEvents: InteractionEvent[] = orgs
-          .flatMap((o) => o.events)
+        const allEvents: ActivityEvent[] = orgs
+          .flatMap((o) =>
+            o.events.map((event) => ({
+              ...event,
+              organizationId: o.organization_id,
+              organizationName: o.organization_name,
+            })),
+          )
           .sort(
             (a, b) =>
               new Date(b.occurred_at).getTime() -
@@ -289,7 +335,6 @@ export default function CandidateDashboardPage() {
   }
 
   const firstName = profile?.first_name ?? "";
-  const completionPct = profileCompletion ?? 0;
   const pendingCount = pendingInvitations ?? 0;
   const activeCount = activeGrants ?? 0;
   const docsCount = generatedDocs ?? 0;
@@ -330,6 +375,7 @@ export default function CandidateDashboardPage() {
   const checklistPct = Math.round(
     (completedChecklist / checklist.length) * 100,
   );
+  const profileProgressPct = checklistPct;
 
   const primaryAction: DashboardAction =
     pendingCount > 0
@@ -342,7 +388,7 @@ export default function CandidateDashboardPage() {
           status: "Action requise",
           tone: "warning",
         }
-      : completionPct < 100
+      : profileProgressPct < 100
         ? {
             title: "Compléter votre profil structuré",
             description:
@@ -369,8 +415,8 @@ export default function CandidateDashboardPage() {
         "Gardez votre profil, vos expériences et vos compétences alignés avec votre situation actuelle.",
       href: "/candidate/profile",
       cta: "Ouvrir mon dossier",
-      status: completionPct >= 100 ? "À jour" : "À compléter",
-      tone: completionPct >= 100 ? "neutral" : "primary",
+      status: profileProgressPct >= 100 ? "À jour" : "À compléter",
+      tone: profileProgressPct >= 100 ? "neutral" : "primary",
     },
     {
       title: "Vérifier qui a accès",
@@ -418,7 +464,7 @@ export default function CandidateDashboardPage() {
       >
         <StatCard
           label="Profil structuré"
-          value={`${completionPct}%`}
+          value={`${profileProgressPct}%`}
           subtitle={`${completedChecklist}/${checklist.length} blocs essentiels`}
           color="primary"
         />
@@ -431,10 +477,10 @@ export default function CandidateDashboardPage() {
           color={pendingCount > 0 ? "warning" : "neutral"}
         />
         <StatCard
-          label="Accès actifs"
-          value={activeGrants !== null ? activeCount : "-"}
-          subtitle="organisations autorisées"
-          color="neutral"
+          label="Activité récente"
+          value={recentEvents.length}
+          subtitle="événements suivis"
+          color={recentEvents.length > 0 ? "primary" : "neutral"}
         />
         <StatCard
           label="Dossiers"
@@ -562,7 +608,7 @@ export default function CandidateDashboardPage() {
             <div className="mt-4 flex items-end justify-between gap-4">
               <div>
                 <p className="text-3xl font-semibold text-primary">
-                  {checklistPct}%
+                  {profileProgressPct}%
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {completedChecklist}/{checklist.length} étapes complètes
@@ -575,15 +621,7 @@ export default function CandidateDashboardPage() {
                 Modifier
               </Link>
             </div>
-            <div
-              className="mt-4 h-2 overflow-hidden rounded-full bg-muted"
-              aria-label={`Progression du profil ${checklistPct}%`}
-            >
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${checklistPct}%` }}
-              />
-            </div>
+            <ProfileProgressBar value={profileProgressPct} />
             <ul className="mt-4 space-y-2">
               {checklist.map((item) => (
                 <ChecklistRow key={item.label} item={item} />
@@ -593,32 +631,45 @@ export default function CandidateDashboardPage() {
 
           <section className="rounded-lg border border-border bg-surface p-5 2xl:p-6">
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Repères
+              Modèles de dossier
             </p>
             <h2 className="mt-2 font-heading text-lg font-semibold">
-              À vérifier cette semaine
+              Trouver le format qui vous correspond
             </h2>
-            <div className="mt-4 space-y-3 text-sm">
-              <div className="rounded-lg border border-border bg-background p-3">
-                <p className="font-medium">Accès</p>
-                <p className="mt-1 text-muted-foreground">
-                  {pendingCount > 0
-                    ? "Traitez les invitations avant de partager davantage votre profil."
-                    : "Aucune invitation en attente. Vérifiez les accès actifs si besoin."}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border bg-background p-3">
-                <p className="font-medium">Dossier généré</p>
-                <p className="mt-1 text-muted-foreground">
-                  {docsCount > 0
-                    ? "Consultez l’activité pour suivre les derniers documents produits."
-                    : "Générez un dossier lorsque votre profil est suffisamment complet."}
-                </p>
-              </div>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Parcourez les modèles de dossier de compétences Jorg, comparez
+              leur niveau de détail et ouvrez celui qui raconte le mieux votre
+              profil.
+            </p>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+              <span className="rounded-lg border border-border bg-background px-2 py-2">
+                Compact
+              </span>
+              <span className="rounded-lg border border-border bg-background px-2 py-2">
+                Technique
+              </span>
+              <span className="rounded-lg border border-border bg-background px-2 py-2">
+                Premium
+              </span>
             </div>
+            <button
+              type="button"
+              onClick={() => setModelDialogOpen(true)}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "mt-4 w-full",
+              )}
+            >
+              Parcourir les modèles
+            </button>
           </section>
         </aside>
       </div>
+
+      <CandidateGenerateDossierDialog
+        open={modelDialogOpen}
+        onOpenChange={setModelDialogOpen}
+      />
     </div>
   );
 }
