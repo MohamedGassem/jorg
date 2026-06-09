@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
+import { useAsyncOp } from "@/lib/hooks/useAsyncOp";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type {
   Achievement,
@@ -253,14 +254,15 @@ function AchievementRow({
   const [checkedIds, setCheckedIds] = useState<Set<string>>(
     new Set(ach.skill_tags.map((t) => t.skill_ref_id)),
   );
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const saveOp = useAsyncOp("Erreur lors de la sauvegarde");
+  const deleteOp = useAsyncOp("Erreur lors de la suppression");
   const syncedTagsRef = useRef<Set<string>>(
     new Set(ach.skill_tags.map((t) => t.skill_ref_id)),
   );
 
   function openForm() {
+    saveOp.clearError();
+    deleteOp.clearError();
     syncedTagsRef.current = new Set(ach.skill_tags.map((t) => t.skill_ref_id));
     setForm({ description: ach.description, impact: ach.impact ?? "" });
     setCheckedIds(new Set(ach.skill_tags.map((t) => t.skill_ref_id)));
@@ -268,9 +270,7 @@ function AchievementRow({
   }
 
   async function handleSave() {
-    setSaving(true);
-    setError(null);
-    try {
+    await saveOp.run(async () => {
       const updated = await api.put<Achievement>(
         `/candidates/me/experiences/${expId}/achievements/${ach.id}`,
         { description: form.description || null, impact: form.impact || null },
@@ -299,7 +299,6 @@ function AchievementRow({
         ),
       );
 
-      // Compute what actually succeeded on the server
       const successfulDeletes = new Set(
         deleteResults
           .filter(
@@ -317,7 +316,6 @@ function AchievementRow({
           .map((r) => r.value.id),
       );
 
-      // Update syncedTagsRef to reflect actual server state
       const newSynced = new Set(syncedTagsRef.current);
       for (const id of successfulDeletes) newSynced.delete(id);
       for (const id of successfulAdds) newSynced.add(id);
@@ -328,9 +326,9 @@ function AchievementRow({
         addResults.some((r) => r.status === "rejected");
 
       if (anyFailed) {
-        setError("Certains tags n'ont pas pu être synchronisés. Réessayez.");
-        // Don't close the form — let user retry
-        return;
+        throw new Error(
+          "Certains tags n'ont pas pu être synchronisés. Réessayez.",
+        );
       }
       const newTags: AchievementSkillTag[] = skillUsages
         .filter((u) => checkedIds.has(u.skill_ref_id))
@@ -341,25 +339,16 @@ function AchievementRow({
         }));
       onSaved({ ...updated, skill_tags: newTags });
       setOpen(false);
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la sauvegarde"));
-    } finally {
-      setSaving(false);
-    }
+    });
   }
 
   async function handleDelete() {
-    setDeleting(true);
-    try {
+    await deleteOp.run(async () => {
       await api.delete(
         `/candidates/me/experiences/${expId}/achievements/${ach.id}`,
       );
       onDeleted(ach.id);
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
-    } finally {
-      setDeleting(false);
-    }
+    });
   }
 
   return (
@@ -459,15 +448,19 @@ function AchievementRow({
               }
             />
           </div>
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {(saveOp.error ?? deleteOp.error) && (
+            <p className="text-xs text-destructive">
+              {saveOp.error ?? deleteOp.error}
+            </p>
+          )}
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleDelete}
-              disabled={deleting}
+              disabled={deleteOp.saving}
               className="mr-auto text-xs text-destructive hover:underline disabled:opacity-50"
             >
-              {deleting ? "…" : "Supprimer"}
+              {deleteOp.saving ? "…" : "Supprimer"}
             </button>
             <Button
               variant="outline"
@@ -480,10 +473,10 @@ function AchievementRow({
             <Button
               size="sm"
               onClick={handleSave}
-              disabled={saving || !form.description.trim()}
+              disabled={saveOp.saving || !form.description.trim()}
               className="h-7 text-xs"
             >
-              {saving ? "…" : "Sauvegarder"}
+              {saveOp.saving ? "…" : "Sauvegarder"}
             </Button>
           </div>
         </div>
@@ -508,13 +501,10 @@ function AddAchievementRow({
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<AchForm>({ description: "", impact: "" });
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const op = useAsyncOp("Erreur lors de la création");
 
   async function handleAdd() {
-    setSaving(true);
-    setError(null);
-    try {
+    await op.run(async () => {
       const created = await api.post<Achievement>(
         `/candidates/me/experiences/${expId}/achievements`,
         { description: form.description, impact: form.impact || null },
@@ -538,11 +528,7 @@ function AddAchievementRow({
       setForm({ description: "", impact: "" });
       setCheckedIds(new Set());
       setOpen(false);
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la création"));
-    } finally {
-      setSaving(false);
-    }
+    });
   }
 
   if (!open) {
@@ -614,7 +600,7 @@ function AddAchievementRow({
           }
         />
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {op.error && <p className="text-xs text-destructive">{op.error}</p>}
       <div className="flex justify-end gap-2">
         <Button
           variant="outline"
@@ -631,10 +617,10 @@ function AddAchievementRow({
         <Button
           size="sm"
           onClick={handleAdd}
-          disabled={saving || !form.description.trim()}
+          disabled={op.saving || !form.description.trim()}
           className="h-7 text-xs"
         >
-          {saving ? "…" : "Ajouter"}
+          {op.saving ? "…" : "Ajouter"}
         </Button>
       </div>
     </div>
@@ -1203,8 +1189,7 @@ function ExperienceCard({
 }) {
   const [editingExp, setEditingExp] = useState(false);
   const [form, setForm] = useState<ExpForm>(expToForm(exp));
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const op = useAsyncOp("Erreur lors de la sauvegarde");
   const [achievements, setAchievements] = useState<Achievement[]>(
     exp.achievements,
   );
@@ -1231,9 +1216,7 @@ function ExperienceCard({
 
   async function handleSaveExp(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setError(null);
-    try {
+    await op.run(async () => {
       const updated = await api.put<Experience>(
         `/candidates/me/experiences/${exp.id}`,
         {
@@ -1248,20 +1231,14 @@ function ExperienceCard({
       );
       onUpdated({ ...updated, achievements, skill_usages: skillUsages });
       setEditingExp(false);
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la sauvegarde"));
-    } finally {
-      setSaving(false);
-    }
+    });
   }
 
   async function handleDeleteExp() {
-    try {
+    await op.run(async () => {
       await api.delete(`/candidates/me/experiences/${exp.id}`);
       onDeleted(exp.id);
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
-    }
+    });
   }
 
   const dates = exp.is_current
@@ -1401,7 +1378,7 @@ function ExperienceCard({
               placeholder="Contexte de la mission, secteur, équipe…"
             />
           </div>
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {op.error && <p className="text-xs text-destructive">{op.error}</p>}
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
@@ -1415,10 +1392,10 @@ function ExperienceCard({
             <Button
               size="sm"
               type="submit"
-              disabled={saving}
+              disabled={op.saving}
               className="h-7 text-xs"
             >
-              {saving ? "…" : "Sauvegarder"}
+              {op.saving ? "…" : "Sauvegarder"}
             </Button>
           </div>
         </form>
@@ -1521,8 +1498,7 @@ export function ExperienceSection() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState<ExpForm>(EMPTY_EXP);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const op = useAsyncOp("Erreur lors de la création");
 
   useEffect(() => {
     Promise.all([
@@ -1547,9 +1523,7 @@ export function ExperienceSection() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setError(null);
-    try {
+    await op.run(async () => {
       const created = await api.post<Experience>("/candidates/me/experiences", {
         client_name: form.client_name,
         role: form.role,
@@ -1562,11 +1536,7 @@ export function ExperienceSection() {
       setItems((prev) => [...prev, created]);
       setForm(EMPTY_EXP);
       setAdding(false);
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la création"));
-    } finally {
-      setSaving(false);
-    }
+    });
   }
 
   if (loading)
@@ -1667,7 +1637,7 @@ export function ExperienceSection() {
               rows={2}
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {op.error && <p className="text-sm text-destructive">{op.error}</p>}
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
@@ -1680,8 +1650,8 @@ export function ExperienceSection() {
             >
               Annuler
             </Button>
-            <Button size="sm" type="submit" disabled={saving}>
-              {saving ? "…" : "Créer"}
+            <Button size="sm" type="submit" disabled={op.saving}>
+              {op.saving ? "…" : "Créer"}
             </Button>
           </div>
         </form>
