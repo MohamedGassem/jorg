@@ -99,6 +99,46 @@ async def test_parse_cv_matches_aliases(
     assert "JavaScript" in names
 
 
+async def test_parse_cv_matches_candidate_custom_skill(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    created = await client.post(
+        "/skill-references",
+        headers=candidate_headers,
+        json={"name": "PrivateStack42", "kind": "tool"},
+    )
+    assert created.status_code == 201, created.text
+    custom_ref_id = created.json()["id"]
+
+    r = await client.post(
+        "/candidates/me/parse-cv",
+        headers=candidate_headers,
+        files={
+            "file": (
+                "cv.docx",
+                _docx_bytes(
+                    "Jean Dupont\n"
+                    "jean@example.com\n"
+                    "CompÃ©tences\n"
+                    "PrivateStack42, Python\n"
+                    "ExpÃ©rience\n"
+                    "Acme, DÃ©veloppeur backend\n"
+                    "2020 - 2024\n"
+                    "- Livraison avec PrivateStack42\n"
+                    "Formation\n"
+                    "Ecole IngÃ©nieur 2016 2019\n"
+                ),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+
+    assert r.status_code == 200, r.text
+    custom_skill = next(s for s in r.json()["skills"] if s["name"] == "PrivateStack42")
+    assert custom_skill["skill_ref_id"] == custom_ref_id
+    assert custom_skill["kind"] == "tool"
+
+
 async def test_parse_cv_unsupported_format(
     client: AsyncClient, candidate_headers: dict[str, str]
 ) -> None:
