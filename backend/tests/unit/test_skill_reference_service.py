@@ -1,6 +1,7 @@
 # backend/tests/unit/test_skill_reference_service.py
-"""Pure unit tests for slugify — no DB, no async."""
+"""Pure unit tests for slugify -- no DB, no async."""
 
+from models.skill import SkillReference
 from services.skill_reference_service import slugify
 
 
@@ -39,3 +40,18 @@ def test_slugify_removes_surrounding_dashes():
 
 def test_slugify_collapses_consecutive_separators():
     assert "--" not in slugify("C++ / Java")
+
+
+def test_skill_reference_has_is_displayable_field():
+    ref = SkillReference(
+        name="Test",
+        slug="test",
+        kind="technical",
+        aliases=[],
+        source="jorg",
+        is_custom=False,
+        is_displayable=True,
+        categories=["Software Engineering"],
+    )
+    assert ref.is_displayable is True
+    assert ref.categories == ["Software Engineering"]
