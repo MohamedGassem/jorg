@@ -11,7 +11,6 @@ import hashlib
 import io
 import json
 import re
-import unicodedata
 from dataclasses import dataclass
 from typing import ClassVar, Protocol, TypedDict
 from uuid import UUID
@@ -23,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.candidate_profile import CVExtractionProposal, CVExtractionStatus
 from models.skill import SkillKind, SkillReference
+from services.text_utils import normalize_text as _normalise
 
 MAX_CV_BYTES = 5 * 1024 * 1024
 MIN_USABLE_TEXT_CHARS = 180
@@ -1234,12 +1234,6 @@ def _clean_skill_label(value: str) -> str:
     label = value.strip(" -\t()")
     label = re.sub(r"\s+", " ", label)
     return label
-
-
-def _normalise(value: str) -> str:
-    nfkd = unicodedata.normalize("NFKD", value.lower())
-    no_accents = "".join(c for c in nfkd if not unicodedata.combining(c))
-    return re.sub(r"[^a-z0-9]+", " ", no_accents).strip()
 
 
 def _ngrams(tokens: list[str], max_words: int) -> set[str]:
