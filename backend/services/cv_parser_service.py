@@ -95,6 +95,10 @@ _SECTION_KEYWORDS = {
         "interests",
     ),
 }
+_SECTION_KEYWORDS_NORMALIZED: dict[str, frozenset[str]] = {
+    section: frozenset(_normalise(k) for k in keywords)
+    for section, keywords in _SECTION_KEYWORDS.items()
+}
 _GENERIC_SKILL_PREFIXES = {
     "applications deploiement",
     "applications et deploiement",
@@ -556,8 +560,8 @@ def score_text_quality(text: str) -> QualityScore:
     normalized = _normalise(text)
     section_hits = sum(
         1
-        for keywords in _SECTION_KEYWORDS.values()
-        if any(_normalise(k) in normalized for k in keywords)
+        for norm_keywords in _SECTION_KEYWORDS_NORMALIZED.values()
+        if any(k in normalized for k in norm_keywords)
     )
     has_email = bool(_EMAIL_RE.search(text))
     has_dates = bool(_DATE_RE.search(text))
@@ -621,15 +625,6 @@ def extract_contact(text: str) -> CVContact:
         email=email_match.group(0) if email_match else None,
         phone=phone,
         linkedin_url=linkedin_url,
-    )
-
-
-def build_llm_prompt() -> str:
-    return (
-        "Extract a candidate profile proposal from the CV text. Return strict JSON only. "
-        "Do not invent missing facts. Every important field must include value, confidence, "
-        "evidence_text, source_section, and needs_review. Ambiguous facts must be omitted or "
-        "needs_review=true. The CV is not the source of truth; the candidate will review it."
     )
 
 
