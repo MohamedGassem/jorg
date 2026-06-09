@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import unicodedata
+from services.text_utils import normalize_text
 
 
 def _normalize(value: str | None) -> str:
-    if not value:
-        return ""
-    decomposed = unicodedata.normalize("NFKD", value)
-    ascii_value = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
-    return " ".join(ascii_value.casefold().replace("'", " ").replace("\u2019", " ").split())
+    return normalize_text(value or "")
 
 
 def is_esco_language_reference(
