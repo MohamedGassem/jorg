@@ -32,6 +32,7 @@ import {
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useAsyncOp } from "@/lib/hooks/useAsyncOp";
+import { useCrudSection } from "@/lib/hooks/useCrudSection";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type {
   Achievement,
@@ -2595,89 +2596,36 @@ function eduToForm(edu: Education): EduForm {
 }
 
 export function EducationSection() {
-  const [items, setItems] = useState<Education[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<EduForm>(EMPTY_EDU);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api
-      .get<Education[]>("/candidates/me/education")
-      .then(setItems)
-      .catch((err) =>
-        setFetchError(
-          extractErrorMessage(err, "Impossible de charger les formations"),
-        ),
-      )
-      .finally(() => setLoading(false));
-  }, []);
-
-  function set<K extends keyof EduForm>(k: K, v: EduForm[K]) {
-    setForm((prev) => ({ ...prev, [k]: v }));
-  }
-
-  function startEdit(edu: Education) {
-    setAdding(false);
-    setEditingId(edu.id);
-    setForm(eduToForm(edu));
-    setError(null);
-  }
-
-  function cancelForm() {
-    setAdding(false);
-    setEditingId(null);
-    setForm(EMPTY_EDU);
-    setError(null);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
-    const body = {
-      school: form.school,
-      degree: form.degree || null,
-      field_of_study: form.field_of_study || null,
-      start_date: form.start_date || null,
-      end_date: form.end_date || null,
-      description: form.description || null,
-    };
-    try {
-      if (editingId) {
-        const updated = await api.put<Education>(
-          `/candidates/me/education/${editingId}`,
-          body,
-        );
-        setItems((prev) => prev.map((i) => (i.id === editingId ? updated : i)));
-        setEditingId(null);
-      } else {
-        const created = await api.post<Education>(
-          "/candidates/me/education",
-          body,
-        );
-        setItems((prev) => [...prev, created]);
-        setAdding(false);
-      }
-      setForm(EMPTY_EDU);
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la sauvegarde"));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete(id: string) {
-    try {
-      await api.delete(`/candidates/me/education/${id}`);
-      setItems((prev) => prev.filter((i) => i.id !== id));
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
-    }
-  }
+  const crud = useCrudSection<Education, EduForm>({
+    endpoint: "/candidates/me/education",
+    emptyForm: EMPTY_EDU,
+    toForm: eduToForm,
+    toBody: (f) => ({
+      school: f.school,
+      degree: f.degree || null,
+      field_of_study: f.field_of_study || null,
+      start_date: f.start_date || null,
+      end_date: f.end_date || null,
+      description: f.description || null,
+    }),
+    fetchErrorMsg: "Impossible de charger les formations",
+  });
+  const {
+    items,
+    form,
+    saving,
+    error,
+    adding,
+    editingId,
+    loading,
+    fetchError,
+    setField,
+    startEdit,
+    startAdd,
+    cancelForm,
+    handleSubmit,
+    handleDelete,
+  } = crud;
 
   const inlineForm = (
     <form
@@ -2691,7 +2639,7 @@ export function EducationSection() {
         <Input
           id="edu-school"
           value={form.school}
-          onChange={(e) => set("school", e.target.value)}
+          onChange={(e) => setField("school", e.target.value)}
           required
         />
       </div>
@@ -2701,7 +2649,7 @@ export function EducationSection() {
           <Input
             id="edu-degree"
             value={form.degree}
-            onChange={(e) => set("degree", e.target.value)}
+            onChange={(e) => setField("degree", e.target.value)}
             placeholder="ex: Master, Licence…"
           />
         </div>
@@ -2710,7 +2658,7 @@ export function EducationSection() {
           <Input
             id="edu-field"
             value={form.field_of_study}
-            onChange={(e) => set("field_of_study", e.target.value)}
+            onChange={(e) => setField("field_of_study", e.target.value)}
             placeholder="ex: Informatique"
           />
         </div>
@@ -2722,7 +2670,7 @@ export function EducationSection() {
             id="edu-start"
             type="date"
             value={form.start_date}
-            onChange={(e) => set("start_date", e.target.value)}
+            onChange={(e) => setField("start_date", e.target.value)}
           />
         </div>
         <div className="space-y-1.5">
@@ -2731,7 +2679,7 @@ export function EducationSection() {
             id="edu-end"
             type="date"
             value={form.end_date}
-            onChange={(e) => set("end_date", e.target.value)}
+            onChange={(e) => setField("end_date", e.target.value)}
           />
         </div>
       </div>
@@ -2740,7 +2688,7 @@ export function EducationSection() {
         <Textarea
           id="edu-desc"
           value={form.description}
-          onChange={(v) => set("description", v)}
+          onChange={(v) => setField("description", v)}
         />
       </div>
       <div className="flex items-center gap-2">
@@ -2765,8 +2713,11 @@ export function EducationSection() {
         <SectionAddButton
           adding={adding && !editingId}
           onToggle={() => {
-            cancelForm();
-            setAdding((v) => !v);
+            if (adding || editingId) {
+              cancelForm();
+            } else {
+              startAdd();
+            }
           }}
         />
       </CardHeader>
@@ -2843,88 +2794,35 @@ function certToForm(cert: Certification): CertForm {
 }
 
 export function CertificationSection() {
-  const [items, setItems] = useState<Certification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<CertForm>(EMPTY_CERT);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api
-      .get<Certification[]>("/candidates/me/certifications")
-      .then(setItems)
-      .catch((err) =>
-        setFetchError(
-          extractErrorMessage(err, "Impossible de charger les certifications"),
-        ),
-      )
-      .finally(() => setLoading(false));
-  }, []);
-
-  function set<K extends keyof CertForm>(k: K, v: CertForm[K]) {
-    setForm((prev) => ({ ...prev, [k]: v }));
-  }
-
-  function startEdit(cert: Certification) {
-    setAdding(false);
-    setEditingId(cert.id);
-    setForm(certToForm(cert));
-    setError(null);
-  }
-
-  function cancelForm() {
-    setAdding(false);
-    setEditingId(null);
-    setForm(EMPTY_CERT);
-    setError(null);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
-    const body = {
-      name: form.name,
-      issuer: form.issuer,
-      issue_date: form.issue_date,
-      expiry_date: form.expiry_date || null,
-      credential_url: form.credential_url || null,
-    };
-    try {
-      if (editingId) {
-        const updated = await api.put<Certification>(
-          `/candidates/me/certifications/${editingId}`,
-          body,
-        );
-        setItems((prev) => prev.map((i) => (i.id === editingId ? updated : i)));
-        setEditingId(null);
-      } else {
-        const created = await api.post<Certification>(
-          "/candidates/me/certifications",
-          body,
-        );
-        setItems((prev) => [...prev, created]);
-        setAdding(false);
-      }
-      setForm(EMPTY_CERT);
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la sauvegarde"));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete(id: string) {
-    try {
-      await api.delete(`/candidates/me/certifications/${id}`);
-      setItems((prev) => prev.filter((i) => i.id !== id));
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
-    }
-  }
+  const crud = useCrudSection<Certification, CertForm>({
+    endpoint: "/candidates/me/certifications",
+    emptyForm: EMPTY_CERT,
+    toForm: certToForm,
+    toBody: (f) => ({
+      name: f.name,
+      issuer: f.issuer,
+      issue_date: f.issue_date,
+      expiry_date: f.expiry_date || null,
+      credential_url: f.credential_url || null,
+    }),
+    fetchErrorMsg: "Impossible de charger les certifications",
+  });
+  const {
+    items,
+    form,
+    saving,
+    error,
+    adding,
+    editingId,
+    loading,
+    fetchError,
+    setField,
+    startEdit,
+    startAdd,
+    cancelForm,
+    handleSubmit,
+    handleDelete,
+  } = crud;
 
   const inlineForm = (
     <form
@@ -2939,7 +2837,7 @@ export function CertificationSection() {
           <Input
             id="cert-name"
             value={form.name}
-            onChange={(e) => set("name", e.target.value)}
+            onChange={(e) => setField("name", e.target.value)}
             required
           />
         </div>
@@ -2950,7 +2848,7 @@ export function CertificationSection() {
           <Input
             id="cert-issuer"
             value={form.issuer}
-            onChange={(e) => set("issuer", e.target.value)}
+            onChange={(e) => setField("issuer", e.target.value)}
             required
           />
         </div>
@@ -2964,7 +2862,7 @@ export function CertificationSection() {
             id="cert-issue"
             type="date"
             value={form.issue_date}
-            onChange={(e) => set("issue_date", e.target.value)}
+            onChange={(e) => setField("issue_date", e.target.value)}
             required
           />
         </div>
@@ -2974,7 +2872,7 @@ export function CertificationSection() {
             id="cert-expiry"
             type="date"
             value={form.expiry_date}
-            onChange={(e) => set("expiry_date", e.target.value)}
+            onChange={(e) => setField("expiry_date", e.target.value)}
           />
         </div>
       </div>
@@ -2984,7 +2882,7 @@ export function CertificationSection() {
           id="cert-url"
           type="url"
           value={form.credential_url}
-          onChange={(e) => set("credential_url", e.target.value)}
+          onChange={(e) => setField("credential_url", e.target.value)}
           placeholder="https://…"
         />
       </div>
@@ -3010,8 +2908,11 @@ export function CertificationSection() {
         <SectionAddButton
           adding={adding && !editingId}
           onToggle={() => {
-            cancelForm();
-            setAdding((v) => !v);
+            if (adding || editingId) {
+              cancelForm();
+            } else {
+              startAdd();
+            }
           }}
         />
       </CardHeader>
@@ -3071,28 +2972,30 @@ type LangForm = { name: string; level: LanguageLevel };
 const EMPTY_LANG: LangForm = { name: "", level: "B2" };
 
 export function LanguageSection() {
-  const [items, setItems] = useState<Language[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<LangForm>(EMPTY_LANG);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const crud = useCrudSection<Language, LangForm>({
+    endpoint: "/candidates/me/languages",
+    emptyForm: EMPTY_LANG,
+    toForm: (lang) => ({ name: lang.name, level: lang.level }),
+    toBody: (f) => ({ name: f.name, level: f.level }),
+    fetchErrorMsg: "Impossible de charger les langues",
+  });
+  const {
+    items,
+    form,
+    setForm,
+    saving,
+    error,
+    adding,
+    editingId,
+    loading,
+    fetchError,
+    startEdit,
+    startAdd,
+    handleSubmit,
+    handleDelete,
+  } = crud;
   const [languageRefs, setLanguageRefs] = useState<LanguageReference[]>([]);
   const [searchingRefs, setSearchingRefs] = useState(false);
-
-  useEffect(() => {
-    api
-      .get<Language[]>("/candidates/me/languages")
-      .then(setItems)
-      .catch((err) =>
-        setFetchError(
-          extractErrorMessage(err, "Impossible de charger les langues"),
-        ),
-      )
-      .finally(() => setLoading(false));
-  }, []);
 
   useEffect(() => {
     const query = form.name.trim();
@@ -3119,61 +3022,14 @@ export function LanguageSection() {
     return () => clearTimeout(timer);
   }, [form.name]);
 
-  function startEdit(lang: Language) {
-    setAdding(false);
-    setEditingId(lang.id);
-    setForm({ name: lang.name, level: lang.level });
-    setError(null);
-  }
-
   function cancelForm() {
-    setAdding(false);
-    setEditingId(null);
-    setForm(EMPTY_LANG);
+    crud.cancelForm();
     setLanguageRefs([]);
-    setError(null);
   }
 
   function selectLanguageRef(ref: LanguageReference) {
     setForm((prev) => ({ ...prev, name: ref.name }));
     setLanguageRefs([]);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
-    try {
-      if (editingId) {
-        const updated = await api.put<Language>(
-          `/candidates/me/languages/${editingId}`,
-          form,
-        );
-        setItems((prev) => prev.map((i) => (i.id === editingId ? updated : i)));
-        setEditingId(null);
-      } else {
-        const created = await api.post<Language>(
-          "/candidates/me/languages",
-          form,
-        );
-        setItems((prev) => [...prev, created]);
-        setAdding(false);
-      }
-      setForm(EMPTY_LANG);
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la sauvegarde"));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete(id: string) {
-    try {
-      await api.delete(`/candidates/me/languages/${id}`);
-      setItems((prev) => prev.filter((i) => i.id !== id));
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
-    }
   }
 
   const inlineForm = (
@@ -3265,8 +3121,11 @@ export function LanguageSection() {
         <SectionAddButton
           adding={adding && !editingId}
           onToggle={() => {
-            cancelForm();
-            setAdding((v) => !v);
+            if (adding || editingId) {
+              cancelForm();
+            } else {
+              startAdd();
+            }
           }}
         />
       </CardHeader>
