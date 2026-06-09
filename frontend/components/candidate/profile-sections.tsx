@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { useSearchableSelect } from "@/lib/hooks/useSearchableSelect";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -642,53 +644,33 @@ function AddSkillToBouquet({
   onNewSkill?: (skill: Skill) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SkillReference[]>([]);
-  const [searching, setSearching] = useState(false);
   const [adding, setAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const search = useSearchableSelect<SkillReference>((q) =>
+    api.get<SkillReference[]>(`/skill-references?q=${encodeURIComponent(q)}`),
+  );
 
   const localMatches = candidateSkills.filter(
     (s) =>
       !existingRefIds.has(s.skill_ref_id) &&
-      (!query || s.skill_ref.name.toLowerCase().includes(query.toLowerCase())),
+      (!search.query ||
+        s.skill_ref.name.toLowerCase().includes(search.query.toLowerCase())),
   );
 
   const localRefIds = new Set(candidateSkills.map((s) => s.skill_ref_id));
-  const remoteOnly = searchResults.filter(
+  const remoteOnly = search.results.filter(
     (r) => !localRefIds.has(r.id) && !existingRefIds.has(r.id),
   );
 
-  const queryTrim = query.trim();
+  const queryTrim = search.query.trim();
   const allNames = [
     ...localMatches.map((s) => s.skill_ref.name.toLowerCase()),
-    ...searchResults.map((r) => r.name.toLowerCase()),
+    ...search.results.map((r) => r.name.toLowerCase()),
   ];
   const showCreate =
     queryTrim.length >= 2 &&
-    !searching &&
+    !search.searching &&
     !allNames.includes(queryTrim.toLowerCase());
-
-  useEffect(() => {
-    if (!query || query.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    setSearching(true);
-    const timer = setTimeout(async () => {
-      try {
-        const results = await api.get<SkillReference[]>(
-          `/skill-references?q=${encodeURIComponent(query)}`,
-        );
-        setSearchResults(results);
-      } catch {
-        // ignore
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [query]);
 
   async function addRefToExp(skillRefId: string, isInCandidateSkills: boolean) {
     if (adding) return;
@@ -709,8 +691,7 @@ function AddSkillToBouquet({
         },
       );
       onAdded(usage);
-      setQuery("");
-      setSearchResults([]);
+      search.clear();
       setOpen(false);
     } catch {
       // ignore duplicates
@@ -741,8 +722,7 @@ function AddSkillToBouquet({
         },
       );
       onAdded(usage);
-      setQuery("");
-      setSearchResults([]);
+      search.clear();
       setOpen(false);
     } catch {
       // ignore
@@ -770,13 +750,12 @@ function AddSkillToBouquet({
     <div className="relative">
       <input
         ref={inputRef}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        value={search.query}
+        onChange={(e) => search.setQuery(e.target.value)}
         onBlur={() =>
           setTimeout(() => {
             setOpen(false);
-            setQuery("");
-            setSearchResults([]);
+            search.clear();
           }, 200)
         }
         placeholder="Rechercher ou créer…"
@@ -786,8 +765,13 @@ function AddSkillToBouquet({
       {(localMatches.length > 0 ||
         remoteOnly.length > 0 ||
         showCreate ||
-        searching) && (
-        <div className="absolute left-0 top-7 z-20 w-56 rounded-lg border border-border bg-popover shadow-lg max-h-52 overflow-y-auto">
+        search.searching) && (
+        <SearchableSelect
+          query={search.query}
+          searching={search.searching}
+          onCreateNew={showCreate ? createAndAdd : undefined}
+          dropdownClassName="w-56"
+        >
           {localMatches.map((skill) => (
             <button
               key={skill.id}
@@ -817,23 +801,7 @@ function AddSkillToBouquet({
               </span>
             </button>
           ))}
-          {searching && (
-            <p className="px-3 py-1.5 text-xs text-muted-foreground">
-              Recherche…
-            </p>
-          )}
-          {showCreate && (
-            <button
-              type="button"
-              onMouseDown={createAndAdd}
-              className="flex w-full items-center gap-1.5 border-t border-border px-3 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Plus className="size-3 shrink-0" />
-              Créer «{" "}
-              <span className="font-medium text-foreground">{queryTrim}</span>»
-            </button>
-          )}
-        </div>
+        </SearchableSelect>
       )}
     </div>
   );
@@ -943,59 +911,40 @@ function AchievementSkillAdder({
   onAdd: (skillRefId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SkillReference[]>([]);
-  const [searching, setSearching] = useState(false);
   const [adding, setAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const search = useSearchableSelect<SkillReference>((q) =>
+    api.get<SkillReference[]>(`/skill-references?q=${encodeURIComponent(q)}`),
+  );
 
   const bouquetRefIds = new Set(skillUsages.map((u) => u.skill_ref_id));
   const localRefIds = new Set(candidateSkills.map((s) => s.skill_ref_id));
 
   const bouquetMatches = skillUsages.filter(
     (u) =>
-      !query || u.skill_ref.name.toLowerCase().includes(query.toLowerCase()),
+      !search.query ||
+      u.skill_ref.name.toLowerCase().includes(search.query.toLowerCase()),
   );
   const localNotInBouquet = candidateSkills.filter(
     (s) =>
       !bouquetRefIds.has(s.skill_ref_id) &&
-      (!query || s.skill_ref.name.toLowerCase().includes(query.toLowerCase())),
+      (!search.query ||
+        s.skill_ref.name.toLowerCase().includes(search.query.toLowerCase())),
   );
-  const remoteOnly = searchResults.filter(
+  const remoteOnly = search.results.filter(
     (r) => !localRefIds.has(r.id) && !bouquetRefIds.has(r.id),
   );
 
-  const queryTrim = query.trim();
+  const queryTrim = search.query.trim();
   const allNames = [
     ...bouquetMatches.map((u) => u.skill_ref.name.toLowerCase()),
     ...localNotInBouquet.map((s) => s.skill_ref.name.toLowerCase()),
-    ...searchResults.map((r) => r.name.toLowerCase()),
+    ...search.results.map((r) => r.name.toLowerCase()),
   ];
   const showCreate =
     queryTrim.length >= 2 &&
-    !searching &&
+    !search.searching &&
     !allNames.includes(queryTrim.toLowerCase());
-
-  useEffect(() => {
-    if (!query || query.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    setSearching(true);
-    const timer = setTimeout(async () => {
-      try {
-        const results = await api.get<SkillReference[]>(
-          `/skill-references?q=${encodeURIComponent(query)}`,
-        );
-        setSearchResults(results);
-      } catch {
-        // ignore
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [query]);
 
   async function addToAch(
     skillRefId: string,
@@ -1022,8 +971,7 @@ function AchievementSkillAdder({
         onSkillAddedToBouquet(usage);
       }
       onAdd(skillRefId);
-      setQuery("");
-      setSearchResults([]);
+      search.clear();
       setOpen(false);
     } catch {
       // ignore
@@ -1052,8 +1000,7 @@ function AchievementSkillAdder({
       );
       onSkillAddedToBouquet(usage);
       onAdd(ref.id);
-      setQuery("");
-      setSearchResults([]);
+      search.clear();
       setOpen(false);
     } catch {
       // ignore
@@ -1081,13 +1028,12 @@ function AchievementSkillAdder({
     <div className="relative">
       <input
         ref={inputRef}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        value={search.query}
+        onChange={(e) => search.setQuery(e.target.value)}
         onBlur={() =>
           setTimeout(() => {
             setOpen(false);
-            setQuery("");
-            setSearchResults([]);
+            search.clear();
           }, 200)
         }
         placeholder="Rechercher ou créer…"
@@ -1098,8 +1044,13 @@ function AchievementSkillAdder({
         localNotInBouquet.length > 0 ||
         remoteOnly.length > 0 ||
         showCreate ||
-        searching) && (
-        <div className="absolute left-0 top-7 z-20 w-60 rounded-lg border border-border bg-popover shadow-lg max-h-52 overflow-y-auto">
+        search.searching) && (
+        <SearchableSelect
+          query={search.query}
+          searching={search.searching}
+          onCreateNew={showCreate ? createAndAddToAch : undefined}
+          dropdownClassName="w-60"
+        >
           {bouquetMatches.length > 0 && (
             <>
               <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
@@ -1153,23 +1104,7 @@ function AchievementSkillAdder({
               ))}
             </>
           )}
-          {searching && (
-            <p className="px-3 py-1.5 text-xs text-muted-foreground">
-              Recherche…
-            </p>
-          )}
-          {showCreate && (
-            <button
-              type="button"
-              onMouseDown={createAndAddToAch}
-              className="flex w-full items-center gap-1.5 border-t border-border px-3 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Plus className="size-3 shrink-0" />
-              Créer «{" "}
-              <span className="font-medium text-foreground">{queryTrim}</span>»
-            </button>
-          )}
-        </div>
+        </SearchableSelect>
       )}
     </div>
   );
