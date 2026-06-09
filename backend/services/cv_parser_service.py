@@ -287,17 +287,18 @@ class CVStructuredProposal(BaseModel):
     extraction_metadata: ExtractionMetadata | None = None
 
 
+class QualityScore(BaseModel):
+    score: int
+    details: dict[str, int | float | bool]
+    warnings: list[str] = []
+
+
 class TextExtractionResult(BaseModel):
     text: str
     method: str
     warnings: list[str] = []
     lines: list[DocumentLine] = []
-
-
-class QualityScore(BaseModel):
-    score: int
-    details: dict[str, int | float | bool]
-    warnings: list[str] = []
+    quality: QualityScore | None = None
 
 
 class DocumentLine(BaseModel):
@@ -431,6 +432,7 @@ def extract_text_with_metadata(
                     text=clean_extracted_text(fallback_text),
                     method=fallback_parser.method,
                     warnings=[*warnings, *fallback_quality.warnings],
+                    quality=fallback_quality,
                 )
         except CVTextExtractionError as exc:
             warnings.append(str(exc))
@@ -441,7 +443,13 @@ def extract_text_with_metadata(
     if fast_error is not None:
         warnings.append(str(fast_error))
     lines = _extract_document_lines(filename, data, text)
-    return TextExtractionResult(text=text, method=selected.method, warnings=warnings, lines=lines)
+    return TextExtractionResult(
+        text=text,
+        method=selected.method,
+        warnings=warnings,
+        lines=lines,
+        quality=quality,
+    )
 
 
 def _extract_pdf_layout(data: bytes) -> str:
@@ -1368,7 +1376,7 @@ async def parse_and_store_cv_proposal(
         data,
         fallback_parser=fallback_parser,
     )
-    quality = score_text_quality(extraction.text)
+    quality = extraction.quality or score_text_quality(extraction.text)
     if quality.score < 20:
         raise CVTextExtractionError("Le texte extrait est trop court ou trop peu lisible.")
     if index is None:
