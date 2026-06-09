@@ -160,7 +160,7 @@ export default function AccessPage() {
       }
       setOrgDocs((prev) => ({ ...prev, ...byOrg }));
     } catch {
-      // ignore — docs are a nice-to-have
+      // ignore - docs are a nice-to-have
     } finally {
       setDocsLoading((prev) => ({ ...prev, [orgId]: false }));
     }
@@ -179,7 +179,7 @@ export default function AccessPage() {
       </div>
       <ErrorAlert error={invError ?? orgsError ?? actionError} />
 
-      {/* Pending invitations — shown prominently */}
+      {/* Pending invitations - shown prominently */}
       {pendingInvitations.length > 0 && (
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-warning">

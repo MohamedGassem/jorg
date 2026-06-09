@@ -29,7 +29,7 @@ export function OnboardingOrg({ onSuccess }: Props) {
     setSaving(true);
     setError(null);
     try {
-      // create_organization now links the recruiter atomically — no second PUT needed
+      // create_organization now links the recruiter atomically - no second PUT needed
       const org = await api.post<Organization>("/organizations", {
         name: name.trim(),
       });

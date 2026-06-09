@@ -53,7 +53,7 @@ export function NotificationBell({ portal, orgId }: Props) {
         })
         .catch(() => {});
     }
-    // recruiter: no-op for now — future: fetch recent docs/candidates
+    // recruiter: no-op for now - future: fetch recent docs/candidates
   }, [portal, orgId]);
 
   // Close on outside click

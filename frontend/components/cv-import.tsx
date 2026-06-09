@@ -1,6 +1,6 @@
 "use client";
 
-// CvImport — upload a CV (PDF/DOCX) and review profile suggestions.
+// CvImport - upload a CV (PDF/DOCX) and review profile suggestions.
 // The backend stores a pending proposal; nothing is applied to the profile
 // until the candidate confirms here.
 
@@ -90,7 +90,7 @@ function fieldValue(field?: CvExtractedField): string | null {
   return field?.value?.trim() || null;
 }
 
-// A 409 means the item is already on the profile — benign, not a failure.
+// A 409 means the item is already on the profile - benign, not a failure.
 function isBenignConflict(err: unknown): boolean {
   return err instanceof ApiError && err.status === 409;
 }
@@ -130,7 +130,7 @@ function experienceDraftFromProposal(
     );
   }
   // is_current comes from the backend ("actuel"/"présent"); an empty end_date
-  // alone must NOT flip a finished role to "current" — it often just means the
+  // alone must NOT flip a finished role to "current" - it often just means the
   // end date failed to parse.
   const isCurrent = Boolean(item.is_current);
   return {
@@ -400,7 +400,7 @@ export function CvImport({
     let educationCount = 0;
     let languageCount = 0;
     // Anything other than a 409 (already on profile) is a real failure the
-    // candidate must hear about — never report a silent success.
+    // candidate must hear about - never report a silent success.
     let failedCount = 0;
 
     for (const index of selectedExperiences) {
@@ -423,7 +423,7 @@ export function CvImport({
           },
         );
         experienceCount += 1;
-        // Achievements are independent and carry their own order — add them
+        // Achievements are independent and carry their own order - add them
         // concurrently instead of serially.
         const outcomes = await Promise.allSettled(
           achievementTexts.map((description, order) =>
@@ -892,7 +892,7 @@ export function CvImport({
               <p className="text-sm font-medium text-foreground">
                 {result.skills.length} compétence
                 {result.skills.length > 1 ? "s" : ""} détectée
-                {result.skills.length > 1 ? "s" : ""} — sélectionnez celles à
+                {result.skills.length > 1 ? "s" : ""}, sélectionnez celles à
                 ajouter
               </p>
               <div className="flex flex-wrap gap-2">

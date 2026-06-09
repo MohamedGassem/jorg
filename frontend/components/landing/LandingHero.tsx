@@ -17,8 +17,7 @@ export function LandingHero() {
       </h1>
       <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
         Les candidats réécrivent sans cesse les mêmes informations dans leurs
-        CVs et dossiers de compétences. Jorg simplifie ça&nbsp;— pour tout le
-        monde.
+        CVs et dossiers de compétences. Jorg simplifie ça, pour tout le monde.
       </p>
       <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
         <Link href="/register?role=recruiter">

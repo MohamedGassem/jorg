@@ -73,7 +73,7 @@ export default function CandidateOnboardingSkillsPage() {
   async function handleSkip() {
     const ok = await markOnboardingComplete();
     if (!ok) {
-      // Still redirect — user can retry from dashboard
+      // Still redirect - user can retry from dashboard
       console.error(
         "Onboarding flag not persisted; user may see onboarding again on next login",
       );

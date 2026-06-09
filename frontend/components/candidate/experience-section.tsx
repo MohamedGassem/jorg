@@ -1058,7 +1058,7 @@ function ExperienceCard({
       <div className="flex items-start justify-between gap-4 border-b border-border/40 px-4 py-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">
-            {exp.client_name} — {exp.role}
+            {exp.client_name} - {exp.role}
           </p>
           <p className="text-xs text-muted-foreground">{dates}</p>
           {exp.description && (
@@ -1209,7 +1209,7 @@ function ExperienceCard({
         </form>
       )}
 
-      {/* Compétences utilisées — always visible */}
+      {/* Compétences utilisées - always visible */}
       <div className="border-b border-border/40 px-4 py-3">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Compétences utilisées

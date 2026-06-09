@@ -139,7 +139,7 @@ function CandidateExperiencePanel({
             <div key={exp.id} className="rounded-md bg-background/60 px-3 py-2">
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="text-xs font-semibold">
-                  {exp.client_name} — {exp.role}
+                  {exp.client_name} - {exp.role}
                 </span>
                 <span className="text-[10px] text-muted-foreground">
                   {exp.start_date}

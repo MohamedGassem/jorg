@@ -89,7 +89,7 @@ export default function OpportunitiesPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  placeholder="ex: Mission Data Engineer — Fintech"
+                  placeholder="ex: Mission Data Engineer - Fintech"
                 />
               </div>
               <div className="space-y-2">

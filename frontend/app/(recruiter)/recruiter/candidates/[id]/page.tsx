@@ -162,7 +162,7 @@ export default function CandidateDetailPage() {
                 className="rounded-md border border-border/40 p-3"
               >
                 <p className="text-sm font-medium">
-                  {exp.client_name} — {exp.role}
+                  {exp.client_name} - {exp.role}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {exp.start_date}

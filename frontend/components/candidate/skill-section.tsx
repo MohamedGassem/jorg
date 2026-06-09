@@ -72,11 +72,11 @@ const EMPTY_SKILL: SkillForm = {
 };
 
 const LEVEL_OPTIONS: { value: string; label: string }[] = [
-  { value: "1", label: "1/5 — Notions" },
-  { value: "2", label: "2/5 — Débutant" },
-  { value: "3", label: "3/5 — Intermédiaire" },
-  { value: "4", label: "4/5 — Confirmé" },
-  { value: "5", label: "5/5 — Expert" },
+  { value: "1", label: "1/5 - Notions" },
+  { value: "2", label: "2/5 - Débutant" },
+  { value: "3", label: "3/5 - Intermédiaire" },
+  { value: "4", label: "4/5 - Confirmé" },
+  { value: "5", label: "5/5 - Expert" },
 ];
 
 function skillToForm(skill: Skill): SkillForm {
@@ -556,7 +556,7 @@ export function SkillSection() {
               </div>
             )}
 
-            {/* Kind selector — custom skills only */}
+            {/* Kind selector - custom skills only */}
             {form.skill_ref_is_custom && (
               <div className="space-y-1.5">
                 <Label htmlFor="skill-kind">Catégorie</Label>

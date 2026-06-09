@@ -179,7 +179,7 @@ export function SkillContextualizationDialog({
                     onChange={() => toggleExp(exp.id)}
                   />
                   <span className="text-sm font-medium">
-                    {exp.client_name} — {exp.role}
+                    {exp.client_name} - {exp.role}
                   </span>
                 </label>
                 {exp.achievements.length > 0 && sel.exp && (

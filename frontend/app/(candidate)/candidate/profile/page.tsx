@@ -76,7 +76,7 @@ function ProfileHero({
 
   const completion = calcCompletion(profile);
   const fullName =
-    [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "—";
+    [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "-";
 
   return (
     <div className="rounded-xl border bg-card p-6 shadow-sm">
@@ -201,7 +201,7 @@ function ProfileHero({
                         className="rounded border border-border/40 p-3"
                       >
                         <p className="font-medium">
-                          {exp.client_name} — {exp.role}
+                          {exp.client_name} - {exp.role}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {exp.start_date}
@@ -374,7 +374,7 @@ function ProfileTabs() {
         <TabBar tabs={[...TABS]} activeTab={activeTab} onChange={setTab} />
       </div>
 
-      {/* Tab content — only mounts active section */}
+      {/* Tab content - only mounts active section */}
       {activeTab === "experiences" && <ExperienceSection />}
       {activeTab === "competences" && <SkillSection />}
       {activeTab === "formation" && (

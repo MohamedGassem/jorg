@@ -205,7 +205,7 @@ export default function OpportunityDetailPage() {
                       : c.email}
                     {c.title && (
                       <span className="ml-2 text-muted-foreground">
-                        — {c.title}
+                        - {c.title}
                       </span>
                     )}
                   </span>

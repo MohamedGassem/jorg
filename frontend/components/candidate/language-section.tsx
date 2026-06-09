@@ -205,7 +205,7 @@ export function LanguageSection() {
                   {
                     LANGUAGE_LEVELS.find(
                       (l) => l.value === lang.level,
-                    )?.label.split(" — ")[1]
+                    )?.label.split(" - ")[1]
                   }
                 </span>
               </div>

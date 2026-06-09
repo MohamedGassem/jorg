@@ -8,12 +8,12 @@ import type { LanguageLevel } from "@/types/api";
 // ---- Constants ---------------------------------------------------------------
 
 export const LANGUAGE_LEVELS: { value: LanguageLevel; label: string }[] = [
-  { value: "A1", label: "A1 — Débutant" },
-  { value: "A2", label: "A2 — Élémentaire" },
-  { value: "B1", label: "B1 — Intermédiaire" },
-  { value: "B2", label: "B2 — Indépendant" },
-  { value: "C1", label: "C1 — Avancé" },
-  { value: "C2", label: "C2 — Maîtrise" },
+  { value: "A1", label: "A1 - Débutant" },
+  { value: "A2", label: "A2 - Élémentaire" },
+  { value: "B1", label: "B1 - Intermédiaire" },
+  { value: "B2", label: "B2 - Indépendant" },
+  { value: "C1", label: "C1 - Avancé" },
+  { value: "C2", label: "C2 - Maîtrise" },
   { value: "native", label: "Langue maternelle" },
 ];
 
