@@ -2,7 +2,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Trash2, Plus, X, Pencil } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  X,
+  Pencil,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -224,15 +231,19 @@ function SkillChipPicker({
 function AchievementRow({
   ach,
   skillUsages,
+  candidateSkills,
   expId,
   onSaved,
   onDeleted,
+  onSkillAddedToBouquet,
 }: {
   ach: Achievement;
   skillUsages: ExperienceSkillUsage[];
+  candidateSkills: Skill[];
   expId: string;
   onSaved: (updated: Achievement) => void;
   onDeleted: (id: string) => void;
+  onSkillAddedToBouquet: (usage: ExperienceSkillUsage) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<AchForm>({
@@ -421,17 +432,33 @@ function AchievementRow({
               placeholder="ex: −40% temps de déploiement"
             />
           </div>
-          <SkillChipPicker
-            skillUsages={skillUsages}
-            checkedIds={checkedIds}
-            onToggle={(id) =>
-              setCheckedIds((prev) => {
-                const next = new Set(prev);
-                next.has(id) ? next.delete(id) : next.add(id);
-                return next;
-              })
-            }
-          />
+          <div className="space-y-1.5">
+            <SkillChipPicker
+              skillUsages={skillUsages}
+              checkedIds={checkedIds}
+              onToggle={(id) =>
+                setCheckedIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(id)) next.delete(id);
+                  else next.add(id);
+                  return next;
+                })
+              }
+            />
+            <AchievementSkillAdder
+              expId={expId}
+              skillUsages={skillUsages}
+              candidateSkills={candidateSkills}
+              onSkillAddedToBouquet={onSkillAddedToBouquet}
+              onAdd={(skillRefId) =>
+                setCheckedIds((prev) => {
+                  const next = new Set(prev);
+                  next.add(skillRefId);
+                  return next;
+                })
+              }
+            />
+          </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex items-center gap-2">
             <button
@@ -468,11 +495,15 @@ function AchievementRow({
 function AddAchievementRow({
   expId,
   skillUsages,
+  candidateSkills,
   onAdded,
+  onSkillAddedToBouquet,
 }: {
   expId: string;
   skillUsages: ExperienceSkillUsage[];
+  candidateSkills: Skill[];
   onAdded: (ach: Achievement) => void;
+  onSkillAddedToBouquet: (usage: ExperienceSkillUsage) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<AchForm>({ description: "", impact: "" });
@@ -556,17 +587,33 @@ function AddAchievementRow({
           placeholder="ex: −40% temps de déploiement"
         />
       </div>
-      <SkillChipPicker
-        skillUsages={skillUsages}
-        checkedIds={checkedIds}
-        onToggle={(id) =>
-          setCheckedIds((prev) => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-          })
-        }
-      />
+      <div className="space-y-1.5">
+        <SkillChipPicker
+          skillUsages={skillUsages}
+          checkedIds={checkedIds}
+          onToggle={(id) =>
+            setCheckedIds((prev) => {
+              const next = new Set(prev);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            })
+          }
+        />
+        <AchievementSkillAdder
+          expId={expId}
+          skillUsages={skillUsages}
+          candidateSkills={candidateSkills}
+          onSkillAddedToBouquet={onSkillAddedToBouquet}
+          onAdd={(skillRefId) =>
+            setCheckedIds((prev) => {
+              const next = new Set(prev);
+              next.add(skillRefId);
+              return next;
+            })
+          }
+        />
+      </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
       <div className="flex justify-end gap-2">
         <Button
@@ -599,37 +646,121 @@ function AddSkillToBouquet({
   existingRefIds,
   candidateSkills,
   onAdded,
+  onNewSkill,
 }: {
   expId: string;
   existingRefIds: Set<string>;
   candidateSkills: Skill[];
   onAdded: (usage: ExperienceSkillUsage) => void;
+  onNewSkill?: (skill: Skill) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SkillReference[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [adding, setAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const available = candidateSkills.filter(
+  const localMatches = candidateSkills.filter(
     (s) =>
       !existingRefIds.has(s.skill_ref_id) &&
       (!query || s.skill_ref.name.toLowerCase().includes(query.toLowerCase())),
   );
 
-  async function handleSelect(skill: Skill) {
+  const localRefIds = new Set(candidateSkills.map((s) => s.skill_ref_id));
+  const remoteOnly = searchResults.filter(
+    (r) => !localRefIds.has(r.id) && !existingRefIds.has(r.id),
+  );
+
+  const queryTrim = query.trim();
+  const allNames = [
+    ...localMatches.map((s) => s.skill_ref.name.toLowerCase()),
+    ...searchResults.map((r) => r.name.toLowerCase()),
+  ];
+  const showCreate =
+    queryTrim.length >= 2 &&
+    !searching &&
+    !allNames.includes(queryTrim.toLowerCase());
+
+  useEffect(() => {
+    if (!query || query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await api.get<SkillReference[]>(
+          `/skill-references?q=${encodeURIComponent(query)}`,
+        );
+        setSearchResults(results);
+      } catch {
+        // ignore
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  async function addRefToExp(skillRefId: string, isInCandidateSkills: boolean) {
+    if (adding) return;
+    setAdding(true);
     try {
+      if (!isInCandidateSkills) {
+        const newSkill = await api.post<Skill>("/candidates/me/skills", {
+          skill_ref_id: skillRefId,
+        });
+        onNewSkill?.(newSkill);
+      }
       const usage = await api.post<ExperienceSkillUsage>(
         `/candidates/me/experiences/${expId}/skill-usages`,
         {
-          skill_ref_id: skill.skill_ref_id,
+          skill_ref_id: skillRefId,
           usage_role: "implementer",
           intensity: "secondary",
         },
       );
       onAdded(usage);
       setQuery("");
+      setSearchResults([]);
       setOpen(false);
     } catch {
-      // ignore — skill might already exist
+      // ignore duplicates
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function createAndAdd() {
+    const name = queryTrim;
+    if (!name || adding) return;
+    setAdding(true);
+    try {
+      const ref = await api.post<SkillReference>("/skill-references", {
+        name,
+        kind: "technical",
+      });
+      const newSkill = await api.post<Skill>("/candidates/me/skills", {
+        skill_ref_id: ref.id,
+      });
+      onNewSkill?.(newSkill);
+      const usage = await api.post<ExperienceSkillUsage>(
+        `/candidates/me/experiences/${expId}/skill-usages`,
+        {
+          skill_ref_id: ref.id,
+          usage_role: "implementer",
+          intensity: "secondary",
+        },
+      );
+      onAdded(usage);
+      setQuery("");
+      setSearchResults([]);
+      setOpen(false);
+    } catch {
+      // ignore
+    } finally {
+      setAdding(false);
     }
   }
 
@@ -643,7 +774,7 @@ function AddSkillToBouquet({
         }}
         className="rounded-full border border-dashed border-border/60 px-2.5 py-0.5 text-xs text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
       >
-        + Skill
+        + Ajouter
       </button>
     );
   }
@@ -658,26 +789,399 @@ function AddSkillToBouquet({
           setTimeout(() => {
             setOpen(false);
             setQuery("");
+            setSearchResults([]);
           }, 200)
         }
-        placeholder="Filtrer…"
-        className="h-6 rounded-full border border-primary/40 bg-background px-2.5 text-xs outline-none focus:border-primary w-32"
+        placeholder="Rechercher ou créer…"
+        className="h-6 w-44 rounded-full border border-primary/40 bg-background px-2.5 text-xs outline-none focus:border-primary"
+        disabled={adding}
       />
-      {available.length > 0 && (
-        <div className="absolute left-0 top-7 z-20 w-48 rounded-lg border border-border bg-popover shadow-lg max-h-48 overflow-y-auto">
-          {available.map((skill) => (
+      {(localMatches.length > 0 ||
+        remoteOnly.length > 0 ||
+        showCreate ||
+        searching) && (
+        <div className="absolute left-0 top-7 z-20 w-56 rounded-lg border border-border bg-popover shadow-lg max-h-52 overflow-y-auto">
+          {localMatches.map((skill) => (
             <button
               key={skill.id}
               type="button"
-              onMouseDown={() => handleSelect(skill)}
-              className="w-full px-3 py-1.5 text-left text-xs hover:bg-muted"
+              onMouseDown={() => addRefToExp(skill.skill_ref_id, true)}
+              className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs hover:bg-muted"
             >
-              {skill.skill_ref.name}
-              <span className="ml-1 text-[10px] text-muted-foreground">
+              <span>{skill.skill_ref.name}</span>
+              <span className="text-[10px] text-muted-foreground">
                 {skill.skill_ref.kind}
               </span>
             </button>
           ))}
+          {remoteOnly.length > 0 && localMatches.length > 0 && (
+            <div className="my-0.5 border-t border-border/50" />
+          )}
+          {remoteOnly.map((ref) => (
+            <button
+              key={ref.id}
+              type="button"
+              onMouseDown={() => addRefToExp(ref.id, false)}
+              className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs hover:bg-muted"
+            >
+              <span>{ref.name}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {ref.kind}
+              </span>
+            </button>
+          ))}
+          {searching && (
+            <p className="px-3 py-1.5 text-xs text-muted-foreground">
+              Recherche…
+            </p>
+          )}
+          {showCreate && (
+            <button
+              type="button"
+              onMouseDown={createAndAdd}
+              className="flex w-full items-center gap-1.5 border-t border-border px-3 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Plus className="size-3 shrink-0" />
+              Créer «{" "}
+              <span className="font-medium text-foreground">{queryTrim}</span>»
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProposeAchievementAssoc({
+  skill,
+  achievements,
+  expId,
+  onDone,
+  onTagged,
+}: {
+  skill: ExperienceSkillUsage;
+  achievements: Achievement[];
+  expId: string;
+  onDone: () => void;
+  onTagged: (achId: string, tag: AchievementSkillTag) => void;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+
+  async function handleAssoc() {
+    setSaving(true);
+    await Promise.allSettled(
+      [...selected].map(async (achId) => {
+        try {
+          await api.post(
+            `/candidates/me/experiences/${expId}/achievements/${achId}/skill-tags`,
+            { skill_ref_id: skill.skill_ref_id },
+          );
+          onTagged(achId, {
+            skill_ref_id: skill.skill_ref_id,
+            skill_ref: skill.skill_ref,
+            created_at: new Date().toISOString(),
+          });
+        } catch {
+          // ignore duplicates
+        }
+      }),
+    );
+    setSaving(false);
+    onDone();
+  }
+
+  return (
+    <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-xs">
+      <p className="mb-1.5 font-medium text-foreground">
+        Associer aussi «{skill.skill_ref.name}» à une réalisation ?
+      </p>
+      <div className="mb-2 space-y-1">
+        {achievements.map((ach) => (
+          <label
+            key={ach.id}
+            className="flex cursor-pointer items-start gap-1.5"
+          >
+            <input
+              type="checkbox"
+              className="mt-0.5 h-3 w-3 accent-primary"
+              checked={selected.has(ach.id)}
+              onChange={(e) => {
+                setSelected((prev) => {
+                  const next = new Set(prev);
+                  if (e.target.checked) next.add(ach.id);
+                  else next.delete(ach.id);
+                  return next;
+                });
+              }}
+            />
+            <span className="line-clamp-1 text-muted-foreground">
+              {ach.description}
+            </span>
+          </label>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleAssoc}
+          disabled={saving || selected.size === 0}
+          className="rounded bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground disabled:opacity-50"
+        >
+          {saving ? "…" : "Associer"}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="text-[11px] text-muted-foreground hover:text-foreground"
+        >
+          Plus tard
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AchievementSkillAdder({
+  expId,
+  skillUsages,
+  candidateSkills,
+  onSkillAddedToBouquet,
+  onAdd,
+}: {
+  expId: string;
+  skillUsages: ExperienceSkillUsage[];
+  candidateSkills: Skill[];
+  onSkillAddedToBouquet: (usage: ExperienceSkillUsage) => void;
+  onAdd: (skillRefId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SkillReference[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const bouquetRefIds = new Set(skillUsages.map((u) => u.skill_ref_id));
+  const localRefIds = new Set(candidateSkills.map((s) => s.skill_ref_id));
+
+  const bouquetMatches = skillUsages.filter(
+    (u) =>
+      !query || u.skill_ref.name.toLowerCase().includes(query.toLowerCase()),
+  );
+  const localNotInBouquet = candidateSkills.filter(
+    (s) =>
+      !bouquetRefIds.has(s.skill_ref_id) &&
+      (!query || s.skill_ref.name.toLowerCase().includes(query.toLowerCase())),
+  );
+  const remoteOnly = searchResults.filter(
+    (r) => !localRefIds.has(r.id) && !bouquetRefIds.has(r.id),
+  );
+
+  const queryTrim = query.trim();
+  const allNames = [
+    ...bouquetMatches.map((u) => u.skill_ref.name.toLowerCase()),
+    ...localNotInBouquet.map((s) => s.skill_ref.name.toLowerCase()),
+    ...searchResults.map((r) => r.name.toLowerCase()),
+  ];
+  const showCreate =
+    queryTrim.length >= 2 &&
+    !searching &&
+    !allNames.includes(queryTrim.toLowerCase());
+
+  useEffect(() => {
+    if (!query || query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await api.get<SkillReference[]>(
+          `/skill-references?q=${encodeURIComponent(query)}`,
+        );
+        setSearchResults(results);
+      } catch {
+        // ignore
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  async function addToAch(
+    skillRefId: string,
+    isInCandidateSkills: boolean,
+    isInBouquet: boolean,
+  ) {
+    if (adding) return;
+    setAdding(true);
+    try {
+      if (!isInCandidateSkills) {
+        await api.post<Skill>("/candidates/me/skills", {
+          skill_ref_id: skillRefId,
+        });
+      }
+      if (!isInBouquet) {
+        const usage = await api.post<ExperienceSkillUsage>(
+          `/candidates/me/experiences/${expId}/skill-usages`,
+          {
+            skill_ref_id: skillRefId,
+            usage_role: "implementer",
+            intensity: "secondary",
+          },
+        );
+        onSkillAddedToBouquet(usage);
+      }
+      onAdd(skillRefId);
+      setQuery("");
+      setSearchResults([]);
+      setOpen(false);
+    } catch {
+      // ignore
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function createAndAddToAch() {
+    const name = queryTrim;
+    if (!name || adding) return;
+    setAdding(true);
+    try {
+      const ref = await api.post<SkillReference>("/skill-references", {
+        name,
+        kind: "technical",
+      });
+      await api.post<Skill>("/candidates/me/skills", { skill_ref_id: ref.id });
+      const usage = await api.post<ExperienceSkillUsage>(
+        `/candidates/me/experiences/${expId}/skill-usages`,
+        {
+          skill_ref_id: ref.id,
+          usage_role: "implementer",
+          intensity: "secondary",
+        },
+      );
+      onSkillAddedToBouquet(usage);
+      onAdd(ref.id);
+      setQuery("");
+      setSearchResults([]);
+      setOpen(false);
+    } catch {
+      // ignore
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(true);
+          setTimeout(() => inputRef.current?.focus(), 50);
+        }}
+        className="text-xs text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
+      >
+        + ajouter une compétence
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onBlur={() =>
+          setTimeout(() => {
+            setOpen(false);
+            setQuery("");
+            setSearchResults([]);
+          }, 200)
+        }
+        placeholder="Rechercher ou créer…"
+        className="h-6 w-48 rounded-full border border-primary/40 bg-background px-2.5 text-xs outline-none focus:border-primary"
+        disabled={adding}
+      />
+      {(bouquetMatches.length > 0 ||
+        localNotInBouquet.length > 0 ||
+        remoteOnly.length > 0 ||
+        showCreate ||
+        searching) && (
+        <div className="absolute left-0 top-7 z-20 w-60 rounded-lg border border-border bg-popover shadow-lg max-h-52 overflow-y-auto">
+          {bouquetMatches.length > 0 && (
+            <>
+              <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                Dans cette expérience
+              </p>
+              {bouquetMatches.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onMouseDown={() => addToAch(u.skill_ref_id, true, true)}
+                  className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs hover:bg-muted"
+                >
+                  <span>{u.skill_ref.name}</span>
+                </button>
+              ))}
+            </>
+          )}
+          {localNotInBouquet.length > 0 && (
+            <>
+              {bouquetMatches.length > 0 && (
+                <div className="my-0.5 border-t border-border/50" />
+              )}
+              {localNotInBouquet.map((skill) => (
+                <button
+                  key={skill.id}
+                  type="button"
+                  onMouseDown={() => addToAch(skill.skill_ref_id, true, false)}
+                  className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs hover:bg-muted"
+                >
+                  <span>{skill.skill_ref.name}</span>
+                  <span className="text-[10px] text-amber-500">+ bouquet</span>
+                </button>
+              ))}
+            </>
+          )}
+          {remoteOnly.length > 0 && (
+            <>
+              {(bouquetMatches.length > 0 || localNotInBouquet.length > 0) && (
+                <div className="my-0.5 border-t border-border/50" />
+              )}
+              {remoteOnly.map((ref) => (
+                <button
+                  key={ref.id}
+                  type="button"
+                  onMouseDown={() => addToAch(ref.id, false, false)}
+                  className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs hover:bg-muted"
+                >
+                  <span>{ref.name}</span>
+                  <span className="text-[10px] text-amber-500">+ bouquet</span>
+                </button>
+              ))}
+            </>
+          )}
+          {searching && (
+            <p className="px-3 py-1.5 text-xs text-muted-foreground">
+              Recherche…
+            </p>
+          )}
+          {showCreate && (
+            <button
+              type="button"
+              onMouseDown={createAndAddToAch}
+              className="flex w-full items-center gap-1.5 border-t border-border px-3 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Plus className="size-3 shrink-0" />
+              Créer «{" "}
+              <span className="font-medium text-foreground">{queryTrim}</span>»
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -689,11 +1193,13 @@ function ExperienceCard({
   candidateSkills,
   onUpdated,
   onDeleted,
+  onNewSkill,
 }: {
   exp: Experience;
   candidateSkills: Skill[];
   onUpdated: (updated: Experience) => void;
   onDeleted: (id: string) => void;
+  onNewSkill?: (skill: Skill) => void;
 }) {
   const [editingExp, setEditingExp] = useState(false);
   const [form, setForm] = useState<ExpForm>(expToForm(exp));
@@ -705,6 +1211,8 @@ function ExperienceCard({
   const [skillUsages, setSkillUsages] = useState<ExperienceSkillUsage[]>(
     exp.skill_usages,
   );
+  const [pendingAssocSkill, setPendingAssocSkill] =
+    useState<ExperienceSkillUsage | null>(null);
 
   function set<K extends keyof ExpForm>(k: K, v: ExpForm[K]) {
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -916,33 +1424,56 @@ function ExperienceCard({
         </form>
       )}
 
-      {/* Skill bouquet — always visible */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-border/40 px-4 py-2">
-        <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Skills
-        </span>
-        {skillUsages.map((u) => (
-          <span
-            key={u.id}
-            className="group flex items-center gap-1 rounded-full border border-border/60 bg-muted/30 px-2.5 py-0.5 text-xs text-muted-foreground"
-          >
-            {u.skill_ref.name}
-            <button
-              type="button"
-              onClick={() => handleRemoveSkillUsage(u)}
-              className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-              aria-label={`Supprimer ${u.skill_ref.name}`}
+      {/* Compétences utilisées — always visible */}
+      <div className="border-b border-border/40 px-4 py-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Compétences utilisées
+        </p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {skillUsages.map((u) => (
+            <span
+              key={u.id}
+              className="group flex items-center gap-1 rounded-full border border-border/60 bg-muted/30 px-2.5 py-0.5 text-xs text-muted-foreground"
             >
-              <X className="size-2.5" />
-            </button>
-          </span>
-        ))}
-        <AddSkillToBouquet
-          expId={exp.id}
-          existingRefIds={new Set(skillUsages.map((u) => u.skill_ref_id))}
-          candidateSkills={candidateSkills}
-          onAdded={(usage) => setSkillUsages((prev) => [...prev, usage])}
-        />
+              {u.skill_ref.name}
+              <button
+                type="button"
+                onClick={() => handleRemoveSkillUsage(u)}
+                className="ml-0.5 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                aria-label={`Supprimer ${u.skill_ref.name}`}
+              >
+                <X className="size-2.5" />
+              </button>
+            </span>
+          ))}
+          <AddSkillToBouquet
+            expId={exp.id}
+            existingRefIds={new Set(skillUsages.map((u) => u.skill_ref_id))}
+            candidateSkills={candidateSkills}
+            onAdded={(usage) => {
+              setSkillUsages((prev) => [...prev, usage]);
+              if (achievements.length > 0) setPendingAssocSkill(usage);
+            }}
+            onNewSkill={onNewSkill}
+          />
+        </div>
+        {pendingAssocSkill && achievements.length > 0 && (
+          <ProposeAchievementAssoc
+            skill={pendingAssocSkill}
+            achievements={achievements}
+            expId={exp.id}
+            onDone={() => setPendingAssocSkill(null)}
+            onTagged={(achId, tag) =>
+              setAchievements((prev) =>
+                prev.map((a) =>
+                  a.id === achId
+                    ? { ...a, skill_tags: [...a.skill_tags, tag] }
+                    : a,
+                ),
+              )
+            }
+          />
+        )}
       </div>
 
       <div className="px-4 py-3">
@@ -954,6 +1485,7 @@ function ExperienceCard({
             key={ach.id}
             ach={ach}
             skillUsages={skillUsages}
+            candidateSkills={candidateSkills}
             expId={exp.id}
             onSaved={(updated) =>
               setAchievements((prev) =>
@@ -963,12 +1495,19 @@ function ExperienceCard({
             onDeleted={(id) =>
               setAchievements((prev) => prev.filter((a) => a.id !== id))
             }
+            onSkillAddedToBouquet={(usage) =>
+              setSkillUsages((prev) => [...prev, usage])
+            }
           />
         ))}
         <AddAchievementRow
           expId={exp.id}
           skillUsages={skillUsages}
+          candidateSkills={candidateSkills}
           onAdded={(ach) => setAchievements((prev) => [...prev, ach])}
+          onSkillAddedToBouquet={(usage) =>
+            setSkillUsages((prev) => [...prev, usage])
+          }
         />
       </div>
     </div>
@@ -1050,6 +1589,7 @@ export function ExperienceSection() {
           onDeleted={(id) =>
             setItems((prev) => prev.filter((i) => i.id !== id))
           }
+          onNewSkill={(skill) => setCandidateSkills((prev) => [...prev, skill])}
         />
       ))}
 
@@ -1160,6 +1700,206 @@ export function ExperienceSection() {
   );
 }
 
+// ---- Skill contextualization dialog ----------------------------------------
+
+function SkillContextualizationDialog({
+  skill,
+  allSkills,
+  initialIndex,
+  experiences,
+  onClose,
+  onAssociated,
+}: {
+  skill: Skill;
+  allSkills?: Skill[];
+  initialIndex?: number;
+  experiences: Experience[];
+  onClose: () => void;
+  onAssociated?: (associatedExpIds: string[], skill: Skill) => void;
+}) {
+  const skills = allSkills ?? [skill];
+  const [currentIdx, setCurrentIdx] = useState(initialIndex ?? 0);
+  const currentSkill = skills[currentIdx] ?? skill;
+
+  const [selections, setSelections] = useState<
+    Record<string, { exp: boolean; achs: Set<string> }>
+  >({});
+  const [saving, setSaving] = useState(false);
+
+  function goTo(idx: number) {
+    setCurrentIdx(idx);
+    setSelections({});
+  }
+
+  function toggleExp(expId: string) {
+    setSelections((prev) => ({
+      ...prev,
+      [expId]: {
+        exp: !prev[expId]?.exp,
+        achs: prev[expId]?.achs ?? new Set<string>(),
+      },
+    }));
+  }
+
+  function toggleAch(expId: string, achId: string) {
+    setSelections((prev) => {
+      const cur = prev[expId] ?? { exp: false, achs: new Set<string>() };
+      const achs = new Set(cur.achs);
+      if (achs.has(achId)) achs.delete(achId);
+      else achs.add(achId);
+      return { ...prev, [expId]: { exp: cur.exp || achs.size > 0, achs } };
+    });
+  }
+
+  async function handleAssociate() {
+    setSaving(true);
+    const associatedExpIds: string[] = [];
+    for (const [expId, sel] of Object.entries(selections)) {
+      if (!sel.exp) continue;
+      try {
+        await api.post(`/candidates/me/experiences/${expId}/skill-usages`, {
+          skill_ref_id: currentSkill.skill_ref_id,
+          usage_role: "implementer",
+          intensity: "secondary",
+        });
+        associatedExpIds.push(expId);
+      } catch {
+        associatedExpIds.push(expId);
+      }
+      for (const achId of sel.achs) {
+        try {
+          await api.post(
+            `/candidates/me/experiences/${expId}/achievements/${achId}/skill-tags`,
+            { skill_ref_id: currentSkill.skill_ref_id },
+          );
+        } catch {
+          // ignore
+        }
+      }
+    }
+    setSaving(false);
+    onAssociated?.(associatedExpIds, currentSkill);
+    if (currentIdx < skills.length - 1) {
+      goTo(currentIdx + 1);
+    } else {
+      onClose();
+    }
+  }
+
+  const hasSelection = Object.values(selections).some(
+    (s) => s.exp || s.achs.size > 0,
+  );
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <div className="flex items-center gap-2 pr-8">
+            {skills.length > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => goTo(currentIdx - 1)}
+                  disabled={currentIdx === 0}
+                  className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                  aria-label="Compétence précédente"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {currentIdx + 1}/{skills.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => goTo(currentIdx + 1)}
+                  disabled={currentIdx === skills.length - 1}
+                  className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                  aria-label="Compétence suivante"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            )}
+            <DialogTitle className="leading-snug">
+              Où as-tu utilisé «{currentSkill.skill_ref.name}» ?
+            </DialogTitle>
+          </div>
+        </DialogHeader>
+        <div className="max-h-80 space-y-2 overflow-y-auto py-1">
+          {experiences.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              Aucune expérience pour le moment.
+            </p>
+          )}
+          {experiences.map((exp) => {
+            const sel = selections[exp.id] ?? {
+              exp: false,
+              achs: new Set<string>(),
+            };
+            return (
+              <div
+                key={exp.id}
+                className="rounded-lg border border-border/60 p-3"
+              >
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={sel.exp}
+                    onChange={() => toggleExp(exp.id)}
+                  />
+                  <span className="text-sm font-medium">
+                    {exp.client_name} — {exp.role}
+                  </span>
+                </label>
+                {exp.achievements.length > 0 && sel.exp && (
+                  <div className="ml-6 mt-2 space-y-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Réalisations
+                    </p>
+                    {exp.achievements.map((ach) => (
+                      <label
+                        key={ach.id}
+                        className="flex cursor-pointer items-start gap-1.5"
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 h-3.5 w-3.5 accent-primary"
+                          checked={sel.achs.has(ach.id)}
+                          onChange={() => toggleAch(exp.id, ach.id)}
+                        />
+                        <span className="line-clamp-2 text-xs text-muted-foreground">
+                          {ach.description}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <DialogFooter className="flex items-center justify-between sm:justify-between">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Associer plus tard
+          </button>
+          <Button
+            size="sm"
+            onClick={handleAssociate}
+            disabled={saving || !hasSelection}
+          >
+            {saving ? "Association…" : "Associer"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ---- Skills -----------------------------------------------------------------
 
 const KIND_ORDER: SkillKind[] = [
@@ -1224,6 +1964,7 @@ function skillToForm(skill: Skill): SkillForm {
 
 export function SkillSection() {
   const [items, setItems] = useState<Skill[]>([]);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -1234,12 +1975,18 @@ export function SkillSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SkillReference[]>([]);
   const [searching, setSearching] = useState(false);
+  const [contextSkill, setContextSkill] = useState<Skill | null>(null);
   const skipNextSearch = useRef(false);
 
   useEffect(() => {
-    api
-      .get<Skill[]>("/candidates/me/skills")
-      .then(setItems)
+    Promise.all([
+      api.get<Skill[]>("/candidates/me/skills"),
+      api.get<Experience[]>("/candidates/me/experiences"),
+    ])
+      .then(([skills, exps]) => {
+        setItems(skills);
+        setExperiences(exps);
+      })
       .catch((err) =>
         setFetchError(
           extractErrorMessage(err, "Impossible de charger les compétences"),
@@ -1366,6 +2113,7 @@ export function SkillSection() {
           notes: form.notes || null,
         });
         setItems((prev) => [...prev, created]);
+        setContextSkill(created);
       }
       setForm(EMPTY_SKILL);
       setSearchQuery("");
@@ -1409,6 +2157,13 @@ export function SkillSection() {
 
   const refSelected = !!form.skill_ref_id;
 
+  const associatedRefIds = new Set(
+    experiences.flatMap((e) => e.skill_usages.map((u) => u.skill_ref_id)),
+  );
+  const unassociated = items.filter(
+    (s) => !associatedRefIds.has(s.skill_ref_id),
+  );
+
   return (
     <div className="space-y-4">
       {loading && (
@@ -1441,6 +2196,42 @@ export function SkillSection() {
 
       {error && !dialogOpen && (
         <p className="text-sm text-destructive">{error}</p>
+      )}
+
+      {/* ---- Unassociated skills banner ---- */}
+      {!loading && !fetchError && unassociated.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+            {unassociated.length} compétence
+            {unassociated.length > 1 ? "s" : ""} non rattachée
+            {unassociated.length > 1 ? "s" : ""} à une expérience
+          </p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {unassociated.slice(0, 6).map((s) => (
+              <span
+                key={s.id}
+                className="text-xs text-amber-700 dark:text-amber-400"
+              >
+                {s.skill_ref.name}
+                {unassociated.indexOf(s) < Math.min(5, unassociated.length - 1)
+                  ? ","
+                  : ""}
+              </span>
+            ))}
+            {unassociated.length > 6 && (
+              <span className="text-xs text-amber-600 dark:text-amber-500">
+                +{unassociated.length - 6} autres
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setContextSkill(unassociated[0])}
+            className="mt-2 text-xs font-medium text-amber-700 underline-offset-2 hover:underline dark:text-amber-400"
+          >
+            Rattacher ces compétences →
+          </button>
+        </div>
       )}
 
       {/* ---- Featured Skills Block ---- */}
@@ -1757,6 +2548,47 @@ export function SkillSection() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* ---- Contextualization dialog (after skill creation) ---- */}
+      {contextSkill && (
+        <SkillContextualizationDialog
+          skill={contextSkill}
+          allSkills={unassociated.length > 1 ? unassociated : undefined}
+          initialIndex={
+            unassociated.length > 1
+              ? Math.max(
+                  0,
+                  unassociated.findIndex((s) => s.id === contextSkill.id),
+                )
+              : undefined
+          }
+          experiences={experiences}
+          onAssociated={(expIds, associatedSkill) => {
+            setExperiences((prev) =>
+              prev.map((exp) =>
+                expIds.includes(exp.id)
+                  ? {
+                      ...exp,
+                      skill_usages: [
+                        ...exp.skill_usages,
+                        {
+                          id: `tmp-${associatedSkill.skill_ref_id}-${exp.id}`,
+                          experience_id: exp.id,
+                          skill_ref_id: associatedSkill.skill_ref_id,
+                          skill_ref: associatedSkill.skill_ref,
+                          usage_role: "implementer" as const,
+                          intensity: "secondary" as const,
+                          created_at: new Date().toISOString(),
+                        },
+                      ],
+                    }
+                  : exp,
+              ),
+            );
+          }}
+          onClose={() => setContextSkill(null)}
+        />
+      )}
     </div>
   );
 }
