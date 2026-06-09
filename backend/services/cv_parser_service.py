@@ -1344,13 +1344,10 @@ def match_structured_skills(
 async def parse_cv(
     filename: str,
     data: bytes,
-    db: AsyncSession,
-    index: SkillIndex | None = None,
+    index: SkillIndex,
 ) -> CVParseData:
     text = extract_text(filename, data)
     contact = extract_contact(text)
-    if index is None:
-        index = await build_skill_index(db)
     skills = match_skills_in_index(text, index)
     return CVParseData(
         email=contact["email"],
@@ -1365,7 +1362,7 @@ async def parse_and_store_cv_proposal(
     filename: str,
     data: bytes,
     db: AsyncSession,
-    index: SkillIndex | None = None,
+    index: SkillIndex,
     llm_client: CVLLMClient | None = None,
     fallback_parser: DocumentParser | None = None,
 ) -> CVExtractionProposal:
@@ -1379,8 +1376,6 @@ async def parse_and_store_cv_proposal(
     quality = extraction.quality or score_text_quality(extraction.text)
     if quality.score < 20:
         raise CVTextExtractionError("Le texte extrait est trop court ou trop peu lisible.")
-    if index is None:
-        index = await build_skill_index(db)
     proposal_payload = build_structured_proposal(
         extraction.text,
         filename,

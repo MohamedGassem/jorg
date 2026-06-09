@@ -99,9 +99,8 @@ async def parse_my_cv(
             detail="Le fichier dépasse la taille maximale de 5 Mo.",
         )
 
-    # Shared catalogue index built at startup; falls back to a DB build if the
-    # lifespan did not run (e.g. under the test ASGI transport).
-    index = getattr(request.app.state, "skill_index", None)
+    # Shared catalogue index built at startup.
+    index: cv_parser_service.SkillIndex = request.app.state.skill_index
     try:
         profile = await candidate_service.get_or_create_profile(db, current_user.id)
         proposal = await cv_parser_service.parse_and_store_cv_proposal(
