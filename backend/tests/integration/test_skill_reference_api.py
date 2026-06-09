@@ -1,5 +1,4 @@
 # backend/tests/integration/test_skill_reference_api.py
-import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,12 +16,12 @@ async def test_search_returns_matching_skills(
     await client.post(
         "/skill-references",
         headers=candidate_headers,
-        json={"name": "Python", "kind": "technical"},
+        json={"name": "MyUniqueCustomSkillXYZ", "kind": "technical"},
     )
-    r = await client.get("/skill-references?q=Pyt", headers=candidate_headers)
+    r = await client.get("/skill-references?q=UniqueCustomSkill", headers=candidate_headers)
     assert r.status_code == 200
     names = [s["name"] for s in r.json()]
-    assert "Python" in names
+    assert "MyUniqueCustomSkillXYZ" in names
 
 
 async def test_search_filters_by_kind(
@@ -77,7 +76,7 @@ async def test_create_custom_skill_reference(
     assert data["name"] == "MyCustomSkill"
     assert data["is_custom"] is True
     assert data["slug"] == "mycustomskill"
-    assert data["source"] == "manual"
+    assert data["source"] == "user_custom"
 
 
 async def test_create_custom_skill_idempotent(
@@ -130,31 +129,29 @@ async def test_custom_skill_visible_only_to_creator(
     assert r.json() == []
 
 
-async def test_esco_skill_visible_to_all_candidates(
+async def test_esco_skill_not_visible_in_display_search(
     client: AsyncClient,
     candidate_headers: dict[str, str],
-    second_candidate_headers: dict[str, str],
+    db_session: AsyncSession,
 ) -> None:
-    """Les skills ESCO (creator_candidate_id=None) sont visibles par tous les candidats."""
-    # ESCO skills are seeded in conftest from data/esco_seed.csv with creator_candidate_id=NULL.
-    # They must appear in search results for any authenticated candidate.
-    # Search with q="" doesn't work (requires query), so search with a common substring.
-    # First candidate searches
-    r1 = await client.get("/skill-references?q=a&limit=5", headers=candidate_headers)
-    assert r1.status_code == 200
-    esco_from_candidate_a = [s for s in r1.json() if not s["is_custom"]]
+    """ESCO skills must not appear in the picker (for_display=True default)."""
+    db_session.add(
+        SkillReference(
+            name="EscoOnlySkill",
+            slug="esco-only-skill",
+            kind=SkillKind.technical,
+            aliases=[],
+            source="esco",
+            is_custom=False,
+            is_displayable=False,
+            categories=[],
+        )
+    )
+    await db_session.commit()
 
-    if not esco_from_candidate_a:
-        pytest.skip("No ESCO seeds available — cannot test ESCO visibility")
-
-    # Second candidate must see the same ESCO skills
-    r2 = await client.get("/skill-references?q=a&limit=5", headers=second_candidate_headers)
-    assert r2.status_code == 200
-    esco_from_candidate_b = [s for s in r2.json() if not s["is_custom"]]
-
-    esco_ids_a = {s["id"] for s in esco_from_candidate_a}
-    esco_ids_b = {s["id"] for s in esco_from_candidate_b}
-    assert esco_ids_a == esco_ids_b, "ESCO skills must be visible to all candidates identically"
+    r = await client.get("/skill-references?q=EscoOnly", headers=candidate_headers)
+    assert r.status_code == 200
+    assert r.json() == []
 
 
 async def test_create_custom_skill_sets_creator(
@@ -186,3 +183,89 @@ async def test_skill_reference_response_includes_curation_fields(
     assert "categories" in data
     assert data["is_displayable"] is False
     assert data["categories"] == []
+
+
+async def test_search_finds_skill_via_alias(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    db_session.add(
+        SkillReference(
+            name="Retrieval-Augmented Generation",
+            slug="retrieval-augmented-generation",
+            kind=SkillKind.methodology,
+            aliases=["RAG", "RAG pipeline"],
+            source="jorg",
+            is_custom=False,
+            is_displayable=True,
+            categories=["Generative AI"],
+        )
+    )
+    await db_session.commit()
+
+    r = await client.get("/skill-references?q=RAG", headers=candidate_headers)
+    assert r.status_code == 200
+    names = [s["name"] for s in r.json()]
+    assert "Retrieval-Augmented Generation" in names
+
+
+async def test_search_jorg_displayable_visible_to_all_candidates(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    db_session.add(
+        SkillReference(
+            name="GlobalJorgSkill",
+            slug="global-jorg-skill",
+            kind=SkillKind.technical,
+            aliases=[],
+            source="jorg",
+            is_custom=False,
+            is_displayable=True,
+            categories=["Software Engineering"],
+        )
+    )
+    await db_session.commit()
+
+    r1 = await client.get("/skill-references?q=GlobalJorg", headers=candidate_headers)
+    assert r1.status_code == 200
+    assert any(s["name"] == "GlobalJorgSkill" for s in r1.json())
+
+
+async def test_search_exact_name_ranked_before_contains(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    db_session.add(
+        SkillReference(
+            name="Python",
+            slug="python-jorg",
+            kind=SkillKind.technical,
+            aliases=[],
+            source="jorg",
+            is_custom=False,
+            is_displayable=True,
+            categories=["Software Engineering"],
+        )
+    )
+    db_session.add(
+        SkillReference(
+            name="Python Scripting",
+            slug="python-scripting-jorg",
+            kind=SkillKind.technical,
+            aliases=[],
+            source="jorg",
+            is_custom=False,
+            is_displayable=True,
+            categories=["Software Engineering"],
+        )
+    )
+    await db_session.commit()
+
+    r = await client.get("/skill-references?q=Python", headers=candidate_headers)
+    assert r.status_code == 200
+    names = [s["name"] for s in r.json()]
+    assert names.index("Python") < names.index("Python Scripting")

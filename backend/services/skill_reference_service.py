@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Text, and_, case, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.skill import SkillKind, SkillReference
@@ -13,9 +13,9 @@ from services.esco_language_detection import is_esco_language_reference
 
 def slugify(name: str) -> str:
     slug = name.lower().strip()
-    slug = slug.replace("++", "pp")  # C++ → cpp
-    slug = slug.replace("#", "-sharp")  # C# → c-sharp, F# → f-sharp
-    slug = slug.replace("/", "-")  # ASP.NET/MVC → asp-net-mvc
+    slug = slug.replace("++", "pp")  # C++ -> cpp
+    slug = slug.replace("#", "-sharp")  # C# -> c-sharp, F# -> f-sharp
+    slug = slug.replace("/", "-")  # ASP.NET/MVC -> asp-net-mvc
     slug = re.sub(r"[^a-z0-9]+", "-", slug)
     return slug.strip("-")
 
@@ -34,9 +34,8 @@ async def get_or_create_by_name(
     creator_candidate_id: UUID,
     db: AsyncSession,
 ) -> tuple[SkillReference, bool]:
-    """Return (ref, was_created). Checks ESCO first, then candidate's custom, then inserts."""
+    """Return (ref, was_created). Checks ESCO/jorg first, then candidate's custom, then inserts."""
     slug = slugify(name)
-    # Check ESCO skills first (creator_candidate_id IS NULL)
     result = await db.execute(
         select(SkillReference).where(
             SkillReference.slug == slug,
@@ -46,7 +45,6 @@ async def get_or_create_by_name(
     ref = result.scalar_one_or_none()
     if ref is not None and not _is_hidden_esco_language(ref):
         return ref, False
-    # Then check candidate's own custom skills
     result = await db.execute(
         select(SkillReference).where(
             SkillReference.slug == slug,
@@ -61,8 +59,10 @@ async def get_or_create_by_name(
         slug=slug,
         kind=kind,
         is_custom=True,
-        source="manual",
+        source="user_custom",
         aliases=[],
+        categories=[],
+        is_displayable=False,
         creator_candidate_id=creator_candidate_id,
     )
     db.add(ref)
@@ -77,19 +77,47 @@ async def search(
     limit: int,
     candidate_id: UUID,
     db: AsyncSession,
+    for_display: bool = True,
 ) -> list[SkillReference]:
     if limit <= 0:
         return []
 
+    aliases_text = cast(SkillReference.aliases, Text)
+
+    name_exact = SkillReference.name.ilike(query)
+    alias_exact = aliases_text.ilike(f'%"{query}"%')
+    name_contains = SkillReference.name.ilike(f"%{query}%")
+    alias_contains = aliases_text.ilike(f"%{query}%")
+
+    match_filter = or_(name_contains, alias_contains)
+
+    if for_display:
+        visibility = or_(
+            and_(
+                SkillReference.source == "jorg",
+                SkillReference.is_displayable.is_(True),
+            ),
+            SkillReference.creator_candidate_id == candidate_id,
+        )
+    else:
+        visibility = or_(
+            SkillReference.creator_candidate_id.is_(None),
+            SkillReference.creator_candidate_id == candidate_id,
+        )
+
+    priority = case(
+        (name_exact, 0),
+        (alias_exact, 1),
+        (name_contains, 2),
+        else_=3,
+    )
+
     stmt = (
         select(SkillReference)
-        .where(
-            SkillReference.name.ilike(f"%{query}%"),
-            (SkillReference.creator_candidate_id.is_(None))
-            | (SkillReference.creator_candidate_id == candidate_id),
-        )
-        .order_by(SkillReference.name, SkillReference.id)
+        .where(match_filter, visibility)
+        .order_by(priority, SkillReference.name, SkillReference.id)
     )
+
     if kind is not None:
         stmt = stmt.where(SkillReference.kind == kind)
 
