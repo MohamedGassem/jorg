@@ -19,8 +19,9 @@ sys.path.insert(0, str(ROOT / "backend"))
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine  # noqa: E402
 
+from core.config import get_settings  # noqa: E402
 from models.skill import SkillKind, SkillReference  # noqa: E402
-from services.skill_reference_service import slugify  # noqa: E402
+from services.references.skill_reference_service import slugify  # noqa: E402
 
 VALID_CATEGORIES = {
     "Data Science",
@@ -31,6 +32,7 @@ VALID_CATEGORIES = {
     "Cloud / DevOps",
     "Project Management",
     "Product",
+    "Communication / Marketing",
     "Business Analysis",
     "Cybersecurity",
     "Finance / Contrôle de gestion",
@@ -122,10 +124,7 @@ async def main(json_path: Path) -> None:
         validate_entry(entry, i)
     print("Validation OK.")
 
-    db_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql+asyncpg://jorg:jorg@localhost:5432/jorg",
-    )
+    db_url = os.environ.get("DATABASE_URL") or get_settings().database_url
     engine = create_async_engine(db_url)
     session_factory = async_sessionmaker(bind=engine, expire_on_commit=False)
     async with session_factory() as session:
