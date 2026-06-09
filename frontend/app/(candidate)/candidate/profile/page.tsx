@@ -11,13 +11,11 @@ import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { TabBar } from "@/components/ui/TabBar";
-import {
-  ExperienceSection,
-  SkillSection,
-  EducationSection,
-  CertificationSection,
-  LanguageSection,
-} from "@/components/candidate/profile-sections";
+import { ExperienceSection } from "@/components/candidate/experience-section";
+import { SkillSection } from "@/components/candidate/skill-section";
+import { EducationSection } from "@/components/candidate/education-section";
+import { CertificationSection } from "@/components/candidate/certification-section";
+import { LanguageSection } from "@/components/candidate/language-section";
 import { CandidateGenerateDossierDialog } from "@/components/candidate-generate-dossier-dialog";
 import {
   Dialog,
