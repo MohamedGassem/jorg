@@ -2,7 +2,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Trash2, Plus, X, Pencil } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  X,
+  Pencil,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -1697,19 +1704,32 @@ export function ExperienceSection() {
 
 function SkillContextualizationDialog({
   skill,
+  allSkills,
+  initialIndex,
   experiences,
   onClose,
   onAssociated,
 }: {
   skill: Skill;
+  allSkills?: Skill[];
+  initialIndex?: number;
   experiences: Experience[];
   onClose: () => void;
-  onAssociated?: (associatedExpIds: string[]) => void;
+  onAssociated?: (associatedExpIds: string[], skill: Skill) => void;
 }) {
+  const skills = allSkills ?? [skill];
+  const [currentIdx, setCurrentIdx] = useState(initialIndex ?? 0);
+  const currentSkill = skills[currentIdx] ?? skill;
+
   const [selections, setSelections] = useState<
     Record<string, { exp: boolean; achs: Set<string> }>
   >({});
   const [saving, setSaving] = useState(false);
+
+  function goTo(idx: number) {
+    setCurrentIdx(idx);
+    setSelections({});
+  }
 
   function toggleExp(expId: string) {
     setSelections((prev) => ({
@@ -1738,20 +1758,19 @@ function SkillContextualizationDialog({
       if (!sel.exp) continue;
       try {
         await api.post(`/candidates/me/experiences/${expId}/skill-usages`, {
-          skill_ref_id: skill.skill_ref_id,
+          skill_ref_id: currentSkill.skill_ref_id,
           usage_role: "implementer",
           intensity: "secondary",
         });
         associatedExpIds.push(expId);
       } catch {
-        // may already exist — still count it as associated
         associatedExpIds.push(expId);
       }
       for (const achId of sel.achs) {
         try {
           await api.post(
             `/candidates/me/experiences/${expId}/achievements/${achId}/skill-tags`,
-            { skill_ref_id: skill.skill_ref_id },
+            { skill_ref_id: currentSkill.skill_ref_id },
           );
         } catch {
           // ignore
@@ -1759,7 +1778,12 @@ function SkillContextualizationDialog({
       }
     }
     setSaving(false);
-    onAssociated?.(associatedExpIds);
+    onAssociated?.(associatedExpIds, currentSkill);
+    if (currentIdx < skills.length - 1) {
+      goTo(currentIdx + 1);
+    } else {
+      onClose();
+    }
   }
 
   const hasSelection = Object.values(selections).some(
@@ -1770,7 +1794,36 @@ function SkillContextualizationDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Où as-tu utilisé «{skill.skill_ref.name}» ?</DialogTitle>
+          <div className="flex items-center gap-2 pr-8">
+            {skills.length > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => goTo(currentIdx - 1)}
+                  disabled={currentIdx === 0}
+                  className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                  aria-label="Compétence précédente"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {currentIdx + 1}/{skills.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => goTo(currentIdx + 1)}
+                  disabled={currentIdx === skills.length - 1}
+                  className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+                  aria-label="Compétence suivante"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            )}
+            <DialogTitle className="leading-snug">
+              Où as-tu utilisé «{currentSkill.skill_ref.name}» ?
+            </DialogTitle>
+          </div>
         </DialogHeader>
         <div className="max-h-80 space-y-2 overflow-y-auto py-1">
           {experiences.length === 0 && (
@@ -2500,42 +2553,38 @@ export function SkillSection() {
       {contextSkill && (
         <SkillContextualizationDialog
           skill={contextSkill}
+          allSkills={unassociated.length > 1 ? unassociated : undefined}
+          initialIndex={
+            unassociated.length > 1
+              ? Math.max(
+                  0,
+                  unassociated.findIndex((s) => s.id === contextSkill.id),
+                )
+              : undefined
+          }
           experiences={experiences}
-          onAssociated={(expIds) => {
-            // Build updated experiences synchronously so next-skill computation is accurate
-            const updatedExps = experiences.map((exp) =>
-              expIds.includes(exp.id)
-                ? {
-                    ...exp,
-                    skill_usages: [
-                      ...exp.skill_usages,
-                      {
-                        id: `tmp-${contextSkill.skill_ref_id}-${exp.id}`,
-                        experience_id: exp.id,
-                        skill_ref_id: contextSkill.skill_ref_id,
-                        skill_ref: contextSkill.skill_ref,
-                        usage_role: "implementer" as const,
-                        intensity: "secondary" as const,
-                        created_at: new Date().toISOString(),
-                      },
-                    ],
-                  }
-                : exp,
-            );
-            setExperiences(updatedExps);
-
-            // Advance to next unassociated skill using the already-updated data
-            const nowAssociatedIds = new Set(
-              updatedExps.flatMap((e) =>
-                e.skill_usages.map((u) => u.skill_ref_id),
+          onAssociated={(expIds, associatedSkill) => {
+            setExperiences((prev) =>
+              prev.map((exp) =>
+                expIds.includes(exp.id)
+                  ? {
+                      ...exp,
+                      skill_usages: [
+                        ...exp.skill_usages,
+                        {
+                          id: `tmp-${associatedSkill.skill_ref_id}-${exp.id}`,
+                          experience_id: exp.id,
+                          skill_ref_id: associatedSkill.skill_ref_id,
+                          skill_ref: associatedSkill.skill_ref,
+                          usage_role: "implementer" as const,
+                          intensity: "secondary" as const,
+                          created_at: new Date().toISOString(),
+                        },
+                      ],
+                    }
+                  : exp,
               ),
             );
-            const next = items.find(
-              (s) =>
-                s.id !== contextSkill.id &&
-                !nowAssociatedIds.has(s.skill_ref_id),
-            );
-            setContextSkill(next ?? null);
           }}
           onClose={() => setContextSkill(null)}
         />
