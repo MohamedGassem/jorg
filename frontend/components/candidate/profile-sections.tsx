@@ -1699,10 +1699,12 @@ function SkillContextualizationDialog({
   skill,
   experiences,
   onClose,
+  onAssociated,
 }: {
   skill: Skill;
   experiences: Experience[];
   onClose: () => void;
+  onAssociated?: (associatedExpIds: string[]) => void;
 }) {
   const [selections, setSelections] = useState<
     Record<string, { exp: boolean; achs: Set<string> }>
@@ -1731,6 +1733,7 @@ function SkillContextualizationDialog({
 
   async function handleAssociate() {
     setSaving(true);
+    const associatedExpIds: string[] = [];
     for (const [expId, sel] of Object.entries(selections)) {
       if (!sel.exp) continue;
       try {
@@ -1739,8 +1742,10 @@ function SkillContextualizationDialog({
           usage_role: "implementer",
           intensity: "secondary",
         });
+        associatedExpIds.push(expId);
       } catch {
-        // may already exist
+        // may already exist — still count it as associated
+        associatedExpIds.push(expId);
       }
       for (const achId of sel.achs) {
         try {
@@ -1754,7 +1759,7 @@ function SkillContextualizationDialog({
       }
     }
     setSaving(false);
-    onClose();
+    onAssociated?.(associatedExpIds);
   }
 
   const hasSelection = Object.values(selections).some(
@@ -2496,6 +2501,42 @@ export function SkillSection() {
         <SkillContextualizationDialog
           skill={contextSkill}
           experiences={experiences}
+          onAssociated={(expIds) => {
+            // Build updated experiences synchronously so next-skill computation is accurate
+            const updatedExps = experiences.map((exp) =>
+              expIds.includes(exp.id)
+                ? {
+                    ...exp,
+                    skill_usages: [
+                      ...exp.skill_usages,
+                      {
+                        id: `tmp-${contextSkill.skill_ref_id}-${exp.id}`,
+                        experience_id: exp.id,
+                        skill_ref_id: contextSkill.skill_ref_id,
+                        skill_ref: contextSkill.skill_ref,
+                        usage_role: "implementer" as const,
+                        intensity: "secondary" as const,
+                        created_at: new Date().toISOString(),
+                      },
+                    ],
+                  }
+                : exp,
+            );
+            setExperiences(updatedExps);
+
+            // Advance to next unassociated skill using the already-updated data
+            const nowAssociatedIds = new Set(
+              updatedExps.flatMap((e) =>
+                e.skill_usages.map((u) => u.skill_ref_id),
+              ),
+            );
+            const next = items.find(
+              (s) =>
+                s.id !== contextSkill.id &&
+                !nowAssociatedIds.has(s.skill_ref_id),
+            );
+            setContextSkill(next ?? null);
+          }}
           onClose={() => setContextSkill(null)}
         />
       )}
