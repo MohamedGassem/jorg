@@ -22,6 +22,8 @@ class SkillReferenceRead(BaseModel):
     source: str
     description: str | None
     is_custom: bool
+    is_displayable: bool
+    categories: list[str]
     creator_candidate_id: UUID | None
     created_at: datetime
     updated_at: datetime

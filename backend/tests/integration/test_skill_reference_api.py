@@ -170,3 +170,19 @@ async def test_create_custom_skill_sets_creator(
     data = r.json()
     assert data["is_custom"] is True
     assert data["creator_candidate_id"] is not None
+
+
+async def test_skill_reference_response_includes_curation_fields(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.post(
+        "/skill-references",
+        headers=candidate_headers,
+        json={"name": "FieldCheckSkill", "kind": "technical"},
+    )
+    assert r.status_code == 201
+    data = r.json()
+    assert "is_displayable" in data
+    assert "categories" in data
+    assert data["is_displayable"] is False
+    assert data["categories"] == []
