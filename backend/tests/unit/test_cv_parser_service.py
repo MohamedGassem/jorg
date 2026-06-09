@@ -8,31 +8,32 @@ import pytest
 from docx import Document
 from sqlalchemy.exc import ProgrammingError
 
+import services.cv.cv_parser_service as cv_parser_service
 from models.skill import SkillKind
-from services.cv.experience_parser import _split_description_and_achievements
-from services.cv_parser_service import (
+from services.cv.contact_parser import extract_contact
+from services.cv.exceptions import (
     CVLLMExtractionError,
     CVPersistenceUnavailableError,
     CVTextExtractionError,
     CVTooLargeError,
-    DocumentLine,
-    LanguageParser,
-    SkillEntry,
-    TextExtractionResult,
     UnsupportedCVFormatError,
-    build_structured_proposal,
-    extract_contact,
-    extract_text,
-    extract_text_with_metadata,
-    match_skills_in_index,
-    parse_llm_json_strict,
-    score_text_quality,
 )
+from services.cv.experience_parser import _split_description_and_achievements
+from services.cv.language_parser import LanguageParser
+from services.cv.llm_extraction import parse_llm_json_strict
+from services.cv.proposal_builder import build_structured_proposal
+from services.cv.quality import score_text_quality
+from services.cv.schemas import (
+    DocumentLine,
+    TextExtractionResult,
+)
+from services.cv.skill_matching import SkillEntry, match_skills_in_index, normalize_skill_label
+from services.cv.text_extraction import extract_text, extract_text_with_metadata
 
 
 def _skill_index(names: list[str]) -> dict[str, SkillEntry]:
     return {
-        name.lower().replace("-", " "): SkillEntry(id=uuid4(), name=name, kind=SkillKind.technical)
+        normalize_skill_label(name): SkillEntry(id=uuid4(), name=name, kind=SkillKind.technical)
         for name in names
     }
 
@@ -197,7 +198,7 @@ def test_structured_parser_builds_cv_blocks_for_mohamed_sample():
         "hash",
         TextExtractionResult(text=text, method="pdf_pymupdf"),
         score_text_quality(text),
-        _skill_index(["Python", "SQL", "PyTorch", "Docker", "FastAPI", "scikit-learn"]),
+        _skill_index(["Python", "SQL", "C++", "PyTorch", "Docker", "FastAPI", "scikit-learn"]),
     )
 
     assert proposal.identity.first_name.value == "Mohamed"
@@ -229,8 +230,23 @@ def test_structured_parser_builds_cv_blocks_for_mohamed_sample():
     assert languages == {"Français": "native", "Anglais": "C1"}
 
     skill_names = {skill.name for skill in proposal.skills if skill.name}
-    assert {"Python", "SQL", "PyTorch", "Docker", "FastAPI", "scikit-learn"} <= skill_names
+    assert {"Python", "SQL", "C++", "PyTorch", "Docker", "FastAPI", "scikit-learn"} <= skill_names
     assert "Python" not in {language.name.value for language in proposal.languages}
+
+
+def test_symbolic_skill_labels_keep_distinct_meaning() -> None:
+    cpp = SkillEntry(id=uuid4(), name="C++", kind=SkillKind.technical)
+    csharp = SkillEntry(id=uuid4(), name="C#", kind=SkillKind.technical)
+    dotnet = SkillEntry(id=uuid4(), name=".NET", kind=SkillKind.technical)
+    index = {
+        normalize_skill_label("C++"): cpp,
+        normalize_skill_label("C#"): csharp,
+        normalize_skill_label(".NET"): dotnet,
+    }
+
+    matched = match_skills_in_index("Langages : C/C++, C# et .NET", index)
+
+    assert {skill.name for skill in matched} == {"C++", "C#", ".NET"}
 
 
 def test_skill_category_lines_are_split_without_generic_prefixes():
@@ -293,8 +309,6 @@ async def test_missing_proposal_table_becomes_service_error(
 
         async def rollback(self) -> None:
             self.rolled_back = True
-
-    from services import cv_parser_service
 
     text = (
         "Jean Dupont\njean@example.com\nExpérience\nBackend 2020 2024\n"
@@ -389,15 +403,9 @@ def test_language_level_stays_attached_to_language_across_dash():
     assert parsed == {"Anglais": "C1", "Espagnol": "B2"}
 
 
-def test_legacy_cv_parser_service_imports_public_api() -> None:
-    from services import cv_parser_service
-
+def test_cv_orchestration_service_exports_public_api() -> None:
     for name in (
         "parse_cv",
         "parse_and_store_cv_proposal",
-        "build_skill_index",
-        "extract_text",
-        "extract_text_with_metadata",
-        "build_structured_proposal",
     ):
         assert callable(getattr(cv_parser_service, name))

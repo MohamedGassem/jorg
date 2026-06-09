@@ -6,6 +6,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
+import services.auth.oauth_state_service as oauth_state_service
 from api.deps import CurrentUser, get_db
 from core.config import get_settings
 from core.limiter import limiter
@@ -20,9 +21,8 @@ from schemas.auth import (
     VerifyEmailRequest,
 )
 from schemas.user import UserRead
-from services import oauth_state_service
-from services.alpha_service import InvalidAlphaCodeError, validate_and_consume_code
-from services.auth_service import (
+from services.auth.alpha_service import InvalidAlphaCodeError, validate_and_consume_code
+from services.auth.auth_service import (
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
     authenticate_user,
@@ -31,13 +31,13 @@ from services.auth_service import (
     revoke_refresh_token,
     rotate_refresh_token,
 )
-from services.email_verification_service import (
+from services.auth.email_verification_service import (
     InvalidVerificationTokenError,
     confirm_email,
     send_verification_email,
 )
-from services.oauth_service import find_or_create_oauth_user, get_oauth_client
-from services.password_reset_service import (
+from services.auth.oauth_service import find_or_create_oauth_user, get_oauth_client
+from services.auth.password_reset_service import (
     InvalidResetTokenError,
     request_password_reset,
     reset_password,

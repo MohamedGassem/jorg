@@ -8,6 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+import services.references.skill_metrics_service as skill_metrics_service
+import services.references.skill_reference_service as skill_reference_service
 from api.deps import CandidateProfile_dep, get_db
 from models.candidate_profile import Experience
 from models.skill import (
@@ -37,7 +39,6 @@ from schemas.skill import (
     SkillReferenceCreate,
     SkillReferenceRead,
 )
-from services import skill_metrics_service, skill_reference_service
 
 router = APIRouter(tags=["skills"])
 

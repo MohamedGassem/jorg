@@ -8,8 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 import services.candidate_service as candidate_service
-import services.cv_parser_service as cv_parser_service
-import services.language_reference_service as language_reference_service
+import services.references.language_reference_service as language_reference_service
 import services.rgpd_service as rgpd_service
 from api.deps import CandidateProfile_dep, get_db, require_role
 from models.candidate_profile import (
@@ -46,6 +45,15 @@ from schemas.candidate import (
     validate_experience_dates,
 )
 from schemas.rgpd import CandidateExport
+from services.cv.constants import MAX_CV_BYTES
+from services.cv.cv_parser_service import parse_and_store_cv_proposal
+from services.cv.exceptions import (
+    CVPersistenceUnavailableError,
+    CVTextExtractionError,
+    CVTooLargeError,
+    UnsupportedCVFormatError,
+)
+from services.cv.skill_matching import SkillIndex, build_candidate_skill_index, merge_skill_indexes
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -92,19 +100,23 @@ async def parse_my_cv(
     """
     # Read at most MAX_CV_BYTES + 1 so an oversized upload never inflates a
     # multi-MB bytes object in the handler before we reject it.
-    data = await file.read(cv_parser_service.MAX_CV_BYTES + 1)
-    if len(data) > cv_parser_service.MAX_CV_BYTES:
+    data = await file.read(MAX_CV_BYTES + 1)
+    if len(data) > MAX_CV_BYTES:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="Le fichier dépasse la taille maximale de 5 Mo.",
         )
 
     # Shared catalogue index built at startup.
-    index: cv_parser_service.SkillIndex = request.app.state.skill_index
+    global_index: SkillIndex = request.app.state.skill_index
     language_index = getattr(request.app.state, "language_index", None)
     try:
         profile = await candidate_service.get_or_create_profile(db, current_user.id)
-        proposal = await cv_parser_service.parse_and_store_cv_proposal(
+        index = merge_skill_indexes(
+            global_index,
+            await build_candidate_skill_index(db, profile.id),
+        )
+        proposal = await parse_and_store_cv_proposal(
             profile.id,
             file.filename or "",
             data,
@@ -112,22 +124,22 @@ async def parse_my_cv(
             index=index,
             language_index=language_index,
         )
-    except cv_parser_service.CVTooLargeError as e:
+    except CVTooLargeError as e:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="Le fichier dépasse la taille maximale de 5 Mo.",
         ) from e
-    except cv_parser_service.UnsupportedCVFormatError as e:
+    except UnsupportedCVFormatError as e:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail=str(e),
         ) from e
-    except cv_parser_service.CVTextExtractionError as e:
+    except CVTextExtractionError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e),
         ) from e
-    except cv_parser_service.CVPersistenceUnavailableError as e:
+    except CVPersistenceUnavailableError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e),

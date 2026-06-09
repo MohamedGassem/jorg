@@ -1,6 +1,6 @@
 """Regression tests for ESCO language reference detection."""
 
-from services.esco_language_detection import is_esco_language_reference
+from services.references.esco_language_detection import is_esco_language_reference
 
 
 def test_language_knowledge_with_french_description_is_reference():

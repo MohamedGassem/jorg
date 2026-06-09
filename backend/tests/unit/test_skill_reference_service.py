@@ -2,7 +2,7 @@
 """Pure unit tests for slugify -- no DB, no async."""
 
 from models.skill import SkillReference
-from services.skill_reference_service import slugify
+from services.references.skill_reference_service import slugify
 
 
 def test_slugify_basic():

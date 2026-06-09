@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from services import oauth_state_service
+import services.auth.oauth_state_service as oauth_state_service
 
 
 @pytest.fixture

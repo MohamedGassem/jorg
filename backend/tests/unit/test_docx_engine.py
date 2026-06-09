@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 from docx import Document
 
-from services.docx_engine import (
+from services.documents.docx_engine import (
     exp_flat,
     fmt_date,
     generate_document,
@@ -596,7 +596,10 @@ class TestErrorHandling:
 from enum import StrEnum  # noqa: E402
 
 from models.skill import SkillKind  # noqa: E402
-from services.docx_engine import SkillReferenceProtocol, _group_skills_by_kind  # noqa: E402
+from services.documents.docx_engine import (  # noqa: E402
+    SkillReferenceProtocol,
+    _group_skills_by_kind,
+)
 
 
 class _FakeRef:

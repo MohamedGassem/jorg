@@ -3,7 +3,7 @@ import pytest
 from httpx import AsyncClient
 
 from models.user import OAuthProvider
-from services.oauth_service import (
+from services.auth.oauth_service import (
     OAuthUserInfo,
     override_oauth_client,
 )

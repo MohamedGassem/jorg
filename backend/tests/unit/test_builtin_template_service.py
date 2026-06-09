@@ -2,7 +2,7 @@ import io
 
 from docx import Document
 
-from services import builtin_template_service
+import services.documents.builtin_template_service as builtin_template_service
 
 
 def test_builtin_templates_render_mock_previews_without_unresolved_tags() -> None:

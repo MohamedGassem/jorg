@@ -1,7 +1,7 @@
 # backend/tests/unit/test_template_service.py
 """Unit tests for template_service pure functions."""
 
-from services.template_service import _compute_is_valid
+from services.documents.template_service import _compute_is_valid
 
 
 def test_compute_is_valid_true_when_all_detected_are_known_fields() -> None:

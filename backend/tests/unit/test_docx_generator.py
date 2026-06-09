@@ -10,7 +10,7 @@ from docx import Document
 
 from models.candidate_profile import LanguageLevel
 from models.skill import SkillKind, UsageIntensity, UsageRole
-from services.docx_engine import generate_document
+from services.documents.docx_engine import generate_document
 
 
 def _make_docx_path(paragraphs: list[str]) -> str:

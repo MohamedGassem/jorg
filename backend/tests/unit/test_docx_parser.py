@@ -4,7 +4,7 @@ import tempfile
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
 from docx.shared import Inches
 
-from services.docx_parser import extract_placeholders
+from services.documents.docx_parser import extract_placeholders
 
 
 def _make_docx(paragraphs: list[str]) -> str:

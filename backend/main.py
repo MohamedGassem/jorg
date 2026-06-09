@@ -45,8 +45,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # /candidates/me/parse-cv doesn't rescan the whole catalogue per request.
     log = structlog.get_logger()
     from core.database import AsyncSessionLocal
-    from services.cv_parser_service import build_skill_index
-    from services.language_reference_service import build_language_index
+    from services.cv.skill_matching import build_skill_index
+    from services.references.language_reference_service import build_language_index
 
     async with AsyncSessionLocal() as session:
         app.state.skill_index = await build_skill_index(session)

@@ -21,8 +21,8 @@ from core.limiter import limiter
 from main import app
 from models import Base
 from models.skill import SkillKind, SkillReference
-from services.cv_parser_service import build_skill_index
-from services.language_reference_service import build_language_index
+from services.cv.skill_matching import build_skill_index
+from services.references.language_reference_service import build_language_index
 
 DATA_FILE = Path(__file__).resolve().parent.parent.parent.parent / "data" / "esco_seed.csv"
 

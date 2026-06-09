@@ -5,10 +5,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse, Response
 
+import services.documents.builtin_template_service as builtin_template_service
 from api.deps import CurrentUser, require_role
 from models.user import User, UserRole
 from schemas.template import BuiltinTemplateRead
-from services import builtin_template_service
 
 router = APIRouter(tags=["templates"])
 

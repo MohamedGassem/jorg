@@ -5,7 +5,7 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from models.alpha import AlphaInviteCode
-from services.alpha_service import (
+from services.auth.alpha_service import (
     InvalidAlphaCodeError,
     create_alpha_codes,
     validate_and_consume_code,

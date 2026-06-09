@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from models.skill import SkillKind, UsageIntensity, UsageRole
-from services.skill_metrics_service import (
+from services.references.skill_metrics_service import (
     INTENSITY_WEIGHTS,
     _compute_months,
     compute_metrics_from_usages,

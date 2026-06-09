@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import services.documents.generation_service as generation_service
 from core.exceptions import ConflictError, ForbiddenError, JorgError
 from models.candidate_profile import CandidateProfile
 from models.invitation import AccessGrant
@@ -18,7 +19,7 @@ from schemas.opportunity import (
     OpportunityUpdate,
     ShortlistCandidateInfo,
 )
-from services import access_policy, generation_service
+from services import access_policy
 
 logger = structlog.get_logger()
 

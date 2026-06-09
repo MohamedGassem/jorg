@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import get_db
 from core.config import get_settings
 from schemas.alpha import AlphaCodeBatchRequest, AlphaCodeBatchResponse
-from services.alpha_service import create_alpha_codes
+from services.auth.alpha_service import create_alpha_codes
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

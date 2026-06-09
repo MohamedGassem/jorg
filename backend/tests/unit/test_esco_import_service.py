@@ -2,12 +2,12 @@
 """Pure unit tests for ESCO import mapping helpers — no DB, no async."""
 
 from models.skill import SkillKind
-from services.esco_import_service import (
+from services.references.esco_import_service import (
     esco_row_to_fields,
     map_esco_kind,
     parse_alt_labels,
 )
-from services.esco_language_detection import is_esco_language_reference
+from services.references.esco_language_detection import is_esco_language_reference
 
 
 def test_map_kind_knowledge_is_technical():

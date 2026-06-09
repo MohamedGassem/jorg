@@ -12,6 +12,8 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+import services.documents.builtin_template_service as builtin_template_service
+import services.documents.template_service as template_service
 from core.config import get_settings
 from core.exceptions import BusinessRuleError, NotFoundError
 from core.storage import get_storage
@@ -27,7 +29,7 @@ from models.recruiter import Organization
 from models.skill import Achievement, AchievementSkillTag, CandidateSkill, ExperienceSkillUsage
 from models.template import Template
 from schemas.generation import GeneratedDocumentCandidateView, GeneratedDocumentRecruiterView
-from services import access_policy, builtin_template_service, template_service
+from services import access_policy
 from services.documents.docx_engine import generate_document
 
 logger = structlog.get_logger()

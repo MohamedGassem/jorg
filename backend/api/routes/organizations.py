@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 import core.storage as storage
+import services.documents.template_service as template_service
 import services.recruiter_service as recruiter_service
-import services.template_service as template_service
 from api.deps import RecruiterOrgMember, get_db, require_role
 from core.limiter import limiter
 from models.candidate_profile import AvailabilityStatus, ContractType, MissionDuration, WorkMode
@@ -28,7 +28,7 @@ from schemas.recruiter import (
 )
 from schemas.template import TemplateRead
 from services import access_policy
-from services.docx_parser import extract_placeholders
+from services.documents.docx_parser import extract_placeholders
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
 

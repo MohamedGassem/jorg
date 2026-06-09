@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
 from models.user import OAuthProvider
-from services.alpha_service import create_alpha_codes
-from services.oauth_service import OAuthUserInfo, override_oauth_client
+from services.auth.alpha_service import create_alpha_codes
+from services.auth.oauth_service import OAuthUserInfo, override_oauth_client
 
 
 @pytest.mark.asyncio

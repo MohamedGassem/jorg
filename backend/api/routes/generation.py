@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 from starlette.responses import Response
 
-import services.generation_service as generation_service
+import services.documents.generation_service as generation_service
 import services.recruiter_service as recruiter_service
 from api.deps import CurrentUser, RecruiterOrgMember, get_db, require_role
 from core.limiter import limiter

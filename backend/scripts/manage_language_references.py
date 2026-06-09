@@ -32,9 +32,9 @@ from models.skill import (  # noqa: E402
     ExperienceSkillUsage,
     SkillReference,
 )
-from services.esco_import_service import parse_alt_labels  # noqa: E402
-from services.esco_language_detection import is_esco_language_reference  # noqa: E402
-from services.language_reference_service import slugify_language  # noqa: E402
+from services.references.esco_import_service import parse_alt_labels  # noqa: E402
+from services.references.esco_language_detection import is_esco_language_reference  # noqa: E402
+from services.references.language_reference_service import slugify_language  # noqa: E402
 
 DEFAULT_SEED_CSV = ROOT / "data" / "language_references_seed.csv"
 
