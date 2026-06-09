@@ -21,6 +21,8 @@ from core.limiter import limiter
 from main import app
 from models import Base
 from models.skill import SkillKind, SkillReference
+from services.cv_parser_service import build_skill_index
+from services.language_reference_service import build_language_index
 
 DATA_FILE = Path(__file__).resolve().parent.parent.parent.parent / "data" / "esco_seed.csv"
 
@@ -111,6 +113,11 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     # Reset rate limit counters so each test starts with a clean slate.
     # The limiter uses in-memory storage which persists across tests otherwise.
     limiter.reset()
+
+    # Build the skill/language indexes from the test DB session so routes that
+    # read app.state.skill_index / app.state.language_index work in tests.
+    app.state.skill_index = await build_skill_index(db_session)
+    app.state.language_index = await build_language_index(db_session)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
