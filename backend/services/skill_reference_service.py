@@ -84,10 +84,11 @@ async def search(
 
     aliases_text = cast(SkillReference.aliases, Text)
 
-    name_exact = SkillReference.name.ilike(query)
-    alias_exact = aliases_text.ilike(f'%"{query}"%')
-    name_contains = SkillReference.name.ilike(f"%{query}%")
-    alias_contains = aliases_text.ilike(f"%{query}%")
+    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    name_exact = SkillReference.name.ilike(escaped, escape="\\")
+    alias_exact = aliases_text.ilike(f'%"{escaped}"%', escape="\\")
+    name_contains = SkillReference.name.ilike(f"%{escaped}%", escape="\\")
+    alias_contains = aliases_text.ilike(f"%{escaped}%", escape="\\")
 
     match_filter = or_(name_contains, alias_contains)
 
