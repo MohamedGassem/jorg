@@ -327,22 +327,6 @@ class FastPdfParser:
         return text if text.strip() else _extract_pdf_legacy(data)
 
 
-class DoclingParser:
-    """Future Docling adapter.
-
-    TODO: add optional ``docling`` dependency and implement conversion for PDFs
-    whose text layer is too weak. OCR must remain opt-in, not default.
-    """
-
-    method = "docling_fallback"
-
-    def supports(self, filename: str) -> bool:
-        return _extension(filename) in {"pdf", "docx"}
-
-    def extract(self, data: bytes) -> str:
-        raise CVTextExtractionError("Docling fallback is not configured on this instance.")
-
-
 class CVLLMClient(Protocol):
     def extract_profile_json(self, text: str) -> str | None: ...
 
@@ -1217,39 +1201,6 @@ def _extract_location(text: str) -> str | None:
     return None
 
 
-def _split_sections(text: str) -> dict[str, list[str]]:
-    current = "identity"
-    sections: dict[str, list[str]] = {key: [] for key in [*_SECTION_KEYWORDS, "identity"]}
-    for line in [line.strip() for line in text.splitlines() if line.strip()]:
-        normalized = _normalise(line)
-        matched = next(
-            (
-                section
-                for section, keywords in _SECTION_KEYWORDS.items()
-                if any(
-                    normalized == _normalise(k) or normalized.startswith(_normalise(k) + " ")
-                    for k in keywords
-                )
-            ),
-            None,
-        )
-        if matched:
-            current = matched
-            remainder = re.sub(r"^[^:]{1,40}:?", "", line, count=1).strip()
-            if remainder:
-                sections[current].append(remainder)
-            continue
-        sections[current].append(line)
-    return sections
-
-
-def _labels_from_lines(lines: list[str]) -> list[str]:
-    labels: list[str] = []
-    for line in lines:
-        labels.extend(_skill_labels_from_line(line))
-    return labels
-
-
 def _skill_labels_from_line(line: str) -> list[str]:
     candidates: list[str] = []
     if ":" in line:
@@ -1400,7 +1351,7 @@ async def parse_and_store_cv_proposal(
     extraction = extract_text_with_metadata(
         filename,
         data,
-        fallback_parser=fallback_parser or DoclingParser(),
+        fallback_parser=fallback_parser,
     )
     quality = score_text_quality(extraction.text)
     if quality.score < 20:
