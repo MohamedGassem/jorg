@@ -9,6 +9,7 @@ from docx import Document
 from sqlalchemy.exc import ProgrammingError
 
 from models.skill import SkillKind
+from services.cv.experience_parser import _split_description_and_achievements
 from services.cv_parser_service import (
     CVLLMExtractionError,
     CVPersistenceUnavailableError,
@@ -19,7 +20,6 @@ from services.cv_parser_service import (
     SkillEntry,
     TextExtractionResult,
     UnsupportedCVFormatError,
-    _split_description_and_achievements,
     build_structured_proposal,
     extract_contact,
     extract_text,
@@ -80,7 +80,7 @@ def test_extract_text_docx():
 
 def test_extract_text_pdf_uses_pymupdf(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "services.cv_parser_service._extract_pdf_layout",
+        "services.cv.text_extraction._extract_pdf_layout",
         lambda data: "PDF text Python",
     )
     result = extract_text_with_metadata("cv.pdf", b"%PDF fake")
@@ -301,8 +301,7 @@ async def test_missing_proposal_table_becomes_service_error(
         "Formation\nEcole 2018\nCompétences\nPython"
     )
     monkeypatch.setattr(
-        cv_parser_service,
-        "extract_text_with_metadata",
+        "services.cv.cv_parser_service.extract_text_with_metadata",
         lambda *args, **kwargs: TextExtractionResult(text=text, method="pdf_pymupdf"),
     )
     db = FakeDb()
@@ -388,3 +387,17 @@ def test_language_level_stays_attached_to_language_across_dash():
         language.name.value: language.level.value for language in LanguageParser().parse(lines)
     }
     assert parsed == {"Anglais": "C1", "Espagnol": "B2"}
+
+
+def test_legacy_cv_parser_service_imports_public_api() -> None:
+    from services import cv_parser_service
+
+    for name in (
+        "parse_cv",
+        "parse_and_store_cv_proposal",
+        "build_skill_index",
+        "extract_text",
+        "extract_text_with_metadata",
+        "build_structured_proposal",
+    ):
+        assert callable(getattr(cv_parser_service, name))

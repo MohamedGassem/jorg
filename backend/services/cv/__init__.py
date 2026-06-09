@@ -1,9 +1,4 @@
-"""Backward-compatible imports for the CV extraction service.
-
-The implementation now lives in :mod:`services.cv`.
-"""
-
-# ruff: noqa: F401,F403
+# ruff: noqa: F403
 
 from services.cv.constants import *
 from services.cv.contact_parser import *
@@ -12,7 +7,6 @@ from services.cv.date_parser import *
 from services.cv.education_parser import *
 from services.cv.exceptions import *
 from services.cv.experience_parser import *
-from services.cv.experience_parser import _split_description_and_achievements
 from services.cv.language_parser import *
 from services.cv.llm_extraction import *
 from services.cv.proposal_builder import *
@@ -23,6 +17,3 @@ from services.cv.section_detector import *
 from services.cv.skill_matching import *
 from services.cv.skill_parser import *
 from services.cv.text_extraction import *
-from services.cv.text_extraction import _extract_pdf_layout
-
-__all__ = [name for name in globals() if not name.startswith("__")]
