@@ -34,6 +34,7 @@ import {
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useAsyncOp } from "@/lib/hooks/useAsyncOp";
+import { SkillContextualizationDialog } from "@/components/candidate/SkillContextualizationDialog";
 import { useCrudSection } from "@/lib/hooks/useCrudSection";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type {
@@ -1606,206 +1607,6 @@ export function ExperienceSection() {
   );
 }
 
-// ---- Skill contextualization dialog ----------------------------------------
-
-function SkillContextualizationDialog({
-  skill,
-  allSkills,
-  initialIndex,
-  experiences,
-  onClose,
-  onAssociated,
-}: {
-  skill: Skill;
-  allSkills?: Skill[];
-  initialIndex?: number;
-  experiences: Experience[];
-  onClose: () => void;
-  onAssociated?: (associatedExpIds: string[], skill: Skill) => void;
-}) {
-  const skills = allSkills ?? [skill];
-  const [currentIdx, setCurrentIdx] = useState(initialIndex ?? 0);
-  const currentSkill = skills[currentIdx] ?? skill;
-
-  const [selections, setSelections] = useState<
-    Record<string, { exp: boolean; achs: Set<string> }>
-  >({});
-  const [saving, setSaving] = useState(false);
-
-  function goTo(idx: number) {
-    setCurrentIdx(idx);
-    setSelections({});
-  }
-
-  function toggleExp(expId: string) {
-    setSelections((prev) => ({
-      ...prev,
-      [expId]: {
-        exp: !prev[expId]?.exp,
-        achs: prev[expId]?.achs ?? new Set<string>(),
-      },
-    }));
-  }
-
-  function toggleAch(expId: string, achId: string) {
-    setSelections((prev) => {
-      const cur = prev[expId] ?? { exp: false, achs: new Set<string>() };
-      const achs = new Set(cur.achs);
-      if (achs.has(achId)) achs.delete(achId);
-      else achs.add(achId);
-      return { ...prev, [expId]: { exp: cur.exp || achs.size > 0, achs } };
-    });
-  }
-
-  async function handleAssociate() {
-    setSaving(true);
-    const associatedExpIds: string[] = [];
-    for (const [expId, sel] of Object.entries(selections)) {
-      if (!sel.exp) continue;
-      try {
-        await api.post(`/candidates/me/experiences/${expId}/skill-usages`, {
-          skill_ref_id: currentSkill.skill_ref_id,
-          usage_role: "implementer",
-          intensity: "secondary",
-        });
-        associatedExpIds.push(expId);
-      } catch {
-        associatedExpIds.push(expId);
-      }
-      for (const achId of sel.achs) {
-        try {
-          await api.post(
-            `/candidates/me/experiences/${expId}/achievements/${achId}/skill-tags`,
-            { skill_ref_id: currentSkill.skill_ref_id },
-          );
-        } catch {
-          // ignore
-        }
-      }
-    }
-    setSaving(false);
-    onAssociated?.(associatedExpIds, currentSkill);
-    if (currentIdx < skills.length - 1) {
-      goTo(currentIdx + 1);
-    } else {
-      onClose();
-    }
-  }
-
-  const hasSelection = Object.values(selections).some(
-    (s) => s.exp || s.achs.size > 0,
-  );
-
-  return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <div className="flex items-center gap-2 pr-8">
-            {skills.length > 1 && (
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => goTo(currentIdx - 1)}
-                  disabled={currentIdx === 0}
-                  className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
-                  aria-label="Compétence précédente"
-                >
-                  <ChevronLeft className="size-4" />
-                </button>
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {currentIdx + 1}/{skills.length}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => goTo(currentIdx + 1)}
-                  disabled={currentIdx === skills.length - 1}
-                  className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
-                  aria-label="Compétence suivante"
-                >
-                  <ChevronRight className="size-4" />
-                </button>
-              </div>
-            )}
-            <DialogTitle className="leading-snug">
-              Où as-tu utilisé «{currentSkill.skill_ref.name}» ?
-            </DialogTitle>
-          </div>
-        </DialogHeader>
-        <div className="max-h-80 space-y-2 overflow-y-auto py-1">
-          {experiences.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              Aucune expérience pour le moment.
-            </p>
-          )}
-          {experiences.map((exp) => {
-            const sel = selections[exp.id] ?? {
-              exp: false,
-              achs: new Set<string>(),
-            };
-            return (
-              <div
-                key={exp.id}
-                className="rounded-lg border border-border/60 p-3"
-              >
-                <label className="flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-primary"
-                    checked={sel.exp}
-                    onChange={() => toggleExp(exp.id)}
-                  />
-                  <span className="text-sm font-medium">
-                    {exp.client_name} — {exp.role}
-                  </span>
-                </label>
-                {exp.achievements.length > 0 && sel.exp && (
-                  <div className="ml-6 mt-2 space-y-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Réalisations
-                    </p>
-                    {exp.achievements.map((ach) => (
-                      <label
-                        key={ach.id}
-                        className="flex cursor-pointer items-start gap-1.5"
-                      >
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 h-3.5 w-3.5 accent-primary"
-                          checked={sel.achs.has(ach.id)}
-                          onChange={() => toggleAch(exp.id, ach.id)}
-                        />
-                        <span className="line-clamp-2 text-xs text-muted-foreground">
-                          {ach.description}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <DialogFooter className="flex items-center justify-between sm:justify-between">
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Associer plus tard
-          </button>
-          <Button
-            size="sm"
-            onClick={handleAssociate}
-            disabled={saving || !hasSelection}
-          >
-            {saving ? "Association…" : "Associer"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // ---- Skills -----------------------------------------------------------------
 
 const KIND_ORDER: SkillKind[] = [
@@ -1876,13 +1677,12 @@ export function SkillSection() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<SkillForm>(EMPTY_SKILL);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SkillReference[]>([]);
-  const [searching, setSearching] = useState(false);
   const [contextSkill, setContextSkill] = useState<Skill | null>(null);
-  const skipNextSearch = useRef(false);
+
+  const dialogOp = useAsyncOp("Erreur lors de la sauvegarde");
+  const search = useSearchableSelect<SkillReference>((q) =>
+    api.get<SkillReference[]>(`/skill-references?q=${encodeURIComponent(q)}`),
+  );
 
   useEffect(() => {
     Promise.all([
@@ -1901,38 +1701,11 @@ export function SkillSection() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (skipNextSearch.current) {
-      skipNextSearch.current = false;
-      return;
-    }
-    if (!searchQuery || searchQuery.length < 2 || editingId) {
-      setSearchResults([]);
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
-    const timer = setTimeout(async () => {
-      try {
-        const results = await api.get<SkillReference[]>(
-          `/skill-references?q=${encodeURIComponent(searchQuery)}`,
-        );
-        setSearchResults(results);
-      } catch {
-        // ignore search errors
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, editingId]);
-
   function set<K extends keyof SkillForm>(k: K, v: SkillForm[K]) {
     setForm((prev) => ({ ...prev, [k]: v }));
   }
 
   function selectSkillRef(ref: SkillReference) {
-    skipNextSearch.current = true;
     setForm((f) => ({
       ...f,
       skill_ref_id: ref.id,
@@ -1940,12 +1713,10 @@ export function SkillSection() {
       skill_ref_is_custom: ref.is_custom,
       kind: ref.kind,
     }));
-    setSearchQuery("");
-    setSearchResults([]);
+    search.clear();
   }
 
   function selectCustomPending(name: string) {
-    skipNextSearch.current = true;
     setForm((f) => ({
       ...f,
       skill_ref_id: CUSTOM_PENDING,
@@ -1953,24 +1724,22 @@ export function SkillSection() {
       skill_ref_is_custom: true,
       kind: "",
     }));
-    setSearchQuery("");
-    setSearchResults([]);
+    search.clear();
   }
 
   function openAddDialog() {
     setEditingId(null);
     setForm(EMPTY_SKILL);
-    setSearchQuery("");
-    setSearchResults([]);
-    setError(null);
+    search.clear();
+    dialogOp.clearError();
     setDialogOpen(true);
   }
 
   function startEdit(skill: Skill) {
     setEditingId(skill.id);
     setForm(skillToForm(skill));
-    setSearchQuery("");
-    setError(null);
+    search.clear();
+    dialogOp.clearError();
     setDialogOpen(true);
   }
 
@@ -1978,16 +1747,13 @@ export function SkillSection() {
     setDialogOpen(false);
     setEditingId(null);
     setForm(EMPTY_SKILL);
-    setSearchQuery("");
-    setSearchResults([]);
-    setError(null);
+    search.clear();
+    dialogOp.clearError();
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setError(null);
-    try {
+    await dialogOp.run(async () => {
       if (editingId) {
         const payload: Record<string, unknown> = {
           self_assessed_level: form.self_assessed_level || null,
@@ -2022,22 +1788,16 @@ export function SkillSection() {
         setContextSkill(created);
       }
       setForm(EMPTY_SKILL);
-      setSearchQuery("");
+      search.clear();
       setDialogOpen(false);
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la sauvegarde"));
-    } finally {
-      setSaving(false);
-    }
+    });
   }
 
   async function handleDelete(id: string) {
-    try {
+    await dialogOp.run(async () => {
       await api.delete(`/candidates/me/skills/${id}`);
       setItems((prev) => prev.filter((i) => i.id !== id));
-    } catch (err) {
-      setError(extractErrorMessage(err, "Erreur lors de la suppression"));
-    }
+    });
   }
 
   async function handleToggleFeatured(skill: Skill) {
@@ -2050,7 +1810,7 @@ export function SkillSection() {
       );
       setItems((prev) => prev.map((s) => (s.id === skill.id ? updated : s)));
     } catch {
-      setError("Impossible de modifier la mise en avant");
+      // ignore toggle errors silently (non-critical)
     }
   }
 
@@ -2100,8 +1860,8 @@ export function SkillSection() {
         </div>
       )}
 
-      {error && !dialogOpen && (
-        <p className="text-sm text-destructive">{error}</p>
+      {dialogOp.error && !dialogOpen && (
+        <p className="text-sm text-destructive">{dialogOp.error}</p>
       )}
 
       {/* ---- Unassociated skills banner ---- */}
@@ -2279,9 +2039,9 @@ export function SkillSection() {
                 </Label>
                 <Input
                   id="skill-search"
-                  value={searchQuery}
+                  value={search.query}
                   onChange={(e) => {
-                    setSearchQuery(e.target.value);
+                    search.setQuery(e.target.value);
                     setForm((prev) => ({
                       ...prev,
                       skill_ref_id: "",
@@ -2294,14 +2054,14 @@ export function SkillSection() {
                   autoComplete="off"
                   autoFocus
                 />
-                {(searchResults.length > 0 || searching) && (
+                {(search.results.length > 0 || search.searching) && (
                   <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
-                    {searching && searchResults.length === 0 && (
+                    {search.searching && search.results.length === 0 && (
                       <p className="px-3 py-2 text-xs text-muted-foreground">
                         Recherche…
                       </p>
                     )}
-                    {searchResults.map((ref) => (
+                    {search.results.map((ref) => (
                       <button
                         key={ref.id}
                         type="button"
@@ -2314,22 +2074,22 @@ export function SkillSection() {
                         </Badge>
                       </button>
                     ))}
-                    {!searching &&
-                      !searchResults.some(
+                    {!search.searching &&
+                      !search.results.some(
                         (r) =>
                           r.name.toLowerCase() ===
-                          searchQuery.trim().toLowerCase(),
+                          search.query.trim().toLowerCase(),
                       ) && (
                         <button
                           type="button"
                           className="flex w-full items-center gap-2 border-t border-border px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                          onClick={() => selectCustomPending(searchQuery)}
+                          onClick={() => selectCustomPending(search.query)}
                         >
                           <Plus className="h-3.5 w-3.5 shrink-0" />
                           <span>
                             Créer «{" "}
                             <span className="font-medium text-foreground">
-                              {searchQuery}
+                              {search.query}
                             </span>{" "}
                             »
                           </span>
@@ -2361,7 +2121,7 @@ export function SkillSection() {
                         skill_ref_is_custom: false,
                         kind: "",
                       }));
-                      setSearchQuery("");
+                      search.clear();
                     }}
                     title="Changer de compétence"
                   >
@@ -2435,20 +2195,26 @@ export function SkillSection() {
               />
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {dialogOp.error && (
+              <p className="text-sm text-destructive">{dialogOp.error}</p>
+            )}
 
             <DialogFooter>
               <Button
                 type="submit"
                 size="sm"
                 disabled={
-                  saving ||
+                  dialogOp.saving ||
                   (!editingId &&
                     (!form.skill_ref_id ||
                       (form.skill_ref_is_custom && !form.kind)))
                 }
               >
-                {saving ? "Sauvegarde…" : editingId ? "Enregistrer" : "Ajouter"}
+                {dialogOp.saving
+                  ? "Sauvegarde…"
+                  : editingId
+                    ? "Enregistrer"
+                    : "Ajouter"}
               </Button>
             </DialogFooter>
           </form>
