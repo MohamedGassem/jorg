@@ -66,12 +66,33 @@ _DATE_RE = re.compile(
     re.IGNORECASE,
 )
 _SECTION_KEYWORDS = {
-    "experience": ("expérience", "experiences", "experience", "work experience", "employment"),
-    "education": ("formation", "formations", "education", "éducation", "diplômes"),
+    "experience": (
+        "expérience",
+        "experiences",
+        "experience",
+        "work experience",
+        "employment",
+        "experience professionnelle",
+        "experiences professionnelles",
+    ),
+    "education": (
+        "formation",
+        "formations",
+        "education",
+        "éducation",
+        "diplômes",
+        "diplomes",
+    ),
     "skills": ("compétences", "competences", "skills", "technologies", "outils"),
     "languages": ("langues", "langages", "languages"),
     "certifications": ("certifications", "certification"),
-    "interests": ("centres d'intérêt", "centres d\u2019intérêt", "loisirs", "hobbies", "interests"),
+    "interests": (
+        "centres d'intérêt",
+        "centres d\u2019intérêt",
+        "loisirs",
+        "hobbies",
+        "interests",
+    ),
 }
 _GENERIC_SKILL_PREFIXES = {
     "applications deploiement",
@@ -614,18 +635,9 @@ def parse_llm_json_strict(raw_json: str) -> CVStructuredProposal:
 
 
 class SectionDetector:
-    aliases: ClassVar[dict[str, tuple[str, ...]]] = {
-        "experience": (
-            "experience",
-            "experiences",
-            "experience professionnelle",
-            "experiences professionnelles",
-        ),
-        "education": ("formation", "formations", "education", "diplomes"),
-        "skills": ("competences", "skills", "technologies", "outils"),
-        "languages": ("langues", "languages"),
-        "certifications": ("certifications", "certification"),
-        "interests": ("centres d interet", "loisirs", "hobbies", "interests"),
+    aliases: ClassVar[dict[str, frozenset[str]]] = {
+        section: frozenset(_normalise(k) for k in keywords)
+        for section, keywords in _SECTION_KEYWORDS.items()
     }
 
     def detect(self, lines: list[DocumentLine]) -> dict[str, SectionBlock]:
