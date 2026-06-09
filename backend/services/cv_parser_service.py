@@ -166,6 +166,15 @@ _DATE_RANGE_RE = re.compile(
     r"(?P<end>actuel|present|présent|(?:[^\W\d_]+\.?\s+)?(?:19|20)\d{2})",
     re.IGNORECASE,
 )
+_KNOWN_LOCATION_TOKENS: frozenset[str] = frozenset(
+    {
+        "lyon fr",
+        "angers",
+        "nancy",
+        "le creusot",
+        "sarreguemines",
+    }
+)
 _BULLET_CHARS = "•‣▪·◦●○∙*-\u2013\u2014"
 # A bullet is a leading glyph (optionally followed by space) or a lone "o"
 # sub-bullet that must be followed by whitespace, to avoid matching words.
@@ -1059,7 +1068,7 @@ def _is_block_header_candidate(text: str) -> bool:
         return False
     if _EMAIL_RE.search(stripped):
         return False
-    if _normalise(stripped) in {"lyon fr", "angers", "nancy", "le creusot", "sarreguemines"}:
+    if _normalise(stripped) in _KNOWN_LOCATION_TOKENS:
         return False
     return len(stripped) <= 120
 
@@ -1078,7 +1087,7 @@ def _is_description_line(text: str) -> bool:
     stripped = text.strip()
     if not stripped or _parse_date_range(stripped) is not None or _is_year_only(stripped):
         return False
-    if _normalise(stripped) in {"lyon fr", "angers", "nancy", "le creusot", "sarreguemines"}:
+    if _normalise(stripped) in _KNOWN_LOCATION_TOKENS:
         return False
     return not _is_block_header_candidate(stripped) or stripped.startswith(("•", "-"))
 
