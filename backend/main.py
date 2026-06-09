@@ -46,10 +46,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     log = structlog.get_logger()
     from core.database import AsyncSessionLocal
     from services.cv_parser_service import build_skill_index
+    from services.language_reference_service import build_language_index
 
     async with AsyncSessionLocal() as session:
         app.state.skill_index = await build_skill_index(session)
-    log.info("skill_index.built", entries=len(app.state.skill_index))
+        app.state.language_index = await build_language_index(session)
+    log.info(
+        "startup_indexes.built",
+        skill_entries=len(app.state.skill_index),
+        language_entries=len(app.state.language_index),
+    )
 
     yield
 

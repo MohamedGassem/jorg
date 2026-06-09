@@ -101,6 +101,7 @@ async def parse_my_cv(
 
     # Shared catalogue index built at startup.
     index: cv_parser_service.SkillIndex = request.app.state.skill_index
+    language_index = getattr(request.app.state, "language_index", None)
     try:
         profile = await candidate_service.get_or_create_profile(db, current_user.id)
         proposal = await cv_parser_service.parse_and_store_cv_proposal(
@@ -109,6 +110,7 @@ async def parse_my_cv(
             data,
             db,
             index=index,
+            language_index=language_index,
         )
     except cv_parser_service.CVTooLargeError as e:
         raise HTTPException(

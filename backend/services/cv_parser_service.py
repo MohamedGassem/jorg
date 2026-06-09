@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.candidate_profile import CVExtractionProposal, CVExtractionStatus
 from models.skill import SkillKind, SkillReference
+from services.language_reference_service import LanguageIndex
 from services.text_utils import normalize_text as _normalise
 
 MAX_CV_BYTES = 5 * 1024 * 1024
@@ -862,6 +863,9 @@ class EducationBlockParser:
 
 
 class LanguageParser:
+    def __init__(self, language_index: LanguageIndex | None = None) -> None:
+        self._index: LanguageIndex = language_index if language_index else _HUMAN_LANGUAGES
+
     def parse(self, lines: list[DocumentLine]) -> list[LanguageProposal]:
         languages: dict[str, LanguageProposal] = {}
         for line in lines:
@@ -870,7 +874,7 @@ class LanguageParser:
             # so _extract_language_level can read the level from the same part.
             for raw_part in re.split(r"[,;]", line.text):
                 normalized_part = _normalise(raw_part)
-                for normalized_language, display in _HUMAN_LANGUAGES.items():
+                for normalized_language, display in self._index.items():
                     if re.search(rf"\b{re.escape(normalized_language)}\b", normalized_part):
                         level = _extract_language_level(raw_part)
                         languages[display] = LanguageProposal(
@@ -914,6 +918,7 @@ def build_structured_proposal(
     quality: QualityScore,
     index: SkillIndex,
     llm_client: CVLLMClient | None = None,
+    language_index: LanguageIndex | None = None,
 ) -> CVStructuredProposal:
     warnings = [*extraction.warnings, *quality.warnings]
     proposal: CVStructuredProposal | None = None
@@ -925,7 +930,7 @@ def build_structured_proposal(
             warnings.append("Extraction LLM ignorée: JSON invalide.")
 
     if proposal is None:
-        proposal = _deterministic_structured_proposal(text, extraction.lines)
+        proposal = _deterministic_structured_proposal(text, extraction.lines, language_index)
         warnings.append("Extraction structurée heuristique utilisée; validez chaque champ.")
 
     proposal.skills = match_structured_skills(text, proposal.skills, index)
@@ -942,7 +947,9 @@ def build_structured_proposal(
 
 
 def _deterministic_structured_proposal(
-    text: str, document_lines: list[DocumentLine] | None = None
+    text: str,
+    document_lines: list[DocumentLine] | None = None,
+    language_index: LanguageIndex | None = None,
 ) -> CVStructuredProposal:
     contact = extract_contact(text)
     lines = document_lines or _text_to_document_lines(text)
@@ -996,7 +1003,7 @@ def _deterministic_structured_proposal(
         for line in certification_lines[:5]
         if len(line.text) > 5
     ]
-    languages = LanguageParser().parse(language_lines)
+    languages = LanguageParser(language_index).parse(language_lines)
     skills = SkillParser().parse(skills_lines)
     return CVStructuredProposal(
         identity=identity,
@@ -1365,6 +1372,7 @@ async def parse_and_store_cv_proposal(
     index: SkillIndex,
     llm_client: CVLLMClient | None = None,
     fallback_parser: DocumentParser | None = None,
+    language_index: LanguageIndex | None = None,
 ) -> CVExtractionProposal:
     validate_cv_file(filename, data)
     file_hash = hashlib.sha256(data).hexdigest()
@@ -1384,6 +1392,7 @@ async def parse_and_store_cv_proposal(
         quality,
         index,
         llm_client=llm_client,
+        language_index=language_index,
     )
     row = CVExtractionProposal(
         candidate_id=candidate_id,
