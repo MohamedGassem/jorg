@@ -66,6 +66,7 @@ export function EducationSection() {
     items,
     form,
     saving,
+    deleting,
     error,
     adding,
     editingId,
@@ -206,6 +207,7 @@ export function EducationSection() {
                 deleteLabel="Supprimer cette formation"
                 onEdit={() => startEdit(edu)}
                 onDelete={() => handleDelete(edu.id)}
+                disabled={deleting === edu.id}
               />
             </div>
           ),

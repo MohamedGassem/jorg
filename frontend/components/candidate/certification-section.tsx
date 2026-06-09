@@ -62,6 +62,7 @@ export function CertificationSection() {
     items,
     form,
     saving,
+    deleting,
     error,
     adding,
     editingId,
@@ -206,6 +207,7 @@ export function CertificationSection() {
                 deleteLabel="Supprimer cette certification"
                 onEdit={() => startEdit(cert)}
                 onDelete={() => handleDelete(cert.id)}
+                disabled={deleting === cert.id}
               />
             </div>
           ),

@@ -18,7 +18,7 @@ export function SearchableSelect({
   children,
 }: SearchableSelectProps) {
   const queryTrim = query.trim();
-  const showCreate = !!onCreateNew && queryTrim.length >= 2 && !searching;
+  const showCreate = !!onCreateNew;
 
   return (
     <div

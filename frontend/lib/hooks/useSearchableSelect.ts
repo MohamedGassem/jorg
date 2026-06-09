@@ -28,7 +28,8 @@ export function useSearchableSelect<T>(
       }
     }, debounceMs);
     return () => clearTimeout(timer);
-    // searchFn excluded intentionally — callers pass a stable reference
+    // searchFn excluded — api is a module-level singleton so the arrow is safe;
+    // callers that close over dynamic state must memoize searchFn themselves
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, debounceMs]);
 

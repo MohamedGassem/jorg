@@ -202,7 +202,11 @@ function AchievementRow({
         );
       }
       const newTags: AchievementSkillTag[] = skillUsages
-        .filter((u) => checkedIds.has(u.skill_ref_id))
+        .filter(
+          (u) =>
+            successfulAdds.has(u.skill_ref_id) ||
+            syncedTagsRef.current.has(u.skill_ref_id),
+        )
         .map((u) => ({
           skill_ref_id: u.skill_ref_id,
           skill_ref: u.skill_ref,

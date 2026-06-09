@@ -23,6 +23,7 @@ export interface CrudSectionState<TItem, TForm> {
   form: TForm;
   setForm: React.Dispatch<React.SetStateAction<TForm>>;
   saving: boolean;
+  deleting: string | null;
   error: string | null;
   setField: <K extends keyof TForm>(key: K, value: TForm[K]) => void;
   startAdd: () => void;
@@ -48,6 +49,7 @@ export function useCrudSection<TItem extends { id: string }, TForm>({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -110,11 +112,15 @@ export function useCrudSection<TItem extends { id: string }, TForm>({
   }
 
   async function handleDelete(id: string) {
+    if (deleting) return;
+    setDeleting(id);
     try {
       await api.delete(`${endpoint}/${id}`);
       setItems((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
       setError(extractErrorMessage(err, deleteErrorMsg));
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -127,6 +133,7 @@ export function useCrudSection<TItem extends { id: string }, TForm>({
     form,
     setForm,
     saving,
+    deleting,
     error,
     setField,
     startAdd,

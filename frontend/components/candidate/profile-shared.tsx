@@ -86,10 +86,12 @@ export function ItemActions({
   deleteLabel,
   onEdit,
   onDelete,
+  disabled,
 }: {
   deleteLabel: string;
   onEdit: () => void;
   onDelete: () => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex shrink-0 items-center gap-0.5">
@@ -97,7 +99,8 @@ export function ItemActions({
         type="button"
         aria-label="Modifier"
         onClick={onEdit}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+        disabled={disabled}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Pencil className="size-3.5" />
       </button>
@@ -105,7 +108,8 @@ export function ItemActions({
         type="button"
         aria-label={deleteLabel}
         onClick={onDelete}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 transition-colors hover:bg-destructive/10 hover:text-destructive"
+        disabled={disabled}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Trash2 className="size-3.5" />
       </button>

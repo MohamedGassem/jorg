@@ -65,30 +65,48 @@ export function SkillContextualizationDialog({
 
   async function handleAssociate() {
     setSaving(true);
-    const associatedExpIds: string[] = [];
-    for (const [expId, sel] of Object.entries(selections)) {
-      if (!sel.exp) continue;
-      try {
-        await api.post(`/candidates/me/experiences/${expId}/skill-usages`, {
-          skill_ref_id: currentSkill.skill_ref_id,
-          usage_role: "implementer",
-          intensity: "secondary",
-        });
-        associatedExpIds.push(expId);
-      } catch {
-        associatedExpIds.push(expId);
-      }
+
+    // Build work items for selected experiences
+    const entries = Object.entries(selections).filter(([, sel]) => sel.exp);
+
+    // Fire all skill-usage POSTs in parallel
+    const usageResults = await Promise.allSettled(
+      entries.map(([expId]) =>
+        api
+          .post(`/candidates/me/experiences/${expId}/skill-usages`, {
+            skill_ref_id: currentSkill.skill_ref_id,
+            usage_role: "implementer",
+            intensity: "secondary",
+          })
+          .then(() => expId),
+      ),
+    );
+
+    // Collect only the expIds whose POST succeeded
+    const associatedExpIds: string[] = usageResults
+      .filter(
+        (r): r is PromiseFulfilledResult<string> => r.status === "fulfilled",
+      )
+      .map((r) => r.value);
+
+    // Fire all achievement-tag POSTs in parallel (one batch across all exps)
+    const achRequests: Promise<unknown>[] = [];
+    for (const [expId, sel] of entries) {
       for (const achId of sel.achs) {
-        try {
-          await api.post(
-            `/candidates/me/experiences/${expId}/achievements/${achId}/skill-tags`,
-            { skill_ref_id: currentSkill.skill_ref_id },
-          );
-        } catch {
-          // ignore
-        }
+        achRequests.push(
+          api
+            .post(
+              `/candidates/me/experiences/${expId}/achievements/${achId}/skill-tags`,
+              { skill_ref_id: currentSkill.skill_ref_id },
+            )
+            .catch(() => {
+              // ignore individual failures
+            }),
+        );
       }
     }
+    await Promise.allSettled(achRequests);
+
     setSaving(false);
     onAssociated?.(associatedExpIds, currentSkill);
     if (currentIdx < skills.length - 1) {

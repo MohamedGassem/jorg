@@ -1,7 +1,7 @@
 // frontend/components/candidate/language-section.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { api } from "@/lib/api";
 import { useCrudSection } from "@/lib/hooks/useCrudSection";
+import { useSearchableSelect } from "@/lib/hooks/useSearchableSelect";
 import {
   LANGUAGE_LEVELS,
   SectionAddButton,
@@ -44,6 +45,7 @@ export function LanguageSection() {
     form,
     setForm,
     saving,
+    deleting,
     error,
     adding,
     editingId,
@@ -54,42 +56,28 @@ export function LanguageSection() {
     handleSubmit,
     handleDelete,
   } = crud;
-  const [languageRefs, setLanguageRefs] = useState<LanguageReference[]>([]);
-  const [searchingRefs, setSearchingRefs] = useState(false);
 
+  const langRefSearch = useSearchableSelect<LanguageReference>(async (q) => {
+    const refs = await api.get<LanguageReference[]>(
+      `/candidates/language-references?q=${encodeURIComponent(q)}`,
+    );
+    return refs.filter((ref) => ref.name !== q);
+  }, 250);
+
+  // Sync form.name -> search query (but clear after selection to avoid re-searching)
   useEffect(() => {
-    const query = form.name.trim();
-    if (query.length < 2) {
-      setLanguageRefs([]);
-      setSearchingRefs(false);
-      return;
-    }
-
-    setSearchingRefs(true);
-    const timer = setTimeout(async () => {
-      try {
-        const results = await api.get<LanguageReference[]>(
-          `/candidates/language-references?q=${encodeURIComponent(query)}`,
-        );
-        setLanguageRefs(results.filter((ref) => ref.name !== form.name));
-      } catch {
-        setLanguageRefs([]);
-      } finally {
-        setSearchingRefs(false);
-      }
-    }, 250);
-
-    return () => clearTimeout(timer);
+    langRefSearch.setQuery(form.name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.name]);
 
   function cancelForm() {
     crud.cancelForm();
-    setLanguageRefs([]);
+    langRefSearch.clear();
   }
 
   function selectLanguageRef(ref: LanguageReference) {
     setForm((prev) => ({ ...prev, name: ref.name }));
-    setLanguageRefs([]);
+    langRefSearch.clear(); // clears query AND results; also prevents re-search on name change
   }
 
   const inlineForm = (
@@ -111,9 +99,9 @@ export function LanguageSection() {
             placeholder="ex: Français, Anglais…"
             required
           />
-          {(languageRefs.length > 0 || searchingRefs) && (
+          {(langRefSearch.results.length > 0 || langRefSearch.searching) && (
             <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-md border border-border bg-popover shadow-md">
-              {languageRefs.map((ref) => (
+              {langRefSearch.results.map((ref) => (
                 <button
                   key={ref.id}
                   type="button"
@@ -128,11 +116,12 @@ export function LanguageSection() {
                   )}
                 </button>
               ))}
-              {searchingRefs && languageRefs.length === 0 && (
-                <div className="px-3 py-2 text-sm text-muted-foreground">
-                  Recherche...
-                </div>
-              )}
+              {langRefSearch.searching &&
+                langRefSearch.results.length === 0 && (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    Recherche...
+                  </div>
+                )}
             </div>
           )}
         </div>
@@ -224,6 +213,7 @@ export function LanguageSection() {
                 deleteLabel="Supprimer cette langue"
                 onEdit={() => startEdit(lang)}
                 onDelete={() => handleDelete(lang.id)}
+                disabled={deleting === lang.id}
               />
             </div>
           ),

@@ -412,6 +412,7 @@ export function SkillSection() {
                           <button
                             type="button"
                             onClick={() => handleDelete(skill.id)}
+                            disabled={dialogOp.saving}
                             className="rounded p-1 hover:bg-destructive/10"
                             title={`Supprimer ${skill.skill_ref.name}`}
                           >
