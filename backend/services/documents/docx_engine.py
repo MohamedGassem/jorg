@@ -142,6 +142,23 @@ def fmt_date(d: date | None) -> str:
     return d.strftime("%m/%Y") if isinstance(d, date) else ""
 
 
+def derive_years_of_experience(experiences: Sequence[ExperienceProtocol]) -> int | None:
+    """Span in full years from the earliest start_date to the latest end (today if current)."""
+    starts = [exp.start_date for exp in experiences if isinstance(exp.start_date, date)]
+    if not starts:
+        return None
+    today = date.today()
+    ends: list[date] = []
+    for exp in experiences:
+        if exp.is_current:
+            ends.append(today)
+        elif isinstance(exp.end_date, date):
+            ends.append(exp.end_date)
+    latest = max(ends, default=today)
+    years = (latest - min(starts)).days // 365
+    return max(years, 0)
+
+
 def _enum_value(value: Any) -> str:
     if value is None:
         return ""
@@ -331,6 +348,9 @@ def generate_document(
     context: dict[str, Any] = {
         **profile_flat(profile),
         "experiences": [exp_flat(exp) for exp in experiences],
+        "years_of_experience": str(
+            profile.years_of_experience or derive_years_of_experience(experiences) or ""
+        ),
         "skills": [skill_flat(sk) for sk in skills],
         "education": education_items,
         "educations": education_items,

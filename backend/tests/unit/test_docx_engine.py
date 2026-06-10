@@ -11,6 +11,7 @@ import pytest
 from docx import Document
 
 from services.documents.docx_engine import (
+    derive_years_of_experience,
     exp_flat,
     fmt_date,
     generate_document,
@@ -85,6 +86,23 @@ class TestFmtDate:
 
     def test_formats_date_as_mm_yyyy(self):
         assert fmt_date(date(2023, 6, 15)) == "06/2023"
+
+
+class TestDeriveYearsOfExperience:
+    def test_returns_none_without_experiences(self):
+        assert derive_years_of_experience([]) is None
+
+    def test_spans_earliest_start_to_latest_end(self):
+        exps = [
+            _mock_experience(start_date=date(2015, 1, 1), end_date=date(2018, 1, 1)),
+            _mock_experience(start_date=date(2018, 1, 1), end_date=date(2021, 1, 1)),
+        ]
+        assert derive_years_of_experience(exps) == 6
+
+    def test_current_experience_extends_to_today(self):
+        exps = [_mock_experience(start_date=date(2020, 1, 1), end_date=None, is_current=True)]
+        expected = (date.today() - date(2020, 1, 1)).days // 365
+        assert derive_years_of_experience(exps) == expected
 
 
 class TestProfileFlat:
