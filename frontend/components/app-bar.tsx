@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { JorgWordmark } from "@/components/ui/JorgWordmark";
 import { api } from "@/lib/api";
 import { logout as authLogout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -53,16 +54,8 @@ export function AppBar({
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-surface">
       <div className="mx-auto flex h-[58px] w-full max-w-[1400px] items-center gap-[18px] px-7">
-        <Link href={homeHref} className="flex items-center gap-[11px]">
-          <span
-            className="grid size-[30px] place-items-center rounded-[7px] bg-ink font-heading text-[17px] font-semibold text-bg-app dark:bg-primary dark:text-accent-ink"
-            aria-hidden
-          >
-            J
-          </span>
-          <span className="font-heading text-[19px] font-semibold tracking-tight">
-            Jorg
-          </span>
+        <Link href={homeHref}>
+          <JorgWordmark />
         </Link>
         <span className="h-[26px] w-px bg-line" aria-hidden />
         <span className="j-meta text-[12.5px]">{context}</span>

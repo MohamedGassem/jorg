@@ -33,32 +33,43 @@ const ROLES: {
   },
 ];
 
+const TRUST_STEPS = [
+  {
+    title: "Profil structuré",
+    detail: "Les informations utiles sont rangées pour alimenter les dossiers.",
+  },
+  {
+    title: "Accès contrôlé",
+    detail: "Les candidats savent quelles organisations peuvent agir.",
+  },
+  {
+    title: "Dossier généré",
+    detail: "Les documents sont produits depuis les modèles de dossier Jorg.",
+  },
+];
+
 function RegisterTrustPanel({ role }: { role: Role }) {
   return (
-    <aside className="rounded-lg border border-border bg-surface p-6">
-      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-        Alpha privee Jorg
-      </p>
+    <aside className="rounded-lg border border-line bg-paper-2 px-[26px] py-[22px]">
+      <p className="j-overline">Alpha privée Jorg</p>
       <h2 className="mt-3 font-heading text-xl font-semibold">
         {role === "candidate"
           ? "Votre profil devient un dossier fiable, partageable sous contrôle."
           : "Vos dossiers candidats partent de profils autorisés, pas de copies dispersées."}
       </h2>
-      <div className="mt-6 space-y-4 text-sm text-muted-foreground">
-        <div>
-          <p className="font-medium text-foreground">1. Profil structure</p>
-          <p>
-            Les informations utiles sont rangees pour alimenter les dossiers.
-          </p>
-        </div>
-        <div>
-          <p className="font-medium text-foreground">2. Accès contrôlé</p>
-          <p>Les candidats savent quelles organisations peuvent agir.</p>
-        </div>
-        <div>
-          <p className="font-medium text-foreground">3. Dossier généré</p>
-          <p>Les documents sont produits depuis les modèles de dossier Jorg.</p>
-        </div>
+      <div className="mt-5 flex flex-col gap-3">
+        {TRUST_STEPS.map((step, i) => (
+          <div
+            key={step.title}
+            className="rounded-md border border-line bg-surface px-4 py-3"
+          >
+            <p className="j-overline text-[10px]">Étape {i + 1}</p>
+            <p className="mt-1 text-sm font-semibold">{step.title}</p>
+            <p className="mt-0.5 text-[12.5px] leading-5 text-ink-3">
+              {step.detail}
+            </p>
+          </div>
+        ))}
       </div>
     </aside>
   );
@@ -107,10 +118,11 @@ function RegisterForm() {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
       <div className="grid w-full max-w-5xl grid-cols-1 gap-8 lg:grid-cols-[minmax(0,460px)_1fr]">
-        <section className="rounded-lg border border-border bg-surface p-6">
+        <section className="rounded-lg border border-line bg-surface px-[26px] py-[22px]">
           <JorgWordmark />
           <div className="mt-8">
-            <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            <p className="j-overline">Espace sécurisé</p>
+            <h1 className="mt-2 font-heading text-2xl font-semibold tracking-tight">
               Créer mon espace Jorg
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -132,8 +144,8 @@ function RegisterForm() {
                       className={cn(
                         "rounded-lg border p-3 text-left transition-colors",
                         selected
-                          ? "border-primary bg-primary-soft text-foreground"
-                          : "border-border bg-background hover:bg-muted/60",
+                          ? "border-primary bg-accent-soft-2 text-foreground"
+                          : "border-line-2 bg-surface hover:bg-paper-2",
                       )}
                     >
                       <span className="text-sm font-semibold">{label}</span>
@@ -218,7 +230,7 @@ function RegisterForm() {
             </div>
 
             {role === "recruiter" && (
-              <div className="space-y-1.5 rounded-lg border border-warning/30 bg-warning/10 p-3">
+              <div className="space-y-1.5 rounded-lg border border-warn-border bg-warn-soft p-3">
                 <Label htmlFor="alpha-code">Code d&apos;accès alpha</Label>
                 <Input
                   id="alpha-code"
