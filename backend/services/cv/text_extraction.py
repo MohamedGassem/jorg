@@ -104,22 +104,11 @@ def extract_text_with_metadata(
 
 
 def _extract_pdf_layout(data: bytes) -> str:
-    import fitz  # type: ignore[import-untyped]
-
-    document = fitz.open(stream=data, filetype="pdf")
-    pages: list[str] = []
-    for page in document:
-        blocks = page.get_text("blocks", sort=True)
-        lines: list[str] = []
-        for block in blocks:
-            if len(block) < 5:
-                continue
-            text = str(block[4]).strip()
-            if not text:
-                continue
-            lines.extend(line.strip() for line in text.splitlines() if line.strip())
-        pages.append("\n".join(lines))
-    return "\n\n".join(page for page in pages if page.strip())
+    lines = _extract_pdf_document_lines(data)
+    pages: dict[int, list[str]] = {}
+    for line in lines:
+        pages.setdefault(line.page or 1, []).append(line.text)
+    return "\n\n".join("\n".join(texts) for _, texts in sorted(pages.items()))
 
 
 def _extract_document_lines(filename: str, data: bytes, fallback_text: str) -> list[DocumentLine]:
@@ -133,6 +122,69 @@ def _extract_document_lines(filename: str, data: bytes, fallback_text: str) -> l
     return _text_to_document_lines(fallback_text)
 
 
+# Word gaps in justified PDFs (e.g. LaTeX) can be encoded as glyph-position offsets
+# with no space character; measured word gaps sit around 0.13-0.15 x font size while
+# intra-word kerning stays below 0.05, so 0.1 separates them with margin on both sides.
+_CHAR_GAP_SPACE_RATIO = 0.1
+
+
+def _span_text_from_chars(span: dict) -> str:
+    """Rebuild a rawdict span's text, inserting a space at significant glyph gaps."""
+    chars = span.get("chars")
+    if not chars:
+        return str(span.get("text", ""))
+    size = float(span.get("size") or 0)
+    threshold = size * _CHAR_GAP_SPACE_RATIO if size else 1.0
+    parts: list[str] = []
+    prev_x1: float | None = None
+    for char in chars:
+        text = str(char.get("c", ""))
+        bbox = char.get("bbox") or (0.0, 0.0, 0.0, 0.0)
+        if (
+            prev_x1 is not None
+            and text
+            and not text.isspace()
+            and parts
+            and not parts[-1].isspace()
+            and bbox[0] - prev_x1 > threshold
+        ):
+            parts.append(" ")
+        parts.append(text)
+        prev_x1 = bbox[2]
+    return "".join(parts)
+
+
+def _join_spans(spans: list[dict]) -> str:
+    """Join PDF spans into a line string, inserting a space wherever there is a visual gap.
+
+    A plain ``" ".join`` adds spaces between every span pair regardless of whether
+    the PDF already has a space character there.  This function checks the x-position
+    gap between the right edge of span N and the left edge of span N+1: if the gap
+    exceeds 1 pt and neither boundary already carries a whitespace character, a space
+    is inserted.  This handles the common case where a PDF encodes adjacent words in
+    separate spans without an explicit space character.
+    """
+    if not spans:
+        return ""
+    parts: list[str] = [spans[0].get("text", "")]
+    for i in range(1, len(spans)):
+        prev_bbox = spans[i - 1].get("bbox") or (0, 0, 0, 0)
+        curr_bbox = spans[i].get("bbox") or (0, 0, 0, 0)
+        gap = curr_bbox[0] - prev_bbox[2]
+        curr_text = spans[i].get("text", "")
+        needs_space = (
+            gap > 1.0
+            and bool(parts)
+            and not parts[-1].endswith(" ")
+            and bool(curr_text)
+            and not curr_text[0].isspace()
+        )
+        if needs_space:
+            parts.append(" ")
+        parts.append(curr_text)
+    return clean_extracted_text("".join(parts))
+
+
 def _extract_pdf_document_lines(data: bytes) -> list[DocumentLine]:
     import fitz
 
@@ -140,13 +192,16 @@ def _extract_pdf_document_lines(data: bytes) -> list[DocumentLine]:
     lines: list[DocumentLine] = []
     line_index = 0
     for page_index, page in enumerate(document, start=1):
-        payload = page.get_text("dict", sort=True)
+        payload = page.get_text("rawdict", sort=True)
         for block in payload.get("blocks", []):
             if block.get("type") != 0:
                 continue
             for raw_line in block.get("lines", []):
-                spans = raw_line.get("spans", [])
-                text = clean_extracted_text(" ".join(span.get("text", "") for span in spans))
+                spans = [
+                    {**span, "text": _span_text_from_chars(span)}
+                    for span in raw_line.get("spans", [])
+                ]
+                text = _join_spans(spans)
                 if not text:
                     continue
                 bbox = raw_line.get("bbox", [None, None, None, None])
@@ -166,7 +221,69 @@ def _extract_pdf_document_lines(data: bytes) -> list[DocumentLine]:
                     )
                 )
                 line_index += 1
-    return lines
+    return _order_lines_in_columns(lines)
+
+
+def _order_lines_in_columns(lines: list[DocumentLine]) -> list[DocumentLine]:
+    """Reorder lines page by page so multi-column layouts read column by column.
+
+    Sidebar layouts (contact column next to the main content) otherwise
+    interleave both columns in reading order, which breaks section detection.
+    Single-column CVs are untouched because their lines span the page width and
+    no vertical gutter exists.
+    """
+    ordered: list[DocumentLine] = []
+    pages: dict[int, list[DocumentLine]] = {}
+    for line in lines:
+        pages.setdefault(line.page or 1, []).append(line)
+    for _, page_lines in sorted(pages.items()):
+        ordered.extend(_order_page_columns(page_lines))
+    for index, line in enumerate(ordered):
+        line.line_index = index
+    return ordered
+
+
+_MIN_GUTTER_WIDTH = 3.0
+_MIN_COLUMN_LINES = 5
+
+
+def _order_page_columns(page_lines: list[DocumentLine]) -> list[DocumentLine]:
+    if len(page_lines) < 2 * _MIN_COLUMN_LINES or any(
+        line.x0 is None or line.x1 is None or line.y0 is None for line in page_lines
+    ):
+        return page_lines
+    gutter = _find_gutter(page_lines)
+    if gutter is None:
+        return page_lines
+    columns = [
+        [line for line in page_lines if line.x1 <= gutter],
+        [line for line in page_lines if line.x1 > gutter],
+    ]
+    # The main column (most text) reads first so identity stays at the top and
+    # the sidebar's own section headers still split its content afterwards.
+    columns.sort(key=lambda col: sum(len(line.text) for line in col), reverse=True)
+    return [line for column in columns for line in sorted(column, key=lambda li: (li.y0, li.x0))]
+
+
+def _find_gutter(page_lines: list[DocumentLine]) -> float | None:
+    """Find an x position crossed by no line, splitting the page in two columns."""
+    intervals = sorted((line.x0, line.x1) for line in page_lines)
+    best: tuple[float, float] | None = None
+    covered_until = intervals[0][1]
+    for x0, x1 in intervals[1:]:
+        gap = x0 - covered_until
+        if gap >= _MIN_GUTTER_WIDTH:
+            left = sum(1 for line in page_lines if line.x1 <= covered_until)
+            right = len(page_lines) - left
+            share = min(left, right) / len(page_lines)
+            if (
+                min(left, right) >= _MIN_COLUMN_LINES
+                and share >= 0.2
+                and (best is None or gap > best[0])
+            ):
+                best = (gap, covered_until)
+        covered_until = max(covered_until, x1)
+    return best[1] if best else None
 
 
 def _text_to_document_lines(text: str) -> list[DocumentLine]:

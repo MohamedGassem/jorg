@@ -148,16 +148,113 @@ _MONTHS = {
 }
 _DATE_RANGE_RE = re.compile(
     r"(?P<start>(?:[^\W\d_]+\.?\s+)?(?:19|20)\d{2})\s*[-\u2013\u2014]\s*"
-    r"(?P<end>actuel|present|présent|(?:[^\W\d_]+\.?\s+)?(?:19|20)\d{2})",
+    r"(?P<end>actuel|present|présent|aujourd[‘’]?hui|(?:[^\W\d_]+\.?\s+)?(?:19|20)\d{2})",  # noqa: RUF001
     re.IGNORECASE,
 )
 _KNOWN_LOCATION_TOKENS: frozenset[str] = frozenset(
     {
         "lyon fr",
+        "aix en provence",
+        "amiens",
         "angers",
-        "nancy",
+        "annecy",
+        "besancon",
+        "bordeaux",
+        "bourgoin jailleu",
+        "bourgoin jallieu",
+        "brest",
+        "caen",
+        "clermont ferrand",
+        "decines",
+        "dijon",
+        "firminy",
+        "grenoble",
         "le creusot",
+        "le havre",
+        "le mans",
+        "lille",
+        "limoges",
+        "lyon",
+        "marseille",
+        "metz",
+        "montpellier",
+        "mulhouse",
+        "nancy",
+        "nanterre",
+        "nantes",
+        "nice",
+        "orleans",
+        "paris",
+        "perpignan",
+        "reims",
+        "remote",
+        "rennes",
+        "rouen",
+        "saint etienne",
         "sarreguemines",
+        "strasbourg",
+        "teletravail",
+        "toulon",
+        "toulouse",
+        "tournus",
+        "tours",
+        "villeurbanne",
+    }
+)
+# "City 69" / "City (69)" style suffixes and bare department numbers.
+_LOCATION_WITH_DEPT_RE = re.compile(r"^[^\W\d_][\w’’ .\-]*?\s*\(?\d{2,3}\)?$")  # noqa: RUF001
+_CONTRACT_TYPE_WORDS = (
+    "cdi",
+    "cdd",
+    "stage",
+    "alternance",
+    "apprentissage",
+    "freelance",
+    "free lance",
+    "interim",
+)
+# Matches "en CDI", "en alternance et CDD", trailing or inline, on normalized text.
+_CONTRACT_PHRASE_RE = re.compile(
+    r"\b(?:en\s+)?(?P<contract>"
+    r"(?:cdi|cdd|stage|alternance|apprentissage|freelance|free lance|interim)"
+    r"(?:\s+et\s+(?:cdi|cdd|stage|alternance|apprentissage|freelance|free lance|interim))*)\b"
+)
+# Words that mark a header segment as a role/title rather than a company name.
+_ROLE_HINT_WORDS = frozenset(
+    {
+        "alternant",
+        "analyste",
+        "animateur",
+        "animatrice",
+        "architecte",
+        "assistant",
+        "assistante",
+        "chargee",
+        "charge",
+        "chef",
+        "consultant",
+        "consultante",
+        "developpeur",
+        "developpeuse",
+        "data",
+        "directeur",
+        "directrice",
+        "engineer",
+        "enseignant",
+        "enseignante",
+        "ingenieur",
+        "ingenieure",
+        "intervenant",
+        "intervenante",
+        "lead",
+        "manager",
+        "psychomotricien",
+        "psychomotricienne",
+        "responsable",
+        "scientist",
+        "stagiaire",
+        "technicien",
+        "technicienne",
     }
 )
 _BULLET_CHARS = "•‣▪·◦●○∙*-\u2013\u2014"

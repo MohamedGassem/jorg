@@ -1,0 +1,1678 @@
+[
+  {
+    "canonical_label": "Python",
+    "aliases": ["Python 3", "Py"],
+    "categories": [
+      "Data Science",
+      "Machine Learning",
+      "Software Engineering",
+      "Data Engineering"
+    ],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "SQL",
+    "aliases": ["Structured Query Language", "Requêtes SQL"],
+    "categories": ["Data Science", "Data Engineering", "Business Analysis"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Power BI",
+    "aliases": ["Microsoft Power BI", "PBI"],
+    "categories": [
+      "Data Science",
+      "Business Analysis",
+      "Finance / Contrôle de gestion"
+    ],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Tableau",
+    "aliases": ["Tableau Software"],
+    "categories": ["Data Science", "Business Analysis"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Data Visualization",
+    "aliases": ["Visualisation de données", "Dataviz", "Data Viz"],
+    "categories": ["Data Science", "Business Analysis"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Exploratory Data Analysis",
+    "aliases": ["EDA", "Analyse exploratoire des données"],
+    "categories": ["Data Science"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Statistical Analysis",
+    "aliases": ["Analyse statistique", "Statistiques"],
+    "categories": ["Data Science"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Descriptive Statistics",
+    "aliases": ["Statistiques descriptives"],
+    "categories": ["Data Science"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Inferential Statistics",
+    "aliases": ["Statistiques inférentielles"],
+    "categories": ["Data Science"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Hypothesis Testing",
+    "aliases": ["Tests d'hypothèses", "Test statistique"],
+    "categories": ["Data Science"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "A/B Testing",
+    "aliases": ["AB Testing", "Test A/B", "Tests AB"],
+    "categories": ["Data Science", "Product"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Experimental Design",
+    "aliases": ["Design d'expérience", "Plan d'expérience", "DOE"],
+    "categories": ["Data Science", "Industrie / Qualité"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Data Cleaning",
+    "aliases": ["Nettoyage de données", "Data Cleansing"],
+    "categories": ["Data Science", "Data Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Data Wrangling",
+    "aliases": ["Préparation de données", "Data Munging"],
+    "categories": ["Data Science", "Data Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Feature Engineering",
+    "aliases": ["Création de variables", "Ingénierie des variables"],
+    "categories": ["Data Science", "Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Model Evaluation",
+    "aliases": ["Évaluation de modèle", "Evaluation de modèle"],
+    "categories": ["Data Science", "Machine Learning"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Regression Analysis",
+    "aliases": ["Analyse de régression", "Régression statistique"],
+    "categories": ["Data Science", "Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Time Series Analysis",
+    "aliases": ["Analyse de séries temporelles", "Séries temporelles"],
+    "categories": [
+      "Data Science",
+      "Machine Learning",
+      "Finance / Contrôle de gestion"
+    ],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Forecasting",
+    "aliases": ["Prévision", "Prévisions statistiques"],
+    "categories": [
+      "Data Science",
+      "Machine Learning",
+      "Finance / Contrôle de gestion"
+    ],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Cohort Analysis",
+    "aliases": ["Analyse de cohorte"],
+    "categories": ["Data Science", "Product"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Customer Segmentation",
+    "aliases": ["Segmentation client", "Segmentation utilisateurs"],
+    "categories": ["Data Science", "Product", "Business Analysis"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Churn Analysis",
+    "aliases": ["Analyse du churn", "Attrition client"],
+    "categories": ["Data Science", "Product", "Business Analysis"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "KPI Definition",
+    "aliases": [
+      "Définition KPI",
+      "Indicateurs clés",
+      "Key Performance Indicators"
+    ],
+    "categories": [
+      "Data Science",
+      "Product",
+      "Business Analysis",
+      "Finance / Contrôle de gestion"
+    ],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Dashboarding",
+    "aliases": ["Création de tableaux de bord", "Reporting dashboards"],
+    "categories": [
+      "Data Science",
+      "Business Analysis",
+      "Finance / Contrôle de gestion"
+    ],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Jupyter Notebook",
+    "aliases": ["Jupyter", "Notebook Python"],
+    "categories": ["Data Science", "Machine Learning"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Pandas",
+    "aliases": ["Python Pandas"],
+    "categories": ["Data Science", "Data Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "NumPy",
+    "aliases": ["Numpy"],
+    "categories": ["Data Science", "Machine Learning"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "SciPy",
+    "aliases": ["Scipy"],
+    "categories": ["Data Science", "Machine Learning"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Matplotlib",
+    "aliases": [],
+    "categories": ["Data Science"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Seaborn",
+    "aliases": [],
+    "categories": ["Data Science"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "R",
+    "aliases": ["R Language", "Langage R"],
+    "categories": ["Data Science", "Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Tidyverse",
+    "aliases": ["tidyverse"],
+    "categories": ["Data Science"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "SAS",
+    "aliases": ["SAS Analytics"],
+    "categories": ["Data Science", "Finance / Contrôle de gestion"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "SPSS",
+    "aliases": ["IBM SPSS"],
+    "categories": ["Data Science"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Linear Regression",
+    "aliases": ["Régression linéaire"],
+    "categories": ["Machine Learning", "Data Science"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Logistic Regression",
+    "aliases": ["Régression logistique"],
+    "categories": ["Machine Learning", "Data Science"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Decision Trees",
+    "aliases": ["Arbres de décision", "Decision Tree"],
+    "categories": ["Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Random Forest",
+    "aliases": ["Forêt aléatoire", "Random Forests"],
+    "categories": ["Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Gradient Boosting",
+    "aliases": ["Boosting de gradient", "GBM"],
+    "categories": ["Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "XGBoost",
+    "aliases": ["XGB"],
+    "categories": ["Machine Learning"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "LightGBM",
+    "aliases": ["LGBM"],
+    "categories": ["Machine Learning"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "CatBoost",
+    "aliases": [],
+    "categories": ["Machine Learning"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Support Vector Machines",
+    "aliases": ["SVM", "Machines à vecteurs de support"],
+    "categories": ["Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "K-Means Clustering",
+    "aliases": ["K-Means", "Clustering K-means"],
+    "categories": ["Machine Learning", "Data Science"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Hierarchical Clustering",
+    "aliases": ["Clustering hiérarchique"],
+    "categories": ["Machine Learning", "Data Science"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Principal Component Analysis",
+    "aliases": ["PCA", "Analyse en composantes principales", "ACP"],
+    "categories": ["Machine Learning", "Data Science"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Dimensionality Reduction",
+    "aliases": ["Réduction de dimension"],
+    "categories": ["Machine Learning", "Data Science"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Anomaly Detection",
+    "aliases": ["Détection d'anomalies", "Outlier Detection"],
+    "categories": ["Machine Learning", "Cybersecurity", "Industrie / Qualité"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Natural Language Processing",
+    "aliases": ["NLP", "Traitement automatique du langage", "TAL"],
+    "categories": ["Machine Learning", "Generative AI"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Computer Vision",
+    "aliases": ["Vision par ordinateur", "CV"],
+    "categories": ["Machine Learning", "Industrie / Qualité"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Deep Learning",
+    "aliases": ["Apprentissage profond"],
+    "categories": ["Machine Learning", "Generative AI"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Neural Networks",
+    "aliases": ["Réseaux de neurones", "Neural Nets"],
+    "categories": ["Machine Learning", "Generative AI"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Convolutional Neural Networks",
+    "aliases": ["CNN", "Réseaux convolutifs"],
+    "categories": ["Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Recurrent Neural Networks",
+    "aliases": ["RNN", "Réseaux récurrents"],
+    "categories": ["Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Transformers",
+    "aliases": ["Transformer models", "Architecture Transformer"],
+    "categories": ["Machine Learning", "Generative AI"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Scikit-learn",
+    "aliases": ["sklearn", "Scikit Learn"],
+    "categories": ["Machine Learning", "Data Science"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "TensorFlow",
+    "aliases": ["TF"],
+    "categories": ["Machine Learning", "Generative AI"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "PyTorch",
+    "aliases": ["Torch"],
+    "categories": ["Machine Learning", "Generative AI"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Keras",
+    "aliases": [],
+    "categories": ["Machine Learning"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "MLflow",
+    "aliases": ["ML Flow"],
+    "categories": ["Machine Learning", "Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "MLOps",
+    "aliases": ["ML Ops"],
+    "categories": ["Machine Learning", "Cloud / DevOps"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Model Monitoring",
+    "aliases": ["Monitoring de modèles", "Surveillance de modèles"],
+    "categories": ["Machine Learning", "Cloud / DevOps"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Model Drift Detection",
+    "aliases": ["Data drift", "Concept drift", "Détection de dérive"],
+    "categories": ["Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Hyperparameter Optimization",
+    "aliases": ["Optimisation des hyperparamètres", "HPO"],
+    "categories": ["Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Cross-Validation",
+    "aliases": ["Validation croisée", "K-fold"],
+    "categories": ["Machine Learning", "Data Science"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Classification Models",
+    "aliases": ["Modèles de classification", "Classification ML"],
+    "categories": ["Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Recommender Systems",
+    "aliases": ["Systèmes de recommandation", "Recommendation systems"],
+    "categories": ["Machine Learning", "Product"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Large Language Models",
+    "aliases": ["LLM", "LLMs", "Grands modèles de langage"],
+    "categories": ["Generative AI", "Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Retrieval-Augmented Generation",
+    "aliases": [
+      "RAG",
+      "Retrieval Augmented Generation",
+      "Génération augmentée par récupération"
+    ],
+    "categories": ["Generative AI"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Prompt Engineering",
+    "aliases": ["Ingénierie de prompt", "Prompting"],
+    "categories": ["Generative AI"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Prompt Evaluation",
+    "aliases": ["Évaluation de prompts", "Prompt evals"],
+    "categories": ["Generative AI"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "LLM Evaluation",
+    "aliases": ["LLM evals", "Évaluation LLM", "Evaluation LLM"],
+    "categories": ["Generative AI"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Vector Databases",
+    "aliases": ["Bases vectorielles", "Vector DB", "Vector Store"],
+    "categories": ["Generative AI", "Data Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Embeddings",
+    "aliases": ["Vector embeddings", "Plongements vectoriels"],
+    "categories": ["Generative AI", "Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Semantic Search",
+    "aliases": ["Recherche sémantique"],
+    "categories": ["Generative AI", "Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "LangChain",
+    "aliases": ["Lang Chain"],
+    "categories": ["Generative AI", "Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "LlamaIndex",
+    "aliases": ["GPT Index", "Llama Index"],
+    "categories": ["Generative AI"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "OpenAI API",
+    "aliases": ["API OpenAI", "ChatGPT API"],
+    "categories": ["Generative AI", "Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Azure OpenAI",
+    "aliases": ["Azure OpenAI Service"],
+    "categories": ["Generative AI", "Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Hugging Face Transformers",
+    "aliases": ["Transformers library", "HF Transformers"],
+    "categories": ["Generative AI", "Machine Learning"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Fine-Tuning",
+    "aliases": ["Fine tuning", "Ajustement fin", "Finetuning"],
+    "categories": ["Generative AI", "Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Instruction Tuning",
+    "aliases": ["Tuning d'instructions"],
+    "categories": ["Generative AI"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "LoRA",
+    "aliases": ["Low-Rank Adaptation", "QLoRA"],
+    "categories": ["Generative AI", "Machine Learning"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Agentic AI",
+    "aliases": ["Agents IA", "AI Agents", "Agents LLM"],
+    "categories": ["Generative AI"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Function Calling",
+    "aliases": ["Tool calling", "Appel de fonctions"],
+    "categories": ["Generative AI", "Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Guardrails",
+    "aliases": ["Garde-fous IA", "LLM guardrails"],
+    "categories": ["Generative AI", "Cybersecurity"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Responsible AI",
+    "aliases": ["IA responsable", "AI governance"],
+    "categories": ["Generative AI", "Cybersecurity"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "AI Content Generation",
+    "aliases": ["Génération de contenu IA", "GenAI content"],
+    "categories": ["Generative AI", "Product"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "JavaScript",
+    "aliases": ["JS", "ECMAScript"],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "TypeScript",
+    "aliases": ["TS"],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Java",
+    "aliases": ["J2SE", "JDK"],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "C#",
+    "aliases": ["C Sharp", "CSharp"],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "C++",
+    "aliases": ["CPP", "C plus plus"],
+    "categories": ["Software Engineering", "Industrie / Qualité"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Go",
+    "aliases": ["Golang"],
+    "categories": ["Software Engineering", "Cloud / DevOps"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Rust",
+    "aliases": [],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "PHP",
+    "aliases": [],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Ruby",
+    "aliases": [],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Kotlin",
+    "aliases": [],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Swift",
+    "aliases": [],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "React",
+    "aliases": ["React.js", "ReactJS"],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Vue.js",
+    "aliases": ["Vue", "VueJS"],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Angular",
+    "aliases": ["AngularJS"],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Node.js",
+    "aliases": ["Node", "NodeJS"],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Express.js",
+    "aliases": ["Express", "ExpressJS"],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "NestJS",
+    "aliases": ["Nest.js"],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Django",
+    "aliases": ["Django Framework"],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "FastAPI",
+    "aliases": ["Fast API"],
+    "categories": ["Software Engineering", "Data Science"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Flask",
+    "aliases": [],
+    "categories": ["Software Engineering", "Data Science"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Spring Boot",
+    "aliases": ["SpringBoot", "Spring"],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": ".NET",
+    "aliases": ["Dotnet", "ASP.NET", ".NET Core"],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Laravel",
+    "aliases": [],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Ruby on Rails",
+    "aliases": ["Rails", "RoR"],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "REST APIs",
+    "aliases": ["REST", "API REST", "RESTful APIs"],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "GraphQL",
+    "aliases": ["Graph QL"],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Microservices",
+    "aliases": ["Architecture microservices"],
+    "categories": ["Software Engineering", "Cloud / DevOps"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Domain-Driven Design",
+    "aliases": ["DDD", "Conception pilotée par le domaine"],
+    "categories": ["Software Engineering"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Clean Architecture",
+    "aliases": ["Architecture propre"],
+    "categories": ["Software Engineering"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Object-Oriented Programming",
+    "aliases": ["OOP", "POO", "Programmation orientée objet"],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Functional Programming",
+    "aliases": ["Programmation fonctionnelle", "FP"],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Test-Driven Development",
+    "aliases": ["TDD", "Développement piloté par les tests"],
+    "categories": ["Software Engineering", "Project Management"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Unit Testing",
+    "aliases": ["Tests unitaires"],
+    "categories": ["Software Engineering", "Industrie / Qualité"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Integration Testing",
+    "aliases": ["Tests d'intégration"],
+    "categories": ["Software Engineering", "Industrie / Qualité"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "End-to-End Testing",
+    "aliases": ["E2E Testing", "Tests end-to-end", "Tests de bout en bout"],
+    "categories": ["Software Engineering", "Industrie / Qualité"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Cypress",
+    "aliases": [],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Playwright",
+    "aliases": [],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Selenium",
+    "aliases": [],
+    "categories": ["Software Engineering", "Industrie / Qualité"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Git",
+    "aliases": ["Git version control", "Contrôle de version Git"],
+    "categories": ["Software Engineering", "Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "GitHub",
+    "aliases": [],
+    "categories": ["Software Engineering", "Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "GitLab",
+    "aliases": [],
+    "categories": ["Software Engineering", "Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Code Review",
+    "aliases": ["Revue de code", "Pull request review"],
+    "categories": ["Software Engineering", "Industrie / Qualité"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "API Design",
+    "aliases": ["Conception API", "Design d'API"],
+    "categories": ["Software Engineering", "Product"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "PostgreSQL",
+    "aliases": ["Postgres"],
+    "categories": ["Software Engineering", "Data Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "MySQL",
+    "aliases": [],
+    "categories": ["Software Engineering", "Data Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "MongoDB",
+    "aliases": ["Mongo"],
+    "categories": ["Software Engineering", "Data Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Redis",
+    "aliases": [],
+    "categories": ["Software Engineering", "Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Elasticsearch",
+    "aliases": ["Elastic Search", "Elastic"],
+    "categories": ["Software Engineering", "Data Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Apache Kafka",
+    "aliases": ["Kafka"],
+    "categories": ["Software Engineering", "Data Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "RabbitMQ",
+    "aliases": ["Rabbit MQ"],
+    "categories": ["Software Engineering", "Data Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "WebSockets",
+    "aliases": ["WebSocket"],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "OAuth 2.0",
+    "aliases": ["OAuth2", "OAuth"],
+    "categories": ["Software Engineering", "Cybersecurity"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "JWT",
+    "aliases": ["JSON Web Token", "Json Web Token"],
+    "categories": ["Software Engineering", "Cybersecurity"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "HTML",
+    "aliases": ["HTML5"],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "CSS",
+    "aliases": ["CSS3"],
+    "categories": ["Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Tailwind CSS",
+    "aliases": ["Tailwind"],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Sass",
+    "aliases": ["SCSS"],
+    "categories": ["Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Responsive Design",
+    "aliases": ["Design responsive", "Mobile-first"],
+    "categories": ["Software Engineering", "Product"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Accessibility",
+    "aliases": ["A11y", "Accessibilité numérique", "WCAG"],
+    "categories": ["Software Engineering", "Product"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Data Modeling",
+    "aliases": ["Modélisation de données"],
+    "categories": [
+      "Data Engineering",
+      "Business Analysis",
+      "Software Engineering"
+    ],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "ETL",
+    "aliases": [
+      "Extract Transform Load",
+      "Extraction transformation chargement"
+    ],
+    "categories": ["Data Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "ELT",
+    "aliases": ["Extract Load Transform"],
+    "categories": ["Data Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Data Warehousing",
+    "aliases": ["Entrepôt de données", "Data Warehouse", "DWH"],
+    "categories": ["Data Engineering", "Business Analysis"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Data Lake",
+    "aliases": ["Lac de données"],
+    "categories": ["Data Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Data Lakehouse",
+    "aliases": ["Lakehouse"],
+    "categories": ["Data Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Apache Spark",
+    "aliases": ["Spark", "PySpark"],
+    "categories": ["Data Engineering", "Data Science"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Apache Airflow",
+    "aliases": ["Airflow"],
+    "categories": ["Data Engineering", "Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "dbt",
+    "aliases": ["Data Build Tool", "DBT"],
+    "categories": ["Data Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Snowflake",
+    "aliases": ["Snowflake Data Cloud"],
+    "categories": ["Data Engineering", "Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "BigQuery",
+    "aliases": ["Google BigQuery", "BQ"],
+    "categories": ["Data Engineering", "Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Databricks",
+    "aliases": ["Azure Databricks"],
+    "categories": ["Data Engineering", "Machine Learning", "Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Data Governance",
+    "aliases": ["Gouvernance des données"],
+    "categories": ["Data Engineering", "Business Analysis", "Cybersecurity"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Data Quality",
+    "aliases": ["Qualité des données"],
+    "categories": ["Data Engineering", "Industrie / Qualité"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Master Data Management",
+    "aliases": ["MDM", "Gestion des données de référence"],
+    "categories": ["Data Engineering", "Business Analysis"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "AWS",
+    "aliases": ["Amazon Web Services"],
+    "categories": ["Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Microsoft Azure",
+    "aliases": ["Azure"],
+    "categories": ["Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Google Cloud Platform",
+    "aliases": ["GCP", "Google Cloud"],
+    "categories": ["Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Docker",
+    "aliases": ["Docker containers"],
+    "categories": ["Cloud / DevOps", "Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Kubernetes",
+    "aliases": ["K8s", "Kube"],
+    "categories": ["Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Terraform",
+    "aliases": ["HashiCorp Terraform", "IaC Terraform"],
+    "categories": ["Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Infrastructure as Code",
+    "aliases": ["IaC", "Infrastructure comme code"],
+    "categories": ["Cloud / DevOps"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "CI/CD",
+    "aliases": ["CICD", "Intégration continue", "Déploiement continu"],
+    "categories": ["Cloud / DevOps", "Software Engineering"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "GitHub Actions",
+    "aliases": ["Actions GitHub"],
+    "categories": ["Cloud / DevOps", "Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "GitLab CI",
+    "aliases": ["GitLab CI/CD", "Gitlab CI"],
+    "categories": ["Cloud / DevOps", "Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Jenkins",
+    "aliases": [],
+    "categories": ["Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Ansible",
+    "aliases": [],
+    "categories": ["Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Helm",
+    "aliases": ["Helm Charts"],
+    "categories": ["Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Prometheus",
+    "aliases": [],
+    "categories": ["Cloud / DevOps"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Grafana",
+    "aliases": [],
+    "categories": ["Cloud / DevOps", "Data Science"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Observability",
+    "aliases": ["Observabilité", "Monitoring applicatif"],
+    "categories": ["Cloud / DevOps", "Software Engineering"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Site Reliability Engineering",
+    "aliases": ["SRE", "Ingénierie de fiabilité"],
+    "categories": ["Cloud / DevOps"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Incident Management",
+    "aliases": ["Gestion d'incident", "Gestion des incidents"],
+    "categories": ["Cloud / DevOps", "Cybersecurity", "Project Management"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Linux Administration",
+    "aliases": ["Administration Linux", "Linux sysadmin"],
+    "categories": ["Cloud / DevOps", "Cybersecurity"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Agile Project Management",
+    "aliases": ["Gestion de projet agile", "Agile"],
+    "categories": ["Project Management", "Product"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Scrum",
+    "aliases": ["Méthode Scrum"],
+    "categories": ["Project Management", "Product"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Kanban",
+    "aliases": ["Méthode Kanban"],
+    "categories": ["Project Management", "Product", "Industrie / Qualité"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Waterfall Project Management",
+    "aliases": ["Cycle en V", "Gestion de projet prédictive"],
+    "categories": ["Project Management"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Project Planning",
+    "aliases": ["Planification projet", "Planning projet"],
+    "categories": ["Project Management"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Risk Management",
+    "aliases": ["Gestion des risques"],
+    "categories": [
+      "Project Management",
+      "Finance / Contrôle de gestion",
+      "Cybersecurity"
+    ],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Stakeholder Management",
+    "aliases": ["Gestion des parties prenantes"],
+    "categories": ["Project Management", "Product", "Business Analysis"],
+    "kind": "soft"
+  },
+  {
+    "canonical_label": "Budget Management",
+    "aliases": ["Gestion budgétaire", "Suivi budgétaire"],
+    "categories": ["Project Management", "Finance / Contrôle de gestion"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Roadmap Management",
+    "aliases": ["Gestion de roadmap", "Feuille de route"],
+    "categories": ["Project Management", "Product"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Change Management",
+    "aliases": ["Conduite du changement", "Gestion du changement"],
+    "categories": ["Project Management", "RH / Recrutement"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Jira",
+    "aliases": ["Atlassian Jira"],
+    "categories": ["Project Management", "Product", "Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Confluence",
+    "aliases": ["Atlassian Confluence"],
+    "categories": ["Project Management", "Product", "Business Analysis"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "MS Project",
+    "aliases": ["Microsoft Project", "MSP"],
+    "categories": ["Project Management"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Product Discovery",
+    "aliases": ["Découverte produit"],
+    "categories": ["Product"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "User Research",
+    "aliases": ["Recherche utilisateur", "UX Research"],
+    "categories": ["Product", "Business Analysis"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Product Strategy",
+    "aliases": ["Stratégie produit"],
+    "categories": ["Product"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Product Roadmapping",
+    "aliases": ["Roadmap produit", "Feuille de route produit"],
+    "categories": ["Product"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Backlog Management",
+    "aliases": ["Gestion de backlog", "Product backlog"],
+    "categories": ["Product", "Project Management"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "User Stories",
+    "aliases": ["Stories utilisateur", "Récits utilisateur"],
+    "categories": ["Product", "Business Analysis", "Project Management"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Acceptance Criteria",
+    "aliases": ["Critères d'acceptation"],
+    "categories": ["Product", "Business Analysis", "Project Management"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "UX Design",
+    "aliases": ["User Experience Design", "Design UX"],
+    "categories": ["Product"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Figma",
+    "aliases": [],
+    "categories": ["Product", "Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Wireframing",
+    "aliases": ["Maquettage", "Wireframes"],
+    "categories": ["Product", "Business Analysis"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Design Thinking",
+    "aliases": ["Pensée design"],
+    "categories": ["Product", "Project Management"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Go-to-Market Strategy",
+    "aliases": ["GTM", "Stratégie go-to-market"],
+    "categories": ["Product", "Business Analysis"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Market Research",
+    "aliases": ["Étude de marché", "Analyse de marché"],
+    "categories": ["Product", "Business Analysis"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Requirements Gathering",
+    "aliases": ["Recueil des besoins", "Collecte des exigences"],
+    "categories": ["Business Analysis", "Product"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Business Process Modeling",
+    "aliases": ["Modélisation des processus", "BPM"],
+    "categories": ["Business Analysis", "Industrie / Qualité"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "BPMN",
+    "aliases": ["Business Process Model and Notation"],
+    "categories": ["Business Analysis"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "UML",
+    "aliases": ["Unified Modeling Language"],
+    "categories": ["Business Analysis", "Software Engineering"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Functional Specifications",
+    "aliases": ["Spécifications fonctionnelles", "Specs fonctionnelles"],
+    "categories": ["Business Analysis", "Product"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Gap Analysis",
+    "aliases": ["Analyse d'écart", "Analyse des écarts"],
+    "categories": ["Business Analysis", "Finance / Contrôle de gestion"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Process Improvement",
+    "aliases": ["Amélioration des processus"],
+    "categories": ["Business Analysis", "Industrie / Qualité"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "SWOT Analysis",
+    "aliases": ["Analyse SWOT", "Forces faiblesses opportunités menaces"],
+    "categories": ["Business Analysis", "Product"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "ERP Functional Analysis",
+    "aliases": ["Analyse fonctionnelle ERP", "ERP"],
+    "categories": ["Business Analysis", "Finance / Contrôle de gestion"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "CRM Functional Analysis",
+    "aliases": ["Analyse fonctionnelle CRM", "CRM"],
+    "categories": ["Business Analysis", "Product"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Information Security",
+    "aliases": ["Sécurité de l'information", "InfoSec"],
+    "categories": ["Cybersecurity"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Network Security",
+    "aliases": ["Sécurité réseau"],
+    "categories": ["Cybersecurity", "Cloud / DevOps"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Application Security",
+    "aliases": ["AppSec", "Sécurité applicative"],
+    "categories": ["Cybersecurity", "Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Penetration Testing",
+    "aliases": ["Pentest", "Test d'intrusion", "Pen testing"],
+    "categories": ["Cybersecurity"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Vulnerability Management",
+    "aliases": ["Gestion des vulnérabilités"],
+    "categories": ["Cybersecurity"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Security Operations Center",
+    "aliases": ["SOC", "Centre opérationnel de sécurité"],
+    "categories": ["Cybersecurity"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "SIEM",
+    "aliases": ["Security Information and Event Management"],
+    "categories": ["Cybersecurity"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Identity and Access Management",
+    "aliases": ["IAM", "Gestion des identités et accès"],
+    "categories": ["Cybersecurity", "Cloud / DevOps"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Zero Trust",
+    "aliases": ["Zero Trust Architecture", "Architecture zéro confiance"],
+    "categories": ["Cybersecurity"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "GDPR Compliance",
+    "aliases": ["RGPD", "Conformité RGPD", "GDPR"],
+    "categories": ["Cybersecurity", "RH / Recrutement", "Business Analysis"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "ISO 27001",
+    "aliases": ["ISO/IEC 27001"],
+    "categories": ["Cybersecurity", "Industrie / Qualité"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "OWASP Top 10",
+    "aliases": ["OWASP"],
+    "categories": ["Cybersecurity", "Software Engineering"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Financial Planning and Analysis",
+    "aliases": ["FP&A", "Planification et analyse financière"],
+    "categories": ["Finance / Contrôle de gestion"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Management Control",
+    "aliases": ["Contrôle de gestion", "Controlling"],
+    "categories": ["Finance / Contrôle de gestion"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Financial Reporting",
+    "aliases": ["Reporting financier"],
+    "categories": ["Finance / Contrôle de gestion"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Budget Forecasting",
+    "aliases": ["Prévisions budgétaires", "Forecast budget"],
+    "categories": ["Finance / Contrôle de gestion"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Cost Accounting",
+    "aliases": ["Comptabilité analytique", "Analyse des coûts"],
+    "categories": ["Finance / Contrôle de gestion"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Cash Flow Analysis",
+    "aliases": ["Analyse de trésorerie", "Cash-flow analysis"],
+    "categories": ["Finance / Contrôle de gestion"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Variance Analysis",
+    "aliases": ["Analyse des écarts", "Écarts budgétaires"],
+    "categories": ["Finance / Contrôle de gestion"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Excel Advanced",
+    "aliases": ["Microsoft Excel", "Excel avancé", "Excel"],
+    "categories": [
+      "Finance / Contrôle de gestion",
+      "Business Analysis",
+      "Data Science"
+    ],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "VBA",
+    "aliases": ["Excel VBA", "Visual Basic for Applications"],
+    "categories": ["Finance / Contrôle de gestion", "Software Engineering"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "SAP FI/CO",
+    "aliases": ["SAP FICO", "SAP Finance Controlling"],
+    "categories": ["Finance / Contrôle de gestion"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "IFRS",
+    "aliases": ["International Financial Reporting Standards"],
+    "categories": ["Finance / Contrôle de gestion"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Recruitment Sourcing",
+    "aliases": ["Sourcing recrutement", "Talent sourcing"],
+    "categories": ["RH / Recrutement"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Candidate Screening",
+    "aliases": ["Préqualification candidats", "Screening candidats"],
+    "categories": ["RH / Recrutement"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Interviewing",
+    "aliases": ["Conduite d'entretien", "Entretien de recrutement"],
+    "categories": ["RH / Recrutement"],
+    "kind": "soft"
+  },
+  {
+    "canonical_label": "Talent Acquisition",
+    "aliases": ["Acquisition de talents", "TA"],
+    "categories": ["RH / Recrutement"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Employer Branding",
+    "aliases": ["Marque employeur"],
+    "categories": ["RH / Recrutement"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Onboarding",
+    "aliases": ["Intégration collaborateur", "Parcours d'intégration"],
+    "categories": ["RH / Recrutement"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "HRIS",
+    "aliases": ["SIRH", "Human Resources Information System"],
+    "categories": ["RH / Recrutement"],
+    "kind": "tool"
+  },
+  {
+    "canonical_label": "Payroll Administration",
+    "aliases": ["Gestion de paie", "Administration paie"],
+    "categories": ["RH / Recrutement", "Finance / Contrôle de gestion"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Training Management",
+    "aliases": ["Gestion de la formation", "Plan de formation"],
+    "categories": ["RH / Recrutement"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Workforce Planning",
+    "aliases": ["Planification des effectifs", "Strategic workforce planning"],
+    "categories": ["RH / Recrutement", "Finance / Contrôle de gestion"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Compensation and Benefits",
+    "aliases": ["C&B", "Rémunération et avantages"],
+    "categories": ["RH / Recrutement", "Finance / Contrôle de gestion"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Labor Law",
+    "aliases": ["Droit du travail", "Législation sociale"],
+    "categories": ["RH / Recrutement"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Quality Management System",
+    "aliases": ["QMS", "Système de management de la qualité", "SMQ"],
+    "categories": ["Industrie / Qualité"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "ISO 9001",
+    "aliases": ["Norme ISO 9001"],
+    "categories": ["Industrie / Qualité"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Lean Manufacturing",
+    "aliases": ["Lean", "Production lean"],
+    "categories": ["Industrie / Qualité", "Project Management"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Six Sigma",
+    "aliases": ["6 Sigma", "Lean Six Sigma"],
+    "categories": ["Industrie / Qualité", "Project Management"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Kaizen",
+    "aliases": ["Amélioration continue"],
+    "categories": ["Industrie / Qualité", "Project Management"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "5S",
+    "aliases": ["Méthode 5S"],
+    "categories": ["Industrie / Qualité"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Root Cause Analysis",
+    "aliases": ["RCA", "Analyse des causes racines"],
+    "categories": ["Industrie / Qualité", "Project Management"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "FMEA",
+    "aliases": ["AMDEC", "Failure Mode and Effects Analysis"],
+    "categories": ["Industrie / Qualité"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Statistical Process Control",
+    "aliases": ["SPC", "Maîtrise statistique des procédés", "MSP"],
+    "categories": ["Industrie / Qualité", "Data Science"],
+    "kind": "technical"
+  },
+  {
+    "canonical_label": "Quality Audits",
+    "aliases": ["Audits qualité", "Audit qualité"],
+    "categories": ["Industrie / Qualité"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "CAPA",
+    "aliases": [
+      "Corrective and Preventive Actions",
+      "Actions correctives et préventives"
+    ],
+    "categories": ["Industrie / Qualité"],
+    "kind": "methodology"
+  },
+  {
+    "canonical_label": "Supplier Quality Management",
+    "aliases": ["Qualité fournisseur", "Gestion qualité fournisseurs"],
+    "categories": ["Industrie / Qualité"],
+    "kind": "functional"
+  },
+  {
+    "canonical_label": "Negotiation",
+    "aliases": ["Négociation"],
+    "categories": ["Project Management", "Product", "RH / Recrutement"],
+    "kind": "soft"
+  },
+  {
+    "canonical_label": "Communication",
+    "aliases": ["Communication orale", "Communication écrite"],
+    "categories": [
+      "Project Management",
+      "Product",
+      "RH / Recrutement",
+      "Business Analysis"
+    ],
+    "kind": "soft"
+  },
+  {
+    "canonical_label": "Leadership",
+    "aliases": ["Management d'équipe", "Team leadership"],
+    "categories": ["Project Management", "RH / Recrutement"],
+    "kind": "soft"
+  },
+  {
+    "canonical_label": "Problem Solving",
+    "aliases": ["Résolution de problèmes"],
+    "categories": [
+      "Software Engineering",
+      "Data Science",
+      "Industrie / Qualité",
+      "Business Analysis"
+    ],
+    "kind": "soft"
+  },
+  {
+    "canonical_label": "Critical Thinking",
+    "aliases": ["Esprit critique", "Pensée critique"],
+    "categories": ["Data Science", "Business Analysis", "Product"],
+    "kind": "soft"
+  }
+]

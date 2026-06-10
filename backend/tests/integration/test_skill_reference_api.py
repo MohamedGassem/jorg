@@ -210,6 +210,44 @@ async def test_search_finds_skill_via_alias(
     assert "Retrieval-Augmented Generation" in names
 
 
+async def test_search_does_not_partial_match_aliases(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    db_session.add(
+        SkillReference(
+            name="Python",
+            slug="python-jorg",
+            kind=SkillKind.technical,
+            aliases=["Python 3"],
+            source="jorg",
+            is_custom=False,
+            is_displayable=True,
+            categories=["Software Engineering"],
+        )
+    )
+    db_session.add(
+        SkillReference(
+            name="Flask",
+            slug="flask-jorg",
+            kind=SkillKind.tool,
+            aliases=["Flask Python"],
+            source="jorg",
+            is_custom=False,
+            is_displayable=True,
+            categories=["Software Engineering"],
+        )
+    )
+    await db_session.commit()
+
+    r = await client.get("/skill-references?q=pyth", headers=candidate_headers)
+    assert r.status_code == 200
+    names = [s["name"] for s in r.json()]
+    assert "Python" in names
+    assert "Flask" not in names
+
+
 async def test_search_jorg_displayable_visible_to_all_candidates(
     client: AsyncClient,
     candidate_headers: dict[str, str],

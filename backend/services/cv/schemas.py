@@ -43,6 +43,8 @@ class IdentityProposal(BaseModel):
 class ExperienceProposal(BaseModel):
     role: ExtractedField = Field(default_factory=ExtractedField)
     client_name: ExtractedField = Field(default_factory=ExtractedField)
+    location: ExtractedField = Field(default_factory=ExtractedField)
+    contract_type: ExtractedField = Field(default_factory=ExtractedField)
     start_date: ExtractedField = Field(default_factory=ExtractedField)
     end_date: ExtractedField = Field(default_factory=ExtractedField)
     # Authoritative "ongoing role" flag derived from the CV ("actuel"/"présent").
