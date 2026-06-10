@@ -1,26 +1,27 @@
 // frontend/components/landing/LandingFooter.tsx
 import Link from "next/link";
 
+const FOOTER_LINKS = [
+  { href: "/login", label: "Se connecter" },
+  { href: "/register", label: "Créer un compte" },
+  { href: "/privacy", label: "Confidentialité & RGPD" },
+];
+
 export function LandingFooter() {
   return (
-    <footer className="border-t border-border">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-8">
-        <p className="text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Jorg
-        </p>
-        <div className="flex gap-6">
-          <Link
-            href="/login"
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Se connecter
-          </Link>
-          <Link
-            href="/register"
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Créer un compte
-          </Link>
+    <footer className="border-t border-line">
+      <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
+        <p className="j-meta">© {new Date().getFullYear()} Jorg</p>
+        <div className="flex flex-wrap justify-center gap-6">
+          {FOOTER_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-sm text-ink-3 transition-colors hover:text-foreground"
+            >
+              {link.label}
+            </Link>
+          ))}
         </div>
       </div>
     </footer>

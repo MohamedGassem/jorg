@@ -240,7 +240,7 @@ function RegisterForm() {
                   required={role === "recruiter"}
                 />
                 <p className="text-xs text-muted-foreground">
-                  L&apos;espace recruteur est ouvert sur invitation pendant
+                  L&apos;accès recruteur se fait sur demande pendant
                   l&apos;alpha. Ce code rattache votre compte à votre
                   organisation.
                 </p>
