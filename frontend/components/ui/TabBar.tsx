@@ -11,6 +11,8 @@ interface TabBarProps<K extends string> {
   activeTab: K;
   onChange: (key: K) => void;
   className?: string;
+  /** "pill" = onglets de section (cartes), "underline" = sous-onglets soulignés */
+  variant?: "pill" | "underline";
 }
 
 export function TabBar<K extends string>({
@@ -18,7 +20,33 @@ export function TabBar<K extends string>({
   activeTab,
   onChange,
   className,
+  variant = "pill",
 }: TabBarProps<K>) {
+  if (variant === "underline") {
+    return (
+      <div className={cn("flex gap-1 border-b border-line", className)}>
+        {tabs.map((t) => {
+          const active = activeTab === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => onChange(t.key)}
+              className={cn(
+                "-mb-px whitespace-nowrap border-b-[2.5px] px-4 pb-3 pt-2.5 text-sm transition-colors",
+                active
+                  ? "border-primary font-semibold text-ink"
+                  : "border-transparent font-medium text-ink-3 hover:text-ink",
+              )}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className={cn("flex flex-wrap gap-1.5", className)}>
       {tabs.map((t) => {

@@ -1,14 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import Link from "next/link";
+import { ArrowRight, Check, Download, Minus } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -21,11 +16,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { TabBar } from "@/components/ui/TabBar";
+import { Toggle } from "@/components/ui/Toggle";
 import { api, ApiError } from "@/lib/api";
 import { logout } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 import type { CandidateProfile } from "@/types/api";
 
 type Tab = "infos" | "compte" | "rgpd";
+
+function SettingsCard({
+  legend,
+  sub,
+  children,
+}: {
+  legend: string;
+  sub?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface px-[26px] py-[22px]">
+      <div>
+        <h2 className="text-[15px] font-semibold">{legend}</h2>
+        {sub && <p className="mt-0.5 text-[13px] text-ink-2">{sub}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 function InformationsPersonnellesTab() {
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
@@ -75,44 +92,45 @@ function InformationsPersonnellesTab() {
   }
 
   if (loadError) return <ErrorAlert error={loadError} />;
-  if (!profile) return <p className="text-muted-foreground">Chargement…</p>;
+  if (!profile) return <p className="text-ink-3">Chargement…</p>;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Informations personnelles</CardTitle>
-        <CardDescription>
-          Ces informations identifient votre profil candidat dans Jorg.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSave} className="max-w-sm space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="first-name">Prénom</Label>
+    <SettingsCard
+      legend="Informations personnelles"
+      sub="Ces informations identifient votre profil candidat dans Jorg."
+    >
+      <form onSubmit={handleSave} className="space-y-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="first-name" className="text-[13.5px] text-ink-2">
+              Prénom
+            </Label>
             <Input
               id="first-name"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="last-name">Nom</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="last-name" className="text-[13.5px] text-ink-2">
+              Nom
+            </Label>
             <Input
               id="last-name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
             />
           </div>
-          {message && !isError && (
-            <p className="text-sm text-success">{message}</p>
-          )}
-          <ErrorAlert error={isError ? message : null} />
-          <Button type="submit" disabled={saving}>
-            {saving ? "Enregistrement…" : "Enregistrer"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+        {message && !isError && (
+          <p className="text-sm text-success">{message}</p>
+        )}
+        <ErrorAlert error={isError ? message : null} />
+        <Button type="submit" disabled={saving}>
+          {saving ? "Enregistrement…" : "Enregistrer"}
+        </Button>
+      </form>
+    </SettingsCard>
   );
 }
 
@@ -142,52 +160,107 @@ function CompteTab() {
   }
 
   return (
-    <Card className="border-destructive/30">
-      <CardHeader>
-        <CardTitle className="text-destructive">Supprimer le compte</CardTitle>
-        <CardDescription>
-          Cette action est irréversible. Votre profil, vos accès et
-          l&apos;historique lié à votre compte seront supprimés.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button variant="destructive" onClick={() => setDialogOpen(true)}>
-          Supprimer mon compte
+    <SettingsCard
+      legend="Zone de danger"
+      sub="Actions irréversibles liées à votre compte."
+    >
+      <div className="flex flex-col gap-4 rounded-[7px] border border-danger/40 bg-danger/5 px-[18px] py-3.5 sm:flex-row sm:items-center">
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-danger">
+            Supprimer le compte
+          </p>
+          <p className="mt-0.5 text-[12.5px] text-ink-3">
+            Suppression définitive de toutes vos données. Tous les accès et
+            dossiers générés sont révoqués.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 border-danger/50 text-danger hover:bg-danger/10 hover:text-danger"
+          onClick={() => setDialogOpen(true)}
+        >
+          Supprimer…
         </Button>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirmer la suppression</DialogTitle>
-              <DialogDescription>
-                Saisir <strong>SUPPRIMER</strong> pour confirmer.
-              </DialogDescription>
-            </DialogHeader>
-            <Input
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="SUPPRIMER"
-            />
-            <ErrorAlert error={deleteError} />
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setDialogOpen(false)}>
-                Annuler
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? "Suppression…" : "Supprimer définitivement"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
+      </div>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription>
+              Saisir <strong>SUPPRIMER</strong> pour confirmer.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="SUPPRIMER"
+          />
+          <ErrorAlert error={deleteError} />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Suppression…" : "Supprimer définitivement"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </SettingsCard>
   );
 }
 
-function RgpdTab() {
+function RightRow({
+  title,
+  sub,
+  danger,
+  action,
+  last,
+}: {
+  title: string;
+  sub: string;
+  danger?: boolean;
+  action: React.ReactNode;
+  last?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-3 py-[13px] sm:flex-row sm:items-center sm:gap-[13px]",
+        !last && "border-b border-line",
+      )}
+    >
+      <span
+        className={cn(
+          "grid size-[22px] shrink-0 place-items-center rounded-md border",
+          danger
+            ? "border-dashed border-line-strong bg-paper-2 text-ink-4"
+            : "border-positive-border bg-positive-soft text-positive",
+        )}
+      >
+        {danger ? (
+          <Minus className="size-[13px]" strokeWidth={1.6} />
+        ) : (
+          <Check className="size-[13px]" strokeWidth={1.6} />
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className={cn("text-sm font-medium", danger && "text-danger")}>
+          {title}
+        </p>
+        <p className="text-[12.5px] text-ink-3">{sub}</p>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function RgpdTab({ onRequestDeletion }: { onRequestDeletion: () => void }) {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -207,21 +280,80 @@ function RgpdTab() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Données personnelles (RGPD)</CardTitle>
-        <CardDescription>
-          Téléchargez une copie de votre profil structuré, de vos accès et des
-          données associées à votre compte.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
+    <>
+      <SettingsCard
+        legend="Vos droits sur vos données"
+        sub="Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, de portabilité et d'effacement."
+      >
         <ErrorAlert error={exportError} />
-        <Button onClick={handleExport} disabled={exporting} variant="outline">
-          {exporting ? "Export en cours…" : "Exporter mes données"}
-        </Button>
-      </CardContent>
-    </Card>
+        <div className="flex flex-col">
+          <RightRow
+            title="Droit d'accès et de portabilité"
+            sub="Export structuré (JSON) de votre profil, expériences, compétences et accès."
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                disabled={exporting}
+                onClick={handleExport}
+              >
+                <Download className="size-3.5" strokeWidth={1.6} />
+                {exporting ? "Export en cours…" : "Exporter JSON"}
+              </Button>
+            }
+          />
+          <RightRow
+            title="Droit de rectification"
+            sub="Corrigez vos informations dans Mon dossier à tout moment."
+            action={
+              <Link
+                href="/candidate/profile"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "shrink-0",
+                )}
+              >
+                <ArrowRight className="size-3.5" strokeWidth={1.6} />
+                Aller à Mon dossier
+              </Link>
+            }
+          />
+          <RightRow
+            title="Droit à l'effacement"
+            sub="Supprimer définitivement toutes vos données. Tous les accès tiers sont révoqués."
+            danger
+            last
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 border-danger/50 text-danger hover:bg-danger/10 hover:text-danger"
+                onClick={onRequestDeletion}
+              >
+                Demander la suppression
+              </Button>
+            }
+          />
+        </div>
+      </SettingsCard>
+
+      <SettingsCard
+        legend="Cookies & traceurs"
+        sub="Jorg n'utilise que des cookies strictement nécessaires au fonctionnement de la plateforme."
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium">Cookies fonctionnels</p>
+            <p className="mt-0.5 text-[12.5px] text-ink-3">
+              Session, préférences, thème. Obligatoires — ne peuvent pas être
+              désactivés.
+            </p>
+          </div>
+          <Toggle checked disabled label="Cookies fonctionnels" />
+        </div>
+      </SettingsCard>
+    </>
   );
 }
 
@@ -235,20 +367,30 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold">
-          Compte & données
+    <div className="flex w-full flex-col gap-[18px]">
+      <header>
+        <p className="j-overline">Espace candidat</p>
+        <h1 className="mt-2 font-heading text-[27px] font-semibold leading-tight">
+          Compte &amp; données
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-[15px] text-ink-2">
           Gérez votre identité candidat, l&apos;export de vos données et les
           actions sensibles liées à votre compte.
         </p>
+      </header>
+      <TabBar
+        tabs={tabs}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        variant="underline"
+      />
+      <div className="flex max-w-3xl flex-col gap-4">
+        {activeTab === "infos" && <InformationsPersonnellesTab />}
+        {activeTab === "compte" && <CompteTab />}
+        {activeTab === "rgpd" && (
+          <RgpdTab onRequestDeletion={() => setActiveTab("compte")} />
+        )}
       </div>
-      <TabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
-      {activeTab === "infos" && <InformationsPersonnellesTab />}
-      {activeTab === "compte" && <CompteTab />}
-      {activeTab === "rgpd" && <RgpdTab />}
     </div>
   );
 }
