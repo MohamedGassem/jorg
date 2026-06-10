@@ -58,6 +58,17 @@ export const INVITATION_STATUS_VARIANTS: Record<
   expired: "outline",
 };
 
+/* Pills "registre" du design handoff (taxonomie 4 familles, libellés courts) */
+export const ORG_STATUS_PILLS: Record<
+  string,
+  { label: string; tone: "positive" | "warn" | "accent" | "muted" }
+> = {
+  active: { label: "actif", tone: "positive" },
+  invited: { label: "invitation en attente", tone: "muted" },
+  revoked: { label: "révoqué", tone: "muted" },
+  expired: { label: "expiré", tone: "muted" },
+};
+
 export const ACCESS_STATUS_LABELS: Record<string, string> = {
   active: "Accès actif",
   invited: "Invitation en attente",

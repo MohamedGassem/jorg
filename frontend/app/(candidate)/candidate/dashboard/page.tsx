@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import { Eye, FolderOpen, Key, Mail, Plus, Shield, User } from "lucide-react";
 import { CandidateGenerateDossierDialog } from "@/components/candidate-generate-dossier-dialog";
 import { buttonVariants } from "@/components/ui/button";
-import { StatusPill, type StatusTone } from "@/components/ui/StatusPill";
+import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
-import { relativeDate } from "@/lib/labels";
+import { ORG_STATUS_PILLS, relativeDate } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type {
   CandidateProfile,
@@ -95,13 +95,6 @@ const ACTIVITY_ACCENT: InteractionEvent["type"][] = [
   "access_granted",
   "document_generated",
 ];
-
-const ORG_STATUS_PILLS: Record<string, { label: string; tone: StatusTone }> = {
-  active: { label: "actif", tone: "positive" },
-  invited: { label: "invitation en attente", tone: "muted" },
-  revoked: { label: "révoqué", tone: "muted" },
-  expired: { label: "expiré", tone: "muted" },
-};
 
 function orgInitials(name: string): string {
   return name
