@@ -29,6 +29,24 @@ import {
   type Skill,
 } from "@/types/api";
 
+function deriveYearsOfExperience(experiences: Experience[]): number | null {
+  const startTimes = experiences
+    .map((e) => new Date(e.start_date).getTime())
+    .filter((t) => !Number.isNaN(t));
+  if (startTimes.length === 0) return null;
+  const now = Date.now();
+  const endTimes = experiences
+    .map((e) =>
+      e.is_current ? now : e.end_date ? new Date(e.end_date).getTime() : NaN,
+    )
+    .filter((t) => !Number.isNaN(t));
+  const latest = endTimes.length > 0 ? Math.max(...endTimes) : now;
+  const years = Math.floor(
+    (latest - Math.min(...startTimes)) / (365 * 24 * 3600 * 1000),
+  );
+  return Math.max(years, 0);
+}
+
 function calcCompletion(p: CandidateProfile): number {
   const checks = [
     Boolean(p.avatar_url),
@@ -243,6 +261,10 @@ function EditProfileDrawer({
   const [location, setLocation] = useState(profile.location ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(profile.linkedin_url ?? "");
   const [summary, setSummary] = useState(profile.summary ?? "");
+  const [yearsOfExperience, setYearsOfExperience] = useState(
+    profile.years_of_experience?.toString() ?? "",
+  );
+  const [suggestedYears, setSuggestedYears] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -252,7 +274,14 @@ function EditProfileDrawer({
       setLocation(profile.location ?? "");
       setLinkedinUrl(profile.linkedin_url ?? "");
       setSummary(profile.summary ?? "");
+      setYearsOfExperience(profile.years_of_experience?.toString() ?? "");
       setError(null);
+      api
+        .get<Experience[]>("/candidates/me/experiences")
+        .then((experiences) =>
+          setSuggestedYears(deriveYearsOfExperience(experiences)),
+        )
+        .catch(() => setSuggestedYears(null));
     }
   }, [
     open,
@@ -260,12 +289,14 @@ function EditProfileDrawer({
     profile.location,
     profile.linkedin_url,
     profile.summary,
+    profile.years_of_experience,
   ]);
 
   async function handleSave() {
     setSaving(true);
     setError(null);
     try {
+      const parsedYears = parseInt(yearsOfExperience, 10);
       const updated = await api.put<CandidateProfile>(
         "/candidates/me/profile",
         {
@@ -273,6 +304,7 @@ function EditProfileDrawer({
           location: location || null,
           linkedin_url: linkedinUrl || null,
           summary: summary || null,
+          years_of_experience: Number.isNaN(parsedYears) ? null : parsedYears,
         },
       );
       onSave(updated);
@@ -311,6 +343,30 @@ function EditProfileDrawer({
               value={location}
               onChange={(e) => setLocation(e.target.value)}
             />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="edit-years">Années d&apos;expérience</Label>
+            <Input
+              id="edit-years"
+              type="number"
+              min={0}
+              value={yearsOfExperience}
+              placeholder={suggestedYears?.toString() ?? ""}
+              onChange={(e) => setYearsOfExperience(e.target.value)}
+            />
+            {suggestedYears !== null &&
+              yearsOfExperience !== suggestedYears.toString() && (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  onClick={() =>
+                    setYearsOfExperience(suggestedYears.toString())
+                  }
+                >
+                  Suggestion : {suggestedYears} ans (calculé depuis vos
+                  expériences)
+                </button>
+              )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="edit-linkedin">LinkedIn</Label>
