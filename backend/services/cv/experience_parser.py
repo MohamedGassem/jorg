@@ -63,14 +63,19 @@ def _segment_by_header_indent(lines: list[DocumentLine]) -> list[list[DocumentLi
     blocks don't each contain exactly one date, which guards against flat
     layouts where indentation is meaningless.
     """
-    if not lines or any(line.x0 is None for line in lines):
+    if not lines:
         return None
-    min_x = min(line.x0 for line in lines)
+    x0s: list[float] = []
+    for line in lines:
+        if line.x0 is None:
+            return None
+        x0s.append(line.x0)
+    min_x = min(x0s)
     has_bold_info = any(line.is_bold for line in lines)
     header_indices = [
         index
         for index, line in enumerate(lines)
-        if line.x0 - min_x <= _HEADER_INDENT_TOLERANCE
+        if x0s[index] - min_x <= _HEADER_INDENT_TOLERANCE
         and (line.is_bold or not has_bold_info)
         and _is_block_header_candidate(line.text)
     ]

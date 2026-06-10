@@ -530,7 +530,7 @@ def test_two_column_layout_keeps_each_job_content_in_its_own_block():
         "Mission actuelle : développement d'une solution de "
         "computer vision pour la détection d'objets."
     )
-    jtekt_achievements = " ".join(a.value for a in jtekt.achievements)
+    jtekt_achievements = " ".join(a.value or "" for a in jtekt.achievements)
     assert "Ynov" not in jtekt_achievements
     assert "Enseignement" not in jtekt_achievements
     assert ynov.achievements[0].value == "Enseignement d'un module de 72h sur le RL."
@@ -564,6 +564,7 @@ def test_multiline_bullet_continuation_not_truncated_when_company_known():
     assert len(experiences) == 1
     assert experiences[0].achievements, "achievements should not be empty"
     full_text = experiences[0].achievements[0].value
+    assert full_text is not None
     assert "traitement d'images" in full_text, (
         f"continuation line was truncated; got: {full_text!r}"
     )
@@ -588,6 +589,7 @@ def test_multiline_bullet_continuation_not_stolen_as_company():
         )
     assert exp.achievements, "achievements should not be empty"
     full_text = exp.achievements[0].value
+    assert full_text is not None
     assert "traitement d'images" in full_text, (
         f"continuation line was lost; got achievement: {full_text!r}"
     )
@@ -654,21 +656,25 @@ def test_header_fields_multi_contract():
 
 def test_date_range_slash_full_months():
     date_range = _parse_date_range("OCTOBRE 2023/JUIN 2024")
+    assert date_range is not None
     assert (date_range.start, date_range.end) == ("2023-10", "2024-06")
 
 
 def test_date_range_slash_month_pair_shared_year():
     date_range = _parse_date_range("MARS/MAI 2023")
+    assert date_range is not None
     assert (date_range.start, date_range.end) == ("2023-03", "2023-05")
 
 
 def test_date_range_slash_years():
     date_range = _parse_date_range("2023/2024")
+    assert date_range is not None
     assert (date_range.start, date_range.end) == ("2023", "2024")
 
 
 def test_date_range_depuis_is_current():
     date_range = _parse_date_range("DEPUIS JANVIER 2025")
+    assert date_range is not None
     assert date_range.start == "2025-01"
     assert date_range.end is None
     assert date_range.is_current is True
@@ -691,12 +697,14 @@ def test_date_range_wrapped_dash_year():
         DocumentLine(text="2025", line_index=1),
     ]
     date_range = _parse_date_range_at(lines, 0)
+    assert date_range is not None
     assert (date_range.start, date_range.end) == ("2023-09", "2025-03")
 
 
 def test_date_range_single_month_line():
     lines = [DocumentLine(text="AOÛT 2025", line_index=0)]
     date_range = _parse_date_range_at(lines, 0)
+    assert date_range is not None
     assert (date_range.start, date_range.end) == ("2025-08", "2025-08")
 
 
@@ -811,7 +819,7 @@ def test_ehpad_layout_date_above_header_and_next_job_truncation():
     assert [a.value for a in first.achievements] == ["Participation aux séances individuelles"]
     assert second.client_name.value == "IME Paul Cézanne"
     assert second.location.value == "Tournus 71"
-    achievements_text = " ".join(a.value for a in first.achievements)
+    achievements_text = " ".join(a.value or "" for a in first.achievements)
     assert "IME" not in achievements_text
 
 
