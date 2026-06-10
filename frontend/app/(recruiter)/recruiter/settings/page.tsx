@@ -4,13 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Copy, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
 import { TabBar } from "@/components/ui/TabBar";
@@ -21,6 +14,26 @@ import { useRecruiterOrg } from "@/lib/hooks";
 import type { OrgMember, Organization } from "@/types/api";
 
 type Tab = "profil" | "organisation";
+
+function SettingsCard({
+  legend,
+  sub,
+  children,
+}: {
+  legend: string;
+  sub?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface px-[26px] py-[22px]">
+      <div>
+        <h2 className="text-[15px] font-semibold">{legend}</h2>
+        {sub && <p className="mt-0.5 text-[13px] text-ink-2">{sub}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 function ProfilPersonnelTab() {
   const [firstName, setFirstName] = useState("");
@@ -66,45 +79,52 @@ function ProfilPersonnelTab() {
   if (loadError) return <ErrorAlert error={loadError} />;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Profil recruteur</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSave} className="max-w-sm space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="rec-first-name">Prénom</Label>
+    <SettingsCard
+      legend="Profil recruteur"
+      sub="Ces informations identifient vos actions auprès des candidats."
+    >
+      <form onSubmit={handleSave} className="space-y-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="rec-first-name"
+              className="text-[13.5px] text-ink-2"
+            >
+              Prénom
+            </Label>
             <Input
               id="rec-first-name"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="rec-last-name">Nom</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="rec-last-name" className="text-[13.5px] text-ink-2">
+              Nom
+            </Label>
             <Input
               id="rec-last-name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="rec-job-title">Titre / poste</Label>
-            <Input
-              id="rec-job-title"
-              value={jobTitle}
-              onChange={(e) => setJobTitle(e.target.value)}
-            />
-          </div>
-          {message && (
-            <p className="text-sm text-muted-foreground">{message}</p>
-          )}
-          <Button type="submit" disabled={saving}>
-            {saving ? "Enregistrement…" : "Enregistrer"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="rec-job-title" className="text-[13.5px] text-ink-2">
+            Titre / poste
+          </Label>
+          <Input
+            id="rec-job-title"
+            value={jobTitle}
+            onChange={(e) => setJobTitle(e.target.value)}
+          />
+        </div>
+        {message && <p className="text-sm text-ink-3">{message}</p>}
+        <Button type="submit" disabled={saving}>
+          {saving ? "Enregistrement…" : "Enregistrer"}
+        </Button>
+      </form>
+    </SettingsCard>
   );
 }
 
@@ -159,16 +179,21 @@ export default function RecruiterSettingsPage() {
     { key: "organisation", label: "Organisation" },
   ];
 
-  if (orgLoading) return <p className="text-muted-foreground">Chargement…</p>;
+  if (orgLoading) return <p className="text-ink-3">Chargement…</p>;
 
   if (!orgId) {
     return (
       <div className="max-w-xl space-y-4">
-        <h1 className="text-2xl font-bold">Configuration</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="font-heading text-[27px] font-semibold leading-tight">
+          Configuration
+        </h1>
+        <p className="text-sm text-ink-2">
           Vous n&apos;êtes pas encore associé à une organisation. Retournez sur
           le{" "}
-          <Link href="/recruiter/dashboard" className="underline">
+          <Link
+            href="/recruiter/dashboard"
+            className="font-medium text-primary hover:underline"
+          >
             tableau de bord
           </Link>{" "}
           pour en créer ou rejoindre une.
@@ -178,50 +203,40 @@ export default function RecruiterSettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Organisation</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+    <div className="flex w-full flex-col gap-[18px]">
+      <header>
+        <p className="j-overline">
+          {org?.name ?? "Espace recruteur"} · organisation
+        </p>
+        <h1 className="mt-2 font-heading text-[27px] font-semibold leading-tight">
+          Paramètres
+        </h1>
+        <p className="mt-1 max-w-[560px] text-[15px] text-ink-2">
           Gérez votre profil recruteur, votre organisation et les accès de
           l&apos;équipe à l&apos;espace Jorg.
         </p>
-      </div>
+      </header>
       <ErrorAlert error={error} />
 
-      {/* Tab bar */}
-      <TabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+      <TabBar
+        tabs={tabs}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        variant="underline"
+      />
 
-      {/* Profil personnel tab */}
-      {activeTab === "profil" && <ProfilPersonnelTab />}
+      <div className="flex max-w-3xl flex-col gap-4">
+        {activeTab === "profil" && <ProfilPersonnelTab />}
 
-      {/* Organisation tab (merged with membres) */}
-      {activeTab === "organisation" && (
-        <div className="space-y-4">
-          {/* Org info */}
-          {org && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{org.name}</CardTitle>
-                <CardDescription>
-                  Espace organisation configuré pour votre équipe.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          )}
-
-          {/* Join code */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Code d&apos;invitation équipe</CardTitle>
-              <CardDescription>
-                Partagez ce code pour permettre à un collègue de rejoindre votre
-                organisation.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+        {activeTab === "organisation" && (
+          <>
+            <SettingsCard
+              legend="Code d'invitation équipe"
+              sub="Partagez ce code pour permettre à un collègue de rejoindre votre organisation."
+            >
               {org && (
-                <div className="flex items-center gap-3">
-                  <code className="rounded-md bg-muted px-4 py-2 font-mono text-lg tracking-widest">
+                <div className="flex flex-wrap items-center gap-3">
+                  <code className="rounded-[7px] border border-line bg-paper-2 px-4 py-2 font-mono text-lg tracking-[0.14em]">
                     {org.join_code}
                   </code>
                   <Button
@@ -233,7 +248,7 @@ export default function RecruiterSettingsPage() {
                     {codeCopied ? (
                       <Check className="size-3.5 text-success" />
                     ) : (
-                      <Copy className="size-3.5" />
+                      <Copy className="size-3.5" strokeWidth={1.6} />
                     )}
                     {codeCopied ? "Copié !" : "Copier"}
                   </Button>
@@ -242,57 +257,64 @@ export default function RecruiterSettingsPage() {
                     variant="ghost"
                     onClick={handleRegenerateCode}
                     disabled={regenerating}
-                    className="gap-1.5 text-muted-foreground"
+                    className="gap-1.5 text-ink-3"
                     title="Régénérer le code (invalide l'ancien)"
                   >
                     <RefreshCw
                       className={`size-3.5 ${regenerating ? "animate-spin" : ""}`}
+                      strokeWidth={1.6}
                     />
                     Régénérer
                   </Button>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </SettingsCard>
 
-          {/* Members list */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Membres ({members.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <section className="overflow-hidden rounded-lg border border-line bg-surface">
+              <div className="flex items-center gap-2 px-[26px] pb-3.5 pt-[22px]">
+                <h2 className="text-[15px] font-semibold">Membres</h2>
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-accent-line bg-accent-soft px-1.5 font-mono text-[11px] font-medium text-primary">
+                  {members.length}
+                </span>
+              </div>
               {members.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="px-[26px] pb-5 text-sm text-ink-3">
                   Aucun membre pour l&apos;instant. Partagez le code
                   d&apos;invitation pour ajouter un collègue à
                   l&apos;organisation.
                 </p>
               ) : (
-                <ul className="space-y-2">
-                  {members.map((m) => (
-                    <li
-                      key={m.user_id}
-                      className="flex items-center justify-between rounded-lg border border-border/40 px-4 py-3"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">
-                          {m.first_name && m.last_name
-                            ? `${m.first_name} ${m.last_name}`
-                            : m.email}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {m.email}
-                          {m.job_title ? ` · ${m.job_title}` : ""}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                members.map((m) => (
+                  <div
+                    key={m.user_id}
+                    className="flex items-center gap-3 border-t border-line px-[26px] py-3"
+                  >
+                    <span className="grid size-[34px] shrink-0 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[13px] font-semibold text-primary">
+                      {[m.first_name?.[0], m.last_name?.[0]]
+                        .filter(Boolean)
+                        .join("")
+                        .toUpperCase() ||
+                        m.email[0]?.toUpperCase() ||
+                        "?"}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {m.first_name && m.last_name
+                          ? `${m.first_name} ${m.last_name}`
+                          : m.email}
+                      </p>
+                      <p className="truncate text-xs text-ink-3">
+                        {m.email}
+                        {m.job_title ? ` · ${m.job_title}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                ))
               )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            </section>
+          </>
+        )}
+      </div>
     </div>
   );
 }
