@@ -148,11 +148,12 @@ def derive_years_of_experience(experiences: Sequence[ExperienceProtocol]) -> int
     if not starts:
         return None
     today = date.today()
-    ends = [
-        today if exp.is_current else exp.end_date
-        for exp in experiences
-        if exp.is_current or isinstance(exp.end_date, date)
-    ]
+    ends: list[date] = []
+    for exp in experiences:
+        if exp.is_current:
+            ends.append(today)
+        elif isinstance(exp.end_date, date):
+            ends.append(exp.end_date)
     latest = max(ends, default=today)
     years = (latest - min(starts)).days // 365
     return max(years, 0)
