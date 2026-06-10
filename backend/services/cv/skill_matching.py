@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -67,7 +68,7 @@ def merge_skill_indexes(*indexes: SkillIndex) -> SkillIndex:
     return merged
 
 
-def _index_skill_references(refs: list[SkillReference]) -> SkillIndex:
+def _index_skill_references(refs: Sequence[SkillReference]) -> SkillIndex:
     index: SkillIndex = {}
     for ref in refs:
         entry = SkillEntry(id=ref.id, name=ref.name, kind=ref.kind)

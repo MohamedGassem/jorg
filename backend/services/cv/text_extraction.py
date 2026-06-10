@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import re
-from typing import Protocol
+from typing import Any, Protocol
 
 from services.cv.constants import MAX_CV_BYTES, _extension
 from services.cv.exceptions import CVTextExtractionError, CVTooLargeError, UnsupportedCVFormatError
@@ -128,7 +128,7 @@ def _extract_document_lines(filename: str, data: bytes, fallback_text: str) -> l
 _CHAR_GAP_SPACE_RATIO = 0.1
 
 
-def _span_text_from_chars(span: dict) -> str:
+def _span_text_from_chars(span: dict[str, Any]) -> str:
     """Rebuild a rawdict span's text, inserting a space at significant glyph gaps."""
     chars = span.get("chars")
     if not chars:
@@ -154,7 +154,7 @@ def _span_text_from_chars(span: dict) -> str:
     return "".join(parts)
 
 
-def _join_spans(spans: list[dict]) -> str:
+def _join_spans(spans: list[dict[str, Any]]) -> str:
     """Join PDF spans into a line string, inserting a space wherever there is a visual gap.
 
     A plain ``" ".join`` adds spaces between every span pair regardless of whether
@@ -186,7 +186,7 @@ def _join_spans(spans: list[dict]) -> str:
 
 
 def _extract_pdf_document_lines(data: bytes) -> list[DocumentLine]:
-    import fitz
+    import fitz  # type: ignore[import-untyped]
 
     document = fitz.open(stream=data, filetype="pdf")
     lines: list[DocumentLine] = []
@@ -248,34 +248,42 @@ _MIN_COLUMN_LINES = 5
 
 
 def _order_page_columns(page_lines: list[DocumentLine]) -> list[DocumentLine]:
-    if len(page_lines) < 2 * _MIN_COLUMN_LINES or any(
-        line.x0 is None or line.x1 is None or line.y0 is None for line in page_lines
-    ):
+    if len(page_lines) < 2 * _MIN_COLUMN_LINES:
         return page_lines
-    gutter = _find_gutter(page_lines)
+    coords: list[tuple[float, float, float]] = []  # (x0, x1, y0) per line
+    for line in page_lines:
+        if line.x0 is None or line.x1 is None or line.y0 is None:
+            return page_lines
+        coords.append((line.x0, line.x1, line.y0))
+    gutter = _find_gutter([(x0, x1) for x0, x1, _ in coords])
     if gutter is None:
         return page_lines
+    indices = range(len(page_lines))
     columns = [
-        [line for line in page_lines if line.x1 <= gutter],
-        [line for line in page_lines if line.x1 > gutter],
+        [i for i in indices if coords[i][1] <= gutter],
+        [i for i in indices if coords[i][1] > gutter],
     ]
     # The main column (most text) reads first so identity stays at the top and
     # the sidebar's own section headers still split its content afterwards.
-    columns.sort(key=lambda col: sum(len(line.text) for line in col), reverse=True)
-    return [line for column in columns for line in sorted(column, key=lambda li: (li.y0, li.x0))]
+    columns.sort(key=lambda col: sum(len(page_lines[i].text) for i in col), reverse=True)
+    return [
+        page_lines[i]
+        for column in columns
+        for i in sorted(column, key=lambda idx: (coords[idx][2], coords[idx][0]))
+    ]
 
 
-def _find_gutter(page_lines: list[DocumentLine]) -> float | None:
+def _find_gutter(line_intervals: list[tuple[float, float]]) -> float | None:
     """Find an x position crossed by no line, splitting the page in two columns."""
-    intervals = sorted((line.x0, line.x1) for line in page_lines)
+    intervals = sorted(line_intervals)
     best: tuple[float, float] | None = None
     covered_until = intervals[0][1]
     for x0, x1 in intervals[1:]:
         gap = x0 - covered_until
         if gap >= _MIN_GUTTER_WIDTH:
-            left = sum(1 for line in page_lines if line.x1 <= covered_until)
-            right = len(page_lines) - left
-            share = min(left, right) / len(page_lines)
+            left = sum(1 for _, line_x1 in line_intervals if line_x1 <= covered_until)
+            right = len(line_intervals) - left
+            share = min(left, right) / len(line_intervals)
             if (
                 min(left, right) >= _MIN_COLUMN_LINES
                 and share >= 0.2
