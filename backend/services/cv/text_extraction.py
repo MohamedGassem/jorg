@@ -303,7 +303,7 @@ def _text_to_document_lines(text: str) -> list[DocumentLine]:
 
 
 def _extract_pdf_legacy(data: bytes) -> str:
-    from pypdf import PdfReader  # type: ignore[import-not-found]
+    from pypdf import PdfReader
 
     reader = PdfReader(io.BytesIO(data))
     return "\n".join((page.extract_text() or "") for page in reader.pages)
