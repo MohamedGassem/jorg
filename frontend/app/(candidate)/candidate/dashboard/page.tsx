@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Eye, FolderOpen, Key, Mail, Plus, Shield, User } from "lucide-react";
 import { CandidateGenerateDossierDialog } from "@/components/candidate-generate-dossier-dialog";
-import { NotificationBell } from "@/components/notification-bell";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
+import { StatusPill, type StatusTone } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
 import { relativeDate } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -18,20 +18,6 @@ import type {
   OrganizationInteractionCard,
   Skill,
 } from "@/types/api";
-
-type DashboardAction = {
-  title: string;
-  description: string;
-  cta: string;
-  href?: string;
-  onClick?: () => void;
-};
-
-type ChecklistItem = {
-  label: string;
-  detail: string;
-  done: boolean;
-};
 
 type ActivityEvent = InteractionEvent & {
   organizationId: string;
@@ -82,167 +68,87 @@ function compactActivity(events: ActivityEvent[]): ActivityGroup[] {
   );
 }
 
-function activityTitle(group: ActivityGroup): string {
-  const labels: Record<InteractionEvent["type"], string> = {
-    invitation_sent: "Invitation envoyée",
-    invitation_accepted: "Invitation acceptée",
-    invitation_rejected: "Invitation refusée",
-    invitation_expired: "Invitation expirée",
-    access_granted: "Accès accordé",
-    access_revoked: "Accès révoqué",
-    document_generated: "Dossier généré",
-  };
-  const count = group.count > 1 ? ` (${group.count})` : "";
-  return `${labels[group.type]}${count} - ${group.organizationName}`;
+const ACTIVITY_LABELS: Record<InteractionEvent["type"], string> = {
+  invitation_sent: "Invitation envoyée",
+  invitation_accepted: "Invitation acceptée",
+  invitation_rejected: "Invitation refusée",
+  invitation_expired: "Invitation expirée",
+  access_granted: "Accès accordé",
+  access_revoked: "Accès révoqué",
+  document_generated: "Dossier généré",
+};
+
+const ACTIVITY_ICONS: Record<
+  InteractionEvent["type"],
+  React.ComponentType<{ className?: string; strokeWidth?: number }>
+> = {
+  invitation_sent: Mail,
+  invitation_accepted: Mail,
+  invitation_rejected: Mail,
+  invitation_expired: Mail,
+  access_granted: Shield,
+  access_revoked: Key,
+  document_generated: FolderOpen,
+};
+
+const ACTIVITY_ACCENT: InteractionEvent["type"][] = [
+  "access_granted",
+  "document_generated",
+];
+
+const ORG_STATUS_PILLS: Record<string, { label: string; tone: StatusTone }> = {
+  active: { label: "actif", tone: "positive" },
+  invited: { label: "invitation en attente", tone: "muted" },
+  revoked: { label: "révoqué", tone: "muted" },
+  expired: { label: "expiré", tone: "muted" },
+};
+
+function orgInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
-function recruiterName(event: InteractionEvent): string | null {
-  const parts = [
-    event.metadata.recruiter_first_name,
-    event.metadata.recruiter_last_name,
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join(" ") : null;
+function grantedDate(org: OrganizationInteractionCard): string | null {
+  const granted = org.events
+    .filter((event) => event.type === "access_granted")
+    .sort(
+      (a, b) =>
+        new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime(),
+    )[0];
+  return granted
+    ? new Date(granted.occurred_at).toLocaleDateString("fr-FR")
+    : null;
 }
 
-function eventDetail(event: ActivityEvent): string {
-  const recruiter = recruiterName(event);
-  if (event.type === "document_generated") {
-    const details = [
-      event.metadata.template_name
-        ? `Modèle : ${event.metadata.template_name}`
-        : null,
-      recruiter ? `Recruteur : ${recruiter}` : null,
-      event.metadata.file_format
-        ? `Format : ${event.metadata.file_format.toUpperCase()}`
-        : null,
-    ].filter(Boolean);
-    return details.length > 0
-      ? details.join(" · ")
-      : "Document produit depuis votre profil.";
-  }
-  return recruiter
-    ? `Recruteur : ${recruiter}`
-    : "Organisation liée à votre dossier.";
-}
-
-function ActionCta({
-  action,
-  variant = "outline",
-  className,
+function StatCell({
+  icon: Icon,
+  label,
+  value,
+  foot,
 }: {
-  action: DashboardAction;
-  variant?: "default" | "outline";
-  className?: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  label: string;
+  value: string;
+  foot: string;
 }) {
-  const classes = cn(
-    buttonVariants({
-      variant,
-      size: variant === "default" ? "default" : "sm",
-    }),
-    className,
-  );
-
-  if (action.onClick) {
-    return (
-      <button type="button" onClick={action.onClick} className={classes}>
-        {action.cta}
-      </button>
-    );
-  }
-
-  if (action.href) {
-    return (
-      <Link href={action.href} className={classes}>
-        {action.cta}
-      </Link>
-    );
-  }
-
-  return null;
-}
-
-function ActionCard({ action }: { action: DashboardAction }) {
   return (
-    <article className="rounded-lg border border-border bg-card p-4">
-      <h3 className="font-heading text-base font-semibold">{action.title}</h3>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        {action.description}
-      </p>
-      <ActionCta action={action} className="mt-4" />
-    </article>
-  );
-}
-
-function ChecklistRow({ item }: { item: ChecklistItem }) {
-  return (
-    <li className="flex items-start gap-3 rounded-lg border border-border/70 bg-background px-3 py-2.5">
-      <span
-        className={cn(
-          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border text-[0.6rem] font-bold",
-          item.done
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-border bg-muted text-muted-foreground",
-        )}
-        aria-hidden="true"
-      />
-      <span>
-        <span className="block text-sm font-medium">{item.label}</span>
-        <span className="block text-xs leading-5 text-muted-foreground">
-          {item.detail}
+    <div className="flex flex-col gap-2 bg-surface px-5 py-[18px]">
+      <div className="flex items-center justify-between">
+        <span className="j-overline tracking-[0.1em]">{label}</span>
+        <span className="grid size-[30px] place-items-center rounded-[7px] border border-line bg-paper-2 text-ink-3">
+          <Icon className="size-[15px]" strokeWidth={1.6} />
         </span>
-      </span>
-    </li>
-  );
-}
-
-function ProfileProgressBar({ value }: { value: number }) {
-  const progressColor =
-    value < 40 ? "bg-danger" : value < 75 ? "bg-warning" : "bg-success";
-
-  return (
-    <div
-      className="mt-4 h-2 overflow-hidden rounded-full bg-muted"
-      aria-label={`Progression du profil ${value}%`}
-    >
-      <div
-        className={cn("h-full rounded-full transition-all", progressColor)}
-        style={{ width: `${value}%` }}
-      />
-    </div>
-  );
-}
-
-function ActivityList({ groups }: { groups: ActivityGroup[] }) {
-  if (groups.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
-        <p className="text-sm font-medium">Aucune activité récente</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Les invitations, accès et dossiers générés apparaîtront ici.
-        </p>
       </div>
-    );
-  }
-
-  return (
-    <ul className="space-y-2">
-      {groups.slice(0, 5).map((group) => (
-        <li
-          key={group.key}
-          className="flex items-start justify-between gap-3 rounded-lg border border-border/70 bg-background px-3 py-2.5"
-        >
-          <div>
-            <p className="text-sm font-medium">{activityTitle(group)}</p>
-            <p className="text-xs text-muted-foreground">
-              {eventDetail(group.latestEvent)}
-            </p>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {relativeDate(group.latestAt)}
-          </span>
-        </li>
-      ))}
-    </ul>
+      <div className="font-mono text-[28px] font-medium leading-none tracking-tight tabular-nums">
+        {value}
+      </div>
+      <div className="text-[12.5px] text-ink-3">{foot}</div>
+    </div>
   );
 }
 
@@ -298,11 +204,8 @@ export default function CandidateDashboardPage() {
         return;
       }
 
-      const skillPresent = Array.isArray(skills) && skills.length > 0;
-      const experiencePresent =
-        Array.isArray(experiences) && experiences.length > 0;
-      setHasSkill(skillPresent);
-      setHasExperience(experiencePresent);
+      setHasSkill(Array.isArray(skills) && skills.length > 0);
+      setHasExperience(Array.isArray(experiences) && experiences.length > 0);
 
       if (prof) {
         setProfile(prof);
@@ -344,340 +247,300 @@ export default function CandidateDashboardPage() {
   if (loading) {
     return (
       <div className="w-full space-y-5 animate-pulse">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-3">
-            <div className="h-8 w-64 rounded-lg bg-muted" />
-            <div className="h-4 w-96 rounded-lg bg-muted" />
-          </div>
-          <div className="h-9 w-9 rounded-lg bg-muted" />
+        <div className="space-y-3">
+          <div className="h-3 w-56 rounded bg-muted" />
+          <div className="h-8 w-64 rounded-lg bg-muted" />
+          <div className="h-4 w-96 rounded-lg bg-muted" />
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-px sm:grid-cols-2 xl:grid-cols-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-28 rounded-lg bg-muted" />
           ))}
         </div>
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
-          <div className="h-[520px] rounded-lg bg-muted" />
-          <div className="h-[520px] rounded-lg bg-muted" />
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.7fr_1fr]">
+          <div className="h-[420px] rounded-lg bg-muted" />
+          <div className="h-[420px] rounded-lg bg-muted" />
         </div>
       </div>
     );
   }
 
   const firstName = profile?.first_name ?? "";
-  const checklist: ChecklistItem[] = [
-    {
-      label: "Identité professionnelle",
-      detail: "Nom, titre et positionnement visibles.",
-      done:
-        isFilled(profile?.first_name) &&
-        isFilled(profile?.last_name) &&
-        isFilled(profile?.title),
-    },
-    {
-      label: "Résumé candidat",
-      detail: "Une synthèse courte pour cadrer votre profil.",
-      done: isFilled(profile?.summary),
-    },
-    {
-      label: "Expériences",
-      detail: "Au moins une expérience structurée.",
-      done: hasExperience,
-    },
-    {
-      label: "Compétences",
-      detail: "Des compétences exploitables par les recruteurs.",
-      done: hasSkill,
-    },
-    {
-      label: "Coordonnées et préférences",
-      detail: "Téléphone, localisation et mode de travail.",
-      done:
-        isFilled(profile?.phone) &&
-        isFilled(profile?.location) &&
-        isFilled(profile?.work_mode),
-    },
+  const checklistDone = [
+    isFilled(profile?.first_name) &&
+      isFilled(profile?.last_name) &&
+      isFilled(profile?.title),
+    isFilled(profile?.summary),
+    hasExperience,
+    hasSkill,
+    isFilled(profile?.phone) &&
+      isFilled(profile?.location) &&
+      isFilled(profile?.work_mode),
   ];
-  const completedChecklist = checklist.filter((item) => item.done).length;
-  const checklistPct = Math.round(
-    (completedChecklist / checklist.length) * 100,
+  const completedCount = checklistDone.filter(Boolean).length;
+  const completionPct = Math.round(
+    (completedCount / checklistDone.length) * 100,
   );
-  const profileProgressPct = checklistPct;
   const pendingCount = pendingInvitations?.length ?? 0;
-  const activeOrganizations = (organizations ?? []).filter(
-    (org) => org.current_status === "active",
-  );
-  const activeCount = activeOrganizations.length;
+  const orgs = organizations ?? [];
+  const activeCount = orgs.filter((o) => o.current_status === "active").length;
+  const docsGenerated = orgs
+    .flatMap((o) => o.events)
+    .filter((e) => e.type === "document_generated").length;
   const activityGroups = compactActivity(recentEvents);
-  const pendingOrgNames = (pendingInvitations ?? [])
-    .map((inv) => inv.organization_name)
-    .filter(Boolean);
 
-  const primaryAction: DashboardAction =
+  const lead =
     pendingCount > 0
-      ? {
-          title: `${pendingCount} invitation${pendingCount > 1 ? "s" : ""} en attente`,
-          description:
-            pendingOrgNames.length > 0
-              ? `Décidez si ${pendingOrgNames.slice(0, 2).join(", ")} peut accéder à vos données structurées candidat.`
-              : "Décidez quelles organisations peuvent accéder à vos données structurées candidat.",
-          href: "/candidate/access",
-          cta: "Voir les invitations",
-        }
-      : profileProgressPct < 100
-        ? {
-            title: "Compléter votre profil structuré",
-            description:
-              "Ajoutez ou vérifiez vos expériences, compétences et informations clés. Ces données serviront à générer vos dossiers candidat.",
-            href: "/candidate/profile",
-            cta: "Continuer mon profil",
-          }
-        : activeCount > 0
-          ? {
-              title: "Gardez le contrôle sur vos accès",
-              description: `${activeCount} organisation${activeCount > 1 ? "s" : ""} ${activeCount > 1 ? "peuvent" : "peut"} consulter votre profil et générer des documents. Vous pouvez révoquer un accès à tout moment.`,
-              href: "/candidate/access",
-              cta: "Gérer les accès",
-            }
-          : {
-              title: "Prévisualisez votre dossier",
-              description:
-                "Votre profil est complet. Vérifiez comment vos informations peuvent être présentées dans un dossier généré.",
-              cta: "Prévisualiser mon dossier",
-              onClick: () => setModelDialogOpen(true),
-            };
+      ? `${pendingCount} invitation${pendingCount > 1 ? "s" : ""} en attente de votre décision.`
+      : activeCount > 0
+        ? `Votre dossier est partagé avec ${activeCount} organisation${activeCount > 1 ? "s" : ""} et reste sous votre contrôle.`
+        : "Votre dossier n'est partagé avec aucune organisation pour le moment.";
 
-  const secondaryActions: DashboardAction[] = [
-    {
-      title: "Mettre à jour le profil",
-      description:
-        "Gardez vos données structurées candidat alignées avec votre situation actuelle.",
-      href: "/candidate/profile",
-      cta: "Ouvrir mon profil",
-    },
-    {
-      title: "Vérifier qui a accès",
-      description:
-        "Consultez les accès actifs, les invitations reçues et l’historique associé.",
-      href: "/candidate/access",
-      cta: "Voir les accès",
-    },
-    {
-      title: "Prévisualiser un dossier",
-      description:
-        "Ouvrez les modèles disponibles pour voir comment vos informations peuvent être présentées.",
-      cta: "Prévisualiser",
-      onClick: () => setModelDialogOpen(true),
-    },
-  ];
+  const primaryCta =
+    pendingCount > 0
+      ? { href: "/candidate/access", label: "Voir les invitations" }
+      : completionPct < 100
+        ? { href: "/candidate/profile", label: "Compléter mon dossier" }
+        : { href: "/candidate/access", label: "Gérer les accès" };
 
   return (
-    <div className="w-full space-y-5">
-      <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+    <div className="flex w-full flex-col gap-5">
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Accueil candidat
+          <p className="j-overline">
+            Dossier candidat
+            {profile?.updated_at
+              ? ` · mis à jour ${relativeDate(profile.updated_at)}`
+              : ""}
           </p>
-          <h1 className="mt-2 text-2xl font-bold">
-            {firstName
-              ? `Bonjour ${firstName}, votre espace Jorg`
-              : "Votre espace Jorg"}
+          <h1 className="mt-2 font-heading text-[27px] font-semibold leading-tight">
+            {firstName ? `Bonjour ${firstName}` : "Votre espace Jorg"}
           </h1>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-            Retrouvez quoi faire maintenant, qui a accès à votre profil et les
-            derniers événements liés à votre dossier.
-          </p>
+          <p className="mt-1 text-[15px] text-ink-2">{lead}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <NotificationBell portal="candidate" />
-        </div>
+        <Link
+          href={primaryCta.href}
+          className={cn(buttonVariants({ variant: "default" }), "w-fit")}
+        >
+          {primaryCta.label}
+        </Link>
       </header>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
-        <main className="min-w-0 space-y-5">
-          <section className="rounded-lg border border-accent-amber-border bg-accent-amber-soft p-5 2xl:p-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-warning">
-                  À faire maintenant
-                </p>
-                <h2 className="mt-2 font-heading text-xl font-semibold">
-                  {primaryAction.title}
-                </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  {primaryAction.description}
-                </p>
-              </div>
-              <ActionCta
-                action={primaryAction}
-                variant="default"
-                className="w-fit"
-              />
-            </div>
-            <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3 2xl:gap-4">
-              {secondaryActions.map((action) => (
-                <ActionCard key={action.title} action={action} />
-              ))}
-            </div>
-          </section>
+      <section
+        className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2 xl:grid-cols-4"
+        aria-label="Statistiques du dossier"
+      >
+        <StatCell
+          icon={User}
+          label="Complétude"
+          value={`${completionPct}%`}
+          foot={`${completedCount} / ${checklistDone.length} sections`}
+        />
+        <StatCell
+          icon={Shield}
+          label="Accès actifs"
+          value={String(activeCount)}
+          foot={
+            activeCount > 0
+              ? `organisation${activeCount > 1 ? "s" : ""} autorisée${activeCount > 1 ? "s" : ""}`
+              : "aucune organisation"
+          }
+        />
+        <StatCell
+          icon={FolderOpen}
+          label="Dossiers générés"
+          value={String(docsGenerated)}
+          foot="depuis vos données"
+        />
+        <StatCell
+          icon={Mail}
+          label="Invitations"
+          value={String(pendingCount)}
+          foot={pendingCount > 0 ? "en attente de décision" : "rien à traiter"}
+        />
+      </section>
 
-          <section className="grid grid-cols-1 gap-5 lg:grid-cols-[0.9fr_1.1fr] 2xl:grid-cols-[0.8fr_1.2fr]">
-            <article className="rounded-lg border border-border bg-surface p-5 2xl:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Accès candidat
-                  </p>
-                  <h2 className="mt-2 font-heading text-lg font-semibold">
-                    Qui peut accéder à votre profil ?
-                  </h2>
-                </div>
-              </div>
-              <div className="mt-5 space-y-2">
-                {activeOrganizations.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3">
-                    <p className="text-sm font-medium">
-                      Aucune organisation autorisée
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      Un accès est une autorisation donnée à une organisation
-                      pour consulter votre profil et générer un dossier.
-                    </p>
-                  </div>
-                ) : (
-                  activeOrganizations.slice(0, 4).map((org) => (
-                    <div
-                      key={org.organization_id}
-                      className="rounded-lg border border-border bg-background p-3"
-                    >
-                      <p className="text-sm font-medium">
-                        {org.organization_name}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                        Peut consulter vos données structurées candidat et
-                        générer un document de dossier.
-                      </p>
-                    </div>
-                  ))
-                )}
-                {activeOrganizations.length > 4 && (
-                  <p className="text-xs text-muted-foreground">
-                    +{activeOrganizations.length - 4} organisation
-                    {activeOrganizations.length - 4 > 1 ? "s" : ""} à consulter
-                    dans l’historique.
-                  </p>
-                )}
-              </div>
-              <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                Vous pouvez révoquer un accès à tout moment depuis la page
-                dédiée.
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.7fr_1fr]">
+        {/* Registre des accès */}
+        <article className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-line bg-surface">
+          <div className="flex items-center justify-between gap-3 px-5 pb-4 pt-[18px]">
+            <h2 className="font-heading text-[17px] font-semibold">
+              Registre des accès
+            </h2>
+            {activeCount > 0 && (
+              <StatusPill tone="positive">
+                {activeCount} actif{activeCount > 1 ? "s" : ""}
+              </StatusPill>
+            )}
+          </div>
+          {orgs.length === 0 ? (
+            <div className="mx-5 mb-5 rounded-md border border-dashed border-line-strong bg-paper-2 p-4">
+              <p className="text-sm font-medium">
+                Aucune organisation autorisée
               </p>
-              <Link
-                href="/candidate/access"
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "sm" }),
-                  "mt-4",
-                )}
-              >
-                Gérer les accès
-              </Link>
-            </article>
-
-            <article className="rounded-lg border border-border bg-surface p-5 2xl:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Activité récente
-                  </p>
-                  <h2 className="mt-2 font-heading text-lg font-semibold">
-                    Ce qui s’est passé
-                  </h2>
-                </div>
-              </div>
-              <div className="mt-4">
-                <ActivityList groups={activityGroups} />
-              </div>
-              <Link
-                href="/candidate/access"
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "sm" }),
-                  "mt-4",
-                )}
-              >
-                Voir tout l’historique
-              </Link>
-            </article>
-          </section>
-        </main>
-
-        <aside className="min-w-0 space-y-5 xl:sticky xl:top-8 xl:self-start">
-          <section className="rounded-lg border border-border bg-surface p-5 2xl:p-6">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Progression
-            </p>
-            <h2 className="mt-2 font-heading text-lg font-semibold">
-              Compléter le profil
-            </h2>
-            <div className="mt-4 flex items-end justify-between gap-4">
-              <div>
-                <p className="text-3xl font-semibold text-primary">
-                  {profileProgressPct}%
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {completedChecklist}/{checklist.length} étapes complètes
-                </p>
-              </div>
-              <Link
-                href="/candidate/profile"
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
-                Modifier
-              </Link>
+              <p className="mt-1 text-[12.5px] leading-5 text-ink-3">
+                Un accès est une autorisation donnée à une organisation pour
+                consulter votre profil et générer un dossier. Les accès
+                apparaîtront ici, y compris révoqués — on n&apos;efface jamais
+                une trace.
+              </p>
             </div>
-            <ProfileProgressBar value={profileProgressPct} />
-            <ul className="mt-4 space-y-2">
-              {checklist.map((item) => (
-                <ChecklistRow key={item.label} item={item} />
-              ))}
-            </ul>
-          </section>
+          ) : (
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  {["Organisation", "Accordé le", "Statut", ""].map(
+                    (label, i) => (
+                      <th
+                        key={i}
+                        className="border-b border-line px-4 pb-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink-4"
+                      >
+                        {label}
+                      </th>
+                    ),
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {orgs.map((org) => {
+                  const pill =
+                    ORG_STATUS_PILLS[org.current_status] ??
+                    ORG_STATUS_PILLS.invited;
+                  const inactive =
+                    org.current_status === "revoked" ||
+                    org.current_status === "expired";
+                  const granted = grantedDate(org);
+                  return (
+                    <tr
+                      key={org.organization_id}
+                      onClick={() => router.push("/candidate/access")}
+                      className={cn(
+                        "cursor-pointer border-b border-line last:border-b-0 hover:bg-paper-2",
+                        inactive && "opacity-55",
+                      )}
+                    >
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-[11px]">
+                          <span className="grid size-[30px] place-items-center rounded-[7px] border border-line bg-paper-2 font-heading text-[13px] font-semibold text-ink-2">
+                            {orgInitials(org.organization_name)}
+                          </span>
+                          <span className="whitespace-nowrap text-sm font-medium">
+                            {org.organization_name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="j-meta text-[12.5px]">
+                          {granted ?? "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <StatusPill tone={pill.tone}>{pill.label}</StatusPill>
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <span className="text-[13.5px] font-medium text-ink-3">
+                          Détails
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </article>
 
-          <section className="rounded-lg border border-border bg-muted/20 p-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Ressource
-            </p>
-            <h2 className="mt-2 font-heading text-base font-semibold">
-              Modèles de dossier
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Quand l’essentiel est traité, comparez les formats de documents
-              générés depuis votre profil.
-            </p>
-            <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-              <span className="rounded-lg border border-border bg-background px-2 py-2">
-                Compact
+        {/* Rail droit */}
+        <div className="flex min-w-0 flex-col gap-5">
+          <article className="rounded-lg border border-accent-line bg-accent-soft-2 px-[22px] py-5">
+            <div className="mb-2.5 flex items-center gap-2">
+              <span className="grid size-8 place-items-center rounded-lg border border-accent-line bg-accent-soft text-primary">
+                <FolderOpen className="size-4" strokeWidth={1.6} />
               </span>
-              <span className="rounded-lg border border-border bg-background px-2 py-2">
-                Technique
-              </span>
-              <span className="rounded-lg border border-border bg-background px-2 py-2">
-                Complet
-              </span>
+              <h2 className="font-heading text-[16.5px] font-semibold">
+                Générer un dossier sur mesure
+              </h2>
             </div>
+            <p className="mb-4 text-[13.5px] leading-relaxed text-ink-2">
+              Sélectionnez un modèle : Jorg compose un dossier ciblé à partir de
+              vos données vérifiées.
+            </p>
             <button
               type="button"
               onClick={() => setModelDialogOpen(true)}
               className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "mt-4 w-full",
+                buttonVariants({ variant: "default" }),
+                "w-full justify-center",
               )}
             >
-              Parcourir les modèles
+              <Plus className="size-4" strokeWidth={1.6} />
+              Prévisualiser un dossier
             </button>
-          </section>
-        </aside>
-      </div>
+          </article>
+
+          <article className="flex-1 rounded-lg border border-line bg-surface px-[22px] py-5">
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <h2 className="font-heading text-[17px] font-semibold">
+                Journal
+              </h2>
+              <Link
+                href="/candidate/access"
+                className="text-[13.5px] font-medium text-ink-3 hover:text-primary"
+              >
+                Tout voir
+              </Link>
+            </div>
+            {activityGroups.length === 0 ? (
+              <p className="py-3 text-sm text-ink-3">
+                Les invitations, accès et dossiers générés apparaîtront ici.
+              </p>
+            ) : (
+              <div className="flex flex-col">
+                {activityGroups.slice(0, 4).map((group, i, list) => {
+                  const Icon = ACTIVITY_ICONS[group.type] ?? Eye;
+                  const accent = ACTIVITY_ACCENT.includes(group.type);
+                  return (
+                    <Link
+                      key={group.key}
+                      href="/candidate/access"
+                      className="group relative flex gap-3.5 py-3.5"
+                    >
+                      {i < list.length - 1 && (
+                        <span
+                          className="absolute bottom-[-2px] left-3.5 top-8 w-px bg-line"
+                          aria-hidden
+                        />
+                      )}
+                      <span
+                        className={cn(
+                          "z-10 grid size-[29px] shrink-0 place-items-center rounded-lg border",
+                          accent
+                            ? "border-accent-line bg-accent-soft text-primary"
+                            : "border-line bg-paper-2 text-ink-3",
+                        )}
+                      >
+                        <Icon className="size-3.5" strokeWidth={1.6} />
+                      </span>
+                      <span className="min-w-0 pt-0.5">
+                        <span className="block text-sm group-hover:text-primary">
+                          <b className="font-semibold">
+                            {group.organizationName}
+                          </b>{" "}
+                          · {ACTIVITY_LABELS[group.type]}
+                          {group.count > 1 ? ` (${group.count})` : ""}
+                        </span>
+                        <span className="mt-0.5 block font-mono text-[11.5px] text-ink-4">
+                          {relativeDate(group.latestAt)}
+                        </span>
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </article>
+        </div>
+      </section>
 
       <CandidateGenerateDossierDialog
         open={modelDialogOpen}
