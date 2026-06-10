@@ -1,4 +1,5 @@
-/* Fonts: Space Grotesk (headings) + DM Sans (body), loaded via next/font/google */
+/* Fonts: IBM Plex Serif (headings) + IBM Plex Sans (body) + IBM Plex Mono (meta),
+   loaded via next/font/google. Tokens from mockup/design_handoff_jorg. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -12,8 +13,9 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-mono: monospace;
+  --font-mono: var(--font-mono);
   --font-heading: var(--font-heading);
+  --font-serif: var(--font-heading);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -65,6 +67,28 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-danger: var(--danger);
   --color-danger-foreground: var(--danger-foreground);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-paper-3: var(--paper-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-line-strong: var(--line-strong);
+  --color-positive: var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-border: var(--warn-border);
+  --color-positive-border: var(--positive-border);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-2: var(--accent-soft-2);
+  --color-accent-line: var(--accent-line);
+  --color-accent-ink: var(--accent-ink);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -76,23 +100,45 @@
 
 :root,
 [data-theme="light"] {
-  --bg-app: #f7f6fb;
-  --bg-surface: #ffffff;
-  --bg-surface-elevated: #faf9ff;
-  --border-subtle: #e1ddec;
-  --border-strong: #c9c1dd;
-  --text-primary: #171321;
-  --text-secondary: #5f5870;
-  --text-muted: #817991;
-  --brand-primary: #6f55d8;
-  --brand-primary-hover: #5e46c2;
-  --brand-primary-soft: rgba(111, 85, 216, 0.1);
-  --brand-primary-border: rgba(111, 85, 216, 0.28);
-  --accent-amber: #b7791f;
-  --accent-amber-soft: rgba(183, 121, 31, 0.12);
-  --accent-amber-border: rgba(183, 121, 31, 0.3);
-  --success: #1f7a4d;
-  --success-soft: rgba(31, 122, 77, 0.12);
+  /* Handoff tokens (mockup/design_handoff_jorg/jorg-system.css) */
+  --paper: #ffffff;
+  --paper-2: #faf8f4;
+  --paper-3: #f3f1ec;
+  --ink: #1d1b17;
+  --ink-2: #57524a;
+  --ink-3: #8b857a;
+  --ink-4: #b4afa4;
+  --line: #e8e4db;
+  --line-2: #ded9ce;
+  --line-strong: #cfc9bc;
+  --positive: #3c7a5b;
+  --positive-soft: #e8f0ea;
+  --warn: #9a6a22;
+  --warn-soft: #f4ecdd;
+  --accent-soft: color-mix(in srgb, var(--brand-primary) 12%, var(--paper));
+  --accent-soft-2: color-mix(in srgb, var(--brand-primary) 7%, var(--paper));
+  --accent-line: color-mix(in srgb, var(--brand-primary) 30%, var(--paper));
+  --accent-ink: #ffffff;
+  --shadow-sm: 0 1px 0 rgba(29, 27, 23, 0.02), 0 1px 2px rgba(29, 27, 23, 0.04);
+  --shadow-md: 0 2px 4px rgba(29, 27, 23, 0.04), 0 8px 24px rgba(29, 27, 23, 0.05);
+
+  --bg-app: #f1efea;
+  --bg-surface: var(--paper);
+  --bg-surface-elevated: var(--paper-2);
+  --border-subtle: var(--line);
+  --border-strong: var(--line-strong);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-2);
+  --text-muted: var(--ink-3);
+  --brand-primary: #5b53d6;
+  --brand-primary-hover: color-mix(in srgb, #5b53d6 88%, black);
+  --brand-primary-soft: var(--accent-soft-2);
+  --brand-primary-border: var(--accent-line);
+  --accent-amber: var(--warn);
+  --accent-amber-soft: var(--warn-soft);
+  --accent-amber-border: color-mix(in srgb, var(--warn) 35%, var(--line));
+  --success: var(--positive);
+  --success-soft: var(--positive-soft);
   --danger: #b42318;
 
   --background: var(--bg-app);
@@ -105,7 +151,7 @@
   --popover: var(--surface);
   --popover-foreground: var(--foreground);
   --primary: var(--brand-primary);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--accent-ink);
   --primary-soft: var(--brand-primary-soft);
   --secondary: var(--surface-muted);
   --secondary-foreground: var(--foreground);
@@ -116,6 +162,8 @@
   --destructive: var(--danger);
   --danger: var(--destructive);
   --danger-foreground: #ffffff;
+  --warn-border: color-mix(in srgb, var(--warn) 35%, var(--line));
+  --positive-border: color-mix(in srgb, var(--positive) 35%, var(--line));
   --success-foreground: #ffffff;
   --warning: var(--accent-amber);
   --warning-foreground: var(--text-primary);
@@ -140,23 +188,41 @@
 
 [data-theme="dark"],
 .dark {
-  --bg-app: #090812;
-  --bg-surface: #15131f;
-  --bg-surface-elevated: #1b1826;
-  --border-subtle: #2a2637;
-  --border-strong: #3a334a;
-  --text-primary: #f4f1ff;
-  --text-secondary: #b9b2cc;
-  --text-muted: #817a95;
-  --brand-primary: #8b6ff6;
-  --brand-primary-hover: #9b84ff;
-  --brand-primary-soft: rgba(139, 111, 246, 0.14);
-  --brand-primary-border: rgba(139, 111, 246, 0.35);
-  --accent-amber: #f2b84b;
-  --accent-amber-soft: rgba(242, 184, 75, 0.14);
-  --accent-amber-border: rgba(242, 184, 75, 0.35);
-  --success: #5fd18b;
-  --success-soft: rgba(95, 209, 139, 0.14);
+  --paper: #1a191f;
+  --paper-2: #201e26;
+  --paper-3: #16151b;
+  --ink: #f0eee8;
+  --ink-2: #aaa5ad;
+  --ink-3: #79747e;
+  --ink-4: #565160;
+  --line: #2c2a33;
+  --line-2: #353240;
+  --line-strong: #423e4d;
+  --positive: #6dae8a;
+  --positive-soft: #1b2a23;
+  --warn: #cca15f;
+  --warn-soft: #2a2419;
+  --accent-ink: #16151b;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.28);
+
+  --bg-app: #121116;
+  --bg-surface: var(--paper);
+  --bg-surface-elevated: var(--paper-2);
+  --border-subtle: var(--line);
+  --border-strong: var(--line-strong);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-2);
+  --text-muted: var(--ink-3);
+  --brand-primary: #8d86ef;
+  --brand-primary-hover: color-mix(in srgb, #8d86ef 88%, white);
+  --brand-primary-soft: var(--accent-soft-2);
+  --brand-primary-border: var(--accent-line);
+  --accent-amber: var(--warn);
+  --accent-amber-soft: var(--warn-soft);
+  --accent-amber-border: color-mix(in srgb, var(--warn) 35%, var(--line));
+  --success: var(--positive);
+  --success-soft: var(--positive-soft);
   --danger: #f97066;
 
   --background: var(--bg-app);
@@ -169,7 +235,7 @@
   --popover: var(--surface);
   --popover-foreground: var(--foreground);
   --primary: var(--brand-primary);
-  --primary-foreground: var(--bg-app);
+  --primary-foreground: var(--accent-ink);
   --primary-soft: var(--brand-primary-soft);
   --secondary: var(--surface-muted);
   --secondary-foreground: var(--foreground);
@@ -191,7 +257,7 @@
   --chart-3: var(--warning);
   --chart-4: oklch(0.72 0.08 250);
   --chart-5: oklch(0.74 0.06 320);
-  --sidebar: #0d0b16;
+  --sidebar: var(--paper-3);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
@@ -212,5 +278,28 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  ::selection {
+    background: var(--accent-line);
+  }
+}
+
+@layer components {
+  /* Patterns récurrents du design handoff (mockup/design_handoff_jorg) */
+  .j-overline {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .j-meta {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.01em;
+    color: var(--ink-3);
   }
 }
