@@ -3,11 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Label } from "@/components/ui/label";
+import { StatusPill } from "@/components/ui/StatusPill";
 import {
   Select,
   SelectContent,
@@ -133,7 +132,7 @@ export default function OpportunityDetailPage() {
     }
   }
 
-  if (loading) return <p className="text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="text-ink-3">Chargement…</p>;
   if (error)
     return (
       <p role="alert" className="text-sm text-destructive">
@@ -142,101 +141,117 @@ export default function OpportunityDetailPage() {
     );
   if (!opp) return null;
 
+  const closed = opp.status !== "open";
+
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="flex w-full flex-col">
       <Breadcrumb
         items={[
           { label: "Missions", href: "/recruiter/opportunities" },
           { label: opp.title },
         ]}
       />
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{opp.title}</h1>
-          {opp.description && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              {opp.description}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={opp.status === "open" ? "default" : "secondary"}>
-            {opp.status === "open" ? "Ouverte" : "Clôturée"}
-          </Badge>
-          {opp.status === "open" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClose}
-              disabled={closing}
-            >
-              {closing ? "…" : "Clôturer"}
-            </Button>
-          )}
-        </div>
-      </div>
+      <div className="mx-auto flex w-full max-w-[860px] flex-col gap-[18px] pt-6">
+        <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="j-overline">Mission</p>
+            <h1 className="mt-2 font-heading text-[27px] font-semibold leading-tight">
+              {opp.title}
+            </h1>
+            {opp.description && (
+              <p className="mt-1 max-w-[560px] text-[15px] text-ink-2">
+                {opp.description}
+              </p>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <StatusPill tone={closed ? "muted" : "positive"}>
+              {closed ? "clôturée" : "ouverte"}
+            </StatusPill>
+            {!closed && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClose}
+                disabled={closing}
+              >
+                {closing ? "…" : "Clôturer"}
+              </Button>
+            )}
+          </div>
+        </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Shortlist ({opp.shortlist.length} candidat
-            {opp.shortlist.length !== 1 ? "s" : ""})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+        <section className="overflow-hidden rounded-lg border border-line bg-surface">
+          <div className="flex items-center gap-2 border-b border-line px-[22px] pb-3.5 pt-4">
+            <h2 className="font-heading text-[17px] font-semibold">
+              Shortlist
+            </h2>
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-accent-line bg-accent-soft px-1.5 font-mono text-[11px] font-medium text-primary">
+              {opp.shortlist.length}
+            </span>
+          </div>
           {opp.shortlist.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="px-[22px] py-4 text-sm text-ink-3">
               Aucun candidat. Ajoutez-en depuis la{" "}
-              <Link href="/recruiter/candidates" className="underline">
+              <Link
+                href="/recruiter/candidates"
+                className="font-medium text-primary hover:underline"
+              >
                 liste des candidats
               </Link>
               .
             </p>
           ) : (
-            <ul className="space-y-2">
-              {opp.shortlist.map((c: ShortlistCandidateInfo) => (
-                <li
-                  key={c.user_id}
-                  className="flex items-center justify-between gap-2 rounded border p-2 text-sm"
-                >
-                  <span>
+            opp.shortlist.map((c: ShortlistCandidateInfo) => (
+              <div
+                key={c.user_id}
+                className="flex items-center gap-3 border-b border-line px-[22px] py-3 last:border-b-0"
+              >
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[12.5px] font-semibold text-primary">
+                  {[c.first_name?.[0], c.last_name?.[0]]
+                    .filter(Boolean)
+                    .join("")
+                    .toUpperCase() || "?"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
                     {c.first_name && c.last_name
                       ? `${c.first_name} ${c.last_name}`
                       : c.email}
-                    {c.title && (
-                      <span className="ml-2 text-muted-foreground">
-                        - {c.title}
-                      </span>
-                    )}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemove(c.user_id)}
-                  >
-                    Retirer
-                  </Button>
-                </li>
-              ))}
-            </ul>
+                  </p>
+                  {c.title && <p className="text-xs text-ink-3">{c.title}</p>}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-ink-2"
+                  onClick={() => handleRemove(c.user_id)}
+                >
+                  Retirer
+                </Button>
+              </div>
+            ))
           )}
-        </CardContent>
-      </Card>
+        </section>
 
-      {opp.shortlist.length > 0 && templates.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Générer tous les dossiers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleBulkGenerate} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Modele de dossier</Label>
+        {opp.shortlist.length > 0 && templates.length > 0 && (
+          <section className="rounded-lg border border-accent-line bg-accent-soft-2 px-[26px] py-[22px]">
+            <h2 className="font-heading text-[17px] font-semibold">
+              Générer tous les dossiers
+            </h2>
+            <form
+              onSubmit={handleBulkGenerate}
+              className="mt-4 max-w-xl space-y-4"
+            >
+              <div className="space-y-1.5">
+                <Label className="text-[13.5px] text-ink-2">
+                  Modèle de dossier
+                </Label>
                 <Select
                   value={genTemplateId}
                   onValueChange={(v) => setGenTemplateId(v ?? "")}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-surface">
                     <SelectValue placeholder="Choisir un modèle de dossier..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -248,13 +263,13 @@ export default function OpportunityDetailPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Format</Label>
+              <div className="space-y-1.5">
+                <Label className="text-[13.5px] text-ink-2">Format</Label>
                 <Select
                   value={genFormat}
                   onValueChange={(v) => setGenFormat(v ?? "docx")}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-surface">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -290,9 +305,9 @@ export default function OpportunityDetailPage() {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </section>
+        )}
+      </div>
     </div>
   );
 }
