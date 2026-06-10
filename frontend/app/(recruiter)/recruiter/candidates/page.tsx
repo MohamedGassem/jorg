@@ -1,13 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { ChevronDown, ChevronUp, Search, UserPlus, X } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -18,7 +15,7 @@ import {
 import Link from "next/link";
 import { InviteCandidateDialog } from "@/components/invite-candidate-dialog";
 import { GenerateDossierDialog } from "@/components/generate-dossier-dialog";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { StatusPill, type StatusTone } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
@@ -26,11 +23,10 @@ import {
   AVAILABILITY_LABELS,
   CONTRACT_TYPE_LABELS,
   DOMAIN_LABELS,
-  INVITATION_STATUS_LABELS,
-  INVITATION_STATUS_VARIANTS,
   WORK_MODE_LABELS,
   labelFor,
 } from "@/lib/labels";
+import { cn } from "@/lib/utils";
 import type {
   AccessibleCandidateRead,
   BuiltinTemplate,
@@ -50,6 +46,24 @@ const EMPTY_FILTERS = {
   domain: "",
   q: "",
 };
+
+const INVITATION_PILLS: Record<string, { label: string; tone: StatusTone }> = {
+  pending: { label: "en attente", tone: "warn" },
+  accepted: { label: "acceptée", tone: "positive" },
+  rejected: { label: "refusée", tone: "muted" },
+  expired: { label: "expirée", tone: "muted" },
+};
+
+function initialsOf(c: AccessibleCandidateRead): string {
+  return (
+    [c.first_name?.[0], c.last_name?.[0]]
+      .filter(Boolean)
+      .join("")
+      .toUpperCase() ||
+    c.email[0]?.toUpperCase() ||
+    "?"
+  );
+}
 
 function CandidateExperiencePanel({
   candidate,
@@ -81,23 +95,23 @@ function CandidateExperiencePanel({
     : 0;
 
   return (
-    <div className="mt-3 rounded-lg border border-border/40 bg-muted/5">
+    <div className="rounded-md border border-line bg-surface">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
+      <div className="flex items-center justify-between border-b border-line px-3 py-2">
         {activeSkillRefId ? (
           <p className="text-xs font-medium text-primary">
             {activeSkillName} ·{" "}
-            <span className="font-normal text-muted-foreground">
+            <span className="font-normal text-ink-3">
               {totalCount} réalisation{totalCount > 1 ? "s" : ""} dans{" "}
               {matchingExpCount} expérience{matchingExpCount > 1 ? "s" : ""}
             </span>
           </p>
         ) : (
-          <p className="text-xs font-medium text-foreground">Expériences</p>
+          <p className="text-xs font-medium">Expériences</p>
         )}
         <div className="flex items-center gap-3">
           {activeSkillRefId && (
-            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-ink-3">
               <input
                 type="checkbox"
                 checked={focusOnly}
@@ -111,7 +125,7 @@ function CandidateExperiencePanel({
             type="button"
             aria-label="Fermer"
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
+            className="text-ink-3 hover:text-ink"
           >
             <X className="size-3.5" />
           </button>
@@ -121,7 +135,7 @@ function CandidateExperiencePanel({
       {/* Experience list */}
       <div className="space-y-2 p-3">
         {candidate.experiences.length === 0 && (
-          <p className="text-xs italic text-muted-foreground">
+          <p className="text-xs italic text-ink-3">
             Aucune expérience renseignée.
           </p>
         )}
@@ -136,12 +150,12 @@ function CandidateExperiencePanel({
             return null;
 
           return (
-            <div key={exp.id} className="rounded-md bg-background/60 px-3 py-2">
+            <div key={exp.id} className="rounded-md bg-paper-2 px-3 py-2">
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="text-xs font-semibold">
                   {exp.client_name} - {exp.role}
                 </span>
-                <span className="text-[10px] text-muted-foreground">
+                <span className="font-mono text-[10px] text-ink-3">
                   {exp.start_date}
                   {exp.end_date
                     ? ` → ${exp.end_date}`
@@ -151,7 +165,7 @@ function CandidateExperiencePanel({
                 </span>
               </div>
               {exp.achievements.length === 0 ? (
-                <p className="text-[11px] italic text-muted-foreground">
+                <p className="text-[11px] italic text-ink-3">
                   Aucune réalisation.
                 </p>
               ) : (
@@ -166,28 +180,36 @@ function CandidateExperiencePanel({
                     return (
                       <div
                         key={ach.id}
-                        className={`flex items-start gap-1.5 rounded px-1.5 py-1 ${
-                          activeSkillRefId
-                            ? isMatch
-                              ? "bg-primary/10"
-                              : "opacity-40"
-                            : ""
-                        }`}
+                        className={cn(
+                          "flex items-start gap-1.5 rounded px-1.5 py-1",
+                          activeSkillRefId &&
+                            (isMatch ? "bg-accent-soft-2" : "opacity-40"),
+                        )}
                       >
                         <span
-                          className={`mt-0.5 text-xs ${activeSkillRefId && isMatch ? "text-primary" : "text-muted-foreground"}`}
+                          className={cn(
+                            "mt-0.5 text-xs",
+                            activeSkillRefId && isMatch
+                              ? "text-primary"
+                              : "text-ink-3",
+                          )}
                         >
                           •
                         </span>
                         <div className="min-w-0 flex-1">
                           <p
-                            className={`text-xs ${activeSkillRefId && isMatch ? "font-medium text-foreground" : "text-muted-foreground"}`}
+                            className={cn(
+                              "text-xs",
+                              activeSkillRefId && isMatch
+                                ? "font-medium text-ink"
+                                : "text-ink-2",
+                            )}
                           >
                             {ach.description}
                           </p>
                           {ach.impact &&
                             (activeSkillRefId ? isMatch : true) && (
-                              <p className="text-[10px] italic text-muted-foreground">
+                              <p className="text-[10px] italic text-ink-3">
                                 {ach.impact}
                               </p>
                             )}
@@ -299,7 +321,7 @@ export default function CandidatesPage() {
     setFilters(next);
     if (!orgId) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    const isText = ["skill", "location", "q"].includes(key);
+    const isText = ["skill", "location", "q", "max_daily_rate"].includes(key);
     if (isText) {
       debounceRef.current = setTimeout(() => fetchCandidates(orgId, next), 300);
     } else {
@@ -337,26 +359,39 @@ export default function CandidatesPage() {
     }
   }
 
-  if (loading) return <p className="text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="text-ink-3">Chargement…</p>;
   if (!orgId)
     return (
-      <p className="text-muted-foreground">
+      <p className="text-ink-3">
         Associez-vous à une organisation d&apos;abord.
       </p>
     );
 
+  const pendingInvitations = invitations.filter(
+    (i) => i.status === "pending",
+  ).length;
+  const hasFilters = Object.values(filters).some(Boolean);
+
   return (
-    <div className="max-w-4xl space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="flex w-full flex-col gap-[18px]">
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Candidats</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Consultez les profils autorisés, filtrez les compétences utiles et
-            générez un dossier à partir du modèle adapté.
+          <p className="j-overline">
+            {candidates.length} accès actif{candidates.length > 1 ? "s" : ""}
+          </p>
+          <h1 className="mt-2 font-heading text-[27px] font-semibold leading-tight">
+            Candidats
+          </h1>
+          <p className="mt-1 max-w-[560px] text-[15px] text-ink-2">
+            Les candidats qui vous ont accordé l&apos;accès à leur dossier.
+            Consultez, comparez, générez un dossier ciblé.
           </p>
         </div>
-        <Button onClick={() => setInviteOpen(true)}>Inviter un candidat</Button>
-      </div>
+        <Button onClick={() => setInviteOpen(true)} className="w-fit">
+          <UserPlus className="size-4" strokeWidth={1.6} />
+          Inviter un candidat
+        </Button>
+      </header>
 
       <InviteCandidateDialog
         open={inviteOpen}
@@ -378,409 +413,539 @@ export default function CandidatesPage() {
         />
       )}
 
-      <Card>
-        <CardContent className="pt-4">
-          <div className="mb-4">
-            <h2 className="text-sm font-semibold">
-              Trouver un profil autorisé
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Les filtres agissent uniquement sur les candidats qui ont déjà
-              donné leur accord d&apos;accès.
-            </p>
+      {/* Barre de filtres */}
+      <div className="rounded-lg border border-line bg-surface px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[220px] max-w-[340px] flex-1">
+            <Search
+              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-3"
+              strokeWidth={1.6}
+            />
+            <Input
+              placeholder="Rechercher un nom, un titre…"
+              className="pl-9"
+              value={filters.q}
+              onChange={(e) => handleFilterChange("q", e.target.value)}
+            />
           </div>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div className="space-y-1">
-              <Label>Disponibilité</Label>
-              <Select
-                value={filters.availability_status}
-                onValueChange={(v) =>
-                  handleFilterChange("availability_status", v)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Toutes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Toutes</SelectItem>
-                  {Object.entries(AVAILABILITY_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Mode de travail</Label>
-              <Select
-                value={filters.work_mode}
-                onValueChange={(v) => handleFilterChange("work_mode", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Tous" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Tous</SelectItem>
-                  {Object.entries(WORK_MODE_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Contrat</Label>
-              <Select
-                value={filters.contract_type}
-                onValueChange={(v) => handleFilterChange("contract_type", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Tous" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Tous</SelectItem>
-                  {Object.entries(CONTRACT_TYPE_LABELS).map(
-                    ([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ),
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>TJM max (€/j)</Label>
-              <Input
-                type="number"
-                placeholder="ex: 800"
-                value={filters.max_daily_rate}
-                onChange={(e) =>
-                  handleFilterChange("max_daily_rate", e.target.value)
-                }
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Compétence</Label>
-              <Input
-                placeholder="ex: Python"
-                value={filters.skill}
-                onChange={(e) => handleFilterChange("skill", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Localisation</Label>
-              <Input
-                placeholder="ex: Paris"
-                value={filters.location}
-                onChange={(e) => handleFilterChange("location", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Domaine</Label>
-              <Select
-                value={filters.domain}
-                onValueChange={(v) => handleFilterChange("domain", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Tous" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Tous</SelectItem>
-                  {VALID_DOMAINS.map((d) => (
-                    <SelectItem key={d} value={d}>
-                      {DOMAIN_LABELS[d] ?? d}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Recherche libre</Label>
-              <Input
-                placeholder="titre, résumé…"
-                value={filters.q}
-                onChange={(e) => handleFilterChange("q", e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">
+          <span className="hidden h-6 w-px bg-line sm:block" aria-hidden />
+          <Select
+            value={filters.availability_status}
+            onValueChange={(v) => handleFilterChange("availability_status", v)}
+          >
+            <SelectTrigger className="w-auto gap-2">
+              <span className="text-xs text-ink-3">Dispo</span>
+              <SelectValue placeholder="Toutes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Toutes</SelectItem>
+              {Object.entries(AVAILABILITY_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.work_mode}
+            onValueChange={(v) => handleFilterChange("work_mode", v)}
+          >
+            <SelectTrigger className="w-auto gap-2">
+              <span className="text-xs text-ink-3">Mode</span>
+              <SelectValue placeholder="Tous" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Tous</SelectItem>
+              {Object.entries(WORK_MODE_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.contract_type}
+            onValueChange={(v) => handleFilterChange("contract_type", v)}
+          >
+            <SelectTrigger className="w-auto gap-2">
+              <span className="text-xs text-ink-3">Contrat</span>
+              <SelectValue placeholder="Tous" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Tous</SelectItem>
+              {Object.entries(CONTRACT_TYPE_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.domain}
+            onValueChange={(v) => handleFilterChange("domain", v)}
+          >
+            <SelectTrigger className="w-auto gap-2">
+              <span className="text-xs text-ink-3">Domaine</span>
+              <SelectValue placeholder="Tous" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Tous</SelectItem>
+              {VALID_DOMAINS.map((d) => (
+                <SelectItem key={d} value={d}>
+                  {DOMAIN_LABELS[d] ?? d}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            placeholder="Compétence"
+            className="w-32"
+            value={filters.skill}
+            onChange={(e) => handleFilterChange("skill", e.target.value)}
+          />
+          <Input
+            placeholder="Localisation"
+            className="w-32"
+            value={filters.location}
+            onChange={(e) => handleFilterChange("location", e.target.value)}
+          />
+          <Input
+            type="number"
+            placeholder="TJM max"
+            className="w-28"
+            value={filters.max_daily_rate}
+            onChange={(e) =>
+              handleFilterChange("max_daily_rate", e.target.value)
+            }
+          />
+          <span className="ml-auto flex items-center gap-3">
+            <span className="j-meta text-xs">
               {candidates.length} candidat{candidates.length > 1 ? "s" : ""}
             </span>
-            <Button variant="outline" size="sm" onClick={resetFilters}>
-              Réinitialiser
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="text-[13px] font-medium text-ink-3 hover:text-primary"
+              >
+                Réinitialiser
+              </button>
+            )}
+          </span>
+        </div>
+      </div>
 
-      {/* Sent invitations collapsible */}
+      {/* Invitations envoyées */}
       {invitations.length > 0 && (
-        <div>
+        <section className="rounded-lg border border-line bg-surface">
           <button
             type="button"
             onClick={() => setShowInvitations((v) => !v)}
-            className="text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            className="flex w-full items-center justify-between px-5 py-3.5 text-left"
+            aria-expanded={showInvitations}
           >
-            Invitations envoyées ({invitations.length})
-            {invitations.filter((i) => i.status === "pending").length > 0 &&
-              ` · ${invitations.filter((i) => i.status === "pending").length} en attente`}
+            <span className="font-heading text-[15px] font-semibold">
+              Invitations envoyées
+            </span>
+            <span className="flex items-center gap-2">
+              {pendingInvitations > 0 && (
+                <StatusPill tone="warn">
+                  {pendingInvitations} en attente
+                </StatusPill>
+              )}
+              {showInvitations ? (
+                <ChevronUp className="size-4 text-ink-3" strokeWidth={1.6} />
+              ) : (
+                <ChevronDown className="size-4 text-ink-3" strokeWidth={1.6} />
+              )}
+            </span>
           </button>
-          {showInvitations && (
-            <ul className="mt-2 space-y-1">
-              {invitations.map((inv) => (
-                <li
+          {showInvitations &&
+            invitations.map((inv) => {
+              const pill =
+                INVITATION_PILLS[inv.status] ?? INVITATION_PILLS.expired;
+              const inactive =
+                inv.status === "expired" || inv.status === "rejected";
+              return (
+                <div
                   key={inv.id}
-                  className="flex items-center justify-between rounded border border-border/40 px-3 py-2 text-sm"
+                  className={cn(
+                    "flex items-center gap-3 border-t border-line px-5 py-3",
+                    inactive && "opacity-55",
+                  )}
                 >
-                  <span className="text-muted-foreground">
+                  <span className="min-w-0 flex-1 truncate text-sm">
                     {inv.candidate_email}
                   </span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(inv.expires_at).toLocaleDateString("fr-FR")}
-                    </span>
-                    <StatusBadge
-                      status={inv.status}
-                      labels={INVITATION_STATUS_LABELS}
-                      variants={INVITATION_STATUS_VARIANTS}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                  <span className="j-meta text-[12.5px]">
+                    expire le{" "}
+                    {new Date(inv.expires_at).toLocaleDateString("fr-FR")}
+                  </span>
+                  <StatusPill tone={pill.tone}>{pill.label}</StatusPill>
+                </div>
+              );
+            })}
+        </section>
       )}
 
       <ErrorAlert error={error ?? candidatesError} />
+
       {candidates.length === 0 ? (
-        <EmptyState
-          message="Aucun candidat autorisé ne correspond à cette recherche."
-          description="Essayez d'élargir les filtres ou invitez un candidat pour obtenir son accord d'accès."
-          action={
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={resetFilters}>
+        <section className="mx-auto w-full max-w-[640px] rounded-lg border border-line bg-surface px-7 py-8 text-center">
+          <h2 className="font-heading text-[19px] font-semibold">
+            {hasFilters
+              ? "Aucun candidat ne correspond à cette recherche"
+              : "Aucun candidat accessible pour le moment"}
+          </h2>
+          <p className="mx-auto mt-2 max-w-[440px] text-sm text-ink-2">
+            Un dossier candidat n&apos;est consultable qu&apos;avec
+            l&apos;accord explicite de son propriétaire.
+          </p>
+          <div className="mt-6 grid grid-cols-1 gap-3 text-left sm:grid-cols-3">
+            {[
+              [
+                "1",
+                "Invitez",
+                "Envoyez une invitation par e-mail au candidat.",
+              ],
+              [
+                "2",
+                "Il accepte",
+                "Le candidat choisit d'accorder l'accès à son dossier.",
+              ],
+              [
+                "3",
+                "Vous exploitez",
+                "Consultez le profil et générez des dossiers ciblés.",
+              ],
+            ].map(([num, title, sub]) => (
+              <div
+                key={num}
+                className="rounded-md border border-line bg-paper-2 px-4 py-3"
+              >
+                <p className="j-overline text-[10px]">Étape {num}</p>
+                <p className="mt-1 text-sm font-semibold">{title}</p>
+                <p className="mt-0.5 text-[12.5px] leading-5 text-ink-3">
+                  {sub}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 flex justify-center gap-3">
+            {hasFilters && (
+              <Button variant="outline" onClick={resetFilters}>
                 Réinitialiser les filtres
               </Button>
-              <Button size="sm" onClick={() => setInviteOpen(true)}>
-                Inviter un candidat
-              </Button>
-            </div>
-          }
-        />
+            )}
+            <Button onClick={() => setInviteOpen(true)}>
+              <UserPlus className="size-4" strokeWidth={1.6} />
+              Inviter un candidat
+            </Button>
+          </div>
+        </section>
       ) : (
-        <ul className="space-y-3" role="list">
-          {candidates.map((c) => {
-            const isActive = activeSkillFilter?.candidateId === c.user_id;
-            const availabilityLabel = labelFor(
-              AVAILABILITY_LABELS,
-              c.availability_status,
-            );
-            const workModeLabel = labelFor(WORK_MODE_LABELS, c.work_mode);
+        <section className="overflow-x-auto rounded-lg border border-line bg-surface">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr>
+                {[
+                  "Candidat",
+                  "Compétences clés",
+                  "Exp.",
+                  "TJM",
+                  "Dispo",
+                  "",
+                ].map((label, i) => (
+                  <th
+                    key={i}
+                    className="border-b border-line px-4 pb-3 pt-4 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink-4"
+                  >
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {candidates.map((c) => {
+                const isActive = activeSkillFilter?.candidateId === c.user_id;
+                const expanded = expandedCandidates.has(c.user_id) || isActive;
+                const name =
+                  c.first_name && c.last_name
+                    ? `${c.first_name} ${c.last_name}`
+                    : c.email;
 
-            // Collect unique skills from all experiences
-            const skillMap = new Map<string, string>();
-            for (const exp of c.experiences) {
-              for (const u of exp.skill_usages) {
-                if (!skillMap.has(u.skill_ref_id)) {
-                  skillMap.set(u.skill_ref_id, u.skill_ref.name);
+                const skillMap = new Map<string, string>();
+                for (const exp of c.experiences) {
+                  for (const u of exp.skill_usages) {
+                    if (!skillMap.has(u.skill_ref_id)) {
+                      skillMap.set(u.skill_ref_id, u.skill_ref.name);
+                    }
+                  }
                 }
-              }
-            }
-            const expSkills = Array.from(skillMap.entries()).map(
-              ([id, name]) => ({
-                id,
-                name,
-              }),
-            );
+                const expSkills = Array.from(skillMap.entries()).map(
+                  ([id, skillName]) => ({ id, name: skillName }),
+                );
 
-            return (
-              <li key={c.user_id}>
-                <Card>
-                  <CardHeader className="pb-1">
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-base">
-                        {c.first_name && c.last_name
-                          ? `${c.first_name} ${c.last_name}`
-                          : c.email}
-                      </CardTitle>
-                      {c.experiences.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => toggleCandidateExpand(c.user_id)}
-                          className="ml-2 mt-0.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          {expandedCandidates.has(c.user_id) ? (
-                            <>
-                              <ChevronUp className="size-3.5" /> Réduire
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="size-3.5" /> Expériences (
-                              {c.experiences.length})
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm text-muted-foreground">
-                    {c.title && <p>{c.title}</p>}
-                    <div className="flex flex-wrap gap-3">
-                      {c.daily_rate && <span>TJM : {c.daily_rate} €/j</span>}
-                      {availabilityLabel && (
-                        <span>Dispo : {availabilityLabel}</span>
-                      )}
-                      {workModeLabel && <span>{workModeLabel}</span>}
-                    </div>
-
-                    {expSkills.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {expSkills.map((sk) => {
-                          const active =
-                            isActive && activeSkillFilter?.skillRefId === sk.id;
-                          return (
-                            <button
-                              key={sk.id}
-                              type="button"
-                              onClick={() => {
-                                if (active) {
-                                  setActiveSkillFilter(null);
-                                } else {
-                                  setActiveSkillFilter({
-                                    candidateId: c.user_id,
-                                    skillRefId: sk.id,
-                                    skillName: sk.name,
-                                  });
-                                }
-                              }}
-                              className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
-                                active
-                                  ? "border-primary/50 bg-primary/10 text-primary"
-                                  : "border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                              }`}
-                            >
-                              {sk.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {(expandedCandidates.has(c.user_id) || isActive) && (
-                      <CandidateExperiencePanel
-                        candidate={c}
-                        activeSkillRefId={
-                          isActive && activeSkillFilter
-                            ? activeSkillFilter.skillRefId
-                            : null
-                        }
-                        activeSkillName={
-                          isActive && activeSkillFilter
-                            ? activeSkillFilter.skillName
-                            : null
-                        }
-                        onClose={() => {
-                          setActiveSkillFilter(null);
-                          setExpandedCandidates((prev) => {
-                            const next = new Set(prev);
-                            next.delete(c.user_id);
-                            return next;
-                          });
-                        }}
-                      />
-                    )}
-
-                    <div className="flex items-center gap-2 pt-1 flex-wrap">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          setGenerateFor({
-                            candidateId: c.user_id,
-                            candidateName:
-                              c.first_name && c.last_name
-                                ? `${c.first_name} ${c.last_name}`
-                                : c.email,
-                          })
-                        }
-                      >
-                        Générer un dossier
-                      </Button>
-                      <Link href={`/recruiter/candidates/${c.user_id}`}>
-                        <Button size="sm" variant="ghost">
-                          Voir le profil →
-                        </Button>
-                      </Link>
-                    </div>
-
-                    <div className="pt-1 space-y-2">
-                      {addFeedback[c.user_id] && (
-                        <p className="text-xs text-muted-foreground">
-                          {addFeedback[c.user_id]}
-                        </p>
-                      )}
-                      {pickingFor === c.user_id ? (
-                        <div className="rounded border p-2 space-y-1">
-                          <p className="text-xs font-medium text-muted-foreground">
-                            Choisir une mission :
-                          </p>
-                          {opportunities.length === 0 ? (
-                            <p className="text-xs text-muted-foreground">
-                              Aucune mission ouverte.
-                            </p>
-                          ) : (
-                            opportunities.map((opp) => (
-                              <Button
-                                key={opp.id}
-                                size="sm"
-                                variant="outline"
-                                className="w-full justify-start text-xs"
-                                disabled={addingTo === opp.id}
-                                onClick={() =>
-                                  handleAddToOpportunity(c.user_id, opp.id)
-                                }
-                              >
-                                {opp.title}
-                              </Button>
-                            ))
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-xs"
-                            onClick={() => setPickingFor(null)}
-                          >
-                            Annuler
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setPickingFor(c.user_id);
-                            setAddFeedback((prev) => ({
-                              ...prev,
-                              [c.user_id]: "",
-                            }));
-                          }}
-                        >
-                          + Mission
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </li>
-            );
-          })}
-        </ul>
+                return (
+                  <CandidateRows
+                    key={c.user_id}
+                    candidate={c}
+                    name={name}
+                    expSkills={expSkills}
+                    expanded={expanded}
+                    isActive={isActive}
+                    activeSkillFilter={activeSkillFilter}
+                    setActiveSkillFilter={setActiveSkillFilter}
+                    toggleExpand={() => toggleCandidateExpand(c.user_id)}
+                    onGenerate={() =>
+                      setGenerateFor({
+                        candidateId: c.user_id,
+                        candidateName: name,
+                      })
+                    }
+                    closePanel={() => {
+                      setActiveSkillFilter(null);
+                      setExpandedCandidates((prev) => {
+                        const next = new Set(prev);
+                        next.delete(c.user_id);
+                        return next;
+                      });
+                    }}
+                    opportunities={opportunities}
+                    pickingFor={pickingFor}
+                    setPickingFor={setPickingFor}
+                    addingTo={addingTo}
+                    addFeedback={addFeedback[c.user_id]}
+                    clearFeedback={() =>
+                      setAddFeedback((prev) => ({ ...prev, [c.user_id]: "" }))
+                    }
+                    onAddToOpportunity={(oppId) =>
+                      handleAddToOpportunity(c.user_id, oppId)
+                    }
+                  />
+                );
+              })}
+            </tbody>
+          </table>
+        </section>
       )}
     </div>
+  );
+}
+
+function CandidateRows({
+  candidate: c,
+  name,
+  expSkills,
+  expanded,
+  isActive,
+  activeSkillFilter,
+  setActiveSkillFilter,
+  toggleExpand,
+  onGenerate,
+  closePanel,
+  opportunities,
+  pickingFor,
+  setPickingFor,
+  addingTo,
+  addFeedback,
+  clearFeedback,
+  onAddToOpportunity,
+}: {
+  candidate: AccessibleCandidateRead;
+  name: string;
+  expSkills: { id: string; name: string }[];
+  expanded: boolean;
+  isActive: boolean;
+  activeSkillFilter: {
+    candidateId: string;
+    skillRefId: string;
+    skillName: string;
+  } | null;
+  setActiveSkillFilter: (
+    f: { candidateId: string; skillRefId: string; skillName: string } | null,
+  ) => void;
+  toggleExpand: () => void;
+  onGenerate: () => void;
+  closePanel: () => void;
+  opportunities: OpportunityRead[];
+  pickingFor: string | null;
+  setPickingFor: (id: string | null) => void;
+  addingTo: string | null;
+  addFeedback?: string;
+  clearFeedback: () => void;
+  onAddToOpportunity: (oppId: string) => void;
+}) {
+  const availabilityLabel = labelFor(
+    AVAILABILITY_LABELS,
+    c.availability_status,
+  );
+
+  return (
+    <>
+      <tr className="border-b border-line last:border-b-0 hover:bg-paper-2">
+        <td className="px-4 py-3.5">
+          <div className="flex items-center gap-[11px]">
+            <span className="grid size-[34px] shrink-0 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[13px] font-semibold text-primary">
+              {initialsOf(c)}
+            </span>
+            <div className="min-w-0">
+              <p className="whitespace-nowrap text-sm font-medium">{name}</p>
+              {c.title && <p className="text-xs text-ink-3">{c.title}</p>}
+            </div>
+          </div>
+        </td>
+        <td className="px-4 py-3.5">
+          <div className="flex max-w-[260px] flex-wrap gap-1.5">
+            {expSkills.slice(0, 4).map((sk) => {
+              const active =
+                isActive && activeSkillFilter?.skillRefId === sk.id;
+              return (
+                <button
+                  key={sk.id}
+                  type="button"
+                  onClick={() =>
+                    active
+                      ? setActiveSkillFilter(null)
+                      : setActiveSkillFilter({
+                          candidateId: c.user_id,
+                          skillRefId: sk.id,
+                          skillName: sk.name,
+                        })
+                  }
+                  className={cn(
+                    "inline-flex h-[22px] items-center rounded-[5px] border px-2 font-mono text-[11px] font-medium transition-colors",
+                    active
+                      ? "border-primary bg-accent-soft text-primary"
+                      : "border-accent-line bg-accent-soft-2 text-primary hover:border-primary",
+                  )}
+                >
+                  {sk.name}
+                </button>
+              );
+            })}
+            {expSkills.length > 4 && (
+              <span className="j-meta text-[11px]">
+                +{expSkills.length - 4}
+              </span>
+            )}
+          </div>
+        </td>
+        <td className="px-4 py-3.5">
+          <span className="j-meta text-[12.5px]">
+            {c.experiences.length || "—"}
+          </span>
+        </td>
+        <td className="px-4 py-3.5">
+          <span className="j-meta text-[12.5px]">
+            {c.daily_rate ? `${c.daily_rate} €/j` : "—"}
+          </span>
+        </td>
+        <td className="px-4 py-3.5">
+          <span className="j-meta text-[12.5px]">
+            {availabilityLabel ?? "—"}
+          </span>
+        </td>
+        <td className="whitespace-nowrap px-4 py-3.5 text-right">
+          <div className="flex items-center justify-end gap-1.5">
+            <Button variant="ghost" size="sm" onClick={onGenerate}>
+              Générer
+            </Button>
+            <Link
+              href={`/recruiter/candidates/${c.user_id}`}
+              className={buttonVariants({ variant: "ghost", size: "sm" })}
+            >
+              Consulter
+            </Link>
+            {c.experiences.length > 0 && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={
+                  expanded ? "Réduire les expériences" : "Voir les expériences"
+                }
+                aria-expanded={expanded}
+                onClick={toggleExpand}
+              >
+                {expanded ? (
+                  <ChevronUp className="size-4" strokeWidth={1.6} />
+                ) : (
+                  <ChevronDown className="size-4" strokeWidth={1.6} />
+                )}
+              </Button>
+            )}
+          </div>
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="border-b border-line last:border-b-0">
+          <td colSpan={6} className="bg-paper-2/60 px-4 py-3">
+            <CandidateExperiencePanel
+              candidate={c}
+              activeSkillRefId={
+                isActive && activeSkillFilter
+                  ? activeSkillFilter.skillRefId
+                  : null
+              }
+              activeSkillName={
+                isActive && activeSkillFilter
+                  ? activeSkillFilter.skillName
+                  : null
+              }
+              onClose={closePanel}
+            />
+            <div className="mt-2 space-y-2">
+              {addFeedback && (
+                <p className="text-xs text-ink-3">{addFeedback}</p>
+              )}
+              {pickingFor === c.user_id ? (
+                <div className="space-y-1 rounded-md border border-line bg-surface p-2">
+                  <p className="text-xs font-medium text-ink-3">
+                    Choisir une mission :
+                  </p>
+                  {opportunities.length === 0 ? (
+                    <p className="text-xs text-ink-3">
+                      Aucune mission ouverte.
+                    </p>
+                  ) : (
+                    opportunities.map((opp) => (
+                      <Button
+                        key={opp.id}
+                        size="sm"
+                        variant="outline"
+                        className="w-full justify-start text-xs"
+                        disabled={addingTo === opp.id}
+                        onClick={() => onAddToOpportunity(opp.id)}
+                      >
+                        {opp.title}
+                      </Button>
+                    ))
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs"
+                    onClick={() => setPickingFor(null)}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setPickingFor(c.user_id);
+                    clearFeedback();
+                  }}
+                >
+                  + Mission
+                </Button>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
