@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BriefcaseBusiness,
   FileText,
+  FolderOpen,
   LayoutGrid,
   LogOut,
   Settings,
   Shield,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
@@ -16,7 +19,11 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { api } from "@/lib/api";
 import { logout as authLogout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import type { CandidateProfile } from "@/types/api";
+import type {
+  CandidateProfile,
+  Organization,
+  RecruiterProfile,
+} from "@/types/api";
 
 export interface AppBarTab {
   href: string;
@@ -133,6 +140,75 @@ export function CandidateAppBar() {
       context="Espace candidat"
       homeHref="/candidate/dashboard"
       initials={initials}
+    />
+  );
+}
+
+const RECRUITER_TABS: AppBarTab[] = [
+  { href: "/recruiter/dashboard", label: "Tableau de bord", icon: LayoutGrid },
+  { href: "/recruiter/candidates", label: "Candidats", icon: Users },
+  {
+    href: "/recruiter/opportunities",
+    label: "Missions",
+    icon: BriefcaseBusiness,
+  },
+  { href: "/recruiter/documents", label: "Dossiers générés", icon: FolderOpen },
+  { href: "/recruiter/settings", label: "Paramètres", icon: Settings },
+];
+
+export function RecruiterAppBar() {
+  const [initials, setInitials] = useState<string | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [org, setOrg] = useState<Organization | null>(null);
+
+  useEffect(() => {
+    api
+      .get<RecruiterProfile>("/recruiters/me/profile")
+      .then((profile) => {
+        const letters = [profile.first_name?.[0], profile.last_name?.[0]]
+          .filter(Boolean)
+          .join("")
+          .toUpperCase();
+        if (letters) setInitials(letters);
+        if (profile.organization_id) {
+          setOrgId(profile.organization_id);
+          api
+            .get<Organization>(`/organizations/${profile.organization_id}`)
+            .then(setOrg)
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const context = (
+    <span className="flex items-center gap-2">
+      Espace recruteur
+      {org && (
+        <span className="inline-flex h-6 items-center gap-1.5 rounded-[5px] border border-line-2 bg-paper-2 px-2 font-mono text-[11.5px] font-medium text-ink-2">
+          <span className="grid size-[18px] place-items-center rounded border border-line bg-surface font-heading text-[9px] font-semibold">
+            {org.name
+              .split(/\s+/)
+              .map((part) => part[0])
+              .filter(Boolean)
+              .slice(0, 2)
+              .join("")
+              .toUpperCase()}
+          </span>
+          {org.name}
+        </span>
+      )}
+    </span>
+  );
+
+  return (
+    <AppBar
+      tabs={RECRUITER_TABS}
+      portal="recruiter"
+      context={context}
+      homeHref="/recruiter/dashboard"
+      initials={initials}
+      orgId={orgId}
     />
   );
 }
