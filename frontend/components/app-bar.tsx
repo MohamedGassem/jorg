@@ -52,7 +52,7 @@ export function AppBar({
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-surface">
-      <div className="flex h-[58px] items-center gap-[18px] px-7">
+      <div className="mx-auto flex h-[58px] w-full max-w-[1400px] items-center gap-[18px] px-7">
         <Link href={homeHref} className="flex items-center gap-[11px]">
           <span
             className="grid size-[30px] place-items-center rounded-[7px] bg-ink font-heading text-[17px] font-semibold text-bg-app dark:bg-primary dark:text-accent-ink"
@@ -81,7 +81,10 @@ export function AppBar({
           <LogOut className="size-4" strokeWidth={1.6} />
         </button>
       </div>
-      <nav className="flex gap-1.5 px-7" aria-label="Navigation principale">
+      <nav
+        className="mx-auto flex w-full max-w-[1400px] gap-1.5 px-7"
+        aria-label="Navigation principale"
+      >
         {tabs.map((tab) => {
           const active =
             pathname === tab.href || pathname.startsWith(tab.href + "/");
