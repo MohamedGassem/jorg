@@ -35,6 +35,34 @@ async def test_create_alpha_codes_returns_correct_count(db: AsyncSession) -> Non
 
 
 @pytest.mark.asyncio
+async def test_create_alpha_codes_sets_organization_id(db: AsyncSession) -> None:
+    from uuid import uuid4
+
+    from sqlalchemy import select
+
+    org_id = uuid4()
+    codes = await create_alpha_codes(db, count=2, organization_id=org_id)
+    rows = (
+        (await db.execute(select(AlphaInviteCode).where(AlphaInviteCode.code.in_(codes))))
+        .scalars()
+        .all()
+    )
+    assert len(rows) == 2
+    assert all(row.organization_id == org_id for row in rows)
+
+
+@pytest.mark.asyncio
+async def test_create_alpha_codes_org_id_defaults_none(db: AsyncSession) -> None:
+    from sqlalchemy import select
+
+    codes = await create_alpha_codes(db, count=1)
+    row = (
+        await db.execute(select(AlphaInviteCode).where(AlphaInviteCode.code == codes[0]))
+    ).scalar_one()
+    assert row.organization_id is None
+
+
+@pytest.mark.asyncio
 async def test_validate_valid_code_returns_code_object(db: AsyncSession) -> None:
     codes = await create_alpha_codes(db, count=1)
     result = await validate_and_consume_code(db, codes[0], consume=False)

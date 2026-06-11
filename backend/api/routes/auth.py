@@ -139,6 +139,10 @@ async def register(
         alpha_code = result.scalar_one_or_none()
         if alpha_code:
             alpha_code.used_by = recruiter_profile.id
+            # If the code carries a demo organization, attach the new recruiter
+            # to it (unless they already belong to an org).
+            if alpha_code.organization_id is not None and recruiter_profile.organization_id is None:
+                recruiter_profile.organization_id = alpha_code.organization_id
             await db.commit()
 
     # Save first_name / last_name to profile at registration time

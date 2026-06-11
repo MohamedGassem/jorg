@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,30 @@ export default function RecruiterOnboardingOrgPage() {
   const [joinCode, setJoinCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ organization_id: string | null }>("/recruiters/me/profile")
+      .then((profile) => {
+        if (cancelled) return;
+        if (profile.organization_id) {
+          // Already attached to an org (e.g. a demo invite code) — skip this step.
+          router.replace("/onboarding/recruiter/template");
+        } else {
+          setChecking(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setChecking(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  if (checking) return null;
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
