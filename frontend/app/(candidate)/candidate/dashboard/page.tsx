@@ -3,12 +3,20 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, FolderOpen, Key, Mail, Plus, Shield, User } from "lucide-react";
+import { Eye, FolderOpen, Mail, Plus, Shield, User } from "lucide-react";
 import { CandidateGenerateDossierDialog } from "@/components/candidate-generate-dossier-dialog";
 import { buttonVariants } from "@/components/ui/button";
+import { StatCell } from "@/components/ui/StatCell";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
-import { ORG_STATUS_PILLS, relativeDate } from "@/lib/labels";
+import {
+  EVENT_ICON_COMPONENTS,
+  EVENT_LABELS,
+  ORG_STATUS_PILLS,
+  frDate,
+  initialsFromName,
+  relativeDate,
+} from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type {
   CandidateProfile,
@@ -68,43 +76,10 @@ function compactActivity(events: ActivityEvent[]): ActivityGroup[] {
   );
 }
 
-const ACTIVITY_LABELS: Record<InteractionEvent["type"], string> = {
-  invitation_sent: "Invitation envoyée",
-  invitation_accepted: "Invitation acceptée",
-  invitation_rejected: "Invitation refusée",
-  invitation_expired: "Invitation expirée",
-  access_granted: "Accès accordé",
-  access_revoked: "Accès révoqué",
-  document_generated: "Dossier généré",
-};
-
-const ACTIVITY_ICONS: Record<
-  InteractionEvent["type"],
-  React.ComponentType<{ className?: string; strokeWidth?: number }>
-> = {
-  invitation_sent: Mail,
-  invitation_accepted: Mail,
-  invitation_rejected: Mail,
-  invitation_expired: Mail,
-  access_granted: Shield,
-  access_revoked: Key,
-  document_generated: FolderOpen,
-};
-
 const ACTIVITY_ACCENT: InteractionEvent["type"][] = [
   "access_granted",
   "document_generated",
 ];
-
-function orgInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
 
 function grantedDate(org: OrganizationInteractionCard): string | null {
   const granted = org.events
@@ -113,36 +88,7 @@ function grantedDate(org: OrganizationInteractionCard): string | null {
       (a, b) =>
         new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime(),
     )[0];
-  return granted
-    ? new Date(granted.occurred_at).toLocaleDateString("fr-FR")
-    : null;
-}
-
-function StatCell({
-  icon: Icon,
-  label,
-  value,
-  foot,
-}: {
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  label: string;
-  value: string;
-  foot: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2 bg-surface px-5 py-[18px]">
-      <div className="flex items-center justify-between">
-        <span className="j-overline tracking-[0.1em]">{label}</span>
-        <span className="grid size-[30px] place-items-center rounded-[7px] border border-line bg-paper-2 text-ink-3">
-          <Icon className="size-[15px]" strokeWidth={1.6} />
-        </span>
-      </div>
-      <div className="font-mono text-[28px] font-medium leading-none tracking-tight tabular-nums">
-        {value}
-      </div>
-      <div className="text-[12.5px] text-ink-3">{foot}</div>
-    </div>
-  );
+  return granted ? frDate(granted.occurred_at) : null;
 }
 
 export default function CandidateDashboardPage() {
@@ -412,7 +358,7 @@ export default function CandidateDashboardPage() {
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-[11px]">
                             <span className="grid size-[30px] place-items-center rounded-[7px] border border-line bg-paper-2 font-heading text-[13px] font-semibold text-ink-2">
-                              {orgInitials(org.organization_name)}
+                              {initialsFromName(org.organization_name)}
                             </span>
                             <Link
                               href="/candidate/access"
@@ -491,7 +437,7 @@ export default function CandidateDashboardPage() {
             ) : (
               <div className="flex flex-col">
                 {activityGroups.slice(0, 4).map((group, i, list) => {
-                  const Icon = ACTIVITY_ICONS[group.type] ?? Eye;
+                  const Icon = EVENT_ICON_COMPONENTS[group.type] ?? Eye;
                   const accent = ACTIVITY_ACCENT.includes(group.type);
                   return (
                     <Link
@@ -520,7 +466,7 @@ export default function CandidateDashboardPage() {
                           <b className="font-semibold">
                             {group.organizationName}
                           </b>{" "}
-                          · {ACTIVITY_LABELS[group.type] ?? group.type}
+                          · {EVENT_LABELS[group.type] ?? group.type}
                           {group.count > 1 ? ` (${group.count})` : ""}
                         </span>
                         <span className="mt-0.5 block font-mono text-[11.5px] text-ink-4">

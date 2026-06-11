@@ -6,34 +6,16 @@ import { Check, Copy, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
+import { SettingsCard } from "@/components/ui/SettingsCard";
 import { TabBar } from "@/components/ui/TabBar";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
+import { initialsFromParts } from "@/lib/labels";
 import type { OrgMember, Organization } from "@/types/api";
 
 type Tab = "profil" | "organisation";
-
-function SettingsCard({
-  legend,
-  sub,
-  children,
-}: {
-  legend: string;
-  sub?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface px-[26px] py-[22px]">
-      <div>
-        <h2 className="text-[15px] font-semibold">{legend}</h2>
-        {sub && <p className="mt-0.5 text-[13px] text-ink-2">{sub}</p>}
-      </div>
-      {children}
-    </section>
-  );
-}
 
 function ProfilPersonnelTab() {
   const [firstName, setFirstName] = useState("");
@@ -290,12 +272,7 @@ export default function RecruiterSettingsPage() {
                     className="flex items-center gap-3 border-t border-line px-[26px] py-3"
                   >
                     <span className="grid size-[34px] shrink-0 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[13px] font-semibold text-primary">
-                      {[m.first_name?.[0], m.last_name?.[0]]
-                        .filter(Boolean)
-                        .join("")
-                        .toUpperCase() ||
-                        m.email[0]?.toUpperCase() ||
-                        "?"}
+                      {initialsFromParts(m.first_name, m.last_name, m.email)}
                     </span>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">

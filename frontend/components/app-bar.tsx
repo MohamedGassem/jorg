@@ -19,6 +19,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { JorgWordmark } from "@/components/ui/JorgWordmark";
 import { api } from "@/lib/api";
 import { logout as authLogout } from "@/lib/auth";
+import { initialsFromName, initialsFromParts } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type {
   CandidateProfile,
@@ -119,13 +120,9 @@ export function CandidateAppBar() {
   useEffect(() => {
     api
       .get<CandidateProfile>("/candidates/me/profile")
-      .then((profile) => {
-        const letters = [profile.first_name?.[0], profile.last_name?.[0]]
-          .filter(Boolean)
-          .join("")
-          .toUpperCase();
-        if (letters) setInitials(letters);
-      })
+      .then((profile) =>
+        setInitials(initialsFromParts(profile.first_name, profile.last_name)),
+      )
       .catch(() => {});
   }, []);
 
@@ -161,11 +158,7 @@ export function RecruiterAppBar() {
     api
       .get<RecruiterProfile>("/recruiters/me/profile")
       .then((profile) => {
-        const letters = [profile.first_name?.[0], profile.last_name?.[0]]
-          .filter(Boolean)
-          .join("")
-          .toUpperCase();
-        if (letters) setInitials(letters);
+        setInitials(initialsFromParts(profile.first_name, profile.last_name));
         if (profile.organization_id) {
           setOrgId(profile.organization_id);
           api
@@ -183,13 +176,7 @@ export function RecruiterAppBar() {
       {org && (
         <span className="inline-flex h-6 items-center gap-1.5 rounded-[5px] border border-line-2 bg-paper-2 px-2 font-mono text-[11.5px] font-medium text-ink-2">
           <span className="grid size-[18px] place-items-center rounded border border-line bg-surface font-heading text-[9px] font-semibold">
-            {org.name
-              .split(/\s+/)
-              .map((part) => part[0])
-              .filter(Boolean)
-              .slice(0, 2)
-              .join("")
-              .toUpperCase()}
+            {initialsFromName(org.name)}
           </span>
           {org.name}
         </span>

@@ -11,7 +11,12 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
-import { AVAILABILITY_LABELS, WORK_MODE_LABELS, labelFor } from "@/lib/labels";
+import {
+  AVAILABILITY_LABELS,
+  WORK_MODE_LABELS,
+  initialsFromName,
+  labelFor,
+} from "@/lib/labels";
 import type {
   AccessibleCandidateRead,
   BuiltinTemplate,
@@ -24,16 +29,6 @@ function candidateName(c: AccessibleCandidateRead): string {
   return c.first_name && c.last_name
     ? `${c.first_name} ${c.last_name}`
     : c.email;
-}
-
-function initials(value: string): string {
-  return value
-    .split(/\s+/)
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 }
 
 function FicheSection({
@@ -64,7 +59,7 @@ function ExperienceBlock({ exp }: { exp: Experience }) {
   return (
     <div className="flex gap-3.5">
       <span className="grid size-[38px] shrink-0 place-items-center rounded-[7px] border border-line bg-paper-2 font-heading text-[13px] font-semibold text-ink-2">
-        {initials(exp.client_name)}
+        {initialsFromName(exp.client_name)}
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[15px] font-semibold">
@@ -230,7 +225,7 @@ export default function CandidateDetailPage() {
           <section className="rounded-lg border border-line bg-surface px-[26px] py-[22px]">
             <div className="flex items-start gap-4">
               <span className="grid size-[46px] shrink-0 place-items-center rounded-[10px] border border-accent-line bg-accent-soft font-heading text-[19px] font-semibold text-primary">
-                {initials(name)}
+                {initialsFromName(name)}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

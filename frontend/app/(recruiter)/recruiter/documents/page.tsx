@@ -207,10 +207,7 @@ export default function DocumentsPage() {
                   <tr>
                     {["Dossier", "Candidat", "Généré le", "Format", ""].map(
                       (label, i) => (
-                        <th
-                          key={i}
-                          className="border-b border-line px-4 pb-3 pt-4 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink-4"
-                        >
+                        <th key={i} className="j-th">
                           {label}
                         </th>
                       ),

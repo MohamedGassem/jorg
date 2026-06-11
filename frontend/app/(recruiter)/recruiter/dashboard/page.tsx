@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { OnboardingOrg } from "@/components/onboarding-org";
+import { StatCell } from "@/components/ui/StatCell";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
 import { useRecruiterOrg } from "@/lib/hooks";
@@ -26,43 +27,10 @@ import type {
 import {
   AVAILABILITY_LABELS,
   WORK_MODE_LABELS,
+  initialsFromParts,
   labelFor,
   relativeDate,
 } from "@/lib/labels";
-
-function initialsOf(
-  first: string | null | undefined,
-  last: string | null | undefined,
-): string {
-  return [first?.[0], last?.[0]].filter(Boolean).join("").toUpperCase() || "?";
-}
-
-function StatCell({
-  icon: Icon,
-  label,
-  value,
-  foot,
-}: {
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  label: string;
-  value: string;
-  foot: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2 bg-surface px-5 py-[18px]">
-      <div className="flex items-center justify-between">
-        <span className="j-overline tracking-[0.1em]">{label}</span>
-        <span className="grid size-[30px] place-items-center rounded-[7px] border border-line bg-paper-2 text-ink-3">
-          <Icon className="size-[15px]" strokeWidth={1.6} />
-        </span>
-      </div>
-      <div className="font-mono text-[28px] font-medium leading-none tracking-tight tabular-nums">
-        {value}
-      </div>
-      <div className="text-[12.5px] text-ink-3">{foot}</div>
-    </div>
-  );
-}
 
 export default function RecruiterDashboardPage() {
   const router = useRouter();
@@ -308,7 +276,7 @@ export default function RecruiterDashboardPage() {
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-[11px]">
                           <span className="grid size-8 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[12.5px] font-semibold text-primary">
-                            {initialsOf(
+                            {initialsFromParts(
                               candidate.first_name,
                               candidate.last_name,
                             )}

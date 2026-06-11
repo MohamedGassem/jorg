@@ -15,7 +15,7 @@ import {
 import Link from "next/link";
 import { InviteCandidateDialog } from "@/components/invite-candidate-dialog";
 import { GenerateDossierDialog } from "@/components/generate-dossier-dialog";
-import { StatusPill, type StatusTone } from "@/components/ui/StatusPill";
+import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
@@ -23,7 +23,9 @@ import {
   AVAILABILITY_LABELS,
   CONTRACT_TYPE_LABELS,
   DOMAIN_LABELS,
+  INVITATION_PILLS,
   WORK_MODE_LABELS,
+  initialsFromParts,
   labelFor,
 } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -46,24 +48,6 @@ const EMPTY_FILTERS = {
   domain: "",
   q: "",
 };
-
-const INVITATION_PILLS: Record<string, { label: string; tone: StatusTone }> = {
-  pending: { label: "en attente", tone: "warn" },
-  accepted: { label: "acceptée", tone: "positive" },
-  rejected: { label: "refusée", tone: "muted" },
-  expired: { label: "expirée", tone: "muted" },
-};
-
-function initialsOf(c: AccessibleCandidateRead): string {
-  return (
-    [c.first_name?.[0], c.last_name?.[0]]
-      .filter(Boolean)
-      .join("")
-      .toUpperCase() ||
-    c.email[0]?.toUpperCase() ||
-    "?"
-  );
-}
 
 function CandidateExperiencePanel({
   candidate,
@@ -663,10 +647,7 @@ export default function CandidatesPage() {
                   "Dispo",
                   "",
                 ].map((label, i) => (
-                  <th
-                    key={i}
-                    className="border-b border-line px-4 pb-3 pt-4 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink-4"
-                  >
+                  <th key={i} className="j-th">
                     {label}
                   </th>
                 ))}
@@ -794,7 +775,7 @@ function CandidateRows({
         <td className="px-4 py-3.5">
           <div className="flex items-center gap-[11px]">
             <span className="grid size-[34px] shrink-0 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[13px] font-semibold text-primary">
-              {initialsOf(c)}
+              {initialsFromParts(c.first_name, c.last_name, c.email)}
             </span>
             <div className="min-w-0">
               <p className="whitespace-nowrap text-sm font-medium">{name}</p>

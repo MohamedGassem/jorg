@@ -1,4 +1,5 @@
 import { ShieldCheck } from "lucide-react";
+import { Brandmark } from "@/components/ui/Brandmark";
 
 /* Aperçu statique d'un dossier généré (feuille A4 du design handoff).
    Contenu fictif — sert de preuve visuelle sur la landing. */
@@ -21,9 +22,7 @@ export function LandingDocumentPreview() {
             Candidature — Data engineer senior
           </p>
         </div>
-        <span className="grid size-6 shrink-0 place-items-center rounded-[5px] bg-ink font-heading text-[12px] font-semibold text-bg-app dark:bg-primary dark:text-accent-ink">
-          J
-        </span>
+        <Brandmark size={24} className="rounded-[5px]" />
       </div>
 
       {/* Profil */}

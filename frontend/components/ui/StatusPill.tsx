@@ -1,9 +1,11 @@
 import { cn } from "@/lib/utils";
+import type { StatusTone } from "@/lib/labels";
 
 /* Taxonomie des statuts du design handoff : une couleur = une signification.
    positive = état sain · warn = attention requise · accent = nouveauté ·
-   muted = inactif (reste visible, traçabilité) */
-export type StatusTone = "positive" | "warn" | "accent" | "muted";
+   muted = inactif (reste visible, traçabilité). StatusTone vit dans lib/labels
+   (source unique) ; on le ré-exporte pour les imports existants. */
+export type { StatusTone };
 
 const TONES: Record<StatusTone, string> = {
   positive:

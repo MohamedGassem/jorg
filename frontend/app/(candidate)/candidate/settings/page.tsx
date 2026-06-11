@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
+import { SettingsCard } from "@/components/ui/SettingsCard";
 import { TabBar } from "@/components/ui/TabBar";
 import { Toggle } from "@/components/ui/Toggle";
 import { api, ApiError } from "@/lib/api";
@@ -23,26 +24,6 @@ import { cn } from "@/lib/utils";
 import type { CandidateProfile } from "@/types/api";
 
 type Tab = "infos" | "compte" | "rgpd";
-
-function SettingsCard({
-  legend,
-  sub,
-  children,
-}: {
-  legend: string;
-  sub?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface px-[26px] py-[22px]">
-      <div>
-        <h2 className="text-[15px] font-semibold">{legend}</h2>
-        {sub && <p className="mt-0.5 text-[13px] text-ink-2">{sub}</p>}
-      </div>
-      {children}
-    </section>
-  );
-}
 
 function InformationsPersonnellesTab() {
   const [profile, setProfile] = useState<CandidateProfile | null>(null);

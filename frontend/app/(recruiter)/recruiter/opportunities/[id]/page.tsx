@@ -17,6 +17,7 @@ import {
 import { Breadcrumb } from "@/components/breadcrumb";
 import { api, ApiError } from "@/lib/api";
 import { mapBusinessError } from "@/lib/errors";
+import { initialsFromParts } from "@/lib/labels";
 import type {
   BulkGenerateResult,
   OpportunityDetail,
@@ -208,10 +209,7 @@ export default function OpportunityDetailPage() {
                 className="flex items-center gap-3 border-b border-line px-[22px] py-3 last:border-b-0"
               >
                 <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[12.5px] font-semibold text-primary">
-                  {[c.first_name?.[0], c.last_name?.[0]]
-                    .filter(Boolean)
-                    .join("")
-                    .toUpperCase() || "?"}
+                  {initialsFromParts(c.first_name, c.last_name, c.email)}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">

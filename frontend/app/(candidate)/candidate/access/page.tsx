@@ -8,71 +8,29 @@ import {
   Download,
   Eye,
   FolderOpen,
-  Key,
-  Mail,
-  Shield,
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
-import { StatusPill, type StatusTone } from "@/components/ui/StatusPill";
+import { StatusPill } from "@/components/ui/StatusPill";
 import { api, ApiError } from "@/lib/api";
-import { ORG_STATUS_PILLS, relativeDate } from "@/lib/labels";
+import {
+  EVENT_ICON_COMPONENTS,
+  EVENT_LABELS,
+  INVITATION_PILLS,
+  ORG_STATUS_PILLS,
+  frDate,
+  initialsFromName,
+  relativeDate,
+} from "@/lib/labels";
 import { useAsyncData, useDownload } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import type {
   GeneratedDocumentCandidateView,
-  InteractionEvent,
   Invitation,
   OrganizationInteractionCard,
 } from "@/types/api";
-
-const PAST_INVITATION_PILLS: Record<
-  string,
-  { label: string; tone: StatusTone }
-> = {
-  accepted: { label: "acceptée", tone: "positive" },
-  rejected: { label: "refusée", tone: "muted" },
-  expired: { label: "expirée", tone: "muted" },
-};
-
-const JOURNAL_ICONS: Record<
-  InteractionEvent["type"],
-  React.ComponentType<{ className?: string; strokeWidth?: number }>
-> = {
-  invitation_sent: Mail,
-  invitation_accepted: Mail,
-  invitation_rejected: Mail,
-  invitation_expired: Mail,
-  access_granted: Shield,
-  access_revoked: Key,
-  document_generated: FolderOpen,
-};
-
-const JOURNAL_LABELS: Record<InteractionEvent["type"], string> = {
-  invitation_sent: "Invitation envoyée",
-  invitation_accepted: "Invitation acceptée",
-  invitation_rejected: "Invitation refusée",
-  invitation_expired: "Invitation expirée",
-  access_granted: "Accès accordé",
-  access_revoked: "Accès révoqué",
-  document_generated: "Dossier généré",
-};
-
-function orgInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
-function frDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("fr-FR");
-}
 
 function eventDates(org: OrganizationInteractionCard): {
   granted: string | null;
@@ -280,10 +238,7 @@ export default function AccessPage() {
                     "Statut",
                     "",
                   ].map((label, i) => (
-                    <th
-                      key={i}
-                      className="border-b border-line px-4 pb-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink-4"
-                    >
+                    <th key={i} className="j-th">
                       {label}
                     </th>
                   ))}
@@ -309,7 +264,7 @@ export default function AccessPage() {
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-[11px]">
                           <span className="grid size-[30px] place-items-center rounded-[7px] border border-line bg-paper-2 font-heading text-[13px] font-semibold text-ink-2">
-                            {orgInitials(org.organization_name)}
+                            {initialsFromName(org.organization_name)}
                           </span>
                           <span className="whitespace-nowrap text-sm font-medium">
                             {org.organization_name}
@@ -363,8 +318,7 @@ export default function AccessPage() {
           </div>
           {pastInvitations.map((inv) => {
             const pill =
-              PAST_INVITATION_PILLS[inv.status] ??
-              PAST_INVITATION_PILLS.expired;
+              INVITATION_PILLS[inv.status] ?? INVITATION_PILLS.expired;
             return (
               <div
                 key={inv.id}
@@ -469,7 +423,7 @@ export default function AccessPage() {
           ) : (
             <div className="flex max-h-[420px] flex-col overflow-y-auto">
               {journal.map(({ event, orgName }, i) => {
-                const Icon = JOURNAL_ICONS[event.type] ?? Eye;
+                const Icon = EVENT_ICON_COMPONENTS[event.type] ?? Eye;
                 const accent =
                   event.type === "access_granted" ||
                   event.type === "document_generated";
@@ -494,7 +448,7 @@ export default function AccessPage() {
                     <div className="min-w-0 pt-0.5">
                       <p className="text-sm">
                         <b className="font-semibold">{orgName}</b> ·{" "}
-                        {JOURNAL_LABELS[event.type] ?? event.type}
+                        {EVENT_LABELS[event.type] ?? event.type}
                       </p>
                       <p className="mt-0.5 font-mono text-[11.5px] text-ink-4">
                         {relativeDate(event.occurred_at)}
