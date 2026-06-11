@@ -92,6 +92,8 @@ async def export_candidate_data(db: AsyncSession, user: User) -> CandidateExport
         email=user.email,
         role=user.role.value,
         created_at=user.created_at,
+        consented_at=user.consented_at,
+        consent_version=user.consent_version,
         profile=CandidateProfileRead.model_validate(profile) if profile else None,
         experiences=[ExperienceRead.model_validate(e) for e in experiences],
         skills=[CandidateSkillRead.model_validate(s) for s in skills],

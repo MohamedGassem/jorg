@@ -46,6 +46,8 @@ class CandidateExport(BaseModel):
     email: str
     role: str
     created_at: datetime
+    consented_at: datetime | None
+    consent_version: str | None
 
     profile: CandidateProfileRead | None
     experiences: list[ExperienceRead]

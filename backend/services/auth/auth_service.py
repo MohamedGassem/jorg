@@ -14,7 +14,7 @@ from core.security import (
     verify_password,
 )
 from models.refresh_token import RefreshToken
-from models.user import User, UserRole
+from models.user import CURRENT_CONSENT_VERSION, User, UserRole
 
 logger = structlog.get_logger()
 
@@ -45,6 +45,8 @@ async def register_user(
         email=email.lower(),
         hashed_password=hash_password(password),
         role=role,
+        consented_at=datetime.now(UTC),
+        consent_version=CURRENT_CONSENT_VERSION,
     )
     db.add(user)
     await db.commit()

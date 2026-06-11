@@ -317,6 +317,17 @@ function RgpdTab({ onRequestDeletion }: { onRequestDeletion: () => void }) {
             }
           />
         </div>
+        <p className="mt-3 text-[12.5px] text-ink-3">
+          Pour exercer votre droit d&apos;opposition ou de limitation,
+          écrivez-nous à{" "}
+          <a
+            href="mailto:contact@mohamed-gassem.fr"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            contact@mohamed-gassem.fr
+          </a>
+          . Nous répondons sous un mois maximum.
+        </p>
       </SettingsCard>
 
       <SettingsCard

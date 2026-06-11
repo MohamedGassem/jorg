@@ -1,10 +1,15 @@
 # backend/models/user.py
+from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import Boolean, Enum, String
+from sqlalchemy import Boolean, DateTime, Enum, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+
+# Version de la politique de confidentialité acceptée à l'inscription.
+# À incrémenter à chaque évolution substantielle des mentions RGPD.
+CURRENT_CONSENT_VERSION = "2026-06"
 
 
 class UserRole(StrEnum):
@@ -32,3 +37,7 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Preuve de consentement RGPD horodatée + version des mentions acceptées.
+    consented_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    consent_version: Mapped[str | None] = mapped_column(String(16), nullable=True)

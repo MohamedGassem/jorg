@@ -1,5 +1,6 @@
 # backend/services/oauth_service.py
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Protocol
 from urllib.parse import urlencode
 
@@ -8,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
-from models.user import OAuthProvider, User, UserRole
+from models.user import CURRENT_CONSENT_VERSION, OAuthProvider, User, UserRole
 
 
 @dataclass
@@ -145,6 +146,8 @@ async def find_or_create_oauth_user(
         oauth_subject=info.subject,
         role=default_role,
         email_verified=True,
+        consented_at=datetime.now(UTC),
+        consent_version=CURRENT_CONSENT_VERSION,
     )
     db.add(user)
     await db.commit()

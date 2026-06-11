@@ -12,7 +12,10 @@ const PROCESSING_FACTS = [
   { label: "Responsable", value: "Mohamed Gassem" },
   { label: "Contact", value: "contact@mohamed-gassem.fr" },
   { label: "Base légale", value: "Consentement + intérêt légitime" },
-  { label: "Durée de conservation", value: "36 mois après dernière activité" },
+  {
+    label: "Durée de conservation",
+    value: "Jusqu'à la suppression de votre compte",
+  },
 ];
 
 const RIGHTS = [
@@ -30,6 +33,11 @@ const RIGHTS = [
     title: "Droit à l'effacement",
     detail:
       "Supprimez définitivement votre compte et toutes vos données. Les accès tiers sont révoqués dans la foulée.",
+  },
+  {
+    title: "Droit d'opposition et de limitation",
+    detail:
+      "Écrivez-nous à contact@mohamed-gassem.fr pour vous opposer à un traitement ou en demander la limitation. Nous répondons sous un mois maximum.",
   },
 ];
 
@@ -73,6 +81,21 @@ export default function PrivacyPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="mt-4 rounded-lg border border-line bg-surface px-[26px] py-[22px]">
+          <h2 className="text-[15px] font-semibold">
+            Hébergement, sous-traitants &amp; transferts
+          </h2>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-ink-2">
+            Jorg est hébergé par Railway (États-Unis). Vos données peuvent donc
+            être transférées hors de l&apos;Union européenne ; ce transfert est
+            encadré par des garanties appropriées (clauses contractuelles
+            types). Si vous vous connectez via Google ou LinkedIn, ces
+            fournisseurs n&apos;interviennent que pour l&apos;authentification.
+            Aucune donnée n&apos;est revendue ni partagée à des fins
+            publicitaires.
+          </p>
         </section>
 
         <section className="mt-4 rounded-lg border border-line bg-surface px-[26px] py-[22px]">
