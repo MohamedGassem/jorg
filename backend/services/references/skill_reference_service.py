@@ -28,6 +28,24 @@ def _is_hidden_esco_language(ref: SkillReference) -> bool:
     )
 
 
+def _match_clauses(query: str):
+    """Build the shared ILIKE match filter and priority ordering for a query.
+    Returns (match_filter, priority)."""
+    aliases_text = cast(SkillReference.aliases, Text)
+    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    name_exact = SkillReference.name.ilike(escaped, escape="\\")
+    alias_exact = aliases_text.ilike(f'%"{escaped}"%', escape="\\")
+    name_contains = SkillReference.name.ilike(f"%{escaped}%", escape="\\")
+    match_filter = or_(name_contains, alias_exact)
+    priority = case(
+        (name_exact, 0),
+        (alias_exact, 1),
+        (name_contains, 2),
+        else_=3,
+    )
+    return match_filter, priority
+
+
 async def get_or_create_by_name(
     name: str,
     kind: SkillKind,
@@ -82,14 +100,7 @@ async def search(
     if limit <= 0:
         return []
 
-    aliases_text = cast(SkillReference.aliases, Text)
-
-    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    name_exact = SkillReference.name.ilike(escaped, escape="\\")
-    alias_exact = aliases_text.ilike(f'%"{escaped}"%', escape="\\")
-    name_contains = SkillReference.name.ilike(f"%{escaped}%", escape="\\")
-
-    match_filter = or_(name_contains, alias_exact)
+    match_filter, priority = _match_clauses(query)
 
     if for_display:
         visibility = or_(
@@ -104,13 +115,6 @@ async def search(
             SkillReference.creator_candidate_id.is_(None),
             SkillReference.creator_candidate_id == candidate_id,
         )
-
-    priority = case(
-        (name_exact, 0),
-        (alias_exact, 1),
-        (name_contains, 2),
-        else_=3,
-    )
 
     stmt = (
         select(SkillReference)
@@ -149,25 +153,11 @@ async def search_public(
     if limit <= 0:
         return []
 
-    aliases_text = cast(SkillReference.aliases, Text)
-
-    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    name_exact = SkillReference.name.ilike(escaped, escape="\\")
-    alias_exact = aliases_text.ilike(f'%"{escaped}"%', escape="\\")
-    name_contains = SkillReference.name.ilike(f"%{escaped}%", escape="\\")
-
-    match_filter = or_(name_contains, alias_exact)
+    match_filter, priority = _match_clauses(query)
 
     visibility = and_(
         SkillReference.source == "jorg",
         SkillReference.is_displayable.is_(True),
-    )
-
-    priority = case(
-        (name_exact, 0),
-        (alias_exact, 1),
-        (name_contains, 2),
-        else_=3,
     )
 
     stmt = (
