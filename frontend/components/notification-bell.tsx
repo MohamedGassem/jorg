@@ -12,7 +12,7 @@ import type {
 } from "@/types/api";
 
 interface NotificationItem {
-  key: string; // `${ev.type}:${ev.occurred_at}`
+  key: string; // `${ev.type}:${ev.occurred_at}` (plus `:n` suffix on collision)
   icon: string;
   label: string;
   date: string;
@@ -66,14 +66,20 @@ export function NotificationBell({ portal, orgId }: Props) {
                 new Date(a.occurred_at).getTime(),
             )
             .slice(0, 5);
+          const counts = new Map<string, number>();
           setItems(
-            events.map((ev, i) => ({
-              key: `${ev.type}:${ev.occurred_at}:${i}`,
-              icon: EVENT_ICONS[ev.type] ?? "📋",
-              label: EVENT_LABELS[ev.type] ?? ev.type,
-              date: relativeDate(ev.occurred_at),
-              href: "/candidate/access",
-            })),
+            events.map((ev) => {
+              const base = `${ev.type}:${ev.occurred_at}`;
+              const n = counts.get(base) ?? 0;
+              counts.set(base, n + 1);
+              return {
+                key: n === 0 ? base : `${base}:${n}`,
+                icon: EVENT_ICONS[ev.type] ?? "📋",
+                label: EVENT_LABELS[ev.type] ?? ev.type,
+                date: relativeDate(ev.occurred_at),
+                href: "/candidate/access",
+              };
+            }),
           );
         })
         .catch(() => {});
