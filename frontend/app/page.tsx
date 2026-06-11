@@ -2,6 +2,7 @@
 import { cookies } from "next/headers";
 import { LandingNav, type LandingUser } from "@/components/landing/LandingNav";
 import { LandingHero } from "@/components/landing/LandingHero";
+import { LandingHowItWorks } from "@/components/landing/LandingHowItWorks";
 import { LandingBridge } from "@/components/landing/LandingBridge";
 import { LandingFeatures } from "@/components/landing/LandingFeatures";
 import { LandingAlpha } from "@/components/landing/LandingAlpha";
@@ -36,6 +37,7 @@ export default async function RootPage() {
     <div className="min-h-dvh bg-background">
       <LandingNav user={user} />
       <LandingHero />
+      <LandingHowItWorks />
       <LandingBridge />
       <LandingFeatures />
       <LandingAlpha />

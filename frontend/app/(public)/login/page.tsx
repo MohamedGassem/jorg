@@ -4,43 +4,64 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { jwtDecode } from "jwt-decode";
-import { CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { Check, CheckCircle2, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { JorgWordmark } from "@/components/ui/JorgWordmark";
 import { api, ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import type { AuthResponse } from "@/types/api";
 
 interface JwtPayload {
   role: "candidate" | "recruiter";
 }
 
+const TRUST_ITEMS = [
+  {
+    title: "Profil structuré",
+    detail: "Retrouvez les compétences, expériences et preuves utiles.",
+  },
+  {
+    title: "Accès contrôlés",
+    detail: "Suivez qui peut consulter votre profil et les actions associées.",
+  },
+  {
+    title: "Dossiers générés",
+    detail: "Accédez aux documents produits depuis les modèles Jorg.",
+  },
+];
+
 function AuthTrustPanel() {
   return (
-    <aside className="rounded-lg border border-border bg-surface p-6">
-      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-        Workspace RH document-first
-      </p>
+    <aside className="rounded-lg border border-line bg-paper-2 px-[26px] py-[22px]">
+      <p className="j-overline">Workspace RH document-first</p>
       <h2 className="mt-3 font-heading text-xl font-semibold">
         Votre dossier reste structuré, contrôlé et exploitable.
       </h2>
-      <div className="mt-6 space-y-4 text-sm text-muted-foreground">
-        <div>
-          <p className="font-medium text-foreground">Profil structuré</p>
-          <p>Retrouvez les compétences, expériences et preuves utiles.</p>
-        </div>
-        <div>
-          <p className="font-medium text-foreground">Accès contrôlés</p>
-          <p>
-            Suivez qui peut consulter votre profil et les actions associées.
-          </p>
-        </div>
-        <div>
-          <p className="font-medium text-foreground">Dossiers générés</p>
-          <p>Accédez aux documents produits depuis les modèles Jorg.</p>
-        </div>
+      <div className="mt-4 flex flex-col">
+        {TRUST_ITEMS.map((item, i) => (
+          <div
+            key={item.title}
+            className={cn(
+              "flex items-start gap-[13px] py-[13px]",
+              i < TRUST_ITEMS.length - 1 && "border-b border-line",
+            )}
+          >
+            <span className="mt-0.5 grid size-[22px] shrink-0 place-items-center rounded-md border border-positive-border bg-positive-soft text-positive">
+              <Check className="size-[13px]" strokeWidth={1.6} />
+            </span>
+            <div>
+              <p className="text-sm font-medium">{item.title}</p>
+              <p className="text-[12.5px] text-ink-3">{item.detail}</p>
+            </div>
+          </div>
+        ))}
       </div>
+      <p className="j-meta mt-4 flex items-center gap-2 text-[11.5px]">
+        <ShieldCheck className="size-3.5" strokeWidth={1.6} />
+        Chaque consultation est tracée et visible par le candidat.
+      </p>
     </aside>
   );
 }
@@ -90,10 +111,11 @@ function LoginForm() {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
       <div className="grid w-full max-w-5xl grid-cols-1 gap-8 lg:grid-cols-[minmax(0,420px)_1fr]">
-        <section className="rounded-lg border border-border bg-surface p-6">
+        <section className="rounded-lg border border-line bg-surface px-[26px] py-[22px]">
           <JorgWordmark />
           <div className="mt-8">
-            <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            <p className="j-overline">Espace sécurisé</p>
+            <h1 className="mt-2 font-heading text-2xl font-semibold tracking-tight">
               Accéder à mon espace Jorg
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">

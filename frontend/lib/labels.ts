@@ -1,7 +1,12 @@
 // frontend/lib/labels.ts
-// Single source of truth for all status labels, variants, and event strings.
+// Single source of truth for status labels/pills, event strings, and the
+// small formatting helpers (initials, dates) shared across pages.
 
+import { FolderOpen, Key, Mail, Shield, type LucideIcon } from "lucide-react";
 import type { InteractionEvent } from "@/types/api";
+
+/** Tone families of the handoff status taxonomy (one colour = one meaning). */
+export type StatusTone = "positive" | "warn" | "accent" | "muted";
 
 export const AVAILABILITY_LABELS: Record<string, string> = {
   available_now: "Immédiatement",
@@ -41,38 +46,25 @@ export function labelFor(
   return labels[value] ?? value;
 }
 
-export const INVITATION_STATUS_LABELS: Record<string, string> = {
-  pending: "En attente",
-  accepted: "Acceptée",
-  rejected: "Refusée",
-  expired: "Expirée",
-};
-
-export const INVITATION_STATUS_VARIANTS: Record<
+/* Pills "registre" du design handoff (taxonomie 4 familles, libellés courts). */
+export const ORG_STATUS_PILLS: Record<
   string,
-  "default" | "secondary" | "destructive" | "outline"
+  { label: string; tone: StatusTone }
 > = {
-  pending: "default",
-  accepted: "secondary",
-  rejected: "destructive",
-  expired: "outline",
+  active: { label: "actif", tone: "positive" },
+  invited: { label: "invitation en attente", tone: "muted" },
+  revoked: { label: "révoqué", tone: "muted" },
+  expired: { label: "expiré", tone: "muted" },
 };
 
-export const ACCESS_STATUS_LABELS: Record<string, string> = {
-  active: "Accès actif",
-  invited: "Invitation en attente",
-  revoked: "Accès révoqué",
-  expired: "Invitation expirée",
-};
-
-export const ACCESS_STATUS_VARIANTS: Record<
+export const INVITATION_PILLS: Record<
   string,
-  "default" | "secondary" | "destructive" | "outline"
+  { label: string; tone: StatusTone }
 > = {
-  active: "default",
-  invited: "secondary",
-  revoked: "destructive",
-  expired: "outline",
+  pending: { label: "en attente", tone: "warn" },
+  accepted: { label: "acceptée", tone: "positive" },
+  rejected: { label: "refusée", tone: "muted" },
+  expired: { label: "expirée", tone: "muted" },
 };
 
 export const EVENT_LABELS: Record<string, string> = {
@@ -85,6 +77,7 @@ export const EVENT_LABELS: Record<string, string> = {
   document_generated: "Dossier généré",
 };
 
+/* Emoji set used by the lightweight notification dropdown. */
 export const EVENT_ICONS: Record<string, string> = {
   invitation_sent: "✉️",
   invitation_accepted: "✅",
@@ -95,18 +88,48 @@ export const EVENT_ICONS: Record<string, string> = {
   document_generated: "📄",
 };
 
-export function eventLabel(ev: InteractionEvent): string {
-  if (ev.type === "document_generated") {
-    const parts = [
-      ev.metadata.recruiter_first_name,
-      ev.metadata.recruiter_last_name,
-    ].filter(Boolean);
-    const recruiterName = parts.join(" ");
-    return recruiterName
-      ? `Dossier généré par ${recruiterName}`
-      : "Dossier généré";
-  }
-  return EVENT_LABELS[ev.type] ?? ev.type;
+/* Lucide icons for the registre-style journals. */
+export const EVENT_ICON_COMPONENTS: Record<
+  InteractionEvent["type"],
+  LucideIcon
+> = {
+  invitation_sent: Mail,
+  invitation_accepted: Mail,
+  invitation_rejected: Mail,
+  invitation_expired: Mail,
+  access_granted: Shield,
+  access_revoked: Key,
+  document_generated: FolderOpen,
+};
+
+/** Initials from a free-form display name (max 2 uppercase letters). */
+export function initialsFromName(name: string, fallback = "?"): string {
+  const letters = name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return letters || fallback;
+}
+
+/** Initials from first/last name parts, with an optional extra fallback. */
+export function initialsFromParts(
+  first: string | null | undefined,
+  last: string | null | undefined,
+  extraFallback?: string,
+): string {
+  const letters = [first?.[0], last?.[0]]
+    .filter(Boolean)
+    .join("")
+    .toUpperCase();
+  return letters || extraFallback?.[0]?.toUpperCase() || "?";
+}
+
+/** Short French date (dd/mm/yyyy). */
+export function frDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("fr-FR");
 }
 
 export function relativeDate(dateStr: string): string {

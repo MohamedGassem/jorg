@@ -128,8 +128,25 @@ async function downloadRequest(
   URL.revokeObjectURL(url);
 }
 
+// In-flight GET de-duplication: when several components mount on the same
+// screen and request the same endpoint concurrently (e.g. the app bar and a
+// page both reading /candidates/me/profile), they share a single network
+// request. The entry is cleared as soon as the request settles, so a later
+// GET always re-fetches — no caching, no staleness after mutations.
+const inFlightGets = new Map<string, Promise<unknown>>();
+
+function dedupedGet<T>(path: string): Promise<T> {
+  const existing = inFlightGets.get(path);
+  if (existing) return existing as Promise<T>;
+  const pending = request<T>("GET", path).finally(() => {
+    inFlightGets.delete(path);
+  });
+  inFlightGets.set(path, pending);
+  return pending;
+}
+
 export const api = {
-  get: <T>(path: string) => request<T>("GET", path),
+  get: <T>(path: string) => dedupedGet<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
   put: <T>(path: string, body?: unknown) => request<T>("PUT", path, body),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),

@@ -522,18 +522,39 @@ export function CvImport({
     addableExperienceCount + selectedEducation.size + addableLanguageCount;
 
   return (
-    <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
-      <div className="flex items-start gap-3">
-        <FileText className="mt-0.5 size-5 shrink-0 text-primary" />
-        <div className="flex-1 space-y-1">
-          <p className="text-sm font-medium text-foreground">
+    <div className="rounded-lg border border-dashed border-line-strong bg-paper-2 px-[22px] py-[18px]">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <span className="grid size-[38px] shrink-0 place-items-center rounded-[10px] border border-accent-line bg-accent-soft text-primary">
+          <FileText className="size-[17px]" strokeWidth={1.6} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[14.5px] font-semibold">
             Importer un CV pour gagner du temps
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="mt-px text-[13px] text-ink-2">
             Nous en extrayons vos coordonnées et vos compétences. Vous gardez le
             contrôle : rien n&apos;est ajouté sans votre confirmation.
           </p>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0"
+          disabled={status === "parsing" || status === "adding"}
+          onClick={() => inputRef.current?.click()}
+        >
+          {status === "parsing" ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Analyse du CV…
+            </>
+          ) : (
+            <>
+              <Upload className="size-4" strokeWidth={1.6} />
+              Choisir un fichier
+            </>
+          )}
+        </Button>
       </div>
 
       <input
@@ -543,27 +564,6 @@ export function CvImport({
         className="hidden"
         onChange={handleFile}
       />
-
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="mt-3"
-        disabled={status === "parsing" || status === "adding"}
-        onClick={() => inputRef.current?.click()}
-      >
-        {status === "parsing" ? (
-          <>
-            <Loader2 className="size-4 animate-spin" />
-            Analyse du CV…
-          </>
-        ) : (
-          <>
-            <Upload className="size-4" />
-            Choisir un fichier
-          </>
-        )}
-      </Button>
 
       {error && (
         <p role="alert" className="mt-3 text-sm text-destructive">

@@ -1,12 +1,4 @@
-import { NavSidebar } from "@/components/nav-sidebar";
-
-const recruiterNav = [
-  { href: "/recruiter/dashboard", label: "Accueil" },
-  { href: "/recruiter/candidates", label: "Candidats" },
-  { href: "/recruiter/opportunities", label: "Missions" },
-  { href: "/recruiter/documents", label: "Dossiers & modèles" },
-  { href: "/recruiter/settings", label: "Organisation" },
-];
+import { RecruiterAppBar } from "@/components/app-bar";
 
 export default function RecruiterLayout({
   children,
@@ -14,14 +6,10 @@ export default function RecruiterLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-dvh bg-background">
-      <NavSidebar
-        items={recruiterNav}
-        title="Espace recruteur"
-        homeHref="/recruiter/dashboard"
-      />
+    <div className="flex min-h-dvh flex-col bg-background">
+      <RecruiterAppBar />
       <main
-        className="min-w-0 flex-1 overflow-auto p-5 md:p-6 xl:p-8"
+        className="mx-auto w-full min-w-0 max-w-[var(--shell)] flex-1 px-7 py-[26px]"
         id="main-content"
       >
         {children}

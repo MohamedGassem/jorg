@@ -3,18 +3,34 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import {
+  BriefcaseBusiness,
+  Clock,
+  FolderOpen,
+  Plus,
+  Users,
+} from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { OnboardingOrg } from "@/components/onboarding-org";
-import { NotificationBell } from "@/components/notification-bell";
+import { StatCell } from "@/components/ui/StatCell";
+import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
 import { useRecruiterOrg } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 import type {
   AccessibleCandidateRead,
   GeneratedDocumentRecruiterView,
   Invitation,
   OpportunityRead,
+  Organization,
 } from "@/types/api";
-import { relativeDate } from "@/lib/labels";
+import {
+  AVAILABILITY_LABELS,
+  WORK_MODE_LABELS,
+  initialsFromParts,
+  labelFor,
+  relativeDate,
+} from "@/lib/labels";
 
 export default function RecruiterDashboardPage() {
   const router = useRouter();
@@ -27,7 +43,8 @@ export default function RecruiterDashboardPage() {
     }
   }, [profile, orgLoading, router]);
 
-  const [candidateCount, setCandidateCount] = useState<number | null>(null);
+  const [org, setOrg] = useState<Organization | null>(null);
+  const [candidates, setCandidates] = useState<AccessibleCandidateRead[]>([]);
   const [openOpportunityCount, setOpenOpportunityCount] = useState<
     number | null
   >(null);
@@ -43,6 +60,10 @@ export default function RecruiterDashboardPage() {
   useEffect(() => {
     if (orgLoading || !profile?.onboarding_completed) return;
     if (!orgId) return;
+
+    const orgPromise = api
+      .get<Organization>(`/organizations/${orgId}`)
+      .catch(() => null);
 
     const candidatesPromise = api
       .get<AccessibleCandidateRead[]>(`/organizations/${orgId}/candidates`)
@@ -63,47 +84,59 @@ export default function RecruiterDashboardPage() {
       .catch(() => null);
 
     Promise.all([
+      orgPromise,
       candidatesPromise,
       opportunitiesPromise,
       invitationsPromise,
       documentsPromise,
-    ]).then(([candidates, opportunities, invitations, documents]) => {
-      if (candidates !== null) {
-        setCandidateCount(candidates.length);
-      }
-      if (opportunities !== null) {
-        setOpenOpportunityCount(
-          opportunities.filter((o) => o.status === "open").length,
-        );
-      }
-      if (invitations !== null) {
-        setPendingInvitationCount(
-          invitations.filter((inv) => inv.status === "pending").length,
-        );
-      }
-      if (documents !== null) {
-        setDocCount(documents.length);
-        const sorted = [...documents].sort(
-          (a, b) =>
-            new Date(b.generated_at).getTime() -
-            new Date(a.generated_at).getTime(),
-        );
-        setRecentDocs(sorted.slice(0, 3));
-      }
-      setDataLoading(false);
-    });
+    ]).then(
+      ([orgData, candidatesData, opportunities, invitations, documents]) => {
+        if (orgData !== null) {
+          setOrg(orgData);
+        }
+        if (candidatesData !== null) {
+          setCandidates(candidatesData);
+        }
+        if (opportunities !== null) {
+          setOpenOpportunityCount(
+            opportunities.filter((o) => o.status === "open").length,
+          );
+        }
+        if (invitations !== null) {
+          setPendingInvitationCount(
+            invitations.filter((inv) => inv.status === "pending").length,
+          );
+        }
+        if (documents !== null) {
+          setDocCount(documents.length);
+          const sorted = [...documents].sort(
+            (a, b) =>
+              new Date(b.generated_at).getTime() -
+              new Date(a.generated_at).getTime(),
+          );
+          setRecentDocs(sorted.slice(0, 4));
+        }
+        setDataLoading(false);
+      },
+    );
   }, [orgId, orgLoading, profile, profile?.onboarding_completed]);
 
   if (orgLoading || (!!orgId && dataLoading)) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-10 w-72 rounded-lg bg-muted" />
-        <div className="h-5 w-96 rounded-lg bg-muted" />
-        <div className="h-40 rounded-lg bg-muted" />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-40 rounded-lg bg-muted" />
+      <div className="space-y-5 animate-pulse">
+        <div className="space-y-3">
+          <div className="h-3 w-56 rounded bg-muted" />
+          <div className="h-8 w-64 rounded-lg bg-muted" />
+          <div className="h-4 w-96 rounded-lg bg-muted" />
+        </div>
+        <div className="grid grid-cols-1 gap-px sm:grid-cols-2 xl:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-28 rounded-lg bg-muted" />
           ))}
+        </div>
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.7fr_1fr]">
+          <div className="h-[420px] rounded-lg bg-muted" />
+          <div className="h-[420px] rounded-lg bg-muted" />
         </div>
       </div>
     );
@@ -112,185 +145,274 @@ export default function RecruiterDashboardPage() {
   if (!orgId) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Configurer votre organisation</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <header>
+          <p className="j-overline">Espace recruteur</p>
+          <h1 className="mt-2 font-heading text-[27px] font-semibold leading-tight">
+            Configurer votre organisation
+          </h1>
+          <p className="mt-1 text-[15px] text-ink-2">
             Votre espace recruteur a besoin d&apos;une organisation pour inviter
             des candidats et générer des dossiers.
           </p>
-        </div>
+        </header>
         <OnboardingOrg onSuccess={() => window.location.reload()} />
       </div>
     );
   }
 
   const firstName = profile?.first_name ?? "";
-  const hasCandidates = (candidateCount ?? 0) > 0;
-  const hasOpenMissions = (openOpportunityCount ?? 0) > 0;
-  const hasDocs = (docCount ?? 0) > 0;
-  const primaryAction = !hasCandidates
-    ? {
-        title: "Inviter un candidat autorisé",
-        description:
-          "Commencez par obtenir l'accord d'un candidat avant de générer un dossier.",
-        href: "/recruiter/candidates",
-        cta: "Inviter un candidat",
-      }
-    : !hasOpenMissions
-      ? {
-          title: "Créer une mission",
-          description:
-            "Ajoutez le contexte client pour relier les candidats autorisés à un besoin.",
-          href: "/recruiter/opportunities",
-          cta: "Créer une mission",
-        }
-      : {
-          title: "Générer un dossier candidat",
-          description:
-            "Choisissez un candidat autorisé et un modèle de dossier adapté.",
-          href: "/recruiter/candidates",
-          cta: "Générer un dossier",
-        };
+  const candidateCount = candidates.length;
+  const pendingCount = pendingInvitationCount ?? 0;
+  const lead =
+    candidateCount > 0
+      ? `${candidateCount} candidat${candidateCount > 1 ? "s" : ""} vous ${candidateCount > 1 ? "ont" : "a"} accordé l'accès.${
+          pendingCount > 0
+            ? ` ${pendingCount} demande${pendingCount > 1 ? "s" : ""} en attente de réponse.`
+            : ""
+        }`
+      : "Commencez par obtenir l'accord d'un candidat pour exploiter son dossier.";
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
+    <div className="flex w-full flex-col gap-5">
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Accueil recruteur</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {firstName ? `${firstName}, suivez` : "Suivez"} le passage des
-            candidats autorisés aux missions, puis aux dossiers générés.
+          <p className="j-overline">
+            {org?.name ?? "Espace recruteur"} · portail organisation
           </p>
+          <h1 className="mt-2 font-heading text-[27px] font-semibold leading-tight">
+            {firstName ? `Bonjour ${firstName}` : "Votre espace recruteur"}
+          </h1>
+          <p className="mt-1 max-w-[560px] text-[15px] text-ink-2">{lead}</p>
         </div>
-        <NotificationBell portal="recruiter" orgId={orgId} />
-      </div>
+        <Link
+          href="/recruiter/candidates"
+          className={cn(buttonVariants({ variant: "default" }), "w-fit")}
+        >
+          {candidateCount > 0 ? "Générer un dossier" : "Inviter un candidat"}
+        </Link>
+      </header>
 
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Prochaine action
-            </p>
-            <h2 className="mt-2 font-heading text-xl font-semibold">
-              {primaryAction.title}
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              {primaryAction.description}
-            </p>
-          </div>
-          <Link href={primaryAction.href}>
-            <Button>{primaryAction.cta}</Button>
-          </Link>
-        </div>
+      <section
+        className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2 xl:grid-cols-4"
+        aria-label="Statistiques de l'organisation"
+      >
+        <StatCell
+          icon={Users}
+          label="Candidats accessibles"
+          value={String(candidateCount)}
+          foot="avec accord candidat"
+        />
+        <StatCell
+          icon={Clock}
+          label="Demandes en attente"
+          value={String(pendingCount)}
+          foot={pendingCount > 0 ? "envoyées, sans réponse" : "rien à suivre"}
+        />
+        <StatCell
+          icon={FolderOpen}
+          label="Dossiers générés"
+          value={String(docCount ?? 0)}
+          foot="par votre organisation"
+        />
+        <StatCell
+          icon={BriefcaseBusiness}
+          label="Missions ouvertes"
+          value={String(openOpportunityCount ?? 0)}
+          foot="contextes de besoin client"
+        />
       </section>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <section className="rounded-lg border border-border bg-surface p-5">
-          <h2 className="font-heading text-base font-semibold">
-            Candidats autorisés
-          </h2>
-          <p className="mt-4 text-3xl font-semibold text-primary">
-            {candidateCount !== null ? candidateCount : "-"}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            profil{candidateCount === 1 ? "" : "s"} exploitable
-            {candidateCount === 1 ? "" : "s"} avec accord candidat.
-          </p>
-          <div className="mt-4">
-            <Link href="/recruiter/candidates">
-              <Button variant="outline" size="sm">
-                Voir les candidats
-              </Button>
-            </Link>
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-border bg-surface p-5">
-          <h2 className="font-heading text-base font-semibold">
-            Missions ouvertes
-          </h2>
-          <p className="mt-4 text-3xl font-semibold text-primary">
-            {openOpportunityCount !== null ? openOpportunityCount : "-"}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            contexte{openOpportunityCount === 1 ? "" : "s"} de besoin client
-            prêt{openOpportunityCount === 1 ? "" : "s"} à recevoir des
-            candidats.
-          </p>
-          <div className="mt-4">
-            <Link href="/recruiter/opportunities">
-              <Button variant="outline" size="sm">
-                Gérer les missions
-              </Button>
-            </Link>
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-border bg-surface p-5">
-          <h2 className="font-heading text-base font-semibold">
-            Invitations en attente
-          </h2>
-          <p className="mt-4 text-3xl font-semibold text-warning">
-            {pendingInvitationCount !== null ? pendingInvitationCount : "-"}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            invitation{pendingInvitationCount === 1 ? "" : "s"} en attente
-            d&apos;acceptation.
-          </p>
-          <div className="mt-4">
-            <Link href="/recruiter/candidates">
-              <Button variant="outline" size="sm">
-                Suivre les invitations
-              </Button>
-            </Link>
-          </div>
-        </section>
-      </div>
-
-      <section className="rounded-lg border border-border bg-surface p-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h2 className="font-heading text-base font-semibold">
-              Dossiers récents
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.7fr_1fr]">
+        {/* Candidats accessibles */}
+        <article className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-line bg-surface">
+          <div className="flex items-center justify-between gap-3 px-5 pb-4 pt-[18px]">
+            <h2 className="font-heading text-[17px] font-semibold">
+              Candidats accessibles
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {hasDocs
-                ? `${docCount} dossier${docCount === 1 ? "" : "s"} généré${docCount === 1 ? "" : "s"} par votre organisation.`
-                : "Les dossiers générés depuis les candidats autorisés apparaîtront ici."}
-            </p>
-          </div>
-          <Link href="/recruiter/documents">
-            <Button variant="outline" size="sm">
-              Ouvrir Dossiers & modèles
-            </Button>
-          </Link>
-        </div>
-
-        {recentDocs.length > 0 && (
-          <ul className="mt-4 divide-y divide-border rounded-lg border border-border">
-            {recentDocs.map((doc) => (
-              <li
-                key={doc.id}
-                className="flex flex-col gap-1 px-4 py-3 text-sm md:flex-row md:items-center md:justify-between"
+            <div className="flex items-center gap-2">
+              {candidateCount > 0 && (
+                <StatusPill tone="accent">
+                  {candidateCount} dossier{candidateCount > 1 ? "s" : ""}
+                </StatusPill>
+              )}
+              <Link
+                href="/recruiter/candidates"
+                className="text-[13.5px] font-medium text-ink-3 hover:text-primary"
               >
-                <div>
-                  <p className="font-medium">
-                    {[doc.candidate_first_name, doc.candidate_last_name]
-                      .filter(Boolean)
-                      .join(" ") || "Candidat"}
-                  </p>
-                  <p className="text-muted-foreground">
-                    {doc.template_name ?? "Modèle de dossier"} -{" "}
-                    {doc.file_format.toUpperCase()}
-                  </p>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {relativeDate(doc.generated_at)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+                Tout voir
+              </Link>
+            </div>
+          </div>
+          {candidateCount === 0 ? (
+            <div className="mx-5 mb-5 rounded-md border border-dashed border-line-strong bg-paper-2 p-4">
+              <p className="text-sm font-medium">
+                Aucun candidat accessible pour le moment
+              </p>
+              <p className="mt-1 text-[12.5px] leading-5 text-ink-3">
+                Invitez un candidat : son dossier devient consultable uniquement
+                après son accord explicite.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    {["Candidat", "Disponibilité", "Mode", "Exp", ""].map(
+                      (label, i) => (
+                        <th key={i} className="j-th">
+                          {label}
+                        </th>
+                      ),
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {candidates.slice(0, 6).map((candidate) => (
+                    <tr
+                      key={candidate.user_id}
+                      className="relative border-b border-line last:border-b-0 hover:bg-paper-2"
+                    >
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-[11px]">
+                          <span className="grid size-8 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[12.5px] font-semibold text-primary">
+                            {initialsFromParts(
+                              candidate.first_name,
+                              candidate.last_name,
+                            )}
+                          </span>
+                          <div className="min-w-0">
+                            <Link
+                              href={`/recruiter/candidates/${candidate.user_id}`}
+                              className="whitespace-nowrap text-sm font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              {[candidate.first_name, candidate.last_name]
+                                .filter(Boolean)
+                                .join(" ") || candidate.email}
+                            </Link>
+                            {candidate.title && (
+                              <p className="text-xs text-ink-3">
+                                {candidate.title}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="j-meta text-[12.5px]">
+                          {labelFor(
+                            AVAILABILITY_LABELS,
+                            candidate.availability_status,
+                          ) ?? "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="j-meta text-[12.5px]">
+                          {labelFor(WORK_MODE_LABELS, candidate.work_mode) ??
+                            "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="j-meta text-[12.5px]">
+                          {candidate.experiences.length}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <span className="whitespace-nowrap text-[13.5px] font-medium text-ink-3">
+                          Consulter
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </article>
+
+        {/* Rail droit */}
+        <div className="flex min-w-0 flex-col gap-5">
+          <article className="rounded-lg border border-accent-line bg-accent-soft-2 px-[22px] py-5">
+            <div className="mb-2.5 flex items-center gap-2">
+              <span className="grid size-8 place-items-center rounded-lg border border-accent-line bg-accent-soft text-primary">
+                <FolderOpen className="size-4" strokeWidth={1.6} />
+              </span>
+              <h2 className="font-heading text-[16.5px] font-semibold">
+                Générer un dossier ciblé
+              </h2>
+            </div>
+            <p className="mb-4 text-[13.5px] leading-relaxed text-ink-2">
+              Choisissez un candidat et un poste : Jorg compose un dossier sur
+              mesure à partir de ses données vérifiées.
+            </p>
+            <Link
+              href="/recruiter/candidates"
+              className={cn(
+                buttonVariants({ variant: "default" }),
+                "w-full justify-center",
+              )}
+            >
+              <Plus className="size-4" strokeWidth={1.6} />
+              Composer un dossier
+            </Link>
+          </article>
+
+          <article className="flex flex-1 flex-col rounded-lg border border-line bg-surface px-[22px] py-5">
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <h2 className="font-heading text-[17px] font-semibold">
+                Journal de l&apos;équipe
+              </h2>
+              <Link
+                href="/recruiter/documents"
+                className="text-[13.5px] font-medium text-ink-3 hover:text-primary"
+              >
+                Tout voir
+              </Link>
+            </div>
+            {recentDocs.length === 0 ? (
+              <p className="py-3 text-sm text-ink-3">
+                Les dossiers générés par votre organisation apparaîtront ici.
+              </p>
+            ) : (
+              <div className="flex flex-col">
+                {recentDocs.map((doc, i) => (
+                  <Link
+                    key={doc.id}
+                    href="/recruiter/documents"
+                    className="group relative flex gap-3.5 py-3.5"
+                  >
+                    {i < recentDocs.length - 1 && (
+                      <span
+                        className="absolute bottom-[-2px] left-3.5 top-8 w-px bg-line"
+                        aria-hidden
+                      />
+                    )}
+                    <span className="z-10 grid size-[29px] shrink-0 place-items-center rounded-lg border border-accent-line bg-accent-soft text-primary">
+                      <FolderOpen className="size-3.5" strokeWidth={1.6} />
+                    </span>
+                    <span className="min-w-0 pt-0.5">
+                      <span className="block text-sm group-hover:text-primary">
+                        <b className="font-semibold">
+                          {[doc.candidate_first_name, doc.candidate_last_name]
+                            .filter(Boolean)
+                            .join(" ") || "Candidat"}
+                        </b>{" "}
+                        · Dossier généré
+                        {doc.template_name ? ` — ${doc.template_name}` : ""}
+                      </span>
+                      <span className="mt-0.5 block font-mono text-[11.5px] text-ink-4">
+                        {relativeDate(doc.generated_at)}
+                      </span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+            <p className="j-meta mt-auto flex items-center gap-2 pt-3 text-[11.5px]">
+              Chaque consultation est tracée côté candidat.
+            </p>
+          </article>
+        </div>
       </section>
     </div>
   );

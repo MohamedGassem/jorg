@@ -1,33 +1,56 @@
 // frontend/components/landing/LandingFeatures.tsx
-const FEATURES = [
+import {
+  FileText,
+  FolderOpen,
+  ShieldCheck,
+  type LucideIcon,
+} from "lucide-react";
+
+const FEATURES: { icon: LucideIcon; title: string; description: string }[] = [
   {
+    icon: FileText,
     title: "Profil structuré",
     description:
-      "Expériences, compétences, formations. Tout au même endroit, maintenu par le candidat lui-même.",
+      "Expériences, compétences et réalisations rangées au même endroit, prêtes à alimenter des dossiers propres.",
   },
   {
-    title: "Accès contrôlé",
+    icon: ShieldCheck,
+    title: "Accès contrôlé et tracé",
     description:
-      "Le candidat décide qui peut consulter son profil. Les accès sont révocables à tout moment.",
+      "Le candidat décide qui consulte son profil. Chaque consultation lui est visible, chaque accès est révocable, et l'historique n'est jamais effacé.",
   },
   {
-    title: "Génération IA",
+    icon: FolderOpen,
+    title: "Dossiers sur mesure",
     description:
-      "Transformez un profil en dossier client-ready en 30 secondes, adapté au poste et au format voulu.",
+      "Transformez un profil autorisé en dossier client-ready en trente secondes, adapté au poste et au format voulu.",
   },
-] as const;
+];
 
 export function LandingFeatures() {
   return (
     <section className="mx-auto max-w-5xl px-6 py-20">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <div className="text-center">
+        <p className="j-overline">Conçu pour la confiance</p>
+        <h2 className="mt-3 font-heading text-2xl font-semibold sm:text-3xl">
+          Un outil métier qui produit des dossiers propres et traçables
+        </h2>
+      </div>
+      <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
         {FEATURES.map((f) => (
           <div
             key={f.title}
-            className="rounded-xl border border-border bg-card p-6 shadow-sm"
+            className="rounded-lg border border-line bg-surface p-6 shadow-sm"
           >
-            <h3 className="mb-2 font-semibold text-foreground">{f.title}</h3>
-            <p className="text-sm text-muted-foreground">{f.description}</p>
+            <span className="grid size-9 place-items-center rounded-lg border border-accent-line bg-accent-soft text-primary">
+              <f.icon className="size-[18px]" strokeWidth={1.6} />
+            </span>
+            <h3 className="mt-4 font-heading text-base font-semibold text-foreground">
+              {f.title}
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-ink-3">
+              {f.description}
+            </p>
           </div>
         ))}
       </div>

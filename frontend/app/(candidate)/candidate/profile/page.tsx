@@ -3,12 +3,13 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Eye, FolderOpen, Pencil, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CvImport } from "@/components/cv-import";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
+import { relativeDate } from "@/lib/labels";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { TabBar } from "@/components/ui/TabBar";
 import { ExperienceSection } from "@/components/candidate/experience-section";
@@ -47,8 +48,8 @@ function deriveYearsOfExperience(experiences: Experience[]): number | null {
   return Math.max(years, 0);
 }
 
-function calcCompletion(p: CandidateProfile): number {
-  const checks = [
+function completionChecks(p: CandidateProfile): boolean[] {
+  return [
     Boolean(p.avatar_url),
     Boolean(p.title),
     Boolean(p.summary),
@@ -56,7 +57,6 @@ function calcCompletion(p: CandidateProfile): number {
     Boolean(p.linkedin_url),
     p.availability_status !== "not_available",
   ];
-  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
 
 function ProfileHero({
@@ -92,15 +92,52 @@ function ProfileHero({
     }
   }
 
-  const completion = calcCompletion(profile);
+  const checks = completionChecks(profile);
+  const completion = Math.round(
+    (checks.filter(Boolean).length / checks.length) * 100,
+  );
+  const missingCount = checks.filter((c) => !c).length;
   const fullName =
     [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "-";
+  const initials =
+    [profile.first_name?.[0], profile.last_name?.[0]]
+      .filter(Boolean)
+      .join("")
+      .toUpperCase() || "?";
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-sm">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 items-center gap-4">
-          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border bg-muted">
+    <>
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="j-overline">
+            Profil structuré
+            {profile.updated_at
+              ? ` · mis à jour ${relativeDate(profile.updated_at)}`
+              : ""}
+          </p>
+          <h1 className="mt-2 font-heading text-[27px] font-semibold leading-tight">
+            Mon dossier
+          </h1>
+          <p className="mt-1 max-w-[520px] text-[15px] text-ink-2">
+            Les informations qui rendent votre profil exploitable par les
+            organisations autorisées et les dossiers générés.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-3">
+          <Button variant="outline" onClick={loadPreview}>
+            <Eye className="size-4" strokeWidth={1.6} />
+            Voir ce qu&apos;un recruteur verra
+          </Button>
+          <Button onClick={() => setGenerateOpen(true)}>
+            <FolderOpen className="size-4" strokeWidth={1.6} />
+            Générer un dossier
+          </Button>
+        </div>
+      </header>
+
+      <section className="rounded-lg border border-line bg-surface px-[26px] py-[22px]">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+          <div className="grid size-[46px] shrink-0 place-items-center overflow-hidden rounded-[10px] border border-accent-line bg-accent-soft font-heading text-[19px] font-semibold text-primary">
             {profile.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -109,62 +146,56 @@ function ProfileHero({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <span className="flex h-full w-full items-center justify-center text-xl font-semibold text-muted-foreground">
-                {(profile.first_name?.[0] ?? "?").toUpperCase()}
-              </span>
+              initials
             )}
           </div>
-          <div className="min-w-0">
-            <div className="flex min-w-0 items-start gap-2">
-              <h1 className="min-w-0 break-words font-heading text-2xl font-semibold leading-tight">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h2 className="font-heading text-[22px] font-semibold leading-tight">
                 {fullName}
-              </h1>
+              </h2>
               <Button
                 variant="ghost"
                 size="icon-sm"
                 onClick={onEdit}
                 aria-label="Modifier l'identité"
                 title="Modifier l'identité"
-                className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
               >
-                <Pencil className="size-3.5" />
+                <Pencil className="size-3.5" strokeWidth={1.6} />
               </Button>
             </div>
-            {profile.title && (
-              <p className="text-sm text-muted-foreground">{profile.title}</p>
+            <p className="mt-0.5 text-[14.5px] text-ink-2">
+              {[profile.title, profile.location].filter(Boolean).join(" · ") ||
+                "Titre et localisation à compléter"}
+            </p>
+            {profile.updated_at && (
+              <p className="j-meta mt-1.5">
+                Mis à jour {relativeDate(profile.updated_at)}
+              </p>
             )}
-            <div className="mt-2 flex items-center gap-2">
-              <div className="h-1.5 w-32 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${completion}%` }}
-                />
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {completion}% complété
+          </div>
+          <div className="w-full shrink-0 sm:w-[220px]">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="j-overline text-[10.5px]">Complétude</span>
+              <span className="font-mono text-sm font-medium tabular-nums">
+                {completion}%
               </span>
             </div>
+            <div className="h-[7px] overflow-hidden rounded border border-line bg-paper-3">
+              <i
+                className="block h-full rounded bg-primary transition-all"
+                style={{ width: `${completion}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-ink-3">
+              {missingCount > 0
+                ? `${missingCount} section${missingCount > 1 ? "s" : ""} à compléter`
+                : "Profil complet"}
+            </p>
           </div>
         </div>
-        <div className="flex min-w-0 flex-wrap gap-2 sm:justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            className="max-w-full whitespace-normal"
-            onClick={() => setGenerateOpen(true)}
-          >
-            Générer un dossier depuis mon profil
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="max-w-full whitespace-normal"
-            onClick={loadPreview}
-          >
-            Voir ce qu&apos;un recruteur verra
-          </Button>
-        </div>
-      </div>
+      </section>
 
       {/* Aperçu recruteur dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
@@ -242,7 +273,7 @@ function ProfileHero({
         open={generateOpen}
         onOpenChange={setGenerateOpen}
       />
-    </div>
+    </>
   );
 }
 
@@ -425,8 +456,8 @@ function ProfileTabs() {
 
   return (
     <div className="space-y-6">
-      {/* Sticky tab bar */}
-      <div className="sticky top-0 z-10 -mx-5 bg-background px-5 md:-mx-6 md:px-6 xl:-mx-8 xl:px-8">
+      {/* Sticky tab bar (offset = hauteur de l'app bar) */}
+      <div className="sticky top-[var(--app-bar-h)] z-10 -mx-7 bg-background px-7 py-1.5">
         <TabBar tabs={[...TABS]} activeTab={activeTab} onChange={setTab} />
       </div>
 
@@ -478,22 +509,16 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="max-w-3xl space-y-6">
-        <div className="h-32 animate-pulse rounded-xl bg-muted" />
+      <div className="mx-auto w-full max-w-[920px] space-y-[18px]">
+        <div className="h-24 animate-pulse rounded-lg bg-muted" />
+        <div className="h-28 animate-pulse rounded-lg bg-muted" />
         <div className="h-10 animate-pulse rounded-lg bg-muted" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Mon profil structuré</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Complétez les informations qui rendent votre profil exploitable par
-          les organisations autorisées et par les dossiers générés.
-        </p>
-      </div>
+    <div className="mx-auto w-full max-w-[920px] space-y-[18px]">
       <ProfileHero profile={profile} onEdit={() => setEditOpen(true)} />
       <CvImport onContactDetected={handleContactDetected} />
       <Suspense
@@ -501,6 +526,10 @@ export default function ProfilePage() {
       >
         <ProfileTabs />
       </Suspense>
+      <p className="j-meta flex items-center gap-2">
+        <ShieldCheck className="size-3.5" strokeWidth={1.6} />
+        Chaque modification est historisée dans votre journal d&apos;activité.
+      </p>
       <EditProfileDrawer
         open={editOpen}
         profile={profile}

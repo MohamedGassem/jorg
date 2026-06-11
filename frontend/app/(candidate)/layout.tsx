@@ -1,11 +1,4 @@
-import { NavSidebar } from "@/components/nav-sidebar";
-
-const candidateNav = [
-  { href: "/candidate/dashboard", label: "Accueil" },
-  { href: "/candidate/profile", label: "Mon profil" },
-  { href: "/candidate/access", label: "Accès" },
-  { href: "/candidate/settings", label: "Compte & données" },
-];
+import { CandidateAppBar } from "@/components/app-bar";
 
 export default function CandidateLayout({
   children,
@@ -13,14 +6,10 @@ export default function CandidateLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-dvh bg-background">
-      <NavSidebar
-        items={candidateNav}
-        title="Espace candidat"
-        homeHref="/candidate/dashboard"
-      />
+    <div className="flex min-h-dvh flex-col bg-background">
+      <CandidateAppBar />
       <main
-        className="min-w-0 flex-1 overflow-auto p-5 md:p-6 xl:p-8"
+        className="mx-auto w-full min-w-0 max-w-[var(--shell)] flex-1 px-7 py-[26px]"
         id="main-content"
       >
         {children}
