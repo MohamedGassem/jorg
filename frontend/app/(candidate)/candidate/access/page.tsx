@@ -174,6 +174,8 @@ export default function AccessPage() {
   const revokedCount = orgList.filter(
     (o) => o.current_status === "revoked",
   ).length;
+  // Full consultation history — kept complete (not capped) so the
+  // traceability promise holds; the list scrolls within its column.
   const journal = orgList
     .flatMap((o) =>
       o.events.map((event) => ({ event, orgName: o.organization_name })),
@@ -182,8 +184,7 @@ export default function AccessPage() {
       (a, b) =>
         new Date(b.event.occurred_at).getTime() -
         new Date(a.event.occurred_at).getTime(),
-    )
-    .slice(0, 6);
+    );
   const docList = docs ?? [];
 
   return (
@@ -466,7 +467,7 @@ export default function AccessPage() {
               Les invitations, accès et dossiers générés apparaîtront ici.
             </p>
           ) : (
-            <div className="flex flex-col">
+            <div className="flex max-h-[420px] flex-col overflow-y-auto">
               {journal.map(({ event, orgName }, i) => {
                 const Icon = JOURNAL_ICONS[event.type] ?? Eye;
                 const accent =
