@@ -269,9 +269,16 @@ export default function DocumentsPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3.5">
-                          <span className="j-meta text-[12.5px]">
-                            {new Date(doc.generated_at).toLocaleDateString(
+                          <span className="j-meta whitespace-nowrap text-[12.5px]">
+                            {new Date(doc.generated_at).toLocaleString(
                               "fr-FR",
+                              {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              },
                             )}
                           </span>
                         </td>

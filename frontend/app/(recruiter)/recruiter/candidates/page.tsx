@@ -230,6 +230,8 @@ function CandidateExperiencePanel({
 export default function CandidatesPage() {
   const { orgId, loading, error } = useRecruiterOrg();
   const [candidates, setCandidates] = useState<AccessibleCandidateRead[]>([]);
+  // Total of accessible candidates, unaffected by the active filters.
+  const [accessibleTotal, setAccessibleTotal] = useState<number | null>(null);
   const [candidatesError, setCandidatesError] = useState<string | null>(null);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -280,6 +282,10 @@ export default function CandidatesPage() {
       try {
         const data = await api.get<AccessibleCandidateRead[]>(url);
         setCandidates(data);
+        // The unfiltered fetch is the source of truth for the total count.
+        if (!Object.values(currentFilters).some(Boolean)) {
+          setAccessibleTotal(data.length);
+        }
       } catch (err) {
         setCandidatesError(extractErrorMessage(err, "Erreur de chargement"));
       }
@@ -377,7 +383,8 @@ export default function CandidatesPage() {
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="j-overline">
-            {candidates.length} accès actif{candidates.length > 1 ? "s" : ""}
+            {accessibleTotal ?? candidates.length} accès actif
+            {(accessibleTotal ?? candidates.length) > 1 ? "s" : ""}
           </p>
           <h1 className="mt-2 font-heading text-[27px] font-semibold leading-tight">
             Candidats

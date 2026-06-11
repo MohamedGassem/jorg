@@ -111,7 +111,9 @@ export default function AccessPage() {
     "Impossible de charger les accès",
   );
 
-  const { data: docs } = useAsyncData<GeneratedDocumentCandidateView[]>(
+  const { data: docs, error: docsError } = useAsyncData<
+    GeneratedDocumentCandidateView[]
+  >(
     () => api.get("/candidates/me/documents"),
     "Impossible de charger les dossiers",
   );
@@ -199,7 +201,7 @@ export default function AccessPage() {
         </p>
       </header>
 
-      <ErrorAlert error={invError ?? orgsError ?? actionError} />
+      <ErrorAlert error={invError ?? orgsError ?? docsError ?? actionError} />
 
       {/* Demandes en attente */}
       {pendingInvitations.map((inv) => (
@@ -392,7 +394,11 @@ export default function AccessPage() {
               {docList.length} dossier{docList.length > 1 ? "s" : ""}
             </span>
           </div>
-          {docList.length === 0 ? (
+          {docsError ? (
+            <p className="px-5 pb-5 text-sm text-ink-3">
+              Impossible de charger vos dossiers générés pour le moment.
+            </p>
+          ) : docList.length === 0 ? (
             <p className="px-5 pb-5 text-sm text-ink-3">
               Lorsqu&apos;un recruteur générera un dossier depuis votre profil,
               il apparaîtra ici avec son modèle et sa date.
@@ -487,7 +493,7 @@ export default function AccessPage() {
                     <div className="min-w-0 pt-0.5">
                       <p className="text-sm">
                         <b className="font-semibold">{orgName}</b> ·{" "}
-                        {JOURNAL_LABELS[event.type]}
+                        {JOURNAL_LABELS[event.type] ?? event.type}
                       </p>
                       <p className="mt-0.5 font-mono text-[11.5px] text-ink-4">
                         {relativeDate(event.occurred_at)}

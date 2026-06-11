@@ -520,7 +520,7 @@ export default function CandidateDashboardPage() {
                           <b className="font-semibold">
                             {group.organizationName}
                           </b>{" "}
-                          · {ACTIVITY_LABELS[group.type]}
+                          · {ACTIVITY_LABELS[group.type] ?? group.type}
                           {group.count > 1 ? ` (${group.count})` : ""}
                         </span>
                         <span className="mt-0.5 block font-mono text-[11.5px] text-ink-4">
