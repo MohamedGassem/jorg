@@ -39,7 +39,7 @@ async def create_opportunity(
     data: OpportunityCreate,
     member: RecruiterOrgMember,
     db: DB,
-) -> Opportunity:
+) -> OpportunityRead:
     return await opportunity_service.create_opportunity(db, org_id, member.user_id, data)
 
 
@@ -67,7 +67,7 @@ async def update_opportunity(
     data: OpportunityUpdate,
     member: RecruiterOrgMember,
     db: DB,
-) -> Opportunity:
+) -> OpportunityRead:
     opp = await _get_opp_or_404(db, opp_id, org_id)
     return await opportunity_service.update_opportunity(db, opp, data)
 

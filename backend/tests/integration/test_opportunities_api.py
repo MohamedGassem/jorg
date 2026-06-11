@@ -237,6 +237,10 @@ async def test_create_opportunity_with_required_skills(
     s2 = await _create_skill_ref(db_session, "ReqSkillTwo")
     opp = await _create_opportunity(client, recruiter_headers, org_id, skill_ref_ids=[s1, s2])
 
+    # The create (POST) response body itself must already include the hydrated skills.
+    create_names = {s["name"] for s in opp["required_skills"]}
+    assert create_names == {"ReqSkillOne", "ReqSkillTwo"}
+
     r = await client.get(
         f"/organizations/{org_id}/opportunities/{opp['id']}", headers=recruiter_headers
     )
@@ -259,6 +263,9 @@ async def test_update_opportunity_required_skills(
         headers=recruiter_headers,
     )
     assert r.status_code == 200
+    # The update (PATCH) response body itself must reflect the new hydrated skills.
+    patch_names = {s["name"] for s in r.json()["required_skills"]}
+    assert patch_names == {"ReplacementSkill"}
 
     detail = await client.get(
         f"/organizations/{org_id}/opportunities/{opp['id']}", headers=recruiter_headers

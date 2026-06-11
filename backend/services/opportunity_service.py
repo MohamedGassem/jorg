@@ -54,6 +54,21 @@ async def _load_required_skills(
     return by_opp
 
 
+async def _to_read(db: AsyncSession, opp: Opportunity) -> OpportunityRead:
+    """Hydrate a single opportunity into an OpportunityRead with its required skills."""
+    skills = (await _load_required_skills(db, [opp.id]))[opp.id]
+    return OpportunityRead(
+        id=opp.id,
+        organization_id=opp.organization_id,
+        title=opp.title,
+        description=opp.description,
+        status=opp.status,
+        created_at=opp.created_at,
+        updated_at=opp.updated_at,
+        required_skills=skills,
+    )
+
+
 async def _sync_required_skills(
     db: AsyncSession, opportunity_id: UUID, skill_ref_ids: list[UUID]
 ) -> None:
@@ -71,7 +86,7 @@ async def _sync_required_skills(
 
 async def create_opportunity(
     db: AsyncSession, organization_id: UUID, created_by: UUID, data: OpportunityCreate
-) -> Opportunity:
+) -> OpportunityRead:
     opp = Opportunity(
         organization_id=organization_id,
         created_by=created_by,
@@ -83,7 +98,7 @@ async def create_opportunity(
     await _sync_required_skills(db, opp.id, data.skill_ref_ids)
     await db.commit()
     await db.refresh(opp)
-    return opp
+    return await _to_read(db, opp)
 
 
 async def list_opportunities(db: AsyncSession, organization_id: UUID) -> list[OpportunityRead]:
@@ -123,7 +138,7 @@ async def get_opportunity(
 
 async def update_opportunity(
     db: AsyncSession, opp: Opportunity, data: OpportunityUpdate
-) -> Opportunity:
+) -> OpportunityRead:
     fields = data.model_dump(exclude_unset=True)
     skill_ref_ids = fields.pop("skill_ref_ids", None)
     for field, value in fields.items():
@@ -133,7 +148,7 @@ async def update_opportunity(
         await _sync_required_skills(db, opp.id, skill_ref_ids)
     await db.commit()
     await db.refresh(opp)
-    return opp
+    return await _to_read(db, opp)
 
 
 async def get_opportunity_detail(
