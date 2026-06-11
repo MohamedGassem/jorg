@@ -30,6 +30,7 @@ export default function CandidateOnboardingProfilePage() {
   const [contractType, setContractType] = useState<ContractType>("freelance");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importedExperiences, setImportedExperiences] = useState(0);
 
   async function handleContinue(e: React.FormEvent) {
     e.preventDefault();
@@ -40,8 +41,13 @@ export default function CandidateOnboardingProfilePage() {
         title: title || null,
         location: location || null,
         contract_type: contractType,
+        ...(importedExperiences > 0 ? { onboarding_completed: true } : {}),
       });
-      router.push("/onboarding/candidate/skills");
+      router.push(
+        importedExperiences > 0
+          ? "/candidate/profile"
+          : "/onboarding/candidate/skills",
+      );
     } catch (err) {
       setError(
         err instanceof ApiError ? err.detail : "Erreur lors de la sauvegarde",
@@ -80,7 +86,10 @@ export default function CandidateOnboardingProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <CvImport onContactDetected={handleContactDetected} />
+          <CvImport
+            onContactDetected={handleContactDetected}
+            onExperiencesAdded={(n) => setImportedExperiences((c) => c + n)}
+          />
           <form onSubmit={handleContinue} className="space-y-4">
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="space-y-1">
@@ -118,7 +127,11 @@ export default function CandidateOnboardingProfilePage() {
               </Select>
             </div>
             <Button type="submit" className="w-full" disabled={saving}>
-              {saving ? "Enregistrement…" : "Continuer →"}
+              {saving
+                ? "Enregistrement…"
+                : importedExperiences > 0
+                  ? "Valider et voir mon dossier"
+                  : "Continuer →"}
             </Button>
           </form>
         </CardContent>

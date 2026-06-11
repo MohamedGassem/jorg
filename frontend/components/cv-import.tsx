@@ -174,8 +174,10 @@ interface CvContactPrefill {
 
 export function CvImport({
   onContactDetected,
+  onExperiencesAdded,
 }: {
   onContactDetected?: (contact: CvContactPrefill) => void;
+  onExperiencesAdded?: (count: number) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<"idle" | "parsing" | "ready" | "adding">(
@@ -505,6 +507,7 @@ export function CvImport({
         }. Réessayez ou complétez-les manuellement.`,
       );
     }
+    if (experienceCount > 0) onExperiencesAdded?.(experienceCount);
     setStatus("ready");
   }
 
