@@ -2,7 +2,7 @@ from typing import Literal
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,18 +10,63 @@ import services.documents.generation_service as generation_service
 from core.exceptions import ConflictError, ForbiddenError, JorgError
 from models.candidate_profile import CandidateProfile
 from models.invitation import AccessGrant
-from models.opportunity import Opportunity, ShortlistEntry
+from models.opportunity import Opportunity, OpportunitySkillRequirement, ShortlistEntry
+from models.skill import CandidateSkill, SkillReference
 from models.user import User
 from schemas.opportunity import (
     BulkGenerateResult,
     OpportunityCreate,
     OpportunityDetail,
+    OpportunityRead,
+    OpportunitySkillOut,
     OpportunityUpdate,
     ShortlistCandidateInfo,
 )
 from services import access_policy
 
 logger = structlog.get_logger()
+
+
+def compute_match_score(candidate_ref_ids: set[UUID], required_ref_ids: set[UUID]) -> int | None:
+    if not required_ref_ids:
+        return None
+    return round(100 * len(candidate_ref_ids & required_ref_ids) / len(required_ref_ids))
+
+
+async def _load_required_skills(
+    db: AsyncSession, opportunity_ids: list[UUID]
+) -> dict[UUID, list[OpportunitySkillOut]]:
+    """Load required skills for the given opportunities in one query (avoids N+1)."""
+    by_opp: dict[UUID, list[OpportunitySkillOut]] = {oid: [] for oid in opportunity_ids}
+    if not opportunity_ids:
+        return by_opp
+    result = await db.execute(
+        select(
+            OpportunitySkillRequirement.opportunity_id,
+            SkillReference.id,
+            SkillReference.name,
+        )
+        .join(SkillReference, SkillReference.id == OpportunitySkillRequirement.skill_ref_id)
+        .where(OpportunitySkillRequirement.opportunity_id.in_(opportunity_ids))
+    )
+    for opp_id, skill_ref_id, name in result.all():
+        by_opp[opp_id].append(OpportunitySkillOut(skill_ref_id=skill_ref_id, name=name))
+    return by_opp
+
+
+async def _sync_required_skills(
+    db: AsyncSession, opportunity_id: UUID, skill_ref_ids: list[UUID]
+) -> None:
+    """Replace the opportunity's required-skill rows with the given set."""
+    await db.execute(
+        delete(OpportunitySkillRequirement).where(
+            OpportunitySkillRequirement.opportunity_id == opportunity_id
+        )
+    )
+    for skill_ref_id in set(skill_ref_ids):
+        db.add(
+            OpportunitySkillRequirement(opportunity_id=opportunity_id, skill_ref_id=skill_ref_id)
+        )
 
 
 async def create_opportunity(
@@ -34,18 +79,34 @@ async def create_opportunity(
         description=data.description,
     )
     db.add(opp)
+    await db.flush()
+    await _sync_required_skills(db, opp.id, data.skill_ref_ids)
     await db.commit()
     await db.refresh(opp)
     return opp
 
 
-async def list_opportunities(db: AsyncSession, organization_id: UUID) -> list[Opportunity]:
+async def list_opportunities(db: AsyncSession, organization_id: UUID) -> list[OpportunityRead]:
     result = await db.execute(
         select(Opportunity)
         .where(Opportunity.organization_id == organization_id)
         .order_by(Opportunity.created_at.desc())
     )
-    return list(result.scalars().all())
+    opps = list(result.scalars().all())
+    skills_by_opp = await _load_required_skills(db, [opp.id for opp in opps])
+    return [
+        OpportunityRead(
+            id=opp.id,
+            organization_id=opp.organization_id,
+            title=opp.title,
+            description=opp.description,
+            status=opp.status,
+            created_at=opp.created_at,
+            updated_at=opp.updated_at,
+            required_skills=skills_by_opp.get(opp.id, []),
+        )
+        for opp in opps
+    ]
 
 
 async def get_opportunity(
@@ -63,8 +124,13 @@ async def get_opportunity(
 async def update_opportunity(
     db: AsyncSession, opp: Opportunity, data: OpportunityUpdate
 ) -> Opportunity:
-    for field, value in data.model_dump(exclude_unset=True).items():
+    fields = data.model_dump(exclude_unset=True)
+    skill_ref_ids = fields.pop("skill_ref_ids", None)
+    for field, value in fields.items():
         setattr(opp, field, value)
+    # skill_ref_ids is None means "leave unchanged"; [] means "clear".
+    if skill_ref_ids is not None:
+        await _sync_required_skills(db, opp.id, skill_ref_ids)
     await db.commit()
     await db.refresh(opp)
     return opp
@@ -84,6 +150,23 @@ async def get_opportunity_detail(
         .where(ShortlistEntry.opportunity_id == opportunity_id)
         .order_by(ShortlistEntry.created_at)
     )
+    rows = result.all()
+
+    required_skills = (await _load_required_skills(db, [opportunity_id]))[opportunity_id]
+    required_ref_ids = {s.skill_ref_id for s in required_skills}
+
+    # Load every shortlisted candidate's skill refs in one query, grouped per user.
+    user_ids = [row.User.id for row in rows]
+    skills_by_user: dict[UUID, set[UUID]] = {uid: set() for uid in user_ids}
+    if user_ids:
+        skill_rows = await db.execute(
+            select(CandidateProfile.user_id, CandidateSkill.skill_ref_id)
+            .join(CandidateSkill, CandidateSkill.candidate_id == CandidateProfile.id)
+            .where(CandidateProfile.user_id.in_(user_ids))
+        )
+        for user_id, skill_ref_id in skill_rows.all():
+            skills_by_user.setdefault(user_id, set()).add(skill_ref_id)
+
     shortlist = [
         ShortlistCandidateInfo(
             user_id=row.User.id,
@@ -91,8 +174,11 @@ async def get_opportunity_detail(
             first_name=row.CandidateProfile.first_name if row.CandidateProfile else None,
             last_name=row.CandidateProfile.last_name if row.CandidateProfile else None,
             title=row.CandidateProfile.title if row.CandidateProfile else None,
+            match_score=compute_match_score(
+                skills_by_user.get(row.User.id, set()), required_ref_ids
+            ),
         )
-        for row in result.all()
+        for row in rows
     ]
 
     return OpportunityDetail(
@@ -103,6 +189,7 @@ async def get_opportunity_detail(
         status=opp.status,
         created_at=opp.created_at,
         updated_at=opp.updated_at,
+        required_skills=required_skills,
         shortlist=shortlist,
     )
 

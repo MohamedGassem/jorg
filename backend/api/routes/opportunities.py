@@ -44,7 +44,9 @@ async def create_opportunity(
 
 
 @router.get("/{org_id}/opportunities", response_model=list[OpportunityRead])
-async def list_opportunities(org_id: UUID, member: RecruiterOrgMember, db: DB) -> list[Opportunity]:
+async def list_opportunities(
+    org_id: UUID, member: RecruiterOrgMember, db: DB
+) -> list[OpportunityRead]:
     return await opportunity_service.list_opportunities(db, org_id)
 
 

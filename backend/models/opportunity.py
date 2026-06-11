@@ -40,6 +40,20 @@ class Opportunity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
 
+class OpportunitySkillRequirement(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "opportunity_skill_requirements"
+    __table_args__ = (
+        UniqueConstraint("opportunity_id", "skill_ref_id", name="uq_opportunity_skill"),
+    )
+
+    opportunity_id: Mapped[UUID] = mapped_column(
+        ForeignKey("opportunities.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    skill_ref_id: Mapped[UUID] = mapped_column(
+        ForeignKey("skill_references.id", ondelete="CASCADE"), nullable=False
+    )
+
+
 class ShortlistEntry(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "shortlist_entries"
 
