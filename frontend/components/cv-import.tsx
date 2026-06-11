@@ -511,6 +511,7 @@ export function CvImport({
     setStatus("ready");
   }
 
+  const matchedSkills = result?.skills.filter((s) => s.skill_ref_id) ?? [];
   const proposedExperiences = result?.proposed_profile.experiences ?? [];
   const proposedEducation = result?.proposed_profile.education ?? [];
   const proposedCertifications = result?.proposed_profile.certifications ?? [];
@@ -895,18 +896,13 @@ export function CvImport({
             </div>
           )}
 
-          {result.skills.filter((s) => s.skill_ref_id).length > 0 ? (
+          {matchedSkills.length > 0 ? (
             <>
               <p className="text-sm font-medium text-foreground">
-                {result.skills.filter((s) => s.skill_ref_id).length} compétence
-                {result.skills.filter((s) => s.skill_ref_id).length > 1
-                  ? "s"
-                  : ""}{" "}
-                détectée
-                {result.skills.filter((s) => s.skill_ref_id).length > 1
-                  ? "s"
-                  : ""}
-                , sélectionnez celles à ajouter
+                {matchedSkills.length} compétence
+                {matchedSkills.length > 1 ? "s" : ""} détectée
+                {matchedSkills.length > 1 ? "s" : ""}, sélectionnez celles à
+                ajouter
               </p>
               <div className="flex flex-wrap gap-2">
                 {result.skills.map((skill) => {
