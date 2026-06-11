@@ -128,7 +128,7 @@ async def test_candidate_generates_own_document_from_builtin_template(
     data = r.json()
     assert data["access_grant_id"] is None
     assert data["template_id"] is None
-    assert data["template_name"] == "Compact ESN"
+    assert data["template_name"] == "Synthèse"
 
     download = await client.get(f"/documents/{data['id']}/download", headers=candidate_headers)
     assert download.status_code == 200

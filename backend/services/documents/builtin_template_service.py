@@ -39,20 +39,20 @@ class BuiltinTemplate:
 BUILTIN_TEMPLATES: tuple[BuiltinTemplate, ...] = (
     BuiltinTemplate(
         key="compact_esn",
-        name="Compact ESN",
-        description="Profil court, lisible et efficace pour un premier envoi client.",
+        name="Synthèse",
+        description="Format court et lisible, adapté à un premier envoi.",
         filename="compact_esn.docx",
     ),
     BuiltinTemplate(
         key="dossier_technique",
-        name="Dossier technique",
-        description="Version detaillee avec missions, competences et environnement technique.",
+        name="Technique",
+        description="Missions, compétences et environnement technique en détail.",
         filename="dossier_technique.docx",
     ),
     BuiltinTemplate(
         key="profil_premium",
-        name="Profil premium",
-        description="Presentation plus soignee pour valoriser un profil senior ou rare.",
+        name="Présentation",
+        description="Mise en page aérée orientée présentation client.",
         filename="profil_premium.docx",
     ),
 )
