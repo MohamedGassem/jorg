@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Breadcrumb } from "@/components/breadcrumb";
+import { SkillChip } from "@/components/ui/SkillChip";
 import { api, ApiError } from "@/lib/api";
 import { mapBusinessError } from "@/lib/errors";
 import { initialsFromParts } from "@/lib/labels";
@@ -170,12 +171,7 @@ export default function OpportunityDetailPage() {
                 <p className="j-overline">Compétences requises</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {opp.required_skills.map((s) => (
-                    <span
-                      key={s.skill_ref_id}
-                      className="inline-flex h-[22px] items-center rounded-[5px] border border-accent-line bg-accent-soft-2 px-2 font-mono text-[11px] font-medium text-primary"
-                    >
-                      {s.name}
-                    </span>
+                    <SkillChip key={s.skill_ref_id} label={s.name} />
                   ))}
                 </div>
               </div>

@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BriefcaseBusiness, Plus, X } from "lucide-react";
+import { BriefcaseBusiness, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { SkillChip } from "@/components/ui/SkillChip";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
@@ -176,20 +177,11 @@ export default function OpportunitiesPage() {
               {selectedSkills.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {selectedSkills.map((s) => (
-                    <span
+                    <SkillChip
                       key={s.skill_ref_id}
-                      className="inline-flex h-[22px] items-center gap-1 rounded-[5px] border border-accent-line bg-accent-soft-2 px-2 font-mono text-[11px] font-medium text-primary"
-                    >
-                      {s.name}
-                      <button
-                        type="button"
-                        onClick={() => removeSkill(s.skill_ref_id)}
-                        className="text-ink-3 hover:text-primary"
-                        aria-label={`Retirer ${s.name}`}
-                      >
-                        <X className="size-3" strokeWidth={2} />
-                      </button>
-                    </span>
+                      label={s.name}
+                      onRemove={() => removeSkill(s.skill_ref_id)}
+                    />
                   ))}
                 </div>
               )}
