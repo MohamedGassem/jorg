@@ -19,5 +19,12 @@ services:
       timeout: 5s
       retries: 5
 
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: jorg-gotenberg
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+
 volumes:
   jorg_pgdata:
