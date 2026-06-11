@@ -155,10 +155,14 @@ export function RecruiterAppBar() {
   const [org, setOrg] = useState<Organization | null>(null);
 
   useEffect(() => {
-    api
-      .get<RecruiterProfile>("/recruiters/me/profile")
-      .then((profile) => {
-        setInitials(initialsFromParts(profile.first_name, profile.last_name));
+    Promise.all([
+      api.get<RecruiterProfile>("/recruiters/me/profile"),
+      api.get<{ email: string }>("/auth/me"),
+    ])
+      .then(([profile, me]) => {
+        setInitials(
+          initialsFromParts(profile.first_name, profile.last_name, me.email),
+        );
         if (profile.organization_id) {
           setOrgId(profile.organization_id);
           api
