@@ -1,4 +1,5 @@
 import { CandidateAppBar } from "@/components/app-bar";
+import { AppLegalFooter } from "@/components/AppLegalFooter";
 
 export default function CandidateLayout({
   children,
@@ -14,6 +15,7 @@ export default function CandidateLayout({
       >
         {children}
       </main>
+      <AppLegalFooter />
     </div>
   );
 }

@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 };
 
 const PROCESSING_FACTS = [
-  { label: "Responsable", value: "Jorg SAS" },
-  { label: "DPO", value: "dpo@jorg.io" },
+  { label: "Responsable", value: "Mohamed Gassem" },
+  { label: "Contact", value: "contact@mohamed-gassem.fr" },
   { label: "Base légale", value: "Consentement + intérêt légitime" },
   { label: "Durée de conservation", value: "36 mois après dernière activité" },
 ];

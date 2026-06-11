@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { JorgWordmark } from "@/components/ui/JorgWordmark";
+import { AuthLegalFooter } from "@/components/AuthLegalFooter";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -116,7 +117,7 @@ function RegisterForm() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-8">
       <div className="grid w-full max-w-5xl grid-cols-1 gap-8 lg:grid-cols-[minmax(0,460px)_1fr]">
         <section className="rounded-lg border border-line bg-surface px-[26px] py-[22px]">
           <JorgWordmark />
@@ -263,6 +264,24 @@ function RegisterForm() {
             >
               {loading ? "Création..." : "Créer mon compte Jorg"}
             </Button>
+
+            <p className="text-xs leading-5 text-muted-foreground">
+              En créant un compte, vous acceptez nos{" "}
+              <Link
+                href="/mentions-legales"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                mentions légales
+              </Link>{" "}
+              et notre{" "}
+              <Link
+                href="/privacy"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                politique de confidentialité
+              </Link>
+              .
+            </p>
           </form>
 
           <p className="mt-5 text-sm text-muted-foreground">
@@ -278,6 +297,7 @@ function RegisterForm() {
 
         <RegisterTrustPanel role={role} />
       </div>
+      <AuthLegalFooter />
     </main>
   );
 }

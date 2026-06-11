@@ -5,6 +5,7 @@ const FOOTER_LINKS = [
   { href: "/login", label: "Se connecter" },
   { href: "/register", label: "Créer un compte" },
   { href: "/privacy", label: "Confidentialité & RGPD" },
+  { href: "/mentions-legales", label: "Mentions légales" },
 ];
 
 export function LandingFooter() {
