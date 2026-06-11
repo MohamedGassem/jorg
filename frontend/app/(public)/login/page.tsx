@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { JorgWordmark } from "@/components/ui/JorgWordmark";
+import { AuthLegalFooter } from "@/components/AuthLegalFooter";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { AuthResponse } from "@/types/api";
@@ -109,7 +110,7 @@ function LoginForm() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-8">
       <div className="grid w-full max-w-5xl grid-cols-1 gap-8 lg:grid-cols-[minmax(0,420px)_1fr]">
         <section className="rounded-lg border border-line bg-surface px-[26px] py-[22px]">
           <JorgWordmark />
@@ -214,6 +215,7 @@ function LoginForm() {
 
         <AuthTrustPanel />
       </div>
+      <AuthLegalFooter />
     </main>
   );
 }

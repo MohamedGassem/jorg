@@ -1,4 +1,5 @@
 import { RecruiterAppBar } from "@/components/app-bar";
+import { AppLegalFooter } from "@/components/AppLegalFooter";
 
 export default function RecruiterLayout({
   children,
@@ -14,6 +15,7 @@ export default function RecruiterLayout({
       >
         {children}
       </main>
+      <AppLegalFooter />
     </div>
   );
 }
