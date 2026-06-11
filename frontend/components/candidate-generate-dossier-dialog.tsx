@@ -186,7 +186,7 @@ export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
                   Télécharger ({result.file_format.toUpperCase()})
                 </Button>
                 {format === "pdf" && result.file_format === "docx" && (
-                  <p className="text-xs text-amber-700">
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
                     La conversion PDF est momentanément indisponible : le
                     dossier a été généré au format Word.
                   </p>
