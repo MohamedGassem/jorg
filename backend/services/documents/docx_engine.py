@@ -244,6 +244,7 @@ def achievement_flat(achievement: Any) -> dict[str, Any]:
     return {
         "description": achievement.description or "",
         "impact": achievement.impact or "",
+        "featured": "true" if achievement.featured else "false",
         "skills": skill_tags,
     }
 
@@ -312,7 +313,10 @@ def exp_flat(exp: ExperienceProtocol) -> dict[str, Any]:
     skill_usages = [usage_flat(usage) for usage in _safe_sequence(getattr(exp, "skill_usages", []))]
     achievement_items = [
         achievement_flat(achievement)
-        for achievement in _safe_sequence(getattr(exp, "achievements", []))
+        for achievement in sorted(
+            _safe_sequence(getattr(exp, "achievements", [])),
+            key=lambda achievement: 0 if achievement.featured else 1,
+        )
     ]
     return {
         "client_name": exp.client_name or "",

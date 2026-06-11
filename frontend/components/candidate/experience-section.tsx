@@ -2,8 +2,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Trash2, Plus, X, Pencil } from "lucide-react";
+import { Trash2, Plus, X, Pencil, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
@@ -226,10 +227,26 @@ function AchievementRow({
     });
   }
 
+  async function handleToggleFeatured() {
+    try {
+      const updated = await api.put<Achievement>(
+        `/candidates/me/experiences/${expId}/achievements/${ach.id}`,
+        { featured: !ach.featured },
+      );
+      onSaved({ ...ach, featured: updated.featured });
+    } catch {
+      // ignore toggle errors silently (non-critical)
+    }
+  }
+
   return (
     <div>
       <div
-        className={`group flex items-start gap-2 rounded-md px-2 py-1.5 ${open ? "bg-muted/20" : "hover:bg-muted/10"}`}
+        className={cn(
+          "group flex items-start gap-2 rounded-md px-2 py-1.5",
+          open ? "bg-muted/20" : "hover:bg-muted/10",
+          ach.featured && "bg-accent-soft-2",
+        )}
       >
         <span className="mt-0.5 shrink-0 text-muted-foreground">•</span>
         <div className="min-w-0 flex-1">
@@ -253,6 +270,27 @@ function AchievementRow({
           )}
         </div>
         <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={
+              ach.featured ? "Retirer la mise en avant" : "Mettre en avant"
+            }
+            title={
+              ach.featured ? "Retirer la mise en avant" : "Mettre en avant"
+            }
+            onClick={handleToggleFeatured}
+          >
+            <Star
+              className={cn(
+                "size-3.5",
+                ach.featured
+                  ? "fill-primary text-primary"
+                  : "text-muted-foreground",
+              )}
+              strokeWidth={1.6}
+            />
+          </Button>
           <button
             type="button"
             onClick={openForm}

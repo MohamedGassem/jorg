@@ -11,6 +11,7 @@ import pytest
 from docx import Document
 
 from services.documents.docx_engine import (
+    achievement_flat,
     derive_years_of_experience,
     exp_flat,
     fmt_date,
@@ -57,6 +58,15 @@ def _mock_experience(**kwargs: object) -> MagicMock:
     exp.skill_usages = kwargs.get("skill_usages", [])
     # technologies removed
     return exp
+
+
+def _mock_achievement(**kwargs: object) -> MagicMock:
+    ach = MagicMock()
+    ach.description = kwargs.get("description", "Did X")
+    ach.impact = kwargs.get("impact", "")
+    ach.skill_tags = kwargs.get("skill_tags", [])
+    ach.featured = kwargs.get("featured", False)
+    return ach
 
 
 def _mock_skill(**kwargs: object) -> MagicMock:
@@ -178,6 +188,17 @@ class TestExpFlat:
         exp = _mock_experience(achievements_summary="Shipped feature X")
         assert exp_flat(exp)["achievements"] == "Shipped feature X"
 
+    def test_achievement_items_featured_first(self):
+        exp = _mock_experience(
+            achievements=[
+                _mock_achievement(description="a", featured=False),
+                _mock_achievement(description="b", featured=True),
+                _mock_achievement(description="c", featured=False),
+            ]
+        )
+        items = exp_flat(exp)["achievement_items"]
+        assert [item["description"] for item in items] == ["b", "a", "c"]
+
     def test_keys_have_no_experience_prefix(self):
         exp = _mock_experience()
         keys = set(exp_flat(exp).keys())
@@ -250,6 +271,16 @@ class TestSkillFlat:
     def test_featured_true_returns_true_string(self):
         sk = _mock_skill(featured=True)
         assert skill_flat(sk)["featured"] == "true"
+
+
+class TestAchievementFlat:
+    def test_featured_true_returns_true_string(self):
+        ach = _mock_achievement(featured=True)
+        assert achievement_flat(ach)["featured"] == "true"
+
+    def test_featured_false_returns_false_string(self):
+        ach = _mock_achievement(featured=False)
+        assert achievement_flat(ach)["featured"] == "false"
 
 
 # ---------------------------------------------------------------------------

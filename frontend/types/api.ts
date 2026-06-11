@@ -33,6 +33,7 @@ export interface Achievement {
   description: string;
   impact: string | null;
   order: number;
+  featured: boolean;
   skill_tags: AchievementSkillTag[];
   created_at: string;
   updated_at: string;

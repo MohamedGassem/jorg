@@ -142,6 +142,7 @@ class _MockAchievement:
     description: str
     impact: str | None = None
     skill_tags: list[_MockAchievementSkillTag] = field(default_factory=list)
+    featured: bool = False
 
 
 @dataclass
@@ -205,6 +206,7 @@ def render_mock_preview(template: BuiltinTemplate) -> bytes:
                     "Mise en place du moteur de generation Word pour les dossiers candidats.",
                     "Generation en quelques minutes",
                     [_MockAchievementSkillTag(python_ref)],
+                    featured=True,
                 ),
                 _MockAchievement(
                     "Structuration du parcours recruteur et candidat en alpha.",
