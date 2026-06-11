@@ -1,6 +1,32 @@
+<div align="center">
+
+<!-- TODO(visuel): bannière du projet — décommenter une fois docs/assets/banner.png ajouté -->
+<!-- <img src="docs/assets/banner.png" alt="Jorg" width="640" /> -->
+
 # Jorg
 
-Jorg is a platform that lets **candidates** build a structured skill profile (experiences, skills, education, certifications, languages) that recruiting firms can use to generate tailored Word/PDF documents without ever giving them direct access to a CV file.
+**Candidates own their profile. Recruiters generate the documents.**
+
+[![Backend CI](https://github.com/MohamedGassem/jorg/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/MohamedGassem/jorg/actions/workflows/backend-ci.yml)
+[![Frontend CI](https://github.com/MohamedGassem/jorg/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/MohamedGassem/jorg/actions/workflows/frontend-ci.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
+
+</div>
+
+Recruiting firms keep asking candidates for "an updated CV", reformat it by hand
+into their own template, and end up with stale copies of personal data scattered
+across inboxes. Jorg replaces that flow: candidates maintain **one structured
+profile** (experiences, skills, education, certifications, languages) and
+recruiters generate **tailored Word/PDF documents** from their own templates,
+always from up-to-date data, without ever receiving a CV file.
+
+Candidates control their own data. They grant access per organisation and can
+revoke it at any time.
+
+<!-- TODO(visuel): démo du flux template + profil → document généré -->
+<!-- <img src="docs/assets/demo.gif" alt="Generating a document from a template and a candidate profile" width="720" /> -->
 
 ## How it works
 
@@ -9,9 +35,14 @@ Jorg is a platform that lets **candidates** build a structured skill profile (ex
 3. The **candidate** accepts the invitation, granting the organisation access to their profile.
 4. The recruiter generates a formatted document from any template + any candidate profile they have access to, and downloads it as `.docx` or `.pdf`.
 
-Candidates control their own data. They can revoke access at any time.
+## Screenshots
 
----
+<!-- TODO(visuel): décommenter une fois les captures ajoutées dans docs/assets/ -->
+<!--
+| Candidate profile | Recruiter dashboard |
+| ----------------- | ------------------- |
+| ![Candidate profile](docs/assets/screenshot-candidate.png) | ![Recruiter dashboard](docs/assets/screenshot-recruiter.png) |
+-->
 
 ## Stack
 
@@ -23,22 +54,18 @@ Candidates control their own data. They can revoke access at any time.
 | Auth                | JWT (access + refresh tokens)                                    |
 | Document generation | python-docx, optional LibreOffice for PDF                        |
 
----
-
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) (for the database)
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) (Python package manager)
 - [Node.js](https://nodejs.org/) 20+
 
----
-
 ## Running locally
 
 ### 1. Clone and configure
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/MohamedGassem/jorg.git
 cd jorg
 cp .env.example .env        # backend env — defaults work for local dev
 ```
@@ -94,8 +121,6 @@ npm run dev
 
 Open `http://localhost:3000` in your browser.
 
----
-
 ## Project structure
 
 ```
@@ -116,8 +141,6 @@ jorg/
     └── types/             # TypeScript API types
 ```
 
----
-
 ## Running tests
 
 ```bash
@@ -126,8 +149,6 @@ uv run pytest
 ```
 
 Integration tests spin up a temporary PostgreSQL container via Testcontainers — Docker must be running.
-
----
 
 ## Pre-commit hooks
 
@@ -149,8 +170,6 @@ TypeScript typecheck (slow) runs only manually:
 pre-commit run tsc --hook-stage manual
 ```
 
----
-
 ## Environment variables
 
 Copy `.env.example` to `.env` in the project root. The defaults are configured for local development and require no changes to get started.
@@ -164,7 +183,11 @@ Copy `.env.example` to `.env` in the project root. The defaults are configured f
 | `EMAIL_BACKEND`               | `console` (prints to stdout) or `smtp` |
 | `FRONTEND_URL`                | Used in invitation email links         |
 
----
+## Contributing
+
+Contributions are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md). By
+submitting a contribution you accept the contributor license terms described
+there (the project is dual-licensed, see below).
 
 ## Licensing
 
