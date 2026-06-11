@@ -2,9 +2,9 @@ import { ShieldCheck } from "lucide-react";
 import { Brandmark } from "@/components/ui/Brandmark";
 
 /* Aperçu statique d'un dossier généré (feuille A4 du design handoff).
-   Contenu fictif — sert de preuve visuelle sur la landing. */
+   Profil réel anonymisé, sert de preuve visuelle sur la landing. */
 
-const SKILLS = ["Python", "Spark", "Airflow", "AWS", "dbt"];
+const SKILLS = ["Python", "PyTorch", "Gen AI / RAG", "Computer Vision"];
 
 export function LandingDocumentPreview() {
   return (
@@ -16,10 +16,10 @@ export function LandingDocumentPreview() {
       <div className="flex items-start justify-between gap-3 border-b border-line pb-4">
         <div>
           <p className="font-heading text-[21px] font-semibold leading-tight">
-            Camille Moreau
+            Mohamed Gassem
           </p>
           <p className="mt-0.5 text-[12.5px] text-ink-2">
-            Candidature — Data engineer senior
+            Candidature : Data scientist / ML engineer
           </p>
         </div>
         <Brandmark size={24} className="rounded-[5px]" />
@@ -31,9 +31,9 @@ export function LandingDocumentPreview() {
           Profil
         </p>
         <p className="mt-1.5 text-[11px] leading-relaxed text-ink-2">
-          Sept ans d&apos;expérience en plateformes data, de l&apos;ingestion à
-          l&apos;industrialisation. Spécialiste des pipelines fiables et
-          documentés.
+          Cinq ans en data science et ML engineering, de la computer vision
+          industrielle aux systèmes Gen AI / RAG. Spécialiste des solutions IA
+          fiables, du POC à l&apos;industrialisation.
         </p>
       </div>
 
@@ -60,14 +60,12 @@ export function LandingDocumentPreview() {
           Expérience pertinente
         </p>
         <p className="mt-1.5 text-[11px] font-semibold">
-          Nexa Conseil — Lead data engineer
+          Groupe industriel (automobile), Data scientist
         </p>
-        <p className="font-mono text-[9px] text-ink-4">
-          2022 → aujourd&apos;hui
-        </p>
+        <p className="font-mono text-[9px] text-ink-4">2023 → 2026</p>
         <div className="mt-1.5 border-l-[3px] border-primary bg-accent-soft-2 py-1.5 pl-2.5 pr-2 text-[10.5px] leading-snug text-ink-2">
-          Migration de 40 pipelines vers une plateforme unifiée, −35 % de temps
-          de traitement.
+          Automatisation d&apos;un contrôle qualité par computer vision, gain
+          d&apos;environ 1 ETP.
         </div>
       </div>
 
