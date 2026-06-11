@@ -12,14 +12,14 @@ interface Props {
   trailing?: React.ReactNode;
 }
 
-/* Fil d'ariane "page de niveau 2" du design handoff :
-   bandeau pleine largeur ← [Section] / [Objet courant].
-   Les marges négatives compensent le padding du layout (px-7 py-[26px]). */
+/* Fil d'ariane "page de niveau 2" du design handoff : ← [Section] / [Objet].
+   Ligne bordée alignée sur la colonne de contenu — aucune dépendance au
+   padding du layout (évite tout désalignement aux grandes largeurs). */
 export function Breadcrumb({ items, trailing }: Props) {
   return (
     <nav
       aria-label="Fil d'ariane"
-      className="-mx-7 -mt-[26px] flex h-11 items-center justify-between gap-3 border-b border-line bg-surface px-7"
+      className="flex h-11 items-center justify-between gap-3 border-b border-line"
     >
       <div className="flex min-w-0 items-center gap-2">
         {items.map((item, i) => {

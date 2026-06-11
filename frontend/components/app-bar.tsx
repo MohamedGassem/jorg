@@ -53,7 +53,7 @@ export function AppBar({
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-surface">
-      <div className="mx-auto flex h-[58px] w-full max-w-[1400px] items-center gap-[18px] px-7">
+      <div className="mx-auto flex h-[58px] w-full max-w-[var(--shell)] items-center gap-[18px] px-7">
         <Link href={homeHref}>
           <JorgWordmark />
         </Link>
@@ -75,7 +75,7 @@ export function AppBar({
         </button>
       </div>
       <nav
-        className="mx-auto flex w-full max-w-[1400px] gap-1.5 px-7"
+        className="mx-auto flex w-full max-w-[var(--shell)] gap-1.5 overflow-x-auto px-7 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         aria-label="Navigation principale"
       >
         {tabs.map((tab) => {

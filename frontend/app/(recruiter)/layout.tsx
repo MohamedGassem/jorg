@@ -9,7 +9,7 @@ export default function RecruiterLayout({
     <div className="flex min-h-dvh flex-col bg-background">
       <RecruiterAppBar />
       <main
-        className="mx-auto w-full min-w-0 max-w-[1400px] flex-1 px-7 py-[26px]"
+        className="mx-auto w-full min-w-0 max-w-[var(--shell)] flex-1 px-7 py-[26px]"
         id="main-content"
       >
         {children}

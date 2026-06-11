@@ -98,6 +98,13 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Layout constants (theme-independent). Single source of truth so the
+   app bar, page shells and sticky offsets stay in sync. */
+:root {
+  --shell: 1400px; /* centered content column width */
+  --app-bar-h: 6.5rem; /* 58px top row + ~46px tab row + borders */
+}
+
 :root,
 [data-theme="light"] {
   /* Handoff tokens (mockup/design_handoff_jorg/jorg-system.css) */

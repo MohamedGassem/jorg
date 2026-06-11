@@ -457,7 +457,7 @@ function ProfileTabs() {
   return (
     <div className="space-y-6">
       {/* Sticky tab bar (offset = hauteur de l'app bar) */}
-      <div className="sticky top-[105px] z-10 -mx-7 bg-background px-7 py-1.5">
+      <div className="sticky top-[var(--app-bar-h)] z-10 -mx-7 bg-background px-7 py-1.5">
         <TabBar tabs={[...TABS]} activeTab={activeTab} onChange={setTab} />
       </div>
 

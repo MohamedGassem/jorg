@@ -281,7 +281,7 @@ export default function CandidateDetailPage() {
         </div>
 
         {/* Panneau d'action */}
-        <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-[130px]">
+        <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-[calc(var(--app-bar-h)+1rem)]">
           <section className="rounded-lg border border-accent-line bg-accent-soft-2 px-[22px] py-5">
             <div className="mb-2.5 flex items-center gap-2">
               <span className="grid size-8 place-items-center rounded-lg border border-accent-line bg-accent-soft text-primary">
