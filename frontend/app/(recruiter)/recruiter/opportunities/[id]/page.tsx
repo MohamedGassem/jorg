@@ -18,6 +18,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { api, ApiError } from "@/lib/api";
 import { mapBusinessError } from "@/lib/errors";
 import { initialsFromParts } from "@/lib/labels";
+import { cn } from "@/lib/utils";
 import type {
   BulkGenerateResult,
   OpportunityDetail,
@@ -164,6 +165,21 @@ export default function OpportunityDetailPage() {
                 {opp.description}
               </p>
             )}
+            {opp.required_skills.length > 0 && (
+              <div className="mt-3">
+                <p className="j-overline">Compétences requises</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {opp.required_skills.map((s) => (
+                    <span
+                      key={s.skill_ref_id}
+                      className="inline-flex h-[22px] items-center rounded-[5px] border border-accent-line bg-accent-soft-2 px-2 font-mono text-[11px] font-medium text-primary"
+                    >
+                      {s.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <StatusPill tone={closed ? "muted" : "positive"}>
@@ -219,6 +235,18 @@ export default function OpportunityDetailPage() {
                   </p>
                   {c.title && <p className="text-xs text-ink-3">{c.title}</p>}
                 </div>
+                {c.match_score !== null && (
+                  <span
+                    className={cn(
+                      "inline-flex h-[22px] items-center rounded-[5px] border px-2 font-mono text-[11px] font-medium",
+                      c.match_score >= 70
+                        ? "border-accent-line bg-accent-soft text-primary"
+                        : "border-line bg-paper-2 text-ink-2",
+                    )}
+                  >
+                    {c.match_score}% compat.
+                  </span>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"

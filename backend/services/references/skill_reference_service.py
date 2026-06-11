@@ -134,3 +134,51 @@ async def search(
         offset += page_size
 
     return results[:limit]
+
+
+async def search_public(
+    query: str,
+    kind: SkillKind | None,
+    limit: int,
+    db: AsyncSession,
+) -> list[SkillReference]:
+    """Search the PUBLIC jorg catalog (displayable jorg refs only, no candidate-custom).
+
+    Usable by recruiters since it does not require a candidate profile.
+    """
+    if limit <= 0:
+        return []
+
+    aliases_text = cast(SkillReference.aliases, Text)
+
+    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    name_exact = SkillReference.name.ilike(escaped, escape="\\")
+    alias_exact = aliases_text.ilike(f'%"{escaped}"%', escape="\\")
+    name_contains = SkillReference.name.ilike(f"%{escaped}%", escape="\\")
+
+    match_filter = or_(name_contains, alias_exact)
+
+    visibility = and_(
+        SkillReference.source == "jorg",
+        SkillReference.is_displayable.is_(True),
+    )
+
+    priority = case(
+        (name_exact, 0),
+        (alias_exact, 1),
+        (name_contains, 2),
+        else_=3,
+    )
+
+    stmt = (
+        select(SkillReference)
+        .where(match_filter, visibility)
+        .order_by(priority, SkillReference.name, SkillReference.id)
+        .limit(limit)
+    )
+
+    if kind is not None:
+        stmt = stmt.where(SkillReference.kind == kind)
+
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
