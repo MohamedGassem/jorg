@@ -1356,24 +1356,17 @@ export function ExperienceSection() {
 
   return (
     <div className="space-y-3">
-      {items.map((exp) => (
-        <ExperienceCard
-          key={exp.id}
-          exp={exp}
-          candidateSkills={candidateSkills}
-          onUpdated={(updated) =>
-            setItems((prev) =>
-              prev.map((i) => (i.id === updated.id ? updated : i)),
-            )
-          }
-          onDeleted={(id) =>
-            setItems((prev) => prev.filter((i) => i.id !== id))
-          }
-          onNewSkill={(skill) => setCandidateSkills((prev) => [...prev, skill])}
-        />
-      ))}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {items.length} expérience{items.length !== 1 ? "s" : ""}
+        </p>
+        <Button size="sm" onClick={() => setAdding(true)} disabled={adding}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Ajouter une expérience
+        </Button>
+      </div>
 
-      {adding ? (
+      {adding && (
         <form
           onSubmit={handleAdd}
           className="space-y-3 rounded-xl border border-border/60 bg-muted/10 p-4"
@@ -1465,17 +1458,24 @@ export function ExperienceSection() {
             </Button>
           </div>
         </form>
-      ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setAdding(true)}
-          className="gap-1.5"
-        >
-          <Plus className="size-3.5" />
-          Ajouter une expérience
-        </Button>
       )}
+
+      {items.map((exp) => (
+        <ExperienceCard
+          key={exp.id}
+          exp={exp}
+          candidateSkills={candidateSkills}
+          onUpdated={(updated) =>
+            setItems((prev) =>
+              prev.map((i) => (i.id === updated.id ? updated : i)),
+            )
+          }
+          onDeleted={(id) =>
+            setItems((prev) => prev.filter((i) => i.id !== id))
+          }
+          onNewSkill={(skill) => setCandidateSkills((prev) => [...prev, skill])}
+        />
+      ))}
     </div>
   );
 }
