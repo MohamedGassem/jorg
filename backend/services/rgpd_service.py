@@ -16,6 +16,7 @@ from models.candidate_profile import (
 )
 from models.generated_document import GeneratedDocument
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
+from models.recruiter import Organization, RecruiterProfile
 from models.skill import Achievement, AchievementSkillTag, CandidateSkill, ExperienceSkillUsage
 from models.user import User
 from schemas.candidate import (
@@ -29,6 +30,8 @@ from schemas.rgpd import (
     AccessGrantExport,
     CandidateExport,
     GeneratedDocumentExport,
+    OrganizationExport,
+    RecruiterExport,
 )
 from schemas.skill import CandidateSkillRead
 
@@ -145,5 +148,56 @@ async def delete_candidate_account(db: AsyncSession, user: User) -> None:
     )
 
     # 3. Supprimer l'utilisateur — CASCADE SQL s'occupe du reste.
+    await db.delete(user)
+    await db.commit()
+
+
+async def export_recruiter_data(db: AsyncSession, user: User) -> RecruiterExport:
+    """Assemble les données personnelles d'un recruteur.
+
+    N'écrit rien en DB. Lecture seule.
+    """
+    profile_q = await db.execute(
+        select(RecruiterProfile).where(RecruiterProfile.user_id == user.id)
+    )
+    profile = profile_q.scalar_one_or_none()
+
+    organization = None
+    if profile is not None and profile.organization_id is not None:
+        org_q = await db.execute(
+            select(Organization).where(Organization.id == profile.organization_id)
+        )
+        organization = org_q.scalar_one_or_none()
+
+    doc_q = await db.execute(
+        select(GeneratedDocument).where(GeneratedDocument.generated_by_user_id == user.id)
+    )
+    documents = list(doc_q.scalars().all())
+
+    return RecruiterExport(
+        exported_at=datetime.now(UTC),
+        user_id=user.id,
+        email=user.email,
+        role=user.role.value,
+        created_at=user.created_at,
+        consented_at=user.consented_at,
+        consent_version=user.consent_version,
+        first_name=profile.first_name if profile else None,
+        last_name=profile.last_name if profile else None,
+        job_title=profile.job_title if profile else None,
+        organization=OrganizationExport.model_validate(organization) if organization else None,
+        generated_documents=[GeneratedDocumentExport.model_validate(d) for d in documents],
+    )
+
+
+async def delete_recruiter_account(db: AsyncSession, user: User) -> None:
+    """Supprime un recruteur.
+
+    Les contraintes FK gèrent les effets de bord :
+    - `RecruiterProfile.user_id` → CASCADE : le profil recruteur est supprimé.
+    - `GeneratedDocument.generated_by_user_id` → SET NULL : les dossiers générés
+      restent pour l'audit, l'attribution est anonymisée.
+    - L'organisation et ses autres membres survivent (aucune FK supprimée côté orga).
+    """
     await db.delete(user)
     await db.commit()

@@ -2,20 +2,29 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Copy, RefreshCw } from "lucide-react";
+import { Check, Copy, Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
 import { SettingsCard } from "@/components/ui/SettingsCard";
 import { TabBar } from "@/components/ui/TabBar";
 import { Label } from "@/components/ui/label";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { logout } from "@/lib/auth";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
 import { initialsFromParts } from "@/lib/labels";
 import type { OrgMember, Organization } from "@/types/api";
 
-type Tab = "profil" | "organisation";
+type Tab = "profil" | "organisation" | "donnees";
 
 function ProfilPersonnelTab() {
   const [firstName, setFirstName] = useState("");
@@ -110,6 +119,134 @@ function ProfilPersonnelTab() {
   );
 }
 
+function DonneesTab() {
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleExport() {
+    setExporting(true);
+    setExportError(null);
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      await api.download(
+        "/recruiters/me/export",
+        `jorg-recruteur-export-${today}.json`,
+      );
+    } catch (err) {
+      setExportError(
+        err instanceof ApiError ? err.detail : "Échec de l'export",
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (confirmText !== "SUPPRIMER") {
+      setDeleteError('Saisir "SUPPRIMER" pour confirmer');
+      return;
+    }
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.delete<void>("/recruiters/me");
+      await logout();
+      window.location.href = "/";
+    } catch (err) {
+      setDeleteError(
+        err instanceof ApiError ? err.detail : "Échec de la suppression",
+      );
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <>
+      <SettingsCard
+        legend="Vos données"
+        sub="Conformément au RGPD, vous disposez d'un droit d'accès et de portabilité sur vos données."
+      >
+        <ErrorAlert error={exportError} />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex-1">
+            <p className="text-sm font-medium">Export de vos données (JSON)</p>
+            <p className="mt-0.5 text-[12.5px] text-ink-3">
+              Profil recruteur, organisation et dossiers générés.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            disabled={exporting}
+            onClick={handleExport}
+          >
+            <Download className="size-3.5" strokeWidth={1.6} />
+            {exporting ? "Export en cours…" : "Exporter JSON"}
+          </Button>
+        </div>
+      </SettingsCard>
+
+      <SettingsCard
+        legend="Supprimer mon compte"
+        sub="Action irréversible liée à votre compte recruteur."
+      >
+        <div className="flex flex-col gap-4 rounded-[7px] border border-danger/40 bg-danger/5 px-[18px] py-3.5 sm:flex-row sm:items-center">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-danger">
+              Supprimer le compte
+            </p>
+            <p className="mt-0.5 text-[12.5px] text-ink-3">
+              Suppression définitive de votre compte recruteur. Votre
+              organisation et les dossiers générés sont conservés.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 border-danger/50 text-danger hover:bg-danger/10 hover:text-danger"
+            onClick={() => setDialogOpen(true)}
+          >
+            Supprimer…
+          </Button>
+        </div>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirmer la suppression</DialogTitle>
+              <DialogDescription>
+                Saisir <strong>SUPPRIMER</strong> pour confirmer.
+              </DialogDescription>
+            </DialogHeader>
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="SUPPRIMER"
+            />
+            <ErrorAlert error={deleteError} />
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+                Annuler
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? "Suppression…" : "Supprimer définitivement"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </SettingsCard>
+    </>
+  );
+}
+
 export default function RecruiterSettingsPage() {
   const { orgId, loading: orgLoading } = useRecruiterOrg();
   const [activeTab, setActiveTab] = useState<Tab>("profil");
@@ -159,6 +296,7 @@ export default function RecruiterSettingsPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: "profil", label: "Profil personnel" },
     { key: "organisation", label: "Organisation" },
+    { key: "donnees", label: "Données" },
   ];
 
   if (orgLoading) return <p className="text-ink-3">Chargement…</p>;
@@ -209,6 +347,8 @@ export default function RecruiterSettingsPage() {
 
       <div className="flex max-w-3xl flex-col gap-4">
         {activeTab === "profil" && <ProfilPersonnelTab />}
+
+        {activeTab === "donnees" && <DonneesTab />}
 
         {activeTab === "organisation" && (
           <>
