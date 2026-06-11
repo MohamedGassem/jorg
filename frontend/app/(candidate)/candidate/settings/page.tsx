@@ -2,24 +2,19 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Download, Minus } from "lucide-react";
+import { ArrowRight, Check, Minus } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { SettingsCard } from "@/components/ui/SettingsCard";
 import { TabBar } from "@/components/ui/TabBar";
 import { Toggle } from "@/components/ui/Toggle";
+import {
+  DeleteAccountDialog,
+  ExportDataButton,
+} from "@/components/account-data-actions";
 import { api, ApiError } from "@/lib/api";
-import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import type { CandidateProfile } from "@/types/api";
 
@@ -117,28 +112,6 @@ function InformationsPersonnellesTab() {
 
 function CompteTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  async function handleDelete() {
-    if (confirmText !== "SUPPRIMER") {
-      setDeleteError('Saisir "SUPPRIMER" pour confirmer');
-      return;
-    }
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      await api.delete<void>("/candidates/me");
-      await logout();
-      window.location.href = "/";
-    } catch (err) {
-      setDeleteError(
-        err instanceof ApiError ? err.detail : "Échec de la suppression",
-      );
-      setDeleting(false);
-    }
-  }
 
   return (
     <SettingsCard
@@ -164,34 +137,11 @@ function CompteTab() {
           Supprimer…
         </Button>
       </div>
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmer la suppression</DialogTitle>
-            <DialogDescription>
-              Saisir <strong>SUPPRIMER</strong> pour confirmer.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            placeholder="SUPPRIMER"
-          />
-          <ErrorAlert error={deleteError} />
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? "Suppression…" : "Supprimer définitivement"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteAccountDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        deleteUrl="/candidates/me"
+      />
     </SettingsCard>
   );
 }
@@ -242,23 +192,7 @@ function RightRow({
 }
 
 function RgpdTab({ onRequestDeletion }: { onRequestDeletion: () => void }) {
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-
-  async function handleExport() {
-    setExporting(true);
-    setExportError(null);
-    const today = new Date().toISOString().slice(0, 10);
-    try {
-      await api.download("/candidates/me/export", `jorg-export-${today}.json`);
-    } catch (err) {
-      setExportError(
-        err instanceof ApiError ? err.detail : "Échec de l'export",
-      );
-    } finally {
-      setExporting(false);
-    }
-  }
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <>
@@ -266,22 +200,15 @@ function RgpdTab({ onRequestDeletion }: { onRequestDeletion: () => void }) {
         legend="Vos droits sur vos données"
         sub="Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, de portabilité et d'effacement."
       >
-        <ErrorAlert error={exportError} />
         <div className="flex flex-col">
           <RightRow
             title="Droit d'accès et de portabilité"
             sub="Export structuré (JSON) de votre profil, expériences, compétences et accès."
             action={
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                disabled={exporting}
-                onClick={handleExport}
-              >
-                <Download className="size-3.5" strokeWidth={1.6} />
-                {exporting ? "Export en cours…" : "Exporter JSON"}
-              </Button>
+              <ExportDataButton
+                exportUrl="/candidates/me/export"
+                exportFilename={`jorg-export-${today}.json`}
+              />
             }
           />
           <RightRow

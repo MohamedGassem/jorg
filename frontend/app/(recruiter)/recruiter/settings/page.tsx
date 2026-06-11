@@ -2,23 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Copy, Download, RefreshCw } from "lucide-react";
+import { Check, Copy, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
 import { SettingsCard } from "@/components/ui/SettingsCard";
 import { TabBar } from "@/components/ui/TabBar";
 import { Label } from "@/components/ui/label";
-import { api, ApiError } from "@/lib/api";
-import { logout } from "@/lib/auth";
+import {
+  DeleteAccountDialog,
+  ExportDataButton,
+} from "@/components/account-data-actions";
+import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
 import { initialsFromParts } from "@/lib/labels";
@@ -120,49 +115,8 @@ function ProfilPersonnelTab() {
 }
 
 function DonneesTab() {
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  async function handleExport() {
-    setExporting(true);
-    setExportError(null);
-    const today = new Date().toISOString().slice(0, 10);
-    try {
-      await api.download(
-        "/recruiters/me/export",
-        `jorg-recruteur-export-${today}.json`,
-      );
-    } catch (err) {
-      setExportError(
-        err instanceof ApiError ? err.detail : "Échec de l'export",
-      );
-    } finally {
-      setExporting(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (confirmText !== "SUPPRIMER") {
-      setDeleteError('Saisir "SUPPRIMER" pour confirmer');
-      return;
-    }
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      await api.delete<void>("/recruiters/me");
-      await logout();
-      window.location.href = "/";
-    } catch (err) {
-      setDeleteError(
-        err instanceof ApiError ? err.detail : "Échec de la suppression",
-      );
-      setDeleting(false);
-    }
-  }
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <>
@@ -170,7 +124,6 @@ function DonneesTab() {
         legend="Vos données"
         sub="Conformément au RGPD, vous disposez d'un droit d'accès et de portabilité sur vos données."
       >
-        <ErrorAlert error={exportError} />
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="flex-1">
             <p className="text-sm font-medium">Export de vos données (JSON)</p>
@@ -178,16 +131,10 @@ function DonneesTab() {
               Profil recruteur, organisation et dossiers générés.
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0"
-            disabled={exporting}
-            onClick={handleExport}
-          >
-            <Download className="size-3.5" strokeWidth={1.6} />
-            {exporting ? "Export en cours…" : "Exporter JSON"}
-          </Button>
+          <ExportDataButton
+            exportUrl="/recruiters/me/export"
+            exportFilename={`jorg-recruteur-export-${today}.json`}
+          />
         </div>
       </SettingsCard>
 
@@ -214,34 +161,11 @@ function DonneesTab() {
             Supprimer…
           </Button>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirmer la suppression</DialogTitle>
-              <DialogDescription>
-                Saisir <strong>SUPPRIMER</strong> pour confirmer.
-              </DialogDescription>
-            </DialogHeader>
-            <Input
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="SUPPRIMER"
-            />
-            <ErrorAlert error={deleteError} />
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setDialogOpen(false)}>
-                Annuler
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? "Suppression…" : "Supprimer définitivement"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <DeleteAccountDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          deleteUrl="/recruiters/me"
+        />
       </SettingsCard>
     </>
   );
