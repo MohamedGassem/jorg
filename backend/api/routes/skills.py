@@ -297,6 +297,7 @@ async def create_achievement(
         description=data.description,
         impact=data.impact,
         order=data.order,
+        featured=data.featured,
     )
     db.add(achievement)
     await db.commit()

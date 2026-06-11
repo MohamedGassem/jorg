@@ -176,6 +176,40 @@ async def test_delete_skill_tag_wrong_experience_returns_404(
     assert r.status_code == 404
 
 
+async def test_achievement_featured_roundtrip(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    exp_id = await _create_experience(client, candidate_headers)
+
+    # Create achievement with featured=True
+    r = await client.post(
+        f"/candidates/me/experiences/{exp_id}/achievements",
+        headers=candidate_headers,
+        json={"description": "Featured work", "featured": True},
+    )
+    assert r.status_code == 201
+    ach = r.json()
+    assert ach["featured"] is True
+
+    # Update it with featured=False
+    r = await client.put(
+        f"/candidates/me/experiences/{exp_id}/achievements/{ach['id']}",
+        headers=candidate_headers,
+        json={"featured": False},
+    )
+    assert r.status_code == 200
+    assert r.json()["featured"] is False
+
+    # Create achievement without featured → defaults to False
+    r = await client.post(
+        f"/candidates/me/experiences/{exp_id}/achievements",
+        headers=candidate_headers,
+        json={"description": "Regular work"},
+    )
+    assert r.status_code == 201
+    assert r.json()["featured"] is False
+
+
 async def test_get_experiences_returns_skill_tags_on_achievements(
     client: AsyncClient, candidate_headers: dict[str, str]
 ) -> None:
