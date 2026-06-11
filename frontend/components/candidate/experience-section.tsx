@@ -1348,6 +1348,7 @@ export function ExperienceSection() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState<ExpForm>(EMPTY_EXP);
+  const [achievementDrafts, setAchievementDrafts] = useState<string[]>([]);
   const op = useAsyncOp("Erreur lors de la création");
 
   useEffect(() => {
@@ -1383,7 +1384,23 @@ export function ExperienceSection() {
         description: form.description || null,
         context: form.context || null,
       });
-      setItems((prev) => [...prev, created]);
+      const descriptions = achievementDrafts
+        .map((d) => d.trim())
+        .filter(Boolean);
+      const createdAchievements: Achievement[] = [];
+      for (const description of descriptions) {
+        createdAchievements.push(
+          await api.post<Achievement>(
+            `/candidates/me/experiences/${created.id}/achievements`,
+            { description },
+          ),
+        );
+      }
+      setItems((prev) => [
+        ...prev,
+        { ...created, achievements: createdAchievements },
+      ]);
+      setAchievementDrafts([]);
       setForm(EMPTY_EXP);
       setAdding(false);
     });
@@ -1480,6 +1497,44 @@ export function ExperienceSection() {
               rows={2}
             />
           </div>
+          <div className="space-y-1.5">
+            <Label>Réalisations (optionnel)</Label>
+            {achievementDrafts.map((draft, i) => (
+              <div key={i} className="flex gap-2">
+                <Input
+                  value={draft}
+                  placeholder="ex: Réduction de 30% du temps de build"
+                  onChange={(e) =>
+                    setAchievementDrafts((prev) =>
+                      prev.map((d, j) => (j === i ? e.target.value : d)),
+                    )
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Retirer la réalisation"
+                  onClick={() =>
+                    setAchievementDrafts((prev) =>
+                      prev.filter((_, j) => j !== i),
+                    )
+                  }
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setAchievementDrafts((prev) => [...prev, ""])}
+            >
+              <Plus className="size-3.5" />
+              Ajouter une réalisation
+            </Button>
+          </div>
           {op.error && <p className="text-sm text-destructive">{op.error}</p>}
           <div className="flex justify-end gap-2">
             <Button
@@ -1489,6 +1544,7 @@ export function ExperienceSection() {
               onClick={() => {
                 setAdding(false);
                 setForm(EMPTY_EXP);
+                setAchievementDrafts([]);
               }}
             >
               Annuler
