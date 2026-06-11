@@ -244,7 +244,7 @@ function AchievementRow({
       <div
         className={cn(
           "group flex items-start gap-2 rounded-md px-2 py-1.5",
-          open ? "bg-muted/20" : "hover:bg-muted/10",
+          open ? "bg-muted/20" : !ach.featured && "hover:bg-muted/10",
           ach.featured && "bg-accent-soft-2",
         )}
       >
@@ -269,28 +269,30 @@ function AchievementRow({
             </div>
           )}
         </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={
+            ach.featured ? "Retirer la mise en avant" : "Mettre en avant"
+          }
+          title={ach.featured ? "Retirer la mise en avant" : "Mettre en avant"}
+          onClick={handleToggleFeatured}
+          className={cn(
+            !ach.featured &&
+              "opacity-0 transition-opacity group-hover:opacity-100",
+          )}
+        >
+          <Star
+            className={cn(
+              "size-3.5",
+              ach.featured
+                ? "fill-primary text-primary"
+                : "text-muted-foreground",
+            )}
+            strokeWidth={1.6}
+          />
+        </Button>
         <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={
-              ach.featured ? "Retirer la mise en avant" : "Mettre en avant"
-            }
-            title={
-              ach.featured ? "Retirer la mise en avant" : "Mettre en avant"
-            }
-            onClick={handleToggleFeatured}
-          >
-            <Star
-              className={cn(
-                "size-3.5",
-                ach.featured
-                  ? "fill-primary text-primary"
-                  : "text-muted-foreground",
-              )}
-              strokeWidth={1.6}
-            />
-          </Button>
           <button
             type="button"
             onClick={openForm}
