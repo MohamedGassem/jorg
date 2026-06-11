@@ -45,13 +45,11 @@ function persistSeen(seen: Set<string>) {
 export function NotificationBell({ portal, orgId }: Props) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
-  const [seen, setSeen] = useState<Set<string>>(new Set());
+  // Lazy init from localStorage on the client; empty Set during SSR.
+  const [seen, setSeen] = useState<Set<string>>(() =>
+    typeof window !== "undefined" ? loadSeen() : new Set(),
+  );
   const ref = useRef<HTMLDivElement>(null);
-
-  // SSR-safe: localStorage only touched in effects
-  useEffect(() => {
-    setSeen(loadSeen());
-  }, []);
 
   useEffect(() => {
     if (portal === "candidate") {
