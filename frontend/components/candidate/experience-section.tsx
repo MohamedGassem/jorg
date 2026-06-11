@@ -1387,15 +1387,14 @@ export function ExperienceSection() {
       const descriptions = achievementDrafts
         .map((d) => d.trim())
         .filter(Boolean);
-      const createdAchievements: Achievement[] = [];
-      for (const description of descriptions) {
-        createdAchievements.push(
-          await api.post<Achievement>(
+      const createdAchievements = await Promise.all(
+        descriptions.map((description) =>
+          api.post<Achievement>(
             `/candidates/me/experiences/${created.id}/achievements`,
             { description },
           ),
-        );
-      }
+        ),
+      );
       setItems((prev) => [
         ...prev,
         { ...created, achievements: createdAchievements },
