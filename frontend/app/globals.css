@@ -302,4 +302,17 @@
     letter-spacing: 0.01em;
     color: var(--ink-3);
   }
+
+  /* En-tête de table "registre" : Mono 10.5px uppercase. */
+  .j-th {
+    border-bottom: 1px solid var(--line);
+    padding: 1rem 1rem 0.75rem;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+  }
 }

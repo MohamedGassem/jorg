@@ -379,67 +379,68 @@ export default function CandidateDashboardPage() {
               </p>
             </div>
           ) : (
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  {["Organisation", "Accordé le", "Statut", ""].map(
-                    (label, i) => (
-                      <th
-                        key={i}
-                        className="border-b border-line px-4 pb-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink-4"
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    {["Organisation", "Accordé le", "Statut", ""].map(
+                      (label, i) => (
+                        <th key={i} className="j-th">
+                          {label}
+                        </th>
+                      ),
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {orgs.map((org) => {
+                    const pill =
+                      ORG_STATUS_PILLS[org.current_status] ??
+                      ORG_STATUS_PILLS.invited;
+                    const inactive =
+                      org.current_status === "revoked" ||
+                      org.current_status === "expired";
+                    const granted = grantedDate(org);
+                    return (
+                      <tr
+                        key={org.organization_id}
+                        className={cn(
+                          "relative border-b border-line last:border-b-0 hover:bg-paper-2",
+                          inactive && "opacity-55",
+                        )}
                       >
-                        {label}
-                      </th>
-                    ),
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {orgs.map((org) => {
-                  const pill =
-                    ORG_STATUS_PILLS[org.current_status] ??
-                    ORG_STATUS_PILLS.invited;
-                  const inactive =
-                    org.current_status === "revoked" ||
-                    org.current_status === "expired";
-                  const granted = grantedDate(org);
-                  return (
-                    <tr
-                      key={org.organization_id}
-                      onClick={() => router.push("/candidate/access")}
-                      className={cn(
-                        "cursor-pointer border-b border-line last:border-b-0 hover:bg-paper-2",
-                        inactive && "opacity-55",
-                      )}
-                    >
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-[11px]">
-                          <span className="grid size-[30px] place-items-center rounded-[7px] border border-line bg-paper-2 font-heading text-[13px] font-semibold text-ink-2">
-                            {orgInitials(org.organization_name)}
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-[11px]">
+                            <span className="grid size-[30px] place-items-center rounded-[7px] border border-line bg-paper-2 font-heading text-[13px] font-semibold text-ink-2">
+                              {orgInitials(org.organization_name)}
+                            </span>
+                            <Link
+                              href="/candidate/access"
+                              className="whitespace-nowrap text-sm font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              {org.organization_name}
+                            </Link>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className="j-meta text-[12.5px]">
+                            {granted ?? "—"}
                           </span>
-                          <span className="whitespace-nowrap text-sm font-medium">
-                            {org.organization_name}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <StatusPill tone={pill.tone}>{pill.label}</StatusPill>
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <span className="text-[13.5px] font-medium text-ink-3">
+                            Détails
                           </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="j-meta text-[12.5px]">
-                          {granted ?? "—"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <StatusPill tone={pill.tone}>{pill.label}</StatusPill>
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <span className="text-[13.5px] font-medium text-ink-3">
-                          Détails
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </article>
 

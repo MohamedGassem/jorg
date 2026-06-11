@@ -286,79 +286,79 @@ export default function RecruiterDashboardPage() {
               </p>
             </div>
           ) : (
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  {["Candidat", "Disponibilité", "Mode", "Exp", ""].map(
-                    (label, i) => (
-                      <th
-                        key={i}
-                        className="border-b border-line px-4 pb-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink-4"
-                      >
-                        {label}
-                      </th>
-                    ),
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {candidates.slice(0, 6).map((candidate) => (
-                  <tr
-                    key={candidate.user_id}
-                    onClick={() =>
-                      router.push(`/recruiter/candidates/${candidate.user_id}`)
-                    }
-                    className="cursor-pointer border-b border-line last:border-b-0 hover:bg-paper-2"
-                  >
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-[11px]">
-                        <span className="grid size-8 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[12.5px] font-semibold text-primary">
-                          {initialsOf(
-                            candidate.first_name,
-                            candidate.last_name,
-                          )}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="whitespace-nowrap text-sm font-medium">
-                            {[candidate.first_name, candidate.last_name]
-                              .filter(Boolean)
-                              .join(" ") || candidate.email}
-                          </p>
-                          {candidate.title && (
-                            <p className="text-xs text-ink-3">
-                              {candidate.title}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="j-meta text-[12.5px]">
-                        {labelFor(
-                          AVAILABILITY_LABELS,
-                          candidate.availability_status,
-                        ) ?? "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="j-meta text-[12.5px]">
-                        {labelFor(WORK_MODE_LABELS, candidate.work_mode) ?? "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="j-meta text-[12.5px]">
-                        {candidate.experiences.length}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <span className="whitespace-nowrap text-[13.5px] font-medium text-ink-3">
-                        Consulter
-                      </span>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    {["Candidat", "Disponibilité", "Mode", "Exp", ""].map(
+                      (label, i) => (
+                        <th key={i} className="j-th">
+                          {label}
+                        </th>
+                      ),
+                    )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {candidates.slice(0, 6).map((candidate) => (
+                    <tr
+                      key={candidate.user_id}
+                      className="relative border-b border-line last:border-b-0 hover:bg-paper-2"
+                    >
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-[11px]">
+                          <span className="grid size-8 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[12.5px] font-semibold text-primary">
+                            {initialsOf(
+                              candidate.first_name,
+                              candidate.last_name,
+                            )}
+                          </span>
+                          <div className="min-w-0">
+                            <Link
+                              href={`/recruiter/candidates/${candidate.user_id}`}
+                              className="whitespace-nowrap text-sm font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              {[candidate.first_name, candidate.last_name]
+                                .filter(Boolean)
+                                .join(" ") || candidate.email}
+                            </Link>
+                            {candidate.title && (
+                              <p className="text-xs text-ink-3">
+                                {candidate.title}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="j-meta text-[12.5px]">
+                          {labelFor(
+                            AVAILABILITY_LABELS,
+                            candidate.availability_status,
+                          ) ?? "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="j-meta text-[12.5px]">
+                          {labelFor(WORK_MODE_LABELS, candidate.work_mode) ??
+                            "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="j-meta text-[12.5px]">
+                          {candidate.experiences.length}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <span className="whitespace-nowrap text-[13.5px] font-medium text-ink-3">
+                          Consulter
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </article>
 

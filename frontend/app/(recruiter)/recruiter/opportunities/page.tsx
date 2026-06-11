@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { BriefcaseBusiness, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 import type { OpportunityRead } from "@/types/api";
 
 export default function OpportunitiesPage() {
-  const router = useRouter();
   const { orgId, loading, error: orgError } = useRecruiterOrg();
   const [opportunities, setOpportunities] = useState<OpportunityRead[]>([]);
   const [oppsLoading, setOppsLoading] = useState(false);
@@ -147,10 +146,7 @@ export default function OpportunitiesPage() {
             <thead>
               <tr>
                 {["Mission", "Créée le", "Statut", ""].map((label, i) => (
-                  <th
-                    key={i}
-                    className="border-b border-line px-4 pb-3 pt-4 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink-4"
-                  >
+                  <th key={i} className="j-th">
                     {label}
                   </th>
                 ))}
@@ -162,11 +158,8 @@ export default function OpportunitiesPage() {
                 return (
                   <tr
                     key={opp.id}
-                    onClick={() =>
-                      router.push(`/recruiter/opportunities/${opp.id}`)
-                    }
                     className={cn(
-                      "cursor-pointer border-b border-line last:border-b-0 hover:bg-paper-2",
+                      "relative border-b border-line last:border-b-0 hover:bg-paper-2",
                       closed && "opacity-55",
                     )}
                   >
@@ -179,7 +172,12 @@ export default function OpportunitiesPage() {
                           />
                         </span>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium">{opp.title}</p>
+                          <Link
+                            href={`/recruiter/opportunities/${opp.id}`}
+                            className="text-sm font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            {opp.title}
+                          </Link>
                           {opp.description && (
                             <p className="line-clamp-1 text-xs text-ink-3">
                               {opp.description}
