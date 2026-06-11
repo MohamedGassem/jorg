@@ -108,7 +108,11 @@ function RegisterForm() {
           ? { alpha_invite_code: alphaCode }
           : {}),
       });
-      router.push("/login?registered=1");
+      router.push(
+        role === "candidate"
+          ? "/onboarding/candidate/profile"
+          : "/onboarding/recruiter/organization",
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Inscription échouée");
     } finally {

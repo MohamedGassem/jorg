@@ -11,22 +11,21 @@ from services.auth.oauth_service import (
 # ---- Register tests --------------------------------------------------------
 
 
-async def test_register_candidate_returns_201_and_user(client: AsyncClient) -> None:
-    response = await client.post(
+async def test_register_returns_tokens_and_sets_cookies(client: AsyncClient) -> None:
+    resp = await client.post(
         "/auth/register",
         json={
-            "email": "alice@example.com",
-            "password": "securepass123",
+            "email": "newuser@example.com",
+            "password": "password123",
             "role": "candidate",
+            "first_name": "Ada",
+            "last_name": "Lovelace",
         },
     )
-    assert response.status_code == 201
-    data = response.json()
-    assert data["email"] == "alice@example.com"
-    assert data["role"] == "candidate"
-    assert data["email_verified"] is False
-    assert "id" in data
-    assert "hashed_password" not in data
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["access_token"] and body["refresh_token"]
+    assert "access_token" in resp.cookies
 
 
 async def test_register_duplicate_email_returns_409(client: AsyncClient) -> None:
@@ -48,15 +47,6 @@ async def test_register_short_password_returns_422(client: AsyncClient) -> None:
         json={"email": "c@ex.com", "password": "short", "role": "candidate"},
     )
     assert r.status_code == 422
-
-
-async def test_register_sends_verification_email(client: AsyncClient) -> None:
-    await client.post(
-        "/auth/register",
-        json={"email": "ver@ex.com", "password": "securepass123", "role": "candidate"},
-    )
-    sent = client.email_backend.sent  # type: ignore[attr-defined]
-    assert any(m.to == "ver@ex.com" and "verif" in m.subject.lower() for m in sent)
 
 
 # ---- Login tests -----------------------------------------------------------
@@ -142,14 +132,19 @@ async def test_refresh_with_malformed_token_returns_401(client: AsyncClient) -> 
 # ---- Email verification tests ----------------------------------------------
 
 
-async def test_verify_email_marks_user_as_verified(client: AsyncClient) -> None:
+async def test_verify_email_marks_user_as_verified(client: AsyncClient, db_session) -> None:
+    from sqlalchemy import select
+
+    from models.user import User
+    from services.auth.email_verification_service import send_verification_email
+
     await client.post(
         "/auth/register",
         json={"email": "vm@ex.com", "password": "securepass123", "role": "candidate"},
     )
-    sent = client.email_backend.sent  # type: ignore[attr-defined]
-    verify_msg = next(m for m in sent if m.to == "vm@ex.com")
-    token = verify_msg.body.split("token=")[1].split()[0].strip()
+    result = await db_session.execute(select(User).where(User.email == "vm@ex.com"))
+    user = result.scalar_one()
+    token = send_verification_email(user)
 
     r = await client.post("/auth/verify-email", json={"token": token})
     assert r.status_code == 200

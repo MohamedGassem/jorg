@@ -34,7 +34,6 @@ from services.auth.auth_service import (
 from services.auth.email_verification_service import (
     InvalidVerificationTokenError,
     confirm_email,
-    send_verification_email,
 )
 from services.auth.oauth_service import find_or_create_oauth_user, get_oauth_client
 from services.auth.password_reset_service import (
@@ -73,15 +72,16 @@ def _set_auth_cookies(response: Response, access: str, refresh: str) -> None:
 
 @router.post(
     "/register",
-    response_model=UserRead,
+    response_model=TokenPair,
     status_code=status.HTTP_201_CREATED,
 )
 @limiter.limit("5/minute")
 async def register(
     request: Request,
     payload: RegisterRequest,
+    response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> UserRead:
+) -> TokenPair:
     settings = get_settings()
     if settings.alpha_invite_required and payload.role == UserRole.RECRUITER:
         if not payload.alpha_invite_code:
@@ -165,8 +165,9 @@ async def register(
                 recruiter_profile.last_name = payload.last_name
             await db.commit()
 
-    send_verification_email(user)
-    return UserRead.model_validate(user)
+    access, refresh = await issue_token_pair(db, user)
+    _set_auth_cookies(response, access, refresh)
+    return TokenPair(access_token=access, refresh_token=refresh)
 
 
 @router.post("/login", response_model=TokenPair)
