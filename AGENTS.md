@@ -16,6 +16,7 @@ Before implementing:
 - Push back when the requested change seems too broad or risky.
 - If uncertainty blocks correctness, ask.
 - If uncertainty is minor, make a small explicit assumption and continue.
+- Do not use em dash or any vibe coded looking things.
 
 ## 2. Simplicity First
 
