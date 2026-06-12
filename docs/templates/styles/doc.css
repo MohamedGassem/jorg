@@ -1,0 +1,205 @@
+/* ============================================================
+   Chrome du document de refonte (audit, wireframes, avant/après)
+   ============================================================ */
+
+:root {
+  --doc-bg: #ECEAE5;
+  --doc-ink: #1B1A19;
+  --doc-body: #3B3936;
+  --doc-meta: #716E69;
+  --doc-faint: #A8A49E;
+  --doc-line: #DCD9D3;
+  --doc-accent: #7C2D3E;
+  --doc-accent-tint: #F6EDEF;
+  --doc-paper: #FCFBFA;
+  --doc-font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --doc-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
+html, body { margin: 0; padding: 0; background: var(--doc-bg); }
+body { font-family: var(--doc-font); color: var(--doc-body); -webkit-font-smoothing: antialiased; }
+
+.doc { display: flex; flex-direction: column; align-items: center; gap: 10mm; padding: 12mm 6mm 20mm; }
+
+.sheet {
+  width: 210mm;
+  min-height: 296mm;
+  background: var(--doc-paper);
+  box-shadow: 0 1px 2px rgba(27,26,25,0.10), 0 12px 40px -12px rgba(27,26,25,0.22);
+  padding: 16mm 18mm;
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.sheet.cv-host { padding: 0; background: #fff; }
+
+/* numéro de page / cartouche */
+.folio {
+  position: absolute;
+  bottom: 8mm; left: 18mm; right: 18mm;
+  display: flex; justify-content: space-between;
+  font-family: var(--doc-mono);
+  font-size: 6.5pt;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--doc-faint);
+}
+
+/* —— Typo du document —— */
+.kicker {
+  font-family: var(--doc-mono);
+  font-size: 7.5pt;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--doc-accent);
+  margin: 0 0 3mm 0;
+}
+h1.doc-title { font-size: 27pt; font-weight: 700; letter-spacing: -0.02em; color: var(--doc-ink); line-height: 1.08; margin: 0; }
+h2.doc-h2 { font-size: 16pt; font-weight: 700; letter-spacing: -0.01em; color: var(--doc-ink); margin: 0 0 5mm 0; }
+h3.doc-h3 { font-size: 10.5pt; font-weight: 700; color: var(--doc-ink); margin: 0 0 2mm 0; }
+.lede { font-size: 10.5pt; line-height: 1.55; color: var(--doc-body); max-width: 150mm; }
+p.doc-p { font-size: 9.5pt; line-height: 1.55; margin: 0 0 2.5mm 0; }
+.doc-small { font-size: 8.5pt; line-height: 1.5; color: var(--doc-meta); }
+
+/* —— Audit : items priorisés —— */
+.audit-item {
+  display: grid;
+  grid-template-columns: 12mm 1fr;
+  gap: 4mm;
+  padding: 3.6mm 0;
+  border-top: 0.5pt solid var(--doc-line);
+  break-inside: avoid;
+}
+.audit-n {
+  font-family: var(--doc-mono);
+  font-size: 13pt;
+  color: var(--doc-faint);
+  line-height: 1.1;
+  padding-top: 0.5mm;
+}
+.audit-head { display: flex; align-items: baseline; gap: 2.5mm; margin-bottom: 1mm; }
+.audit-title { font-size: 10pt; font-weight: 700; color: var(--doc-ink); }
+.sev {
+  font-family: var(--doc-mono);
+  font-size: 6.5pt;
+  letter-spacing: 0.1em;
+  padding: 0.5mm 1.6mm;
+  border-radius: 0.8mm;
+  white-space: nowrap;
+}
+.sev-1 { background: var(--doc-accent); color: #fff; }
+.sev-2 { background: var(--doc-accent-tint); color: var(--doc-accent); }
+.sev-3 { background: #EFEDE9; color: var(--doc-meta); }
+.audit-line { font-size: 9pt; line-height: 1.5; margin: 0.6mm 0; }
+.audit-line .tag { font-family: var(--doc-mono); font-size: 6.5pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--doc-faint); margin-right: 1.5mm; }
+.audit-line b { color: var(--doc-ink); font-weight: 600; }
+
+/* —— Wireframe textuel —— */
+.wf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; align-items: start; }
+.wf-page { border: 1pt solid var(--doc-ink); background: #fff; padding: 3mm; display: flex; flex-direction: column; gap: 1.6mm; }
+.wf-caption { font-family: var(--doc-mono); font-size: 7pt; letter-spacing: 0.12em; text-transform: uppercase; color: var(--doc-meta); margin-bottom: 2mm; }
+.wf-zone {
+  border: 0.6pt solid var(--doc-faint);
+  padding: 1.8mm 2.2mm;
+  font-family: var(--doc-mono);
+  font-size: 6.8pt;
+  line-height: 1.5;
+  color: var(--doc-body);
+}
+.wf-zone .wf-label { font-weight: 700; color: var(--doc-ink); font-size: 7pt; letter-spacing: 0.06em; }
+.wf-zone.wf-feat { border: 1.2pt solid var(--doc-accent); background: var(--doc-accent-tint); }
+.wf-zone.wf-feat .wf-label { color: var(--doc-accent); }
+.wf-zone.wf-dim { border-style: dashed; color: var(--doc-meta); }
+.wf-note { font-size: 8.5pt; line-height: 1.5; color: var(--doc-meta); }
+.wf-note b { color: var(--doc-ink); }
+
+/* —— Design system : spécimens —— */
+.spec-block { border-top: 0.5pt solid var(--doc-line); padding: 3.5mm 0; }
+.spec-label { font-family: var(--doc-mono); font-size: 6.5pt; letter-spacing: 0.14em; text-transform: uppercase; color: var(--doc-faint); margin-bottom: 2mm; }
+.type-row { display: grid; grid-template-columns: 36mm 1fr; align-items: baseline; gap: 4mm; padding: 1.4mm 0; }
+.type-meta { font-family: var(--doc-mono); font-size: 6.8pt; color: var(--doc-meta); }
+.swatches { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2mm; }
+.swatch { display: flex; flex-direction: column; gap: 1.2mm; }
+.swatch .chip { height: 11mm; border-radius: 1mm; border: 0.5pt solid rgba(27,26,25,0.12); }
+.swatch .sw-name { font-family: var(--doc-mono); font-size: 6.2pt; color: var(--doc-meta); line-height: 1.4; }
+.space-row { display: flex; align-items: center; gap: 3mm; padding: 0.8mm 0; }
+.space-bar { height: 3mm; background: var(--doc-accent-tint); border-left: 1pt solid var(--doc-accent); }
+
+pre.tokens {
+  font-family: var(--doc-mono);
+  font-size: 7pt;
+  line-height: 1.55;
+  background: #F4F2EF;
+  border: 0.5pt solid var(--doc-line);
+  border-radius: 1mm;
+  padding: 3mm 4mm;
+  overflow: hidden;
+  margin: 0;
+  color: var(--doc-body);
+  white-space: pre;
+}
+pre.tokens .c { color: var(--doc-faint); }
+pre.tokens .v { color: var(--doc-accent); }
+
+/* —— Avant / Après —— */
+.ba-grid { display: grid; grid-template-columns: 1fr 1.25fr; gap: 5mm; align-items: stretch; }
+.ba-panel { display: flex; flex-direction: column; gap: 2mm; min-width: 0; }
+.ba-tag { font-family: var(--doc-mono); font-size: 6.8pt; letter-spacing: 0.14em; text-transform: uppercase; }
+.ba-tag.before { color: var(--doc-faint); }
+.ba-tag.after { color: var(--doc-accent); }
+.ba-frame { border: 0.5pt solid var(--doc-line); background: #fff; padding: 5mm; flex: 1; }
+.ba-frame.before-frame { background: #FAF9F7; filter: saturate(0.85); }
+.ba-notes { font-size: 8.2pt; line-height: 1.5; color: var(--doc-meta); margin: 0; padding-left: 4mm; }
+.ba-notes li { margin-bottom: 1mm; }
+.ba-notes b { color: var(--doc-ink); font-weight: 600; }
+
+/* mimique Word pour les "avant" */
+.word { font-family: Calibri, Carlito, "Segoe UI", sans-serif; color: #222; font-size: 9.5pt; line-height: 1.35; }
+.word h4 { font-size: 12pt; margin: 0 0 1mm; font-weight: 700; }
+.word table { border-collapse: collapse; width: 100%; font-size: 8.5pt; }
+.word td, .word th { border: 0.6pt solid #999; padding: 1.2mm 1.8mm; text-align: left; }
+.word .wt { color: #1F4E79; }
+
+/* —— Recos d'implémentation —— */
+.rec {
+  display: grid; grid-template-columns: 10mm 1fr; gap: 4mm;
+  padding: 3mm 0; border-top: 0.5pt solid var(--doc-line); break-inside: avoid;
+}
+.rec-n { font-family: var(--doc-mono); font-size: 10pt; color: var(--doc-accent); padding-top: 0.5mm; }
+.rec h4 { font-size: 9.8pt; font-weight: 700; color: var(--doc-ink); margin: 0 0 1mm; }
+.rec p { font-size: 8.8pt; line-height: 1.5; margin: 0; }
+.rec code, .doc-p code, .audit-line code {
+  font-family: var(--doc-mono); font-size: 0.92em;
+  background: #F1EFEB; padding: 0.2mm 1.2mm; border-radius: 0.8mm; color: var(--doc-ink);
+}
+
+/* —— Sommaire —— */
+.toc { margin-top: auto; border-top: 0.6pt solid var(--doc-ink); }
+.toc-row { display: flex; justify-content: space-between; align-items: baseline; padding: 2.4mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 9.5pt; }
+.toc-row .t { color: var(--doc-ink); font-weight: 600; }
+.toc-row .d { color: var(--doc-meta); font-size: 8.5pt; }
+.toc-row .pg { font-family: var(--doc-mono); font-size: 7.5pt; color: var(--doc-faint); }
+
+.interleaf {
+  background: var(--doc-ink); color: #F4F2EF;
+  min-height: auto; padding: 8mm 18mm;
+  width: 210mm; box-sizing: border-box;
+  display: flex; justify-content: space-between; align-items: baseline;
+  box-shadow: 0 1px 2px rgba(27,26,25,0.10), 0 12px 40px -12px rgba(27,26,25,0.22);
+}
+.interleaf .t { font-size: 11pt; font-weight: 700; letter-spacing: 0.01em; }
+.interleaf .d { font-family: var(--doc-mono); font-size: 7pt; letter-spacing: 0.14em; text-transform: uppercase; color: #B7B2AA; }
+
+/* —— Simulation N&B (tweak) —— */
+html.grayscale .sheet, html.grayscale .interleaf { filter: grayscale(1); }
+
+/* —— Print —— */
+@page { size: A4; margin: 0; }
+@media print {
+  html, body { background: #fff; }
+  .doc { padding: 0; gap: 0; display: block; }
+  .sheet { box-shadow: none; width: 210mm; min-height: 0; height: 296mm; page-break-after: always; overflow: hidden; }
+  .interleaf { box-shadow: none; page-break-after: always; min-height: 0; height: auto; padding: 12mm 18mm; width: 210mm; }
+  #tweaks-root { display: none !important; }
+}

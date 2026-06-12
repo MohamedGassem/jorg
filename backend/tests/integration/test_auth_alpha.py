@@ -139,6 +139,80 @@ async def test_alpha_code_links_to_recruiter_profile(
 
 
 @pytest.mark.asyncio
+async def test_alpha_code_with_org_attaches_recruiter(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "true")
+    get_settings.cache_clear()
+    try:
+        from models.recruiter import Organization
+
+        org = Organization(name="Demo Org", slug="demo-org-alpha", join_code="demojoin1")
+        db_session.add(org)
+        await db_session.commit()
+        await db_session.refresh(org)
+        org_id = org.id
+
+        codes = await create_alpha_codes(db_session, count=1, organization_id=org_id)
+        resp = await client.post(
+            "/auth/register",
+            json={
+                "email": "org_attach@test.com",
+                "password": "password123",
+                "role": "recruiter",
+                "alpha_invite_code": codes[0],
+            },
+        )
+        assert resp.status_code == 201
+        login = await client.post(
+            "/auth/login",
+            json={"email": "org_attach@test.com", "password": "password123"},
+        )
+        token = login.json()["access_token"]
+        profile = await client.get(
+            "/recruiters/me/profile",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert profile.status_code == 200
+        assert profile.json()["organization_id"] == str(org_id)
+    finally:
+        get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_alpha_code_without_org_leaves_recruiter_orgless(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALPHA_INVITE_REQUIRED", "true")
+    get_settings.cache_clear()
+    try:
+        codes = await create_alpha_codes(db_session, count=1)
+        resp = await client.post(
+            "/auth/register",
+            json={
+                "email": "orgless@test.com",
+                "password": "password123",
+                "role": "recruiter",
+                "alpha_invite_code": codes[0],
+            },
+        )
+        assert resp.status_code == 201
+        login = await client.post(
+            "/auth/login",
+            json={"email": "orgless@test.com", "password": "password123"},
+        )
+        token = login.json()["access_token"]
+        profile = await client.get(
+            "/recruiters/me/profile",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert profile.status_code == 200
+        assert profile.json()["organization_id"] is None
+    finally:
+        get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
 async def test_recruiter_register_fails_with_already_used_code(
     client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:

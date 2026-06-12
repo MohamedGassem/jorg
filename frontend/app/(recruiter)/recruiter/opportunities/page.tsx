@@ -8,11 +8,14 @@ import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { SkillChip } from "@/components/ui/SkillChip";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import type { OpportunityRead } from "@/types/api";
+import type { OpportunityRead, SkillReference } from "@/types/api";
+
+type SelectedSkill = { skill_ref_id: string; name: string };
 
 export default function OpportunitiesPage() {
   const { orgId, loading, error: orgError } = useRecruiterOrg();
@@ -23,6 +26,9 @@ export default function OpportunitiesPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
+  const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>([]);
+  const [skillQuery, setSkillQuery] = useState("");
+  const [skillResults, setSkillResults] = useState<SkillReference[]>([]);
 
   useEffect(() => {
     if (!orgId) return;
@@ -34,6 +40,45 @@ export default function OpportunitiesPage() {
       .finally(() => setOppsLoading(false));
   }, [orgId]);
 
+  useEffect(() => {
+    const q = skillQuery.trim();
+    if (q.length < 2) {
+      setSkillResults([]);
+      return;
+    }
+    let active = true;
+    const handle = setTimeout(() => {
+      api
+        .get<SkillReference[]>(
+          `/skill-references/public?q=${encodeURIComponent(q)}`,
+        )
+        .then((res) => {
+          if (active) setSkillResults(res);
+        })
+        .catch(() => {
+          if (active) setSkillResults([]);
+        });
+    }, 250);
+    return () => {
+      active = false;
+      clearTimeout(handle);
+    };
+  }, [skillQuery]);
+
+  function addSkill(skill: SkillReference) {
+    setSelectedSkills((prev) =>
+      prev.some((s) => s.skill_ref_id === skill.id)
+        ? prev
+        : [...prev, { skill_ref_id: skill.id, name: skill.name }],
+    );
+    setSkillQuery("");
+    setSkillResults([]);
+  }
+
+  function removeSkill(refId: string) {
+    setSelectedSkills((prev) => prev.filter((s) => s.skill_ref_id !== refId));
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!orgId) return;
@@ -41,11 +86,17 @@ export default function OpportunitiesPage() {
     try {
       const opp = await api.post<OpportunityRead>(
         `/organizations/${orgId}/opportunities`,
-        { title: title.trim(), description: description.trim() || null },
+        {
+          title: title.trim(),
+          description: description.trim() || null,
+          skill_ref_ids: selectedSkills.map((s) => s.skill_ref_id),
+        },
       );
       setOpportunities((prev) => [opp, ...prev]);
       setTitle("");
       setDescription("");
+      setSelectedSkills([]);
+      setSkillQuery("");
       setShowForm(false);
     } catch (err) {
       setError(extractErrorMessage(err, "Erreur"));
@@ -118,6 +169,46 @@ export default function OpportunitiesPage() {
                 className="w-full rounded-md border border-line-2 bg-surface p-2 text-sm"
                 rows={3}
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="opp-skills" className="text-[13.5px] text-ink-2">
+                Compétences requises
+              </Label>
+              {selectedSkills.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedSkills.map((s) => (
+                    <SkillChip
+                      key={s.skill_ref_id}
+                      label={s.name}
+                      onRemove={() => removeSkill(s.skill_ref_id)}
+                    />
+                  ))}
+                </div>
+              )}
+              <div className="relative">
+                <Input
+                  id="opp-skills"
+                  value={skillQuery}
+                  onChange={(e) => setSkillQuery(e.target.value)}
+                  placeholder="Rechercher une compétence…"
+                  autoComplete="off"
+                />
+                {skillResults.length > 0 && (
+                  <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-line bg-surface py-1 shadow-md">
+                    {skillResults.map((r) => (
+                      <li key={r.id}>
+                        <button
+                          type="button"
+                          onClick={() => addSkill(r)}
+                          className="flex w-full items-center px-3 py-1.5 text-left text-sm hover:bg-paper-2"
+                        >
+                          {r.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
             <ErrorAlert error={orgError ?? error} />
             <Button type="submit" disabled={creating || !title.trim()}>

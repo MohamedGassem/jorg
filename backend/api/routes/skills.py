@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 import services.references.skill_metrics_service as skill_metrics_service
 import services.references.skill_reference_service as skill_reference_service
-from api.deps import CandidateProfile_dep, get_db
+from api.deps import CandidateProfile_dep, CurrentUser, get_db
 from models.candidate_profile import Experience
 from models.skill import (
     Achievement as AchievementModel,
@@ -59,6 +59,17 @@ async def search_skill_references(
     return await skill_reference_service.search(
         q, kind=kind, limit=limit, candidate_id=profile.id, db=db
     )
+
+
+@router.get("/skill-references/public", response_model=list[SkillReferenceRead])
+async def search_public_skill_references(
+    q: str,
+    db: DB,
+    user: CurrentUser,
+    kind: SkillKind | None = None,
+    limit: int = 20,
+) -> list[SkillReference]:
+    return await skill_reference_service.search_public(q, kind=kind, limit=limit, db=db)
 
 
 @router.post("/skill-references", response_model=SkillReferenceRead)
@@ -297,6 +308,7 @@ async def create_achievement(
         description=data.description,
         impact=data.impact,
         order=data.order,
+        featured=data.featured,
     )
     db.add(achievement)
     await db.commit()

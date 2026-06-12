@@ -174,8 +174,10 @@ interface CvContactPrefill {
 
 export function CvImport({
   onContactDetected,
+  onExperiencesAdded,
 }: {
   onContactDetected?: (contact: CvContactPrefill) => void;
+  onExperiencesAdded?: (count: number) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<"idle" | "parsing" | "ready" | "adding">(
@@ -505,9 +507,11 @@ export function CvImport({
         }. Réessayez ou complétez-les manuellement.`,
       );
     }
+    if (experienceCount > 0) onExperiencesAdded?.(experienceCount);
     setStatus("ready");
   }
 
+  const matchedSkills = result?.skills.filter((s) => s.skill_ref_id) ?? [];
   const proposedExperiences = result?.proposed_profile.experiences ?? [];
   const proposedEducation = result?.proposed_profile.education ?? [];
   const proposedCertifications = result?.proposed_profile.certifications ?? [];
@@ -573,29 +577,18 @@ export function CvImport({
 
       {result && status !== "parsing" && (
         <div className="mt-4 space-y-3">
-          {(result.email || result.phone || result.linkedin_url) && (
-            <p className="text-xs text-muted-foreground">
-              Coordonnées détectées et pré-remplies
-              {result.email ? ` · ${result.email}` : ""}
-              {result.phone ? ` · ${result.phone}` : ""}
-            </p>
-          )}
-
-          <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-            Proposition en attente de validation
-            {result.extraction_method ? ` · ${result.extraction_method}` : ""}
-            {typeof result.quality_score === "number"
-              ? ` · qualité ${result.quality_score}/100`
-              : ""}
-          </div>
-
-          {result.warnings.length > 0 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              {result.warnings.slice(0, 3).map((warning) => (
-                <p key={warning}>{warning}</p>
-              ))}
-            </div>
-          )}
+          {(() => {
+            const visibleWarnings = result.warnings.filter(
+              (w) => !w.startsWith("Extraction structurée heuristique"),
+            );
+            return visibleWarnings.length > 0 ? (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                {visibleWarnings.slice(0, 3).map((warning) => (
+                  <p key={warning}>{warning}</p>
+                ))}
+              </div>
+            ) : null;
+          })()}
 
           <p className="text-xs text-muted-foreground">
             Sections proposées :{" "}
@@ -616,11 +609,27 @@ export function CvImport({
           {(proposedExperiences.length > 0 ||
             proposedEducation.length > 0 ||
             proposedCertifications.length > 0 ||
-            proposedLanguages.length > 0) && (
+            proposedLanguages.length > 0 ||
+            result.email ||
+            result.phone ||
+            result.linkedin_url) && (
             <div className="space-y-3 rounded-md border border-border/60 bg-background p-3">
               <p className="text-sm font-medium text-foreground">
                 Proposition de profil structuré
               </p>
+
+              {(result.email || result.phone || result.linkedin_url) && (
+                <div className="rounded-md border border-accent-line bg-accent-soft-2 px-3 py-2">
+                  <p className="text-xs font-medium text-foreground">
+                    Coordonnées détectées
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {[result.email, result.phone, result.linkedin_url]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
+              )}
 
               {proposedExperiences.length > 0 && (
                 <div className="space-y-2">
@@ -887,12 +896,12 @@ export function CvImport({
             </div>
           )}
 
-          {result.skills.length > 0 ? (
+          {matchedSkills.length > 0 ? (
             <>
               <p className="text-sm font-medium text-foreground">
-                {result.skills.length} compétence
-                {result.skills.length > 1 ? "s" : ""} détectée
-                {result.skills.length > 1 ? "s" : ""}, sélectionnez celles à
+                {matchedSkills.length} compétence
+                {matchedSkills.length > 1 ? "s" : ""} détectée
+                {matchedSkills.length > 1 ? "s" : ""}, sélectionnez celles à
                 ajouter
               </p>
               <div className="flex flex-wrap gap-2">
@@ -900,16 +909,7 @@ export function CvImport({
                   const id = skill.skill_ref_id;
                   const label =
                     skill.name ?? skill.original_label ?? "Compétence";
-                  if (!id) {
-                    return (
-                      <span
-                        key={`unmatched-${label}`}
-                        className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground"
-                      >
-                        {label} · non reconnue
-                      </span>
-                    );
-                  }
+                  if (!id) return null;
                   const isSelected = selected.has(id);
                   return (
                     <button

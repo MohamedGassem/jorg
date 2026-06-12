@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Jorg — Refonte du template de dossier de compétences</title>
+<link rel="stylesheet" href="styles/doc.css" />
+<link rel="stylesheet" href="styles/cv.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div class="doc">
+
+<!-- ════════════ PAGE 01 — COUVERTURE ════════════ -->
+<section class="sheet" data-screen-label="01 Couverture">
+  <p class="kicker">Jorg · Audit &amp; refonte · Juin 2026</p>
+  <h1 class="doc-title">Dossier de compétences.<br />Refonte du template.</h1>
+  <p class="lede" style="margin-top: 6mm;">Le lecteur cible — commercial ESN ou client final — décide en moins de deux minutes. Il scanne, il ne lit pas. Chaque choix de cette refonte découle de cette contrainte&nbsp;: l'information de décision d'abord, les éléments mis en avant comme argumentaire, le reste comme preuve.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5mm; margin-top: 10mm;">
+    <div style="border-top: 1.6pt solid var(--doc-accent); padding-top: 2.5mm;">
+      <h3 class="doc-h3">Décision d'abord</h3>
+      <p class="doc-small">Disponibilité, TJM, mobilité et séniorité remontent sous l'en-tête, dans un bandeau dédié.</p>
+    </div>
+    <div style="border-top: 1.6pt solid var(--doc-accent); padding-top: 2.5mm;">
+      <h3 class="doc-h3">Featured = vitrine</h3>
+      <p class="doc-small">Skills et réalisations mis en avant gagnent la page 1 — plafonnés pour éviter l'effet sapin de Noël.</p>
+    </div>
+    <div style="border-top: 1.6pt solid var(--doc-accent); padding-top: 2.5mm;">
+      <h3 class="doc-h3">Une source, deux rendus</h3>
+      <p class="doc-small">Mêmes tokens CSS pour le web et le PDF A4 ; distinction featured qui survit au noir &amp; blanc.</p>
+    </div>
+  </div>
+
+  <nav class="toc">
+    <div class="toc-row"><span><span class="t">Audit</span> <span class="d">— 9 problèmes priorisés</span></span><span class="pg">p. 02–03</span></div>
+    <div class="toc-row"><span><span class="t">Structure cible</span> <span class="d">— wireframe page 1 &amp; pages suivantes, logique featured</span></span><span class="pg">p. 04</span></div>
+    <div class="toc-row"><span><span class="t">Système de design</span> <span class="d">— échelle typo, palette, espacements, tokens CSS</span></span><span class="pg">p. 05</span></div>
+    <div class="toc-row"><span><span class="t">Avant / après</span> <span class="d">— en-tête, bloc compétences, expérience</span></span><span class="pg">p. 06–07</span></div>
+    <div class="toc-row"><span><span class="t">Maquettes hi-fi</span> <span class="d">— Premium (2 p.) · Compact ESN anonyme (1 p.) · Dossier technique (2 p.)</span></span><span class="pg">M1–M5</span></div>
+    <div class="toc-row"><span><span class="t">Implémentation</span> <span class="d">— Next.js, export PDF, garde-fous</span></span><span class="pg">p. 08</span></div>
+    <div class="toc-row"><span><span class="t">Annexe — rendu DOCX</span> <span class="d">— mapping composants → Word, 3 fichiers .docx livrés</span></span><span class="pg">p. 09</span></div>
+  </nav>
+  <div class="folio"><span>Jorg — Refonte template</span><span>01</span></div>
+</section>
+
+<!-- ════════════ PAGE 02 — AUDIT 1/2 ════════════ -->
+<section class="sheet" data-screen-label="02 Audit 1/2">
+  <p class="kicker">01 · Audit</p>
+  <h2 class="doc-h2">Neuf problèmes, par impact lecteur décroissant</h2>
+  <p class="doc-small" style="margin: 0 0 4mm 0;">Constats issus des trois variantes actuelles (Profil premium, Compact ESN, Dossier technique). P1 = bloque la décision, P2 = ralentit le scan, P3 = dégrade la crédibilité.</p>
+
+  <article class="audit-item" style="border-top-color: var(--doc-ink);">
+    <div class="audit-n">1</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">L'information de décision est introuvable</span><span class="sev sev-1">P1</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>La disponibilité est en dernière ligne (Premium) ou en milieu de document (Technique) ; le TJM et la date précise sont absents partout.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Un <b>bandeau commercial</b> sous l'en-tête : disponibilité, TJM, mobilité, séniorité — quatre cases, page 1, au-dessus de tout.</p>
+      <p class="audit-line"><span class="tag">Justification</span>Le commercial qualifie ou disqualifie en 10 secondes au lieu de chercher l'info dans 4 pages.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">2</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">Le « mis en avant » n'existe pas visuellement</span><span class="sev sev-1">P1</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>Un skill « Clé » est un mot dans une colonne de tableau ; aucune réalisation featured n'a de traitement distinct.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Skills featured en <b>pastilles bordées</b> en tête de section ; réalisations featured en <b>encart « Faits marquants » page 1</b> + bordure/fond dans l'expérience.</p>
+      <p class="audit-line"><span class="tag">Justification</span>Ce que le consultant choisit de vendre doit être la première chose que le lecteur voit.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">3</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">Les chiffres sont enterrés dans les phrases</span><span class="sev sev-1">P1</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>« Baisse de 35% des incidents » pèse typographiquement autant que le reste de la phrase.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Format normalisé <b>action + techno → résultat chiffré en gras</b> ; le KPI extrait en gros corps dans les faits marquants.</p>
+      <p class="audit-line"><span class="tag">Justification</span>En lecture F, le chiffre est la seule preuve qui accroche l'œil — il doit être saillant, pas noyé.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">4</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">Des tableaux administratifs pour les compétences</span><span class="sev sev-2">P2</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>La colonne « Type » (Technique / Outil / Méthodologie) est une métadonnée interne Jorg sans valeur pour le lecteur ; les bordures pleines doublent la densité perçue.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Regrouper <b>par catégorie en lignes label + valeurs</b> ; réserver le tableau au synoptique des missions et à la matrice de niveaux (variante technique).</p>
+      <p class="audit-line"><span class="tag">Justification</span>Moins de cellules = scan vertical possible ; la catégorie devient un guide, pas une colonne.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">5</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">Hiérarchie typographique plate</span><span class="sev sev-2">P2</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>Un seul niveau de graisse perceptible ; les titres de section en capitales ont quasiment le corps du texte courant.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Échelle contrastée <b>22 / 12 / 11 / 9,5 / 8,5 / 7,5 pt</b> ; capitales espacées réservées aux seules têtes de section.</p>
+      <p class="audit-line"><span class="tag">Justification</span>Le F-pattern exige des contrastes de taille et de graisse — les capitales seules ne suffisent pas.</p>
+    </div>
+  </article>
+  <div class="folio"><span>Jorg — Refonte template</span><span>02</span></div>
+</section>
+
+<!-- ════════════ PAGE 03 — AUDIT 2/2 ════════════ -->
+<section class="sheet" data-screen-label="03 Audit 2/2">
+  <article class="audit-item" style="border-top: none; padding-top: 0;">
+    <div class="audit-n">6</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">L'en-tête est un état civil, pas un argumentaire</span><span class="sev sev-2">P2</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>Email, téléphone et URL LinkedIn occupent la zone la plus lue de la page ; en mode anonyme, il ne resterait rien.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Nom (ou <b>initiales + référence</b> en mode anonyme) + titre accentué + bandeau commercial ; contacts en colonne droite, corps réduit.</p>
+      <p class="audit-line"><span class="tag">Justification</span>La zone premium vend le profil ; le canal de contact n'est utile qu'après la décision.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">7</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">La stack est répétée trois fois sans hiérarchie</span><span class="sev sev-3">P3</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>Compétences, synoptique et « Environnement technique » listent les mêmes technologies au même niveau.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Une source qualifiée (le bloc compétences) ; dans chaque expérience, la stack devient une <b>ligne méta discrète</b>.</p>
+      <p class="audit-line"><span class="tag">Justification</span>La redondance au même poids dilue ; la répétition discrète contextualise.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">8</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">Libellés verbeux et valeurs en double</span><span class="sev sev-3">P3</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>« Francais - native Langue maternelle », « Disponible : Disponible immédiatement » — les énumérations concatènent code interne et libellé.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Normaliser côté rendu : <b>une valeur, un niveau</b> (« Français — langue maternelle », « Immédiate »).</p>
+      <p class="audit-line"><span class="tag">Justification</span>Chaque mot inutile coûte de l'attention ; les doublons signalent un document généré, pas soigné.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">9</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">Aucune identité visuelle</span><span class="sev sev-3">P3</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>Rendu Word générique : indifférenciable d'un CV gratuit, alors que le dossier est l'objet commercial de l'ESN.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Un <b>accent unique</b> (bordeaux), marqueurs carrés, filets fins, blancs généreux — et rien d'autre.</p>
+      <p class="audit-line"><span class="tag">Justification</span>Le dossier signale le positionnement premium avant la première ligne lue ; la sobriété crédibilise.</p>
+    </div>
+  </article>
+
+  <div style="margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; border-top: 0.6pt solid var(--doc-ink); padding-top: 4mm;">
+    <div>
+      <p class="spec-label" style="margin-bottom: 1.5mm;">Ce qu'on voit en 10 secondes — aujourd'hui</p>
+      <p class="doc-p" style="color: var(--doc-meta);">Un nom, des titres en capitales, des tableaux à bordures. Ni disponibilité, ni tarif, ni chiffre, ni compétence saillante.</p>
+    </div>
+    <div>
+      <p class="spec-label" style="margin-bottom: 1.5mm; color: var(--doc-accent);">Ce qu'on verra en 10 secondes — cible</p>
+      <p class="doc-p"><b>Titre du profil · disponibilité + TJM + mobilité · 4 compétences clés · 3 résultats chiffrés.</b> De quoi décider — ou passer au profil suivant.</p>
+    </div>
+  </div>
+  <div class="folio"><span>Jorg — Refonte template</span><span>03</span></div>
+</section>

@@ -12,6 +12,7 @@ import type {
 } from "@/types/api";
 
 interface NotificationItem {
+  key: string; // `${ev.type}:${ev.occurred_at}` (plus `:n` suffix on collision)
   icon: string;
   label: string;
   date: string;
@@ -24,9 +25,30 @@ interface Props {
   orgId?: string | null;
 }
 
+const SEEN_STORAGE_KEY = "jorg.notifications.seen";
+
+function loadSeen(): Set<string> {
+  try {
+    return new Set(
+      JSON.parse(localStorage.getItem(SEEN_STORAGE_KEY) ?? "[]") as string[],
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function persistSeen(seen: Set<string>) {
+  // cap à 100 entrées pour ne pas grossir indéfiniment
+  localStorage.setItem(SEEN_STORAGE_KEY, JSON.stringify([...seen].slice(-100)));
+}
+
 export function NotificationBell({ portal, orgId }: Props) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
+  // Lazy init from localStorage on the client; empty Set during SSR.
+  const [seen, setSeen] = useState<Set<string>>(() =>
+    typeof window !== "undefined" ? loadSeen() : new Set(),
+  );
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,13 +64,20 @@ export function NotificationBell({ portal, orgId }: Props) {
                 new Date(a.occurred_at).getTime(),
             )
             .slice(0, 5);
+          const counts = new Map<string, number>();
           setItems(
-            events.map((ev) => ({
-              icon: EVENT_ICONS[ev.type] ?? "📋",
-              label: EVENT_LABELS[ev.type] ?? ev.type,
-              date: relativeDate(ev.occurred_at),
-              href: "/candidate/access",
-            })),
+            events.map((ev) => {
+              const base = `${ev.type}:${ev.occurred_at}`;
+              const n = counts.get(base) ?? 0;
+              counts.set(base, n + 1);
+              return {
+                key: n === 0 ? base : `${base}:${n}`,
+                icon: EVENT_ICONS[ev.type] ?? "📋",
+                label: EVENT_LABELS[ev.type] ?? ev.type,
+                date: relativeDate(ev.occurred_at),
+                href: "/candidate/access",
+              };
+            }),
           );
         })
         .catch(() => {});
@@ -67,6 +96,18 @@ export function NotificationBell({ portal, orgId }: Props) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  function markSeen(key: string) {
+    setSeen((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      persistSeen(next);
+      return next;
+    });
+  }
+
+  const hasUnseen = items.some((i) => !seen.has(i.key));
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -78,7 +119,7 @@ export function NotificationBell({ portal, orgId }: Props) {
         )}
       >
         <Bell className="size-4" />
-        {items.length > 0 && (
+        {hasUnseen && (
           <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-primary" />
         )}
       </button>
@@ -94,13 +135,17 @@ export function NotificationBell({ portal, orgId }: Props) {
             </p>
           ) : (
             <ul>
-              {items.map((item, i) => (
-                <li key={i}>
+              {items.map((item) => (
+                <li key={item.key}>
                   {item.href ? (
                     <Link
                       href={item.href}
                       onClick={() => setOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted/50"
+                      onMouseEnter={() => markSeen(item.key)}
+                      className={cn(
+                        "flex items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-muted/50",
+                        !seen.has(item.key) && "bg-accent-soft-2",
+                      )}
                     >
                       <span className="text-base" aria-hidden>
                         {item.icon}
@@ -111,9 +156,21 @@ export function NotificationBell({ portal, orgId }: Props) {
                           {item.date}
                         </p>
                       </div>
+                      {!seen.has(item.key) && (
+                        <span
+                          className="size-1.5 shrink-0 rounded-full bg-primary"
+                          aria-hidden
+                        />
+                      )}
                     </Link>
                   ) : (
-                    <div className="flex items-center gap-2.5 px-3 py-2.5">
+                    <div
+                      className={cn(
+                        "flex items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-muted/50",
+                        !seen.has(item.key) && "bg-accent-soft-2",
+                      )}
+                      onMouseEnter={() => markSeen(item.key)}
+                    >
                       <span className="text-base" aria-hidden>
                         {item.icon}
                       </span>
@@ -123,6 +180,12 @@ export function NotificationBell({ portal, orgId }: Props) {
                           {item.date}
                         </p>
                       </div>
+                      {!seen.has(item.key) && (
+                        <span
+                          className="size-1.5 shrink-0 rounded-full bg-primary"
+                          aria-hidden
+                        />
+                      )}
                     </div>
                   )}
                 </li>

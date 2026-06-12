@@ -16,6 +16,7 @@ import Link from "next/link";
 import { InviteCandidateDialog } from "@/components/invite-candidate-dialog";
 import { GenerateDossierDialog } from "@/components/generate-dossier-dialog";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { SkillChip } from "@/components/ui/SkillChip";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useRecruiterOrg } from "@/lib/hooks";
@@ -789,9 +790,10 @@ function CandidateRows({
               const active =
                 isActive && activeSkillFilter?.skillRefId === sk.id;
               return (
-                <button
+                <SkillChip
                   key={sk.id}
-                  type="button"
+                  label={sk.name}
+                  active={active}
                   onClick={() =>
                     active
                       ? setActiveSkillFilter(null)
@@ -801,15 +803,7 @@ function CandidateRows({
                           skillName: sk.name,
                         })
                   }
-                  className={cn(
-                    "inline-flex h-[22px] items-center rounded-[5px] border px-2 font-mono text-[11px] font-medium transition-colors",
-                    active
-                      ? "border-primary bg-accent-soft text-primary"
-                      : "border-accent-line bg-accent-soft-2 text-primary hover:border-primary",
-                  )}
-                >
-                  {sk.name}
-                </button>
+                />
               );
             })}
             {expSkills.length > 4 && (
@@ -868,6 +862,35 @@ function CandidateRows({
       {expanded && (
         <tr className="border-b border-line last:border-b-0">
           <td colSpan={6} className="bg-paper-2/60 px-4 py-3">
+            {expSkills.length > 0 && (
+              <div className="mb-3 rounded-md border border-line bg-surface px-3 py-2.5">
+                <p className="j-overline text-[10px]">
+                  Compétences ({expSkills.length})
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {expSkills.map((sk) => {
+                    const active =
+                      isActive && activeSkillFilter?.skillRefId === sk.id;
+                    return (
+                      <SkillChip
+                        key={sk.id}
+                        label={sk.name}
+                        active={active}
+                        onClick={() =>
+                          active
+                            ? setActiveSkillFilter(null)
+                            : setActiveSkillFilter({
+                                candidateId: c.user_id,
+                                skillRefId: sk.id,
+                                skillName: sk.name,
+                              })
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <CandidateExperiencePanel
               candidate={c}
               activeSkillRefId={

@@ -244,6 +244,7 @@ def achievement_flat(achievement: Any) -> dict[str, Any]:
     return {
         "description": achievement.description or "",
         "impact": achievement.impact or "",
+        "featured": "true" if achievement.featured else "false",
         "skills": skill_tags,
     }
 
@@ -284,6 +285,69 @@ def language_flat(language: LanguageProtocol) -> dict[str, str]:
     }
 
 
+# Plafonds appliqués au rendu (garde-fou anti "sapin de Noël" de la refonte template)
+FEATURED_HIGHLIGHTS_CAP = 3
+
+
+def featured_highlights(experiences: Sequence[ExperienceProtocol]) -> list[dict[str, str]]:
+    """Réalisations featured avec impact chiffré, pour l'encart "Faits marquants".
+
+    Les expériences arrivent triées par récence ; seules les réalisations featured
+    dont l'impact est renseigné sont éligibles, plafonnées à FEATURED_HIGHLIGHTS_CAP.
+    """
+    items: list[dict[str, str]] = []
+    for exp in experiences:
+        if exp.is_current:
+            year = str(date.today().year)
+        elif isinstance(exp.end_date, date):
+            year = str(exp.end_date.year)
+        elif isinstance(exp.start_date, date):
+            year = str(exp.start_date.year)
+        else:
+            year = ""
+        ref = ", ".join(part for part in (exp.client_name or "", year) if part)
+        for achievement in _safe_sequence(getattr(exp, "achievements", [])):
+            impact = (achievement.impact or "").strip()
+            if not achievement.featured or not impact:
+                continue
+            items.append(
+                {
+                    "kpi": impact,
+                    "text": achievement.description or "",
+                    "ref": ref,
+                }
+            )
+    return items[:FEATURED_HIGHLIGHTS_CAP]
+
+
+def _skills_by_kind(skills: Sequence[SkillProtocol]) -> dict[str, list[SkillProtocol]]:
+    """Groupe les skills par kind en une seule passe (ordre d'entrée préservé)."""
+    grouped: dict[str, list[SkillProtocol]] = {kind.value: [] for kind in SkillKind}
+    for sk in skills:
+        kind_value = _enum_value(sk.skill_ref.kind)
+        if kind_value in grouped:
+            grouped[kind_value].append(sk)
+    return grouped
+
+
+def skill_groups(skills: Sequence[SkillProtocol]) -> list[dict[str, str]]:
+    """Compétences non featured groupées par catégorie : label + valeurs en ligne."""
+    grouped = _skills_by_kind(skills)
+    groups: list[dict[str, str]] = []
+    for kind in SkillKind:
+        names = [
+            sk.skill_ref.name for sk in grouped[kind.value] if not sk.featured and sk.skill_ref.name
+        ]
+        if names:
+            groups.append(
+                {
+                    "label": SKILL_KIND_LABELS[kind.value],
+                    "names": " · ".join(names),
+                }
+            )
+    return groups
+
+
 def _group_skill_dicts_by_kind(skills: Sequence[dict[str, str]]) -> dict[str, list[dict[str, str]]]:
     result: dict[str, list[dict[str, str]]] = {}
     for kind in SkillKind:
@@ -297,10 +361,11 @@ def _group_skills_by_kind(
     def _sort_key(s: SkillProtocol) -> int:
         return 0 if s.featured else 1
 
+    grouped = _skills_by_kind(skills)
     result: dict[str, list[dict[str, str]]] = {}
     for kind in SkillKind:
-        filtered = [s for s in skills if _enum_value(s.skill_ref.kind) == kind.value]
-        result[f"skills_{kind.value}"] = [skill_flat(s) for s in sorted(filtered, key=_sort_key)]
+        ordered = sorted(grouped[kind.value], key=_sort_key)
+        result[f"skills_{kind.value}"] = [skill_flat(s) for s in ordered]
 
     result["skills_featured"] = [skill_flat(s) for s in skills if s.featured]
     return result
@@ -312,7 +377,10 @@ def exp_flat(exp: ExperienceProtocol) -> dict[str, Any]:
     skill_usages = [usage_flat(usage) for usage in _safe_sequence(getattr(exp, "skill_usages", []))]
     achievement_items = [
         achievement_flat(achievement)
-        for achievement in _safe_sequence(getattr(exp, "achievements", []))
+        for achievement in sorted(
+            _safe_sequence(getattr(exp, "achievements", [])),
+            key=lambda achievement: 0 if achievement.featured else 1,
+        )
     ]
     return {
         "client_name": exp.client_name or "",
@@ -356,6 +424,8 @@ def generate_document(
         "educations": education_items,
         "certifications": certification_items,
         "languages": language_items,
+        "featured_achievements": featured_highlights(experiences),
+        "skill_groups": skill_groups(skills),
         **_group_skills_by_kind(skills),
     }
     try:

@@ -18,6 +18,14 @@ export function AppLegalFooter() {
           >
             Confidentialité &amp; RGPD
           </Link>
+          <a
+            href="https://github.com/MohamedGassem/jorg"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-foreground"
+          >
+            GitHub
+          </a>
         </div>
       </div>
     </footer>

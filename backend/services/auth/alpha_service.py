@@ -13,10 +13,12 @@ class InvalidAlphaCodeError(Exception):
     """Raised when an alpha invite code is invalid or already used."""
 
 
-async def create_alpha_codes(db: AsyncSession, count: int = 10) -> list[str]:
+async def create_alpha_codes(
+    db: AsyncSession, count: int = 10, organization_id: UUID | None = None
+) -> list[str]:
     codes = []
     for _ in range(count):
-        obj = AlphaInviteCode(code=_generate_code())
+        obj = AlphaInviteCode(code=_generate_code(), organization_id=organization_id)
         db.add(obj)
         codes.append(obj.code)
     await db.commit()

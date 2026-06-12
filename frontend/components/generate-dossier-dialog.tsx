@@ -32,6 +32,13 @@ const MODEL_BADGES: Record<string, string> = {
   profil_premium: "Complet",
 };
 
+interface GenerationOutcome {
+  templateChoice: string;
+  format: "docx" | "pdf";
+  doc: GeneratedDocument | null;
+  error: string | null;
+}
+
 export function GenerateDossierDialog({
   open,
   onOpenChange,
@@ -44,18 +51,27 @@ export function GenerateDossierDialog({
   const [templateChoice, setTemplateChoice] = useState("");
   const [format, setFormat] = useState<"docx" | "pdf">("docx");
   const [generating, setGenerating] = useState(false);
-  const [result, setResult] = useState<GeneratedDocument | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<GenerationOutcome | null>(null);
   const { download, errors: downloadErrors } = useDownload();
 
   const validTemplates = templates.filter((t) => t.is_valid);
   const hasTemplates = builtinTemplates.length > 0 || validTemplates.length > 0;
 
+  // Le résultat (ou l'erreur) n'est affiché que s'il correspond à la sélection
+  // courante : changer de modèle ou de format l'écarte automatiquement.
+  const current =
+    outcome &&
+    outcome.templateChoice === templateChoice &&
+    outcome.format === format
+      ? outcome
+      : null;
+  const result = current?.doc ?? null;
+  const error = current?.error ?? null;
+
   async function handleGenerate() {
     if (!templateChoice) return;
     setGenerating(true);
-    setError(null);
-    setResult(null);
+    setOutcome(null);
     try {
       const body = templateChoice.startsWith("system:")
         ? {
@@ -72,9 +88,14 @@ export function GenerateDossierDialog({
         `/organizations/${orgId}/generate`,
         body,
       );
-      setResult(doc);
+      setOutcome({ templateChoice, format, doc, error: null });
     } catch (err) {
-      setError(extractErrorMessage(err, "Erreur de génération"));
+      setOutcome({
+        templateChoice,
+        format,
+        doc: null,
+        error: extractErrorMessage(err, "Erreur de génération"),
+      });
     } finally {
       setGenerating(false);
     }
@@ -83,8 +104,7 @@ export function GenerateDossierDialog({
   function handleClose() {
     setTemplateChoice("");
     setFormat("docx");
-    setResult(null);
-    setError(null);
+    setOutcome(null);
     onOpenChange(false);
   }
 
@@ -245,6 +265,12 @@ export function GenerateDossierDialog({
                 >
                   Télécharger ({result.file_format.toUpperCase()})
                 </Button>
+                {format === "pdf" && result.file_format === "docx" && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    La conversion PDF est momentanément indisponible : le
+                    dossier a été généré au format Word.
+                  </p>
+                )}
                 <ErrorAlert error={downloadErrors[result.id] ?? null} />
               </div>
             ) : (

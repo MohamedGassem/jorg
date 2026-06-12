@@ -33,6 +33,7 @@ export interface Achievement {
   description: string;
   impact: string | null;
   order: number;
+  featured: boolean;
   skill_tags: AchievementSkillTag[];
   created_at: string;
   updated_at: string;
@@ -328,6 +329,7 @@ export interface OpportunityRead {
   status: OpportunityStatus;
   created_at: string;
   updated_at: string;
+  required_skills: { skill_ref_id: string; name: string }[];
 }
 
 export interface ShortlistCandidateInfo {
@@ -336,6 +338,7 @@ export interface ShortlistCandidateInfo {
   first_name: string | null;
   last_name: string | null;
   title: string | null;
+  match_score: number | null;
 }
 
 export interface OpportunityDetail extends OpportunityRead {

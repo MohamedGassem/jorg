@@ -303,3 +303,135 @@ async def test_export_includes_nested_candidate_skills(
     assert "id" in s1["skill_ref"]
     assert "kind" in s1["skill_ref"]
     assert s1["featured"] is True
+
+
+# ---- Recruiter RGPD ---------------------------------------------------------
+
+
+async def test_recruiter_export_requires_auth(client: AsyncClient) -> None:
+    r = await client.get("/recruiters/me/export")
+    assert r.status_code == 401
+
+
+async def test_candidate_cannot_export_recruiter_data(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.get("/recruiters/me/export", headers=candidate_headers)
+    assert r.status_code == 403
+
+
+async def test_recruiter_export_returns_profile_and_organization(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    await client.put(
+        "/recruiters/me/profile",
+        headers=recruiter_headers,
+        json={"first_name": "Bob", "last_name": "Martin", "job_title": "Talent"},
+    )
+    org = await client.post("/organizations", headers=recruiter_headers, json={"name": "Export Co"})
+    org_id = org.json()["id"]
+    await client.put(
+        "/recruiters/me/profile",
+        headers=recruiter_headers,
+        json={"organization_id": org_id},
+    )
+
+    r = await client.get("/recruiters/me/export", headers=recruiter_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["email"] == "recruiter@test.com"
+    assert data["role"] == "recruiter"
+    assert data["first_name"] == "Bob"
+    assert data["last_name"] == "Martin"
+    assert data["job_title"] == "Talent"
+    assert data["organization"]["id"] == org_id
+    assert data["organization"]["name"] == "Export Co"
+    assert data["generated_documents"] == []
+    assert "exported_at" in data
+
+
+async def test_recruiter_delete_requires_auth(client: AsyncClient) -> None:
+    r = await client.delete("/recruiters/me")
+    assert r.status_code == 401
+
+
+async def test_candidate_cannot_delete_recruiter_account(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    r = await client.delete("/recruiters/me", headers=candidate_headers)
+    assert r.status_code == 403
+
+
+async def test_recruiter_delete_removes_user_and_invalidates_session(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    await client.put(
+        "/recruiters/me/profile",
+        headers=recruiter_headers,
+        json={"first_name": "Gone", "last_name": "Soon"},
+    )
+
+    user_q = await db_session.execute(select(User).where(User.email == "recruiter@test.com"))
+    recruiter_user = user_q.scalar_one()
+    recruiter_user_id = recruiter_user.id
+
+    r = await client.delete("/recruiters/me", headers=recruiter_headers)
+    assert r.status_code == 204
+
+    db_session.expire_all()
+
+    user_check = await db_session.execute(select(User).where(User.email == "recruiter@test.com"))
+    assert user_check.scalar_one_or_none() is None
+
+    from models.recruiter import RecruiterProfile
+
+    profile_check = await db_session.execute(
+        select(RecruiterProfile).where(RecruiterProfile.user_id == recruiter_user_id)
+    )
+    assert profile_check.scalar_one_or_none() is None
+
+    # A subsequent authenticated call with the old token now fails.
+    after = await client.get("/recruiters/me/profile", headers=recruiter_headers)
+    assert after.status_code == 401
+
+
+async def test_recruiter_delete_preserves_org_and_nulls_generated_docs(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    org_r = await client.post(
+        "/organizations", headers=recruiter_headers, json={"name": "Survivor Co"}
+    )
+    org_id = org_r.json()["id"]
+
+    user_q = await db_session.execute(select(User).where(User.email == "recruiter@test.com"))
+    recruiter_user = user_q.scalar_one()
+
+    doc = GeneratedDocument(
+        access_grant_id=None,
+        template_id=None,
+        generated_by_user_id=recruiter_user.id,
+        file_path="generated/rec-doc.docx",
+        file_format="docx",
+    )
+    db_session.add(doc)
+    await db_session.commit()
+    doc_id = doc.id
+
+    r = await client.delete("/recruiters/me", headers=recruiter_headers)
+    assert r.status_code == 204
+
+    db_session.expire_all()
+
+    org_check = await db_session.execute(select(Organization).where(Organization.id == org_id))
+    assert org_check.scalar_one_or_none() is not None
+
+    doc_q = await db_session.execute(
+        select(GeneratedDocument).where(GeneratedDocument.id == doc_id)
+    )
+    refreshed_doc = doc_q.scalar_one()
+    assert refreshed_doc.generated_by_user_id is None
+    assert refreshed_doc.file_path == "generated/rec-doc.docx"

@@ -2,8 +2,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Trash2, Plus, X, Pencil } from "lucide-react";
+import { Trash2, Plus, X, Pencil, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
@@ -226,10 +227,26 @@ function AchievementRow({
     });
   }
 
+  async function handleToggleFeatured() {
+    try {
+      const updated = await api.put<Achievement>(
+        `/candidates/me/experiences/${expId}/achievements/${ach.id}`,
+        { featured: !ach.featured },
+      );
+      onSaved({ ...ach, featured: updated.featured });
+    } catch {
+      // ignore toggle errors silently (non-critical)
+    }
+  }
+
   return (
     <div>
       <div
-        className={`group flex items-start gap-2 rounded-md px-2 py-1.5 ${open ? "bg-muted/20" : "hover:bg-muted/10"}`}
+        className={cn(
+          "group flex items-start gap-2 rounded-md px-2 py-1.5",
+          open ? "bg-muted/20" : !ach.featured && "hover:bg-muted/10",
+          ach.featured && "bg-accent-soft-2",
+        )}
       >
         <span className="mt-0.5 shrink-0 text-muted-foreground">•</span>
         <div className="min-w-0 flex-1">
@@ -252,6 +269,29 @@ function AchievementRow({
             </div>
           )}
         </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={
+            ach.featured ? "Retirer la mise en avant" : "Mettre en avant"
+          }
+          title={ach.featured ? "Retirer la mise en avant" : "Mettre en avant"}
+          onClick={handleToggleFeatured}
+          className={cn(
+            !ach.featured &&
+              "opacity-0 transition-opacity group-hover:opacity-100",
+          )}
+        >
+          <Star
+            className={cn(
+              "size-3.5",
+              ach.featured
+                ? "fill-primary text-primary"
+                : "text-muted-foreground",
+            )}
+            strokeWidth={1.6}
+          />
+        </Button>
         <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           <button
             type="button"
@@ -1308,6 +1348,7 @@ export function ExperienceSection() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState<ExpForm>(EMPTY_EXP);
+  const [achievementDrafts, setAchievementDrafts] = useState<string[]>([]);
   const op = useAsyncOp("Erreur lors de la création");
 
   useEffect(() => {
@@ -1343,7 +1384,22 @@ export function ExperienceSection() {
         description: form.description || null,
         context: form.context || null,
       });
-      setItems((prev) => [...prev, created]);
+      const descriptions = achievementDrafts
+        .map((d) => d.trim())
+        .filter(Boolean);
+      const createdAchievements = await Promise.all(
+        descriptions.map((description) =>
+          api.post<Achievement>(
+            `/candidates/me/experiences/${created.id}/achievements`,
+            { description },
+          ),
+        ),
+      );
+      setItems((prev) => [
+        ...prev,
+        { ...created, achievements: createdAchievements },
+      ]);
+      setAchievementDrafts([]);
       setForm(EMPTY_EXP);
       setAdding(false);
     });
@@ -1356,24 +1412,17 @@ export function ExperienceSection() {
 
   return (
     <div className="space-y-3">
-      {items.map((exp) => (
-        <ExperienceCard
-          key={exp.id}
-          exp={exp}
-          candidateSkills={candidateSkills}
-          onUpdated={(updated) =>
-            setItems((prev) =>
-              prev.map((i) => (i.id === updated.id ? updated : i)),
-            )
-          }
-          onDeleted={(id) =>
-            setItems((prev) => prev.filter((i) => i.id !== id))
-          }
-          onNewSkill={(skill) => setCandidateSkills((prev) => [...prev, skill])}
-        />
-      ))}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {items.length} expérience{items.length !== 1 ? "s" : ""}
+        </p>
+        <Button size="sm" onClick={() => setAdding(true)} disabled={adding}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Ajouter une expérience
+        </Button>
+      </div>
 
-      {adding ? (
+      {adding && (
         <form
           onSubmit={handleAdd}
           className="space-y-3 rounded-xl border border-border/60 bg-muted/10 p-4"
@@ -1447,6 +1496,44 @@ export function ExperienceSection() {
               rows={2}
             />
           </div>
+          <div className="space-y-1.5">
+            <Label>Réalisations (optionnel)</Label>
+            {achievementDrafts.map((draft, i) => (
+              <div key={i} className="flex gap-2">
+                <Input
+                  value={draft}
+                  placeholder="ex: Réduction de 30% du temps de build"
+                  onChange={(e) =>
+                    setAchievementDrafts((prev) =>
+                      prev.map((d, j) => (j === i ? e.target.value : d)),
+                    )
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Retirer la réalisation"
+                  onClick={() =>
+                    setAchievementDrafts((prev) =>
+                      prev.filter((_, j) => j !== i),
+                    )
+                  }
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setAchievementDrafts((prev) => [...prev, ""])}
+            >
+              <Plus className="size-3.5" />
+              Ajouter une réalisation
+            </Button>
+          </div>
           {op.error && <p className="text-sm text-destructive">{op.error}</p>}
           <div className="flex justify-end gap-2">
             <Button
@@ -1456,6 +1543,7 @@ export function ExperienceSection() {
               onClick={() => {
                 setAdding(false);
                 setForm(EMPTY_EXP);
+                setAchievementDrafts([]);
               }}
             >
               Annuler
@@ -1465,17 +1553,24 @@ export function ExperienceSection() {
             </Button>
           </div>
         </form>
-      ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setAdding(true)}
-          className="gap-1.5"
-        >
-          <Plus className="size-3.5" />
-          Ajouter une expérience
-        </Button>
       )}
+
+      {items.map((exp) => (
+        <ExperienceCard
+          key={exp.id}
+          exp={exp}
+          candidateSkills={candidateSkills}
+          onUpdated={(updated) =>
+            setItems((prev) =>
+              prev.map((i) => (i.id === updated.id ? updated : i)),
+            )
+          }
+          onDeleted={(id) =>
+            setItems((prev) => prev.filter((i) => i.id !== id))
+          }
+          onNewSkill={(skill) => setCandidateSkills((prev) => [...prev, skill])}
+        />
+      ))}
     </div>
   );
 }

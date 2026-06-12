@@ -110,12 +110,14 @@ class AchievementCreate(BaseModel):
     description: str
     impact: str | None = None
     order: int = 0
+    featured: bool = False
 
 
 class AchievementUpdate(BaseModel):
     description: str | None = None
     impact: str | None = None
     order: int | None = None
+    featured: bool | None = None
 
 
 class AchievementRead(BaseModel):
@@ -126,6 +128,7 @@ class AchievementRead(BaseModel):
     description: str
     impact: str | None
     order: int
+    featured: bool
     skill_tags: list[AchievementSkillTagRead] = []
     created_at: datetime
     updated_at: datetime

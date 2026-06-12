@@ -57,3 +57,28 @@ class CandidateExport(BaseModel):
     languages: list[LanguageRead]
     access_grants: list[AccessGrantExport]
     generated_documents: list[GeneratedDocumentExport]
+
+
+class OrganizationExport(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+
+
+class RecruiterExport(BaseModel):
+    """Payload RGPD complet pour un recruteur."""
+
+    exported_at: datetime
+    user_id: UUID
+    email: str
+    role: str
+    created_at: datetime
+    consented_at: datetime | None
+    consent_version: str | None
+
+    first_name: str | None
+    last_name: str | None
+    job_title: str | None
+    organization: OrganizationExport | None
+    generated_documents: list[GeneratedDocumentExport]

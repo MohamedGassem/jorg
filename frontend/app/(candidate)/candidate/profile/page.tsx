@@ -48,14 +48,19 @@ function deriveYearsOfExperience(experiences: Experience[]): number | null {
   return Math.max(years, 0);
 }
 
-function completionChecks(p: CandidateProfile): boolean[] {
+function completionChecks(
+  p: CandidateProfile,
+): { label: string; done: boolean }[] {
   return [
-    Boolean(p.avatar_url),
-    Boolean(p.title),
-    Boolean(p.summary),
-    Boolean(p.location),
-    Boolean(p.linkedin_url),
-    p.availability_status !== "not_available",
+    { label: "Photo de profil", done: Boolean(p.avatar_url) },
+    { label: "Titre", done: Boolean(p.title) },
+    { label: "Résumé", done: Boolean(p.summary) },
+    { label: "Localisation", done: Boolean(p.location) },
+    { label: "Profil LinkedIn", done: Boolean(p.linkedin_url) },
+    {
+      label: "Disponibilité",
+      done: p.availability_status !== "not_available",
+    },
   ];
 }
 
@@ -94,9 +99,9 @@ function ProfileHero({
 
   const checks = completionChecks(profile);
   const completion = Math.round(
-    (checks.filter(Boolean).length / checks.length) * 100,
+    (checks.filter((c) => c.done).length / checks.length) * 100,
   );
-  const missingCount = checks.filter((c) => !c).length;
+  const missing = checks.filter((c) => !c.done);
   const fullName =
     [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "-";
   const initials =
@@ -189,8 +194,8 @@ function ProfileHero({
               />
             </div>
             <p className="mt-2 text-xs text-ink-3">
-              {missingCount > 0
-                ? `${missingCount} section${missingCount > 1 ? "s" : ""} à compléter`
+              {missing.length > 0
+                ? `À compléter : ${missing.map((c) => c.label).join(", ")}`
                 : "Profil complet"}
             </p>
           </div>

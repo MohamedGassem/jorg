@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Jorg — Refonte du template de dossier de compétences</title>
+<link rel="stylesheet" href="styles/doc.css" />
+<link rel="stylesheet" href="styles/cv.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div class="doc">
+
+<!-- ════════════ PAGE 01 — COUVERTURE ════════════ -->
+<section class="sheet" data-screen-label="01 Couverture">
+  <p class="kicker">Jorg · Audit &amp; refonte · Juin 2026</p>
+  <h1 class="doc-title">Dossier de compétences.<br />Refonte du template.</h1>
+  <p class="lede" style="margin-top: 6mm;">Le lecteur cible — commercial ESN ou client final — décide en moins de deux minutes. Il scanne, il ne lit pas. Chaque choix de cette refonte découle de cette contrainte&nbsp;: l'information de décision d'abord, les éléments mis en avant comme argumentaire, le reste comme preuve.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5mm; margin-top: 10mm;">
+    <div style="border-top: 1.6pt solid var(--doc-accent); padding-top: 2.5mm;">
+      <h3 class="doc-h3">Décision d'abord</h3>
+      <p class="doc-small">Disponibilité, TJM, mobilité et séniorité remontent sous l'en-tête, dans un bandeau dédié.</p>
+    </div>
+    <div style="border-top: 1.6pt solid var(--doc-accent); padding-top: 2.5mm;">
+      <h3 class="doc-h3">Featured = vitrine</h3>
+      <p class="doc-small">Skills et réalisations mis en avant gagnent la page 1 — plafonnés pour éviter l'effet sapin de Noël.</p>
+    </div>
+    <div style="border-top: 1.6pt solid var(--doc-accent); padding-top: 2.5mm;">
+      <h3 class="doc-h3">Une source, deux rendus</h3>
+      <p class="doc-small">Mêmes tokens CSS pour le web et le PDF A4 ; distinction featured qui survit au noir &amp; blanc.</p>
+    </div>
+  </div>
+
+  <nav class="toc">
+    <div class="toc-row"><span><span class="t">Audit</span> <span class="d">— 9 problèmes priorisés</span></span><span class="pg">p. 02–03</span></div>
+    <div class="toc-row"><span><span class="t">Structure cible</span> <span class="d">— wireframe page 1 &amp; pages suivantes, logique featured</span></span><span class="pg">p. 04</span></div>
+    <div class="toc-row"><span><span class="t">Système de design</span> <span class="d">— échelle typo, palette, espacements, tokens CSS</span></span><span class="pg">p. 05</span></div>
+    <div class="toc-row"><span><span class="t">Avant / après</span> <span class="d">— en-tête, bloc compétences, expérience</span></span><span class="pg">p. 06–07</span></div>
+    <div class="toc-row"><span><span class="t">Maquettes hi-fi</span> <span class="d">— Premium (2 p.) · Compact ESN anonyme (1 p.) · Dossier technique (2 p.)</span></span><span class="pg">M1–M5</span></div>
+    <div class="toc-row"><span><span class="t">Implémentation</span> <span class="d">— Next.js, export PDF, garde-fous</span></span><span class="pg">p. 08</span></div>
+    <div class="toc-row"><span><span class="t">Annexe — rendu DOCX</span> <span class="d">— mapping composants → Word, 3 fichiers .docx livrés</span></span><span class="pg">p. 09</span></div>
+  </nav>
+  <div class="folio"><span>Jorg — Refonte template</span><span>01</span></div>
+</section>
+
+<!-- ════════════ PAGE 02 — AUDIT 1/2 ════════════ -->
+<section class="sheet" data-screen-label="02 Audit 1/2">
+  <p class="kicker">01 · Audit</p>
+  <h2 class="doc-h2">Neuf problèmes, par impact lecteur décroissant</h2>
+  <p class="doc-small" style="margin: 0 0 4mm 0;">Constats issus des trois variantes actuelles (Profil premium, Compact ESN, Dossier technique). P1 = bloque la décision, P2 = ralentit le scan, P3 = dégrade la crédibilité.</p>
+
+  <article class="audit-item" style="border-top-color: var(--doc-ink);">
+    <div class="audit-n">1</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">L'information de décision est introuvable</span><span class="sev sev-1">P1</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>La disponibilité est en dernière ligne (Premium) ou en milieu de document (Technique) ; le TJM et la date précise sont absents partout.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Un <b>bandeau commercial</b> sous l'en-tête : disponibilité, TJM, mobilité, séniorité — quatre cases, page 1, au-dessus de tout.</p>
+      <p class="audit-line"><span class="tag">Justification</span>Le commercial qualifie ou disqualifie en 10 secondes au lieu de chercher l'info dans 4 pages.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">2</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">Le « mis en avant » n'existe pas visuellement</span><span class="sev sev-1">P1</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>Un skill « Clé » est un mot dans une colonne de tableau ; aucune réalisation featured n'a de traitement distinct.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Skills featured en <b>pastilles bordées</b> en tête de section ; réalisations featured en <b>encart « Faits marquants » page 1</b> + bordure/fond dans l'expérience.</p>
+      <p class="audit-line"><span class="tag">Justification</span>Ce que le consultant choisit de vendre doit être la première chose que le lecteur voit.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">3</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">Les chiffres sont enterrés dans les phrases</span><span class="sev sev-1">P1</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>« Baisse de 35% des incidents » pèse typographiquement autant que le reste de la phrase.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Format normalisé <b>action + techno → résultat chiffré en gras</b> ; le KPI extrait en gros corps dans les faits marquants.</p>
+      <p class="audit-line"><span class="tag">Justification</span>En lecture F, le chiffre est la seule preuve qui accroche l'œil — il doit être saillant, pas noyé.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">4</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">Des tableaux administratifs pour les compétences</span><span class="sev sev-2">P2</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>La colonne « Type » (Technique / Outil / Méthodologie) est une métadonnée interne Jorg sans valeur pour le lecteur ; les bordures pleines doublent la densité perçue.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Regrouper <b>par catégorie en lignes label + valeurs</b> ; réserver le tableau au synoptique des missions et à la matrice de niveaux (variante technique).</p>
+      <p class="audit-line"><span class="tag">Justification</span>Moins de cellules = scan vertical possible ; la catégorie devient un guide, pas une colonne.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">5</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">Hiérarchie typographique plate</span><span class="sev sev-2">P2</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>Un seul niveau de graisse perceptible ; les titres de section en capitales ont quasiment le corps du texte courant.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Échelle contrastée <b>22 / 12 / 11 / 9,5 / 8,5 / 7,5 pt</b> ; capitales espacées réservées aux seules têtes de section.</p>
+      <p class="audit-line"><span class="tag">Justification</span>Le F-pattern exige des contrastes de taille et de graisse — les capitales seules ne suffisent pas.</p>
+    </div>
+  </article>
+  <div class="folio"><span>Jorg — Refonte template</span><span>02</span></div>
+</section>
+
+<!-- ════════════ PAGE 03 — AUDIT 2/2 ════════════ -->
+<section class="sheet" data-screen-label="03 Audit 2/2">
+  <article class="audit-item" style="border-top: none; padding-top: 0;">
+    <div class="audit-n">6</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">L'en-tête est un état civil, pas un argumentaire</span><span class="sev sev-2">P2</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>Email, téléphone et URL LinkedIn occupent la zone la plus lue de la page ; en mode anonyme, il ne resterait rien.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Nom (ou <b>initiales + référence</b> en mode anonyme) + titre accentué + bandeau commercial ; contacts en colonne droite, corps réduit.</p>
+      <p class="audit-line"><span class="tag">Justification</span>La zone premium vend le profil ; le canal de contact n'est utile qu'après la décision.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">7</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">La stack est répétée trois fois sans hiérarchie</span><span class="sev sev-3">P3</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>Compétences, synoptique et « Environnement technique » listent les mêmes technologies au même niveau.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Une source qualifiée (le bloc compétences) ; dans chaque expérience, la stack devient une <b>ligne méta discrète</b>.</p>
+      <p class="audit-line"><span class="tag">Justification</span>La redondance au même poids dilue ; la répétition discrète contextualise.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">8</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">Libellés verbeux et valeurs en double</span><span class="sev sev-3">P3</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>« Francais - native Langue maternelle », « Disponible : Disponible immédiatement » — les énumérations concatènent code interne et libellé.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Normaliser côté rendu : <b>une valeur, un niveau</b> (« Français — langue maternelle », « Immédiate »).</p>
+      <p class="audit-line"><span class="tag">Justification</span>Chaque mot inutile coûte de l'attention ; les doublons signalent un document généré, pas soigné.</p>
+    </div>
+  </article>
+
+  <article class="audit-item">
+    <div class="audit-n">9</div>
+    <div>
+      <div class="audit-head"><span class="audit-title">Aucune identité visuelle</span><span class="sev sev-3">P3</span></div>
+      <p class="audit-line"><span class="tag">Problème</span>Rendu Word générique : indifférenciable d'un CV gratuit, alors que le dossier est l'objet commercial de l'ESN.</p>
+      <p class="audit-line"><span class="tag">Solution</span>Un <b>accent unique</b> (bordeaux), marqueurs carrés, filets fins, blancs généreux — et rien d'autre.</p>
+      <p class="audit-line"><span class="tag">Justification</span>Le dossier signale le positionnement premium avant la première ligne lue ; la sobriété crédibilise.</p>
+    </div>
+  </article>
+
+  <div style="margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; border-top: 0.6pt solid var(--doc-ink); padding-top: 4mm;">
+    <div>
+      <p class="spec-label" style="margin-bottom: 1.5mm;">Ce qu'on voit en 10 secondes — aujourd'hui</p>
+      <p class="doc-p" style="color: var(--doc-meta);">Un nom, des titres en capitales, des tableaux à bordures. Ni disponibilité, ni tarif, ni chiffre, ni compétence saillante.</p>
+    </div>
+    <div>
+      <p class="spec-label" style="margin-bottom: 1.5mm; color: var(--doc-accent);">Ce qu'on verra en 10 secondes — cible</p>
+      <p class="doc-p"><b>Titre du profil · disponibilité + TJM + mobilité · 4 compétences clés · 3 résultats chiffrés.</b> De quoi décider — ou passer au profil suivant.</p>
+    </div>
+  </div>
+  <div class="folio"><span>Jorg — Refonte template</span><span>03</span></div>
+</section>
+
+<!-- ════════════ PAGE 04 — STRUCTURE CIBLE ════════════ -->
+<section class="sheet" data-screen-label="04 Structure cible">
+  <p class="kicker">02 · Structure cible</p>
+  <h2 class="doc-h2">Wireframe — l'ordre suit la logique de décision</h2>
+  <p class="doc-small" style="margin: 0 0 4mm 0;">Qualifier (bandeau) → convaincre (featured) → vérifier (compétences, expériences) → administrer (formation, langues). Les zones bordeaux n'existent que si des éléments sont mis en avant.</p>
+
+  <div class="wf-cols">
+    <div>
+      <p class="wf-caption">Page 1 — above the fold</p>
+      <div class="wf-page">
+        <div class="wf-zone"><span class="wf-label">EN-TÊTE</span><br />Nom (ou initiales + réf.) · Titre du profil<br />Contacts à droite, corps réduit — masqués en mode anonyme</div>
+        <div class="wf-zone" style="border-width: 1pt;"><span class="wf-label">BANDEAU COMMERCIAL</span><br />Disponibilité · TJM · Mobilité · Séniorité</div>
+        <div class="wf-zone"><span class="wf-label">PROFIL</span> — 2-3 lignes, mots-clés en gras</div>
+        <div class="wf-zone wf-feat"><span class="wf-label">★ FAITS MARQUANTS</span> — 2-3 cartes max<br />KPI gros corps + 1 ligne + renvoi (client, année)<br />← réalisations featured, sans duplication du texte intégral</div>
+        <div class="wf-zone"><span class="wf-label">COMPÉTENCES</span><br /><span style="color: var(--doc-accent); font-weight: 700;">★ pastilles featured (5 max)</span> puis groupes par catégorie : label + valeurs en ligne</div>
+        <div class="wf-zone"><span class="wf-label">EXPÉRIENCE LA PLUS RÉCENTE</span><br />Rôle — Client · période · contexte 1 ligne · stack méta<br /><span style="color: var(--doc-accent);">▌réalisation featured = bordure + fond</span> · réalisations standard en tirets</div>
+      </div>
+    </div>
+    <div>
+      <p class="wf-caption">Pages suivantes</p>
+      <div class="wf-page">
+        <div class="wf-zone"><span class="wf-label">EXPÉRIENCES (suite)</span> — antichronologiques<br />Même gabarit ; les featured gardent leur traitement in-situ</div>
+        <div class="wf-zone wf-dim"><span class="wf-label">SYNOPTIQUE DES MISSIONS</span> — variante technique uniquement, en page 1 sous les compétences</div>
+        <div class="wf-zone"><span class="wf-label">FORMATION · CERTIFICATIONS</span> — 2 colonnes</div>
+        <div class="wf-zone"><span class="wf-label">LANGUES · PIED DE PAGE</span> — référence dossier + date de mise à jour</div>
+      </div>
+      <div style="margin-top: 4mm; display: flex; flex-direction: column; gap: 2.5mm;">
+        <p class="wf-note"><b>Plafonds anti-sapin de Noël.</b> Au rendu : 5 pastilles featured max, 3 faits marquants max. Au-delà, tri par récence puis présence d'un chiffre ; le surplus garde uniquement son traitement in-situ dans l'expérience.</p>
+        <p class="wf-note"><b>Zéro duplication.</b> Un fait marquant = KPI + résumé court + renvoi « → Client, année ». Le texte complet vit dans l'expérience, une seule fois.</p>
+        <p class="wf-note"><b>État sans featured.</b> Pastilles et faits marquants disparaissent ; la page 1 remonte d'un cran. Le template ne réserve jamais d'espace vide.</p>
+        <p class="wf-note"><b>Noir &amp; blanc.</b> La distinction featured tient par graisse + bordure + fond grisé — jamais par la couleur seule.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>Jorg — Refonte template</span><span>04</span></div>
+</section>
+
+<!-- ════════════ PAGE 05 — SYSTÈME DE DESIGN ════════════ -->
+<section class="sheet" data-screen-label="05 Système de design">
+  <p class="kicker">03 · Système de design</p>
+  <h2 class="doc-h2">Un accent, deux familles de gris, six corps</h2>
+
+  <div class="spec-block" style="border-top: none; padding-top: 0;">
+    <p class="spec-label">Échelle typographique — Helvetica Neue / Helvetica / Arial</p>
+    <div class="type-row"><span class="type-meta">name · 22 pt · 700</span><span style="font-family: var(--cv-font); font-size: 22pt; font-weight: 700; letter-spacing: -0.015em; color: var(--doc-ink); line-height: 1;">Joris Martin</span></div>
+    <div class="type-row"><span class="type-meta">role · 12 pt · 400 · accent</span><span style="font-family: var(--cv-font); font-size: 12pt; color: var(--doc-accent);">Lead Product Engineer</span></div>
+    <div class="type-row"><span class="type-meta">kpi · 15 pt · 700</span><span style="font-family: var(--cv-font); font-size: 15pt; font-weight: 700; color: var(--doc-ink);">−85 %</span></div>
+    <div class="type-row"><span class="type-meta">section · 8,5 pt · 700 · caps</span><span style="font-family: var(--cv-font); font-size: 8.5pt; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--doc-ink);">Expériences</span></div>
+    <div class="type-row"><span class="type-meta">body · 9,5 pt · 400</span><span style="font-family: var(--cv-font); font-size: 9.5pt; color: var(--doc-body);">Conception et livraison d'une plateforme de matching candidat-recruteur.</span></div>
+    <div class="type-row"><span class="type-meta">meta · 7,5 pt · 400</span><span style="font-family: var(--cv-font); font-size: 7.5pt; color: var(--doc-meta); letter-spacing: 0.02em;">Stack — PostgreSQL · Next.js · FastAPI</span></div>
+  </div>
+
+  <div class="spec-block">
+    <p class="spec-label">Palette — testée en niveaux de gris (luminances distinctes)</p>
+    <div class="swatches">
+      <div class="swatch"><div class="chip" style="background: #1B1A19;"></div><span class="sw-name">ink<br />#1B1A19</span></div>
+      <div class="swatch"><div class="chip" style="background: #3B3936;"></div><span class="sw-name">body<br />#3B3936</span></div>
+      <div class="swatch"><div class="chip" style="background: #716E69;"></div><span class="sw-name">meta<br />#716E69</span></div>
+      <div class="swatch"><div class="chip" style="background: #A8A49E;"></div><span class="sw-name">faint<br />#A8A49E</span></div>
+      <div class="swatch"><div class="chip" style="background: #E4E1DC;"></div><span class="sw-name">line<br />#E4E1DC</span></div>
+      <div class="swatch"><div class="chip" style="background: #7C2D3E;"></div><span class="sw-name">accent<br />#7C2D3E</span></div>
+      <div class="swatch"><div class="chip" style="background: #F6EDEF;"></div><span class="sw-name">accent-tint<br />#F6EDEF</span></div>
+    </div>
+  </div>
+
+  <div class="spec-block" style="display: grid; grid-template-columns: 58mm 1fr; gap: 6mm;">
+    <div>
+      <p class="spec-label">Espacements — base 1,5 mm</p>
+      <div class="space-row"><div class="space-bar" style="width: 6mm;"></div><span class="type-meta">sp-1 · 1,5 mm · intra-composant</span></div>
+      <div class="space-row"><div class="space-bar" style="width: 12mm;"></div><span class="type-meta">sp-2 · 3 mm · entre éléments</span></div>
+      <div class="space-row"><div class="space-bar" style="width: 20mm;"></div><span class="type-meta">sp-3 · 5 mm · entre sections</span></div>
+      <div class="space-row"><div class="space-bar" style="width: 32mm;"></div><span class="type-meta">sp-4 · 8 mm · respiration forte</span></div>
+      <div class="space-row"><div class="space-bar" style="width: 48mm;"></div><span class="type-meta">sp-5 · 12 mm · marges internes</span></div>
+      <p class="spec-label" style="margin-top: 5mm;">Composants featured</p>
+      <div style="display: flex; flex-direction: column; gap: 2.5mm; font-family: var(--cv-font);">
+        <div style="display: flex; gap: 2mm; align-items: center; flex-wrap: wrap;">
+          <span class="skill-feat">PostgreSQL <span class="lvl">avancé</span></span>
+          <span style="font-size: 8.5pt; color: var(--doc-meta);">vs</span>
+          <span class="skill-list">Airflow</span>
+        </div>
+        <div class="ach ach-feat" style="font-size: 8.5pt;">Réduction du temps de constitution <b>de plusieurs heures à quelques minutes</b> <span class="ach-kpi">(−85 %)</span></div>
+        <div class="ach" style="font-size: 8.5pt;">Mise en place de la CI/CD et des revues d'architecture</div>
+      </div>
+    </div>
+    <div>
+      <p class="spec-label">Tokens CSS — extrait de <span style="text-transform: none;">styles/cv.css</span></p>
+      <pre class="tokens">:root {
+  <span class="c">/* encres */</span>
+  --cv-ink: <span class="v">#1B1A19</span>;  --cv-body: <span class="v">#3B3936</span>;
+  --cv-meta: <span class="v">#716E69</span>; --cv-faint: <span class="v">#A8A49E</span>;
+  --cv-line: <span class="v">#E4E1DC</span>; --cv-wash: <span class="v">#F7F5F2</span>;
+
+  <span class="c">/* accent unique — survit au N&amp;B par graisse + bordure */</span>
+  --cv-accent: <span class="v">#7C2D3E</span>;
+  --cv-accent-deep: <span class="v">#5C1F2D</span>;
+  --cv-accent-tint: <span class="v">#F6EDEF</span>;
+
+  <span class="c">/* échelle typo (pt = fidélité print) */</span>
+  --cv-fs-name: <span class="v">22pt</span>; --cv-fs-role: <span class="v">12pt</span>;
+  --cv-fs-kpi: <span class="v">15pt</span>;  --cv-fs-h2: <span class="v">8.5pt</span>;
+  --cv-fs-body: <span class="v">9.5pt</span>; --cv-fs-meta: <span class="v">7.5pt</span>;
+
+  <span class="c">/* espacements (mm) */</span>
+  --cv-sp-1: <span class="v">1.5mm</span>; --cv-sp-2: <span class="v">3mm</span>;
+  --cv-sp-3: <span class="v">5mm</span>;   --cv-sp-4: <span class="v">8mm</span>;
+}
+
+<span class="c">/* skill featured : pastille bordée, graisse 700 */</span>
+.skill-feat { border: <span class="v">1pt solid var(--cv-accent)</span>;
+  font-weight: <span class="v">700</span>; color: <span class="v">var(--cv-accent-deep)</span>; }
+
+<span class="c">/* réalisation featured : barre + fond, pas de puce */</span>
+.ach-feat { border-left: <span class="v">1.6pt solid var(--cv-accent)</span>;
+  background: <span class="v">var(--cv-accent-tint)</span>; }</pre>
+    </div>
+  </div>
+  <div class="folio"><span>Jorg — Refonte template</span><span>05</span></div>
+</section>
+
+<!-- ════════════ PAGE 06 — AVANT/APRÈS 1 & 2 ════════════ -->
+<section class="sheet" data-screen-label="06 Avant-après en-tête et compétences">
+  <p class="kicker">04 · Avant / après</p>
+  <h2 class="doc-h2">En-tête</h2>
+  <div class="ba-grid">
+    <div class="ba-panel">
+      <span class="ba-tag before">Avant — état civil</span>
+      <div class="ba-frame before-frame">
+        <div class="word">
+          <h4>Joris Martin</h4>
+          <p style="margin: 0 0 1mm;">Lead Product Engineer</p>
+          <p style="margin: 0 0 1mm;">Paris &nbsp;·&nbsp; 9 ans d'expérience</p>
+          <p style="margin: 0;" class="wt"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="4e24213c273d0e24213c29602b362f233e222b">[email&#160;protected]</a></p>
+          <p style="margin: 0;">06 12 34 56 78</p>
+          <p style="margin: 0;" class="wt">https://linkedin.com/in/jorg-profile</p>
+          <p style="margin: 4mm 0 0; font-size: 8pt; color: #555;">… (la disponibilité apparaît en dernière ligne, page 2)</p>
+        </div>
+      </div>
+    </div>
+    <div class="ba-panel">
+      <span class="ba-tag after">Après — argumentaire + décision</span>
+      <div class="ba-frame" style="font-family: var(--cv-font); display: flex; flex-direction: column; gap: 3mm;">
+        <div class="cv-head-top">
+          <div>
+            <h4 class="cv-name" style="font-size: 17pt;">Joris Martin</h4>
+            <p class="cv-role" style="font-size: 10.5pt;">Lead Product Engineer</p>
+          </div>
+          <div class="cv-contact" style="font-size: 7.5pt;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b0dadfc2d9c3f0dadfc2d79ed5c8d1ddc0dcd5">[email&#160;protected]</a><br />06 12 34 56 78<br />linkedin.com/in/jorg-profile</div>
+        </div>
+        <div class="cv-band" style="padding: 2.2mm 0;">
+          <div class="cv-band-cell"><span class="cv-band-label">Disponibilité</span><span class="cv-band-value" style="font-size: 8.5pt;">Immédiate</span></div>
+          <div class="cv-band-cell"><span class="cv-band-label">TJM</span><span class="cv-band-value" style="font-size: 8.5pt;">650–750&nbsp;€</span></div>
+          <div class="cv-band-cell"><span class="cv-band-label">Mobilité</span><span class="cv-band-value" style="font-size: 8.5pt;">Paris <small>· remote</small></span></div>
+          <div class="cv-band-cell"><span class="cv-band-label">Expérience</span><span class="cv-band-value" style="font-size: 8.5pt;">9 ans</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="ba-notes" style="margin-top: 2.5mm;">
+    <li><b>Le bandeau remplace la chasse à l'info</b> : disponibilité, TJM et mobilité étaient absents ou en dernière ligne.</li>
+    <li><b>Les contacts passent en colonne droite, corps réduit</b> — en mode anonyme, ils disparaissent sans trouer la mise en page.</li>
+    <li><b>Le titre porte l'accent</b> : c'est le premier mot-clé que le commercial matche avec son besoin.</li>
+  </ul>
+
+  <h2 class="doc-h2" style="margin-top: 8mm;">Bloc compétences — featured vs standard</h2>
+  <div class="ba-grid">
+    <div class="ba-panel">
+      <span class="ba-tag before">Avant — tableau administratif</span>
+      <div class="ba-frame before-frame">
+        <div class="word">
+          <table>
+            <tr><th>Compétence</th><th>Type</th><th>Niveau</th><th>Priorité</th></tr>
+            <tr><td>Python</td><td>Technique</td><td>avance</td><td>Clé</td></tr>
+            <tr><td>PostgreSQL</td><td>Outil / logiciel</td><td>avance</td><td>Clé</td></tr>
+            <tr><td>Next.js</td><td>Outil / logiciel</td><td>intermediaire</td><td>Clé</td></tr>
+            <tr><td>Architecture logicielle</td><td>Méthodologie</td><td>avance</td><td>Clé</td></tr>
+            <tr><td>Ateliers metier</td><td>Métier / fonctionnel</td><td></td><td></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="ba-panel">
+      <span class="ba-tag after">Après — pastilles + groupes</span>
+      <div class="ba-frame" style="font-family: var(--cv-font);">
+        <div class="cv-skills">
+          <div class="skill-feat-row">
+            <span class="skill-feat">Python <span class="lvl">avancé</span></span>
+            <span class="skill-feat">PostgreSQL <span class="lvl">avancé</span></span>
+            <span class="skill-feat">Next.js <span class="lvl">intermédiaire</span></span>
+            <span class="skill-feat">Architecture logicielle <span class="lvl">avancé</span></span>
+          </div>
+          <div class="skill-groups">
+            <div class="skill-group"><span class="skill-group-label">Technique</span><span class="skill-list">FastAPI · Airflow · Docker · CI/CD GitLab</span></div>
+            <div class="skill-group"><span class="skill-group-label">Méthodologie</span><span class="skill-list">Scrum · revues d'architecture</span></div>
+            <div class="skill-group"><span class="skill-group-label">Fonctionnel</span><span class="skill-list">Ateliers métier · cadrage produit</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="ba-notes" style="margin-top: 2.5mm;">
+    <li><b>« Clé » devient une forme, pas un mot</b> : pastille bordée, graisse 700, niveau intégré — lisible en N&amp;B.</li>
+    <li><b>La colonne « Type » devient un label de groupe</b> : la métadonnée guide le scan au lieu d'occuper une colonne.</li>
+    <li><b>Plafond : 5 pastilles</b> — au-delà, le surplus rejoint les groupes pour préserver le contraste featured/standard.</li>
+  </ul>
+  <div class="folio"><span>Jorg — Refonte template</span><span>06</span></div>
+</section>
+
+<!-- ════════════ PAGE 07 — AVANT/APRÈS 3 ════════════ -->
+<section class="sheet" data-screen-label="07 Avant-après expérience">
+  <h2 class="doc-h2">Expérience — avec réalisation mise en avant</h2>
+  <div class="ba-grid" style="grid-template-columns: 1fr 1.35fr;">
+    <div class="ba-panel">
+      <span class="ba-tag before">Avant — blocs labellisés</span>
+      <div class="ba-frame before-frame">
+        <div class="word">
+          <p style="margin: 0; font-weight: 700;">SOCIÉTÉ : FlowUp &nbsp;&nbsp;du 01/2023 au présent</p>
+          <p style="margin: 0 0 2mm; font-weight: 700;">RÔLE : Lead Engineer</p>
+          <p style="margin: 0; font-weight: 700; font-size: 8.5pt;">CONTEXTE DU PROJET</p>
+          <p style="margin: 0 0 2mm;">Produit SaaS B2B en phase alpha, avec enjeux de confidentialite et d'automatisation.</p>
+          <p style="margin: 0; font-weight: 700; font-size: 8.5pt;">RÉALISATIONS</p>
+          <p style="margin: 0 0 2mm;">Reduction du temps de constitution d'un dossier de plusieurs heures a quelques minutes, avec generation Word standardisee.</p>
+          <p style="margin: 0; font-weight: 700; font-size: 8.5pt;">ENVIRONNEMENT TECHNIQUE</p>
+          <p style="margin: 0;">PostgreSQL, Next.js</p>
+        </div>
+      </div>
+    </div>
+    <div class="ba-panel">
+      <span class="ba-tag after">Après — contexte compact, preuves hiérarchisées</span>
+      <div class="ba-frame" style="font-family: var(--cv-font);">
+        <article class="cv-xp" style="padding-bottom: 0;">
+          <div class="xp-head">
+            <h4 class="xp-title">Lead Engineer <span class="xp-client">— FlowUp</span></h4>
+            <span class="xp-period">01/2023 — auj.</span>
+          </div>
+          <p class="xp-context">Produit SaaS B2B en phase alpha — enjeux de confidentialité et d'automatisation.</p>
+          <p class="xp-stack"><b>Stack</b> — PostgreSQL · Next.js · FastAPI</p>
+          <ul class="xp-achs">
+            <li class="ach ach-feat">Automatisation de la constitution des dossiers (FastAPI, génération standardisée) : <b>de plusieurs heures à quelques minutes</b> <span class="ach-kpi">(−85&nbsp;%)</span></li>
+            <li class="ach">Conception du modèle de données expériences / réalisations et de l'export PDF</li>
+            <li class="ach">Mise en place de la CI/CD et des revues d'architecture de l'équipe</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </div>
+  <ul class="ba-notes" style="margin-top: 2.5mm;">
+    <li><b>Le contexte tient en deux lignes méta</b> : rôle + client en tête, période à droite, stack en ligne discrète — les labels « SOCIÉTÉ / RÔLE » disparaissent.</li>
+    <li><b>La réalisation featured gagne une barre, un fond et son KPI en accent</b> ; les standards restent en tirets. La hiérarchie tient sans couleur.</li>
+    <li><b>Format normalisé</b> : action + techno → résultat chiffré en gras. Le moteur de rendu peut l'imposer (champ « métrique » dédié).</li>
+  </ul>
+
+  <div style="margin-top: auto; border-top: 0.6pt solid var(--doc-ink); padding-top: 4mm;">
+    <p class="spec-label" style="margin-bottom: 1.5mm;">Règle d'écriture d'une réalisation</p>
+    <p class="doc-p" style="font-size: 10.5pt;"><b>Verbe d'action</b> + objet <span style="color: var(--doc-meta);">(techno entre parenthèses)</span> + <b style="color: var(--doc-accent);">résultat chiffré</b>.<br /><span class="doc-small">« Fiabilisation des traitements critiques (Airflow) : <b>−35 % d'incidents</b> en production. » Une réalisation sans chiffre reste recevable, mais ne peut pas être mise en avant en page 1.</span></p>
+  </div>
+  <div class="folio"><span>Jorg — Refonte template</span><span>07</span></div>
+</section>
+
+<!-- ════════════ MAQUETTES HI-FI ════════════ -->
+<div class="interleaf"><span class="t">Maquette — Profil premium</span><span class="d">2 pages · profil riche · featured actifs · M1–M2</span></div>
+
+<!-- ——— M1 : PREMIUM PAGE 1 ——— -->
+<section class="sheet cv-host" data-screen-label="M1 Premium page 1">
+  <div class="cv-sheet">
+    <header class="cv-head">
+      <div class="cv-head-top">
+        <div>
+          <h1 class="cv-name">Joris Martin</h1>
+          <p class="cv-role">Lead Product Engineer</p>
+        </div>
+        <div class="cv-contact"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5832372a312b1832372a3f763d20393528343d">[email&#160;protected]</a><br />06 12 34 56 78<br />linkedin.com/in/jorg-profile</div>
+      </div>
+      <div class="cv-band">
+        <div class="cv-band-cell"><span class="cv-band-label">Disponibilité</span><span class="cv-band-value">Immédiate</span></div>
+        <div class="cv-band-cell"><span class="cv-band-label">TJM</span><span class="cv-band-value">650–750&nbsp;€ <small>/ jour</small></span></div>
+        <div class="cv-band-cell"><span class="cv-band-label">Mobilité</span><span class="cv-band-value">Paris <small>· full remote</small></span></div>
+        <div class="cv-band-cell"><span class="cv-band-label">Expérience</span><span class="cv-band-value">9 ans</span></div>
+      </div>
+    </header>
+
+    <section class="cv-section">
+      <p class="cv-pitch">Consultant senior spécialisé dans la <strong>création de plateformes SaaS</strong>, l'<strong>industrialisation produit</strong> et l'IA appliquée aux opérations métier. Du cadrage des ateliers à la mise en production.</p>
+    </section>
+
+    <section class="cv-section">
+      <h2 class="cv-h2">Faits marquants</h2>
+      <div class="cv-highlights">
+        <div class="hl-card">
+          <span class="hl-kpi">−85&nbsp;%</span>
+          <span class="hl-text">Temps de constitution d'un dossier&nbsp;: de plusieurs heures à quelques minutes</span>
+          <span class="hl-ref">→ FlowUp, 2024</span>
+        </div>
+        <div class="hl-card">
+          <span class="hl-kpi">−35&nbsp;%</span>
+          <span class="hl-text">Incidents en production sur les traitements data critiques</span>
+          <span class="hl-ref">→ Nova Consulting, 2022</span>
+        </div>
+        <div class="hl-card">
+          <span class="hl-kpi">6 mois</span>
+          <span class="hl-text">De l'alpha à la mise en production multi-clients d'une plateforme SaaS B2B</span>
+          <span class="hl-ref">→ FlowUp, 2023</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="cv-section">
+      <h2 class="cv-h2">Compétences</h2>
+      <div class="cv-skills">
+        <div class="skill-feat-row">
+          <span class="skill-feat">Python <span class="lvl">avancé</span></span>
+          <span class="skill-feat">PostgreSQL <span class="lvl">avancé</span></span>
+          <span class="skill-feat">Next.js <span class="lvl">intermédiaire</span></span>
+          <span class="skill-feat">Architecture logicielle <span class="lvl">avancé</span></span>
+        </div>
+        <div class="skill-groups">
+          <div class="skill-group"><span class="skill-group-label">Technique</span><span class="skill-list">FastAPI · Airflow · Docker · CI/CD GitLab · REST</span></div>
+          <div class="skill-group"><span class="skill-group-label">Méthodologie</span><span class="skill-list">Scrum · revues d'architecture · documentation technique</span></div>
+          <div class="skill-group"><span class="skill-group-label">Fonctionnel</span><span class="skill-list">Ateliers métier · cadrage produit · formation des équipes</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cv-section">
+      <h2 class="cv-h2">Expériences</h2>
+      <article class="cv-xp">
+        <div class="xp-head">
+          <h3 class="xp-title">Lead Engineer <span class="xp-client">— FlowUp</span></h3>
+          <span class="xp-period">01/2023 — auj.</span>
+        </div>
+        <p class="xp-context">Produit SaaS B2B en phase alpha — enjeux de confidentialité et d'automatisation.</p>
+        <p class="xp-stack"><b>Stack</b> — PostgreSQL · Next.js · FastAPI · Docker</p>
+        <ul class="xp-achs">
+          <li class="ach ach-feat">Automatisation de la constitution des dossiers (FastAPI, génération standardisée)&nbsp;: <b>de plusieurs heures à quelques minutes</b> <span class="ach-kpi">(−85&nbsp;%)</span></li>
+          <li class="ach ach-feat">Plateforme menée <b>de l'alpha à la production multi-clients en 6 mois</b>, sans interruption de service</li>
+          <li class="ach">Conception du modèle de données expériences / réalisations et de l'export PDF</li>
+          <li class="ach">Mise en place de la CI/CD et des revues d'architecture de l'équipe</li>
+        </ul>
+      </article>
+    </section>
+
+    <footer class="cv-foot"><span>Joris Martin — Lead Product Engineer</span><span>Dossier de compétences · 06/2026 · 1/2</span></footer>
+  </div>
+</section>
+
+<!-- ——— M2 : PREMIUM PAGE 2 ——— -->
+<section class="sheet cv-host" data-screen-label="M2 Premium page 2">
+  <div class="cv-sheet">
+    <section class="cv-section">
+      <h2 class="cv-h2">Expériences — suite</h2>
+      <article class="cv-xp">
+        <div class="xp-head">
+          <h3 class="xp-title">Data Engineer <span class="xp-client">— Nova Consulting</span></h3>
+          <span class="xp-period">03/2020 — 12/2022</span>
+        </div>
+        <p class="xp-context">Programme de transformation data multi-équipes.</p>
+        <p class="xp-stack"><b>Stack</b> — Airflow · Python · PostgreSQL</p>
+        <ul class="xp-achs">
+          <li class="ach ach-feat">Fiabilisation des traitements critiques (Airflow)&nbsp;: <b>−35&nbsp;% d'incidents</b> <span class="ach-kpi">en production</span></li>
+          <li class="ach">Industrialisation des pipelines data et accompagnement des équipes métier</li>
+          <li class="ach">Animation d'ateliers de cadrage avec les directions data</li>
+        </ul>
+      </article>
+      <article class="cv-xp">
+        <div class="xp-head">
+          <h3 class="xp-title">Développeur back-end <span class="xp-client">— Altea Conseil</span></h3>
+          <span class="xp-period">09/2015 — 02/2020</span>
+        </div>
+        <p class="xp-context">Missions de développement pour des clients grands comptes (banque, énergie).</p>
+        <p class="xp-stack"><b>Stack</b> — Python · PostgreSQL · Django</p>
+        <ul class="xp-achs">
+          <li class="ach">Développement et maintenance d'API métier pour trois clients grands comptes</li>
+          <li class="ach">Montée en compétence de l'équipe sur les tests automatisés</li>
+        </ul>
+      </article>
+    </section>
+
+    <div class="cv-cols-2">
+      <section class="cv-section">
+        <h2 class="cv-h2">Formation</h2>
+        <p class="cv-mini"><b>Diplôme d'ingénieur, Informatique</b><br />INSA Lyon <span class="d">· 2010 — 2015</span></p>
+      </section>
+      <section class="cv-section">
+        <h2 class="cv-h2">Certifications</h2>
+        <p class="cv-mini"><b>AWS Solutions Architect — Associate</b><br />Amazon Web Services <span class="d">· 05/2022</span></p>
+      </section>
+    </div>
+
+    <section class="cv-section">
+      <h2 class="cv-h2">Langues</h2>
+      <p class="cv-mini"><b>Français</b> — langue maternelle &nbsp;&nbsp;·&nbsp;&nbsp; <b>Anglais</b> — C1, courant professionnel</p>
+    </section>
+
+    <footer class="cv-foot"><span>Joris Martin — Lead Product Engineer</span><span>Dossier de compétences · 06/2026 · 2/2</span></footer>
+  </div>
+</section>
+
+<div class="interleaf"><span class="t">Maquette — Compact ESN</span><span class="d">1 page · mode anonyme · clients masqués · M3</span></div>
+
+<!-- ——— M3 : COMPACT ESN ANONYME ——— -->
+<section class="sheet cv-host" data-screen-label="M3 Compact ESN anonyme">
+  <div class="cv-sheet">
+    <header class="cv-head">
+      <div class="cv-head-top">
+        <div>
+          <h1 class="cv-name">J. M.</h1>
+          <p class="cv-role">Lead Product Engineer</p>
+        </div>
+        <div class="cv-contact"><span class="cv-ref">Réf. JM-2417<br />Dossier anonymisé</span></div>
+      </div>
+      <div class="cv-band">
+        <div class="cv-band-cell"><span class="cv-band-label">Disponibilité</span><span class="cv-band-value">Immédiate</span></div>
+        <div class="cv-band-cell"><span class="cv-band-label">TJM</span><span class="cv-band-value">650–750&nbsp;€ <small>/ jour</small></span></div>
+        <div class="cv-band-cell"><span class="cv-band-label">Mobilité</span><span class="cv-band-value">Paris <small>· full remote</small></span></div>
+        <div class="cv-band-cell"><span class="cv-band-label">Expérience</span><span class="cv-band-value">9 ans</span></div>
+      </div>
+    </header>
+
+    <section class="cv-section">
+      <p class="cv-pitch">Consultant senior — <strong>plateformes SaaS</strong>, <strong>industrialisation produit</strong>, IA appliquée aux opérations métier.</p>
+    </section>
+
+    <section class="cv-section">
+      <h2 class="cv-h2">Compétences</h2>
+      <div class="cv-skills">
+        <div class="skill-feat-row">
+          <span class="skill-feat">Python <span class="lvl">avancé</span></span>
+          <span class="skill-feat">PostgreSQL <span class="lvl">avancé</span></span>
+          <span class="skill-feat">Next.js <span class="lvl">intermédiaire</span></span>
+          <span class="skill-feat">Architecture logicielle <span class="lvl">avancé</span></span>
+        </div>
+        <div class="skill-groups">
+          <div class="skill-group"><span class="skill-group-label">Également</span><span class="skill-list">FastAPI · Airflow · Docker · CI/CD · Scrum · ateliers métier</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cv-section">
+      <h2 class="cv-h2">Expériences</h2>
+      <article class="cv-xp">
+        <div class="xp-head">
+          <h3 class="xp-title">Lead Engineer <span class="xp-client">— Éditeur SaaS B2B</span></h3>
+          <span class="xp-period">01/2023 — auj.</span>
+        </div>
+        <p class="xp-stack"><b>Stack</b> — PostgreSQL · Next.js · FastAPI</p>
+        <ul class="xp-achs">
+          <li class="ach ach-feat">Automatisation de la constitution des dossiers&nbsp;: <b>de plusieurs heures à quelques minutes</b> <span class="ach-kpi">(−85&nbsp;%)</span></li>
+          <li class="ach">Plateforme menée de l'alpha à la production multi-clients en 6 mois</li>
+        </ul>
+      </article>
+      <article class="cv-xp">
+        <div class="xp-head">
+          <h3 class="xp-title">Data Engineer <span class="xp-client">— Cabinet de conseil data</span></h3>
+          <span class="xp-period">03/2020 — 12/2022</span>
+        </div>
+        <p class="xp-stack"><b>Stack</b> — Airflow · Python · PostgreSQL</p>
+        <ul class="xp-achs">
+          <li class="ach ach-feat">Fiabilisation des traitements critiques&nbsp;: <b>−35&nbsp;% d'incidents</b> <span class="ach-kpi">en production</span></li>
+          <li class="ach">Industrialisation des pipelines data, accompagnement des équipes métier</li>
+        </ul>
+      </article>
+      <article class="cv-xp">
+        <div class="xp-head">
+          <h3 class="xp-title">Développeur back-end <span class="xp-client">— ESN, clients grands comptes</span></h3>
+          <span class="xp-period">09/2015 — 02/2020</span>
+        </div>
+        <p class="xp-stack"><b>Stack</b> — Python · PostgreSQL · Django</p>
+        <ul class="xp-achs">
+          <li class="ach">API métier pour trois clients grands comptes (banque, énergie)</li>
+        </ul>
+      </article>
+    </section>
+
+    <div class="cv-cols-2">
+      <section class="cv-section">
+        <h2 class="cv-h2">Formation &amp; certifications</h2>
+        <p class="cv-mini"><b>Ingénieur Informatique</b> — INSA Lyon <span class="d">· 2015</span><br /><b>AWS Solutions Architect — Associate</b> <span class="d">· 2022</span></p>
+      </section>
+      <section class="cv-section">
+        <h2 class="cv-h2">Langues</h2>
+        <p class="cv-mini"><b>Français</b> — langue maternelle<br /><b>Anglais</b> — C1, courant professionnel</p>
+      </section>
+    </div>
+
+    <footer class="cv-foot"><span>Réf. JM-2417 — dossier anonymisé</span><span>Dossier de compétences · 06/2026 · 1/1</span></footer>
+  </div>
+</section>
+
+<div class="interleaf"><span class="t">Maquette — Dossier technique</span><span class="d">2 pages · matrice de niveaux + synoptique · M4–M5</span></div>
+
+<!-- ——— M4 : TECHNIQUE PAGE 1 ——— -->
+<section class="sheet cv-host" data-screen-label="M4 Dossier technique page 1">
+  <div class="cv-sheet">
+    <header class="cv-head">
+      <div class="cv-head-top">
+        <div>
+          <h1 class="cv-name">Joris Martin</h1>
+          <p class="cv-role">Lead Product Engineer</p>
+        </div>
+        <div class="cv-contact"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="d3b9bca1baa093b9bca1b4fdb6abb2bea3bfb6">[email&#160;protected]</a><br />06 12 34 56 78<br />linkedin.com/in/jorg-profile</div>
+      </div>
+      <div class="cv-band">
+        <div class="cv-band-cell"><span class="cv-band-label">Disponibilité</span><span class="cv-band-value">Immédiate</span></div>
+        <div class="cv-band-cell"><span class="cv-band-label">TJM</span><span class="cv-band-value">650–750&nbsp;€ <small>/ jour</small></span></div>
+        <div class="cv-band-cell"><span class="cv-band-label">Mobilité</span><span class="cv-band-value">Paris <small>· hybride / remote</small></span></div>
+        <div class="cv-band-cell"><span class="cv-band-label">Expérience</span><span class="cv-band-value">9 ans</span></div>
+      </div>
+    </header>
+
+    <section class="cv-section">
+      <p class="cv-pitch">Consultant senior spécialisé dans la <strong>création de plateformes SaaS</strong>, l'<strong>industrialisation produit</strong> et l'IA appliquée aux opérations métier.</p>
+    </section>
+
+    <section class="cv-section">
+      <h2 class="cv-h2">Compétences — matrice de niveaux</h2>
+      <table class="cv-table">
+        <thead>
+          <tr><th style="width: 44mm;">Compétence</th><th>Catégorie</th><th style="width: 30mm;">Niveau</th></tr>
+        </thead>
+        <tbody>
+          <tr class="row-feat"><td>Python</td><td>Technique</td><td><span class="lvl-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></td></tr>
+          <tr class="row-feat"><td>PostgreSQL</td><td>Outil / logiciel</td><td><span class="lvl-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></td></tr>
+          <tr class="row-feat"><td>Next.js</td><td>Outil / logiciel</td><td><span class="lvl-dots"><i class="on"></i><i class="on"></i><i></i><i></i></span></td></tr>
+          <tr class="row-feat"><td>Architecture logicielle</td><td>Méthodologie</td><td><span class="lvl-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></td></tr>
+          <tr><td>FastAPI</td><td>Technique</td><td><span class="lvl-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></td></tr>
+          <tr><td>Airflow</td><td>Outil / logiciel</td><td><span class="lvl-dots"><i class="on"></i><i class="on"></i><i></i><i></i></span></td></tr>
+          <tr><td>Docker · CI/CD</td><td>Outil / logiciel</td><td><span class="lvl-dots"><i class="on"></i><i class="on"></i><i></i><i></i></span></td></tr>
+          <tr><td>Ateliers métier</td><td>Métier / fonctionnel</td><td><span class="lvl-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="cv-section">
+      <h2 class="cv-h2">Synoptique des missions</h2>
+      <table class="cv-table">
+        <thead>
+          <tr><th style="width: 44mm;">Client</th><th>Rôle</th><th style="width: 34mm;">Période</th><th>Stack</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>FlowUp</td><td>Lead Engineer</td><td>01/2023 — auj.</td><td>PostgreSQL · Next.js · FastAPI</td></tr>
+          <tr><td>Nova Consulting</td><td>Data Engineer</td><td>03/2020 — 12/2022</td><td>Airflow · Python</td></tr>
+          <tr><td>Altea Conseil</td><td>Développeur back-end</td><td>09/2015 — 02/2020</td><td>Python · Django</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer class="cv-foot"><span>Joris Martin — Lead Product Engineer</span><span>Dossier technique · 06/2026 · 1/2</span></footer>
+  </div>
+</section>
+
+<!-- ——— M5 : TECHNIQUE PAGE 2 ——— -->
+<section class="sheet cv-host" data-screen-label="M5 Dossier technique page 2">
+  <div class="cv-sheet">
+    <section class="cv-section">
+      <h2 class="cv-h2">Expériences détaillées</h2>
+      <article class="cv-xp">
+        <div class="xp-head">
+          <h3 class="xp-title">Lead Engineer <span class="xp-client">— FlowUp</span></h3>
+          <span class="xp-period">01/2023 — auj.</span>
+        </div>
+        <p class="xp-context">Produit SaaS B2B en phase alpha — enjeux de confidentialité et d'automatisation.</p>
+        <p class="xp-stack"><b>Environnement</b> — PostgreSQL · Next.js · FastAPI · Docker · GitLab CI</p>
+        <ul class="xp-achs">
+          <li class="ach ach-feat">Automatisation de la constitution des dossiers (FastAPI, génération standardisée)&nbsp;: <b>de plusieurs heures à quelques minutes</b> <span class="ach-kpi">(−85&nbsp;%)</span></li>
+          <li class="ach ach-feat">Plateforme menée <b>de l'alpha à la production multi-clients en 6 mois</b>, sans interruption de service</li>
+          <li class="ach">Conception du modèle de données expériences / réalisations et de l'export PDF</li>
+          <li class="ach">Mise en place de la CI/CD et des revues d'architecture de l'équipe</li>
+        </ul>
+      </article>
+      <article class="cv-xp">
+        <div class="xp-head">
+          <h3 class="xp-title">Data Engineer <span class="xp-client">— Nova Consulting</span></h3>
+          <span class="xp-period">03/2020 — 12/2022</span>
+        </div>
+        <p class="xp-context">Programme de transformation data multi-équipes.</p>
+        <p class="xp-stack"><b>Environnement</b> — Airflow · Python · PostgreSQL</p>
+        <ul class="xp-achs">
+          <li class="ach ach-feat">Fiabilisation des traitements critiques (Airflow)&nbsp;: <b>−35&nbsp;% d'incidents</b> <span class="ach-kpi">en production</span></li>
+          <li class="ach">Industrialisation des pipelines data et accompagnement des équipes métier</li>
+          <li class="ach">Animation d'ateliers de cadrage avec les directions data</li>
+        </ul>
+      </article>
+      <article class="cv-xp">
+        <div class="xp-head">
+          <h3 class="xp-title">Développeur back-end <span class="xp-client">— Altea Conseil</span></h3>
+          <span class="xp-period">09/2015 — 02/2020</span>
+        </div>
+        <p class="xp-context">Missions de développement pour des clients grands comptes (banque, énergie).</p>
+        <p class="xp-stack"><b>Environnement</b> — Python · PostgreSQL · Django</p>
+        <ul class="xp-achs">
+          <li class="ach">Développement et maintenance d'API métier pour trois clients grands comptes</li>
+          <li class="ach">Montée en compétence de l'équipe sur les tests automatisés</li>
+        </ul>
+      </article>
+    </section>
+
+    <div class="cv-cols-2">
+      <section class="cv-section">
+        <h2 class="cv-h2">Formation</h2>
+        <p class="cv-mini"><b>Diplôme d'ingénieur, Informatique</b><br />INSA Lyon <span class="d">· 2010 — 2015</span></p>
+      </section>
+      <section class="cv-section">
+        <h2 class="cv-h2">Certifications</h2>
+        <p class="cv-mini"><b>AWS Solutions Architect — Associate</b><br />Amazon Web Services <span class="d">· 05/2022</span></p>
+      </section>
+    </div>
+
+    <section class="cv-section">
+      <h2 class="cv-h2">Langues</h2>
+      <p class="cv-mini"><b>Français</b> — langue maternelle &nbsp;&nbsp;·&nbsp;&nbsp; <b>Anglais</b> — C1, courant professionnel</p>
+    </section>
+
+    <footer class="cv-foot"><span>Joris Martin — Lead Product Engineer</span><span>Dossier technique · 06/2026 · 2/2</span></footer>
+  </div>
+</section>
+
+<!-- ════════════ PAGE 08 — IMPLÉMENTATION ════════════ -->
+<section class="sheet" data-screen-label="08 Implémentation">
+  <p class="kicker">05 · Implémentation</p>
+  <h2 class="doc-h2">Next.js + FastAPI : une source, deux rendus</h2>
+
+  <article class="rec" style="border-top-color: var(--doc-ink);">
+    <div class="rec-n">01</div>
+    <div>
+      <h4>HTML/CSS comme unique moteur de rendu</h4>
+      <p>Next.js rend la page dossier ; FastAPI pilote un Chromium headless (<code>playwright</code>) qui imprime cette même page en PDF. Zéro divergence web/PDF par construction. La génération Word actuelle devient un export secondaire, pas la référence visuelle.</p>
+    </div>
+  </article>
+  <article class="rec">
+    <div class="rec-n">02</div>
+    <div>
+      <h4>Tokens partagés, unités print</h4>
+      <p>Un seul fichier <code>cv.css</code> (cf. p. 05) consommé par le web et le PDF. Texte en <code>pt</code>, espacements en <code>mm</code>, <code>@page&nbsp;{ size: A4 }</code>, <code>break-inside: avoid</code> sur <code>.cv-xp</code> et <code>.hl-card</code>, <code>orphans/widows: 3</code> sur les paragraphes.</p>
+    </div>
+  </article>
+  <article class="rec">
+    <div class="rec-n">03</div>
+    <div>
+      <h4>Plafonds featured appliqués au rendu</h4>
+      <p>Quel que soit le nombre d'éléments marqués : <b>5 pastilles</b> et <b>3 faits marquants</b> maximum. Tri par récence puis présence d'une métrique ; le surplus conserve uniquement son traitement in-situ dans l'expérience. C'est le garde-fou anti « sapin de Noël » — côté code, pas côté discipline utilisateur.</p>
+    </div>
+  </article>
+  <article class="rec">
+    <div class="rec-n">04</div>
+    <div>
+      <h4>Champ « métrique » dédié dans le modèle de réalisation</h4>
+      <p>Réalisation = <code>action</code> + <code>stack[]</code> + <code>metric?</code>. Le rendu compose « action (techno) : <b>résultat</b> » et n'admet une réalisation en fait marquant page 1 que si <code>metric</code> est renseignée — le format optimal devient une contrainte de schéma.</p>
+    </div>
+  </article>
+  <article class="rec">
+    <div class="rec-n">05</div>
+    <div>
+      <h4>Densité adaptative</h4>
+      <p>Au-delà de 4 réalisations visibles par expérience : « + n autres réalisations » ; au-delà de 5 expériences : gabarit compact (contexte sur la ligne de titre). Le template reste lisible avec peu ou beaucoup de contenu sans jamais réserver d'espace vide.</p>
+    </div>
+  </article>
+  <article class="rec">
+    <div class="rec-n">06</div>
+    <div>
+      <h4>Mode anonyme par simple prop</h4>
+      <p><code>anonymous: true</code> → initiales + référence dossier, contacts masqués, noms de clients remplacés par leurs libellés génériques (« Éditeur SaaS B2B »). Même grille, aucun re-flow : cf. maquette M3.</p>
+    </div>
+  </article>
+  <article class="rec">
+    <div class="rec-n">07</div>
+    <div>
+      <h4>Test noir &amp; blanc automatisé</h4>
+      <p>En CI, capture du PDF en niveaux de gris (<code>filter: grayscale(1)</code>) et vérification que featured/standard restent distincts — la distinction repose sur graisse, bordure et fond, jamais sur la couleur seule. Le panneau « Tweaks » de ce document simule ce rendu.</p>
+    </div>
+  </article>
+
+  <div style="margin-top: auto; border-top: 0.6pt solid var(--doc-ink); padding-top: 4mm;">
+    <p class="spec-label" style="margin-bottom: 1.5mm;">Prochaine étape suggérée</p>
+    <p class="doc-p">Transposer <code>styles/cv.css</code> en composants React (<code>CvBand</code>, <code>SkillFeat</code>, <code>HighlightCard</code>, <code>XpItem</code>) branchés sur le modèle expériences / réalisations, puis valider l'export Playwright sur les trois variantes.</p>
+  </div>
+  <div class="folio"><span>Jorg — Refonte template</span><span>08</span></div>
+</section>
+
+<!-- ════════════ PAGE 09 — ANNEXE DOCX ════════════ -->
+<section class="sheet" data-screen-label="09 Annexe rendu DOCX">
+  <p class="kicker">06 · Annexe</p>
+  <h2 class="doc-h2">Rendu DOCX — le design survit à Word</h2>
+  <p class="doc-small" style="margin: 0 0 4mm 0;">Les trois maquettes sont livrées en <b>.docx natif</b> (dossier <code>exports/</code>), générées en OOXML direct, sans dépendance. Chaque composant du système a son équivalent Word — le tableau ci-dessous est la spécification pour le rendu côté FastAPI.</p>
+
+  <div style="display: flex; flex-direction: column;">
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 1.6mm 0; border-bottom: 0.6pt solid var(--doc-ink);">
+      <span class="spec-label" style="margin: 0;">Composant</span>
+      <span class="spec-label" style="margin: 0;">CSS — web &amp; PDF</span>
+      <span class="spec-label" style="margin: 0;">OOXML — Word</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Bandeau commercial</b><span><code>.cv-band</code> — grid 4 colonnes, bordure haute encre</span><span>Tableau 4 col. sans bordures internes, <code>tblBorders</code> haut 0,6 pt encre / bas filet</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Tête de section</b><span><code>.cv-h2</code> — carré accent + capitales espacées + filet</span><span>Run «&nbsp;■&nbsp;» accent + <code>w:caps</code>/<code>w:spacing</code> + <code>pBdr</code> bordure basse</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Skill featured</b><span><code>.skill-feat</code> — pastille bordée 1 pt, graisse 700</span><span>Bordure de run <code>w:bdr</code> 1 pt accent + gras (les runs adjacents de même bordure fusionnent en une pastille)</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Réalisation featured</b><span><code>.ach-feat</code> — barre gauche 1,6 pt + fond teinté</span><span><code>pBdr</code> gauche 1,6 pt accent + trame <code>w:shd</code> tint — survit au N&amp;B</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Faits marquants</b><span><code>.cv-highlights</code> — 3 cartes, gap 3 mm</span><span>Tableau 5 col. (carte / gouttière vide / carte…), cellules tramées wash + bordure haute accent 1,6 pt</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Niveaux (matrice)</b><span><code>.lvl-dots</code> — 4 points encre / filet</span><span>Runs «&nbsp;●&nbsp;» colorés encre ou filet, accent sur les lignes featured</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Pied de page</b><span><code>.cv-foot</code> — référence + pagination</span><span>Footer Word natif + champs <code>PAGE</code>/<code>NUMPAGES</code> — pagination automatique</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; margin-top: 5mm;">
+    <div>
+      <h3 class="doc-h3">Limites Word à connaître</h3>
+      <ul class="ba-notes" style="padding-left: 4mm;">
+        <li>Pas de <code>gap</code> CSS : les gouttières sont des colonnes vides de tableau.</li>
+        <li>Helvetica Neue absente de Windows : <b>Arial</b> (métriquement proche) déclarée dans <code>styles.xml</code>.</li>
+        <li>Tailles en demi-points, espacements en twips — l'échelle du système (p. 05) est convertie 1:1.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="doc-h3">Côté FastAPI</h3>
+      <p class="doc-p" style="font-size: 8.8pt;">Deux voies : <code>python-docx</code> (mais les bordures de run et trames fines demandent du XML brut via <code>OxmlElement</code>), ou <b>composer l'OOXML directement</b> à partir de gabarits de chaînes — c'est la méthode utilisée pour ces trois fichiers, plus simple à maintenir et sans dépendance.</p>
+    </div>
+  </div>
+
+  <div style="margin-top: auto; border-top: 0.6pt solid var(--doc-ink); padding-top: 4mm;">
+    <p class="spec-label" style="margin-bottom: 1.5mm;">Fichiers livrés</p>
+    <p class="doc-p" style="display: flex; gap: 6mm; flex-wrap: wrap;">
+      <a href="exports/Jorg - Profil Premium.docx" download style="color: var(--doc-accent); font-weight: 600;">Profil Premium.docx</a>
+      <a href="exports/Jorg - Compact ESN anonyme.docx" download style="color: var(--doc-accent); font-weight: 600;">Compact ESN anonyme.docx</a>
+      <a href="exports/Jorg - Dossier Technique.docx" download style="color: var(--doc-accent); font-weight: 600;">Dossier Technique.docx</a>
+    </p>
+  </div>
+  <div class="folio"><span>Jorg — Refonte template</span><span>09</span></div>
+</section>
+
+</div><!-- /.doc -->
+
+<div id="tweaks-root"></div>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+const ACCENTS = {
+  "#7C2D3E": { deep: "#5C1F2D", tint: "#F6EDEF" },
+  "#1E3A5F": { deep: "#152B47", tint: "#EBF0F5" },
+  "#0F5132": { deep: "#0A3B24", tint: "#EAF1ED" }
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accent": "#7C2D3E",
+  "grayscale": false
+}/*EDITMODE-END*/;
+
+function TweaksApp() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const a = ACCENTS[t.accent] ? t.accent : "#7C2D3E";
+    const d = ACCENTS[a];
+    root.style.setProperty("--cv-accent", a);
+    root.style.setProperty("--cv-accent-deep", d.deep);
+    root.style.setProperty("--cv-accent-tint", d.tint);
+    root.style.setProperty("--doc-accent", a);
+    root.style.setProperty("--doc-accent-tint", d.tint);
+    root.classList.toggle("grayscale", !!t.grayscale);
+  }, [t.accent, t.grayscale]);
+
+  return (
+    <TweaksPanel>
+      <TweakSection label="Identité" />
+      <TweakColor label="Accent" value={t.accent}
+                  options={["#7C2D3E", "#1E3A5F", "#0F5132"]}
+                  onChange={(v) => setTweak("accent", v)} />
+      <TweakSection label="Contrainte print" />
+      <TweakToggle label="Simulation N&B" value={t.grayscale}
+                   onChange={(v) => setTweak("grayscale", v)} />
+    </TweaksPanel>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("tweaks-root")).render(<TweaksApp />);
+</script>
+</body>
+</html>

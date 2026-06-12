@@ -19,7 +19,12 @@ from models.candidate_profile import (
 from models.generated_document import GeneratedDocument
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
 from models.oauth_state import OAuthState
-from models.opportunity import Opportunity, OpportunityStatus, ShortlistEntry
+from models.opportunity import (
+    Opportunity,
+    OpportunitySkillRequirement,
+    OpportunityStatus,
+    ShortlistEntry,
+)
 from models.recruiter import Organization, RecruiterProfile
 from models.refresh_token import RefreshToken as RefreshToken
 from models.skill import (
@@ -60,6 +65,7 @@ __all__ = [
     "OAuthProvider",
     "OAuthState",
     "Opportunity",
+    "OpportunitySkillRequirement",
     "OpportunityStatus",
     "Organization",
     "RecruiterProfile",

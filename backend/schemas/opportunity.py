@@ -9,15 +9,23 @@ from pydantic import BaseModel, ConfigDict
 from models.opportunity import OpportunityStatus
 
 
+class OpportunitySkillOut(BaseModel):
+    skill_ref_id: UUID
+    name: str
+
+
 class OpportunityCreate(BaseModel):
     title: str
     description: str | None = None
+    skill_ref_ids: list[UUID] = []
 
 
 class OpportunityUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     status: OpportunityStatus | None = None
+    # None = leave required skills unchanged; [] = clear all required skills.
+    skill_ref_ids: list[UUID] | None = None
 
 
 class ShortlistCandidateInfo(BaseModel):
@@ -28,6 +36,7 @@ class ShortlistCandidateInfo(BaseModel):
     first_name: str | None
     last_name: str | None
     title: str | None
+    match_score: int | None = None
 
 
 class OpportunityRead(BaseModel):
@@ -40,6 +49,7 @@ class OpportunityRead(BaseModel):
     status: OpportunityStatus
     created_at: datetime
     updated_at: datetime
+    required_skills: list[OpportunitySkillOut] = []
 
 
 class OpportunityDetail(OpportunityRead):

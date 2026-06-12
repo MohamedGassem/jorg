@@ -11,8 +11,10 @@ export function LandingAlpha() {
           L&apos;espace recruteur s&apos;ouvre sur demande
         </h2>
         <p className="mx-auto mt-2 max-w-xl text-[15px] text-ink-2">
-          Demandez votre code d&apos;accès : il rattache votre compte à votre
-          organisation. Les candidats peuvent créer leur dossier dès maintenant.
+          Recruteurs : votre code d&apos;accès vous place dans une organisation
+          de démonstration, déjà remplie de profils d&apos;exemple, pour
+          explorer les fonctionnalités. Candidats : créez votre dossier de
+          compétences dès maintenant.
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/register?role=recruiter">

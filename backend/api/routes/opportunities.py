@@ -39,12 +39,14 @@ async def create_opportunity(
     data: OpportunityCreate,
     member: RecruiterOrgMember,
     db: DB,
-) -> Opportunity:
+) -> OpportunityRead:
     return await opportunity_service.create_opportunity(db, org_id, member.user_id, data)
 
 
 @router.get("/{org_id}/opportunities", response_model=list[OpportunityRead])
-async def list_opportunities(org_id: UUID, member: RecruiterOrgMember, db: DB) -> list[Opportunity]:
+async def list_opportunities(
+    org_id: UUID, member: RecruiterOrgMember, db: DB
+) -> list[OpportunityRead]:
     return await opportunity_service.list_opportunities(db, org_id)
 
 
@@ -65,7 +67,7 @@ async def update_opportunity(
     data: OpportunityUpdate,
     member: RecruiterOrgMember,
     db: DB,
-) -> Opportunity:
+) -> OpportunityRead:
     opp = await _get_opp_or_404(db, opp_id, org_id)
     return await opportunity_service.update_opportunity(db, opp, data)
 

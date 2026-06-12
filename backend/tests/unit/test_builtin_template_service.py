@@ -17,22 +17,33 @@ def test_builtin_templates_render_mock_previews_without_unresolved_tags() -> Non
     for template in templates:
         rendered = builtin_template_service.render_mock_preview(template)
         doc = Document(io.BytesIO(rendered))
-        text = "\n".join(p.text for p in doc.paragraphs)
+        paragraphs = list(doc.paragraphs)
         for table in doc.tables:
             for row in table.rows:
-                text += "\n" + " | ".join(cell.text for cell in row.cells)
+                for cell in row.cells:
+                    paragraphs.extend(cell.paragraphs)
+        text = "\n".join(p.text for p in paragraphs)
 
         assert "{{" not in text
         assert "{%" not in text
         assert "joris" in text.lower()
 
-        # Formation, certifications and languages render as three separate sections
-        lower = text.lower()
+        # Formation, certifications and languages render as three separate sections,
+        # each heading carrying the accent square "■" of the design system
         for heading in ("formation", "certifications", "langues"):
-            assert any(p.text.strip().lower() == heading for p in doc.paragraphs), (
-                f"{template.key}: missing '{heading}' section heading"
-            )
-        assert "formation, certifications" not in lower
+            assert any(
+                p.text.strip().startswith("■") and p.text.strip().lower().endswith(heading)
+                for p in paragraphs
+            ), f"{template.key}: missing '■ {heading}' section heading"
+        assert "formation, certifications" not in text.lower()
 
-        # Years of experience from the mock profile is rendered
-        assert "9 ans d’expérience" in text  # noqa: RUF001 (templates use U+2019)
+        # The commercial band is a table holding availability, daily rate
+        # and experience together
+        band = next(
+            (table for table in doc.tables if "Disponibilité" in table.rows[0].cells[0].text),
+            None,
+        )
+        assert band is not None, f"{template.key}: missing commercial band table"
+        band_text = " | ".join(cell.text for row in band.rows for cell in row.cells)
+        assert "850 €" in band_text
+        assert "9 ans" in band_text

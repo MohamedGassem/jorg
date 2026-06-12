@@ -4,6 +4,8 @@ interface Tab<K extends string> {
   key: K;
   label: string;
   count?: number;
+  disabled?: boolean;
+  disabledHint?: string;
 }
 
 interface TabBarProps<K extends string> {
@@ -31,12 +33,18 @@ export function TabBar<K extends string>({
             <button
               key={t.key}
               type="button"
-              onClick={() => onChange(t.key)}
+              disabled={t.disabled}
+              title={t.disabled ? t.disabledHint : undefined}
+              onClick={() => {
+                if (!t.disabled) onChange(t.key);
+              }}
               className={cn(
                 "-mb-px whitespace-nowrap border-b-[2.5px] px-4 pb-3 pt-2.5 text-sm transition-colors",
-                active
-                  ? "border-primary font-semibold text-ink"
-                  : "border-transparent font-medium text-ink-3 hover:text-ink",
+                t.disabled
+                  ? "cursor-not-allowed border-transparent font-medium text-ink-4 opacity-60"
+                  : active
+                    ? "border-primary font-semibold text-ink"
+                    : "border-transparent font-medium text-ink-3 hover:text-ink",
               )}
             >
               {t.label}
@@ -55,12 +63,18 @@ export function TabBar<K extends string>({
           <button
             key={t.key}
             type="button"
-            onClick={() => onChange(t.key)}
+            disabled={t.disabled}
+            title={t.disabled ? t.disabledHint : undefined}
+            onClick={() => {
+              if (!t.disabled) onChange(t.key);
+            }}
             className={cn(
               "flex h-9 items-center gap-2 whitespace-nowrap rounded-lg border px-[15px] text-[13.5px] transition-colors",
-              active
-                ? "border-line-2 bg-surface font-semibold text-ink shadow-sm"
-                : "border-transparent font-medium text-ink-3 hover:text-ink",
+              t.disabled
+                ? "cursor-not-allowed border-transparent font-medium text-ink-4 opacity-60"
+                : active
+                  ? "border-line-2 bg-surface font-semibold text-ink shadow-sm"
+                  : "border-transparent font-medium text-ink-3 hover:text-ink",
             )}
           >
             {t.label}

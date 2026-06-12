@@ -1,0 +1,254 @@
+/* ============================================================
+   JORG — Système de design "Dossier de compétences"
+   Tokens + composants. Une seule source de vérité web / PDF.
+   Unités : pt (texte) et mm (espacements) pour fidélité print.
+   ============================================================ */
+
+:root {
+  /* —— Encres ——————————————————————————— */
+  --cv-ink:    #1B1A19;   /* nom, titres, chiffres */
+  --cv-body:   #3B3936;   /* texte courant */
+  --cv-meta:   #716E69;   /* métadonnées, dates, stack */
+  --cv-faint:  #A8A49E;   /* labels tertiaires */
+  --cv-line:   #E4E1DC;   /* filets */
+  --cv-paper:  #FFFFFF;
+  --cv-wash:   #F7F5F2;   /* fonds d'encarts neutres */
+
+  /* —— Accent (unique, survit au N&B par la graisse/bordure) ——
+     Violet de la charte du site (--brand-primary dans frontend/app/globals.css) */
+  --cv-accent:      #5B53D6;
+  --cv-accent-deep: #443EA0;
+  --cv-accent-tint: #F1F0FB;
+
+  /* —— Échelle typo (print) ——————————————— */
+  --cv-fs-name:  22pt;
+  --cv-fs-role:  12pt;
+  --cv-fs-kpi:   15pt;
+  --cv-fs-h2:    8.5pt;   /* têtes de section, caps */
+  --cv-fs-body:  9.5pt;
+  --cv-fs-small: 8.5pt;
+  --cv-fs-meta:  7.5pt;
+
+  /* —— Espacements ————————————————————— */
+  --cv-sp-1: 1.5mm;
+  --cv-sp-2: 3mm;
+  --cv-sp-3: 5mm;
+  --cv-sp-4: 8mm;
+  --cv-sp-5: 12mm;
+
+  --cv-font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* ============ Feuille A4 ============ */
+.cv-sheet {
+  box-sizing: border-box;
+  width: 210mm;
+  min-height: 296mm;
+  background: var(--cv-paper);
+  font-family: var(--cv-font);
+  font-size: var(--cv-fs-body);
+  line-height: 1.45;
+  color: var(--cv-body);
+  padding: 14mm 16mm 12mm 16mm;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-sp-3);
+}
+.cv-sheet * { box-sizing: border-box; }
+
+/* ============ En-tête ============ */
+.cv-head { display: flex; flex-direction: column; gap: var(--cv-sp-2); }
+.cv-head-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--cv-sp-3); }
+.cv-name {
+  font-size: var(--cv-fs-name);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--cv-ink);
+  line-height: 1.05;
+  margin: 0;
+}
+.cv-role {
+  font-size: var(--cv-fs-role);
+  font-weight: 400;
+  color: var(--cv-accent);
+  margin: 1mm 0 0 0;
+}
+.cv-contact {
+  text-align: right;
+  font-size: var(--cv-fs-small);
+  color: var(--cv-meta);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.cv-ref {
+  font-size: var(--cv-fs-meta);
+  color: var(--cv-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Bandeau commercial : la décision en 4 cases */
+.cv-band {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 0.6pt solid var(--cv-ink);
+  border-bottom: 0.6pt solid var(--cv-line);
+  padding: var(--cv-sp-2) 0;
+  gap: var(--cv-sp-3);
+}
+.cv-band-cell { display: flex; flex-direction: column; gap: 0.8mm; }
+.cv-band-label {
+  font-size: var(--cv-fs-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--cv-faint);
+}
+.cv-band-value { font-size: var(--cv-fs-body); font-weight: 600; color: var(--cv-ink); }
+.cv-band-value small { font-weight: 400; color: var(--cv-meta); font-size: var(--cv-fs-small); }
+
+/* ============ Têtes de section ============ */
+.cv-h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--cv-sp-1);
+  font-size: var(--cv-fs-h2);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--cv-ink);
+  margin: 0 0 var(--cv-sp-2) 0;
+}
+.cv-h2::before {
+  content: "";
+  width: 2.2mm; height: 2.2mm;
+  background: var(--cv-accent);
+  flex: none;
+}
+.cv-h2::after {
+  content: "";
+  flex: 1;
+  border-top: 0.5pt solid var(--cv-line);
+}
+.cv-section { break-inside: avoid; }
+
+/* ============ Profil ============ */
+.cv-pitch { font-size: 10pt; line-height: 1.5; color: var(--cv-body); margin: 0; max-width: 165mm; }
+.cv-pitch strong { color: var(--cv-ink); font-weight: 600; }
+
+/* ============ Highlights (réalisations featured, page 1) ============ */
+.cv-highlights {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--cv-sp-2);
+}
+.hl-card {
+  background: var(--cv-wash);
+  border-top: 1.6pt solid var(--cv-accent);
+  padding: var(--cv-sp-2) var(--cv-sp-2) var(--cv-sp-2);
+  display: flex;
+  flex-direction: column;
+  gap: 1mm;
+  break-inside: avoid;
+}
+.hl-kpi {
+  font-size: var(--cv-fs-kpi);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--cv-ink);
+  line-height: 1.1;
+}
+.hl-text { font-size: var(--cv-fs-small); line-height: 1.4; color: var(--cv-body); }
+.hl-ref { font-size: var(--cv-fs-meta); color: var(--cv-meta); margin-top: auto; padding-top: 1mm; }
+
+/* ============ Compétences ============ */
+.cv-skills { display: flex; flex-direction: column; gap: var(--cv-sp-2); }
+.skill-feat-row { display: flex; flex-wrap: wrap; gap: 1.8mm; }
+.skill-feat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1.6mm;
+  border: 1pt solid var(--cv-accent);
+  color: var(--cv-accent-deep);
+  font-weight: 700;
+  font-size: var(--cv-fs-body);
+  padding: 1mm 2.6mm 1.1mm;
+  border-radius: 1mm;
+  background: var(--cv-paper);
+}
+.skill-feat .lvl { font-size: var(--cv-fs-meta); font-weight: 400; color: var(--cv-meta); letter-spacing: 0.04em; }
+.skill-groups { display: flex; flex-direction: column; gap: 1.2mm; }
+.skill-group { display: grid; grid-template-columns: 34mm 1fr; gap: var(--cv-sp-2); align-items: baseline; }
+.skill-group-label {
+  font-size: var(--cv-fs-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cv-faint);
+  padding-top: 0.4mm;
+}
+.skill-list { font-size: var(--cv-fs-small); color: var(--cv-body); line-height: 1.6; }
+.skill-list b { font-weight: 600; color: var(--cv-ink); }
+
+/* ============ Expériences ============ */
+.cv-xp { break-inside: avoid; padding-bottom: var(--cv-sp-2); }
+.cv-xp + .cv-xp { border-top: 0.5pt solid var(--cv-line); padding-top: var(--cv-sp-2); }
+.xp-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--cv-sp-3); }
+.xp-title { font-size: 11pt; font-weight: 700; color: var(--cv-ink); margin: 0; }
+.xp-title .xp-client { font-weight: 400; color: var(--cv-body); }
+.xp-period { font-size: var(--cv-fs-small); color: var(--cv-meta); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.xp-context { font-size: var(--cv-fs-small); color: var(--cv-meta); margin: 0.8mm 0 0 0; line-height: 1.45; }
+.xp-stack { font-size: var(--cv-fs-meta); color: var(--cv-faint); margin-top: 0.6mm; letter-spacing: 0.02em; }
+.xp-stack b { color: var(--cv-meta); font-weight: 600; }
+
+.xp-achs { list-style: none; margin: var(--cv-sp-1) 0 0 0; padding: 0; display: flex; flex-direction: column; gap: 1.2mm; }
+.ach { position: relative; padding-left: 4.5mm; font-size: var(--cv-fs-body); line-height: 1.45; }
+.ach::before { content: "–"; position: absolute; left: 0.5mm; color: var(--cv-faint); }
+.ach b { font-weight: 600; color: var(--cv-ink); }
+.ach-feat {
+  border-left: 1.6pt solid var(--cv-accent);
+  background: var(--cv-accent-tint);
+  padding: 1.6mm 2.5mm 1.6mm 3.5mm;
+  font-weight: 400;
+}
+.ach-feat::before { content: none; }
+.ach-feat b { font-weight: 700; }
+.ach-feat .ach-kpi { font-weight: 700; color: var(--cv-accent-deep); }
+
+/* ============ Tableaux (variante technique) ============ */
+.cv-table { width: 100%; border-collapse: collapse; font-size: var(--cv-fs-small); }
+.cv-table th {
+  text-align: left;
+  font-size: var(--cv-fs-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cv-faint);
+  font-weight: 600;
+  border-bottom: 0.6pt solid var(--cv-ink);
+  padding: 1mm 2mm 1.2mm 0;
+}
+.cv-table td { border-bottom: 0.5pt solid var(--cv-line); padding: 1.6mm 2mm 1.6mm 0; vertical-align: top; color: var(--cv-body); }
+.cv-table td:first-child { font-weight: 600; color: var(--cv-ink); }
+.cv-table tr.row-feat td { background: var(--cv-accent-tint); }
+.cv-table tr.row-feat td:first-child { border-left: 1.6pt solid var(--cv-accent); padding-left: 2mm; color: var(--cv-accent-deep); font-weight: 700; }
+
+/* Niveau : 4 points */
+.lvl-dots { display: inline-flex; gap: 1mm; align-items: center; }
+.lvl-dots i { width: 1.8mm; height: 1.8mm; border-radius: 50%; background: var(--cv-line); }
+.lvl-dots i.on { background: var(--cv-ink); }
+.row-feat .lvl-dots i.on { background: var(--cv-accent); }
+
+/* ============ Pied / listes simples ============ */
+.cv-cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--cv-sp-4); }
+.cv-mini { font-size: var(--cv-fs-small); line-height: 1.6; color: var(--cv-body); }
+.cv-mini b { font-weight: 600; color: var(--cv-ink); }
+.cv-mini .d { color: var(--cv-meta); }
+.cv-foot {
+  margin-top: auto;
+  padding-top: var(--cv-sp-2);
+  border-top: 0.5pt solid var(--cv-line);
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--cv-fs-meta);
+  color: var(--cv-faint);
+  letter-spacing: 0.06em;
+}

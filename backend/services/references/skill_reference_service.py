@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from uuid import UUID
 
-from sqlalchemy import Text, and_, case, cast, or_, select
+from sqlalchemy import Case, ColumnElement, Text, and_, case, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.skill import SkillKind, SkillReference
@@ -26,6 +26,24 @@ def _is_hidden_esco_language(ref: SkillReference) -> bool:
         ref.description,
         ref.esco_skill_type,
     )
+
+
+def _match_clauses(query: str) -> tuple[ColumnElement[bool], Case[int]]:
+    """Build the shared ILIKE match filter and priority ordering for a query.
+    Returns (match_filter, priority)."""
+    aliases_text = cast(SkillReference.aliases, Text)
+    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    name_exact = SkillReference.name.ilike(escaped, escape="\\")
+    alias_exact = aliases_text.ilike(f'%"{escaped}"%', escape="\\")
+    name_contains = SkillReference.name.ilike(f"%{escaped}%", escape="\\")
+    match_filter = or_(name_contains, alias_exact)
+    priority = case(
+        (name_exact, 0),
+        (alias_exact, 1),
+        (name_contains, 2),
+        else_=3,
+    )
+    return match_filter, priority
 
 
 async def get_or_create_by_name(
@@ -82,14 +100,7 @@ async def search(
     if limit <= 0:
         return []
 
-    aliases_text = cast(SkillReference.aliases, Text)
-
-    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    name_exact = SkillReference.name.ilike(escaped, escape="\\")
-    alias_exact = aliases_text.ilike(f'%"{escaped}"%', escape="\\")
-    name_contains = SkillReference.name.ilike(f"%{escaped}%", escape="\\")
-
-    match_filter = or_(name_contains, alias_exact)
+    match_filter, priority = _match_clauses(query)
 
     if for_display:
         visibility = or_(
@@ -104,13 +115,6 @@ async def search(
             SkillReference.creator_candidate_id.is_(None),
             SkillReference.creator_candidate_id == candidate_id,
         )
-
-    priority = case(
-        (name_exact, 0),
-        (alias_exact, 1),
-        (name_contains, 2),
-        else_=3,
-    )
 
     stmt = (
         select(SkillReference)
@@ -134,3 +138,37 @@ async def search(
         offset += page_size
 
     return results[:limit]
+
+
+async def search_public(
+    query: str,
+    kind: SkillKind | None,
+    limit: int,
+    db: AsyncSession,
+) -> list[SkillReference]:
+    """Search the PUBLIC jorg catalog (displayable jorg refs only, no candidate-custom).
+
+    Usable by recruiters since it does not require a candidate profile.
+    """
+    if limit <= 0:
+        return []
+
+    match_filter, priority = _match_clauses(query)
+
+    visibility = and_(
+        SkillReference.source == "jorg",
+        SkillReference.is_displayable.is_(True),
+    )
+
+    stmt = (
+        select(SkillReference)
+        .where(match_filter, visibility)
+        .order_by(priority, SkillReference.name, SkillReference.id)
+        .limit(limit)
+    )
+
+    if kind is not None:
+        stmt = stmt.where(SkillReference.kind == kind)
+
+    result = await db.execute(stmt)
+    return list(result.scalars().all())

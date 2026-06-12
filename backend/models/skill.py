@@ -161,6 +161,9 @@ class Achievement(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     impact: Mapped[str | None] = mapped_column(Text, nullable=True)
     order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    featured: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="false"
+    )
 
     experience: Mapped[Experience] = relationship("Experience", back_populates="achievements")
     skill_tags: Mapped[list[AchievementSkillTag]] = relationship(

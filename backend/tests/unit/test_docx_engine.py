@@ -11,6 +11,7 @@ import pytest
 from docx import Document
 
 from services.documents.docx_engine import (
+    achievement_flat,
     derive_years_of_experience,
     exp_flat,
     fmt_date,
@@ -57,6 +58,15 @@ def _mock_experience(**kwargs: object) -> MagicMock:
     exp.skill_usages = kwargs.get("skill_usages", [])
     # technologies removed
     return exp
+
+
+def _mock_achievement(**kwargs: object) -> MagicMock:
+    ach = MagicMock()
+    ach.description = kwargs.get("description", "Did X")
+    ach.impact = kwargs.get("impact", "")
+    ach.skill_tags = kwargs.get("skill_tags", [])
+    ach.featured = kwargs.get("featured", False)
+    return ach
 
 
 def _mock_skill(**kwargs: object) -> MagicMock:
@@ -178,6 +188,17 @@ class TestExpFlat:
         exp = _mock_experience(achievements_summary="Shipped feature X")
         assert exp_flat(exp)["achievements"] == "Shipped feature X"
 
+    def test_achievement_items_featured_first(self):
+        exp = _mock_experience(
+            achievements=[
+                _mock_achievement(description="a", featured=False),
+                _mock_achievement(description="b", featured=True),
+                _mock_achievement(description="c", featured=False),
+            ]
+        )
+        items = exp_flat(exp)["achievement_items"]
+        assert [item["description"] for item in items] == ["b", "a", "c"]
+
     def test_keys_have_no_experience_prefix(self):
         exp = _mock_experience()
         keys = set(exp_flat(exp).keys())
@@ -250,6 +271,16 @@ class TestSkillFlat:
     def test_featured_true_returns_true_string(self):
         sk = _mock_skill(featured=True)
         assert skill_flat(sk)["featured"] == "true"
+
+
+class TestAchievementFlat:
+    def test_featured_true_returns_true_string(self):
+        ach = _mock_achievement(featured=True)
+        assert achievement_flat(ach)["featured"] == "true"
+
+    def test_featured_false_returns_false_string(self):
+        ach = _mock_achievement(featured=False)
+        assert achievement_flat(ach)["featured"] == "false"
 
 
 # ---------------------------------------------------------------------------
@@ -667,3 +698,72 @@ def test_group_skills_featured_cross_type() -> None:
     s3 = _FakeSkill(SkillKind.methodology, featured=True)
     result = _group_skills_by_kind([s1, s2, s3])
     assert len(result["skills_featured"]) == 2
+
+
+# ---------------------------------------------------------------------------
+# featured_highlights / skill_groups (refonte template)
+# ---------------------------------------------------------------------------
+
+from services.documents.docx_engine import (  # noqa: E402
+    FEATURED_HIGHLIGHTS_CAP,
+    featured_highlights,
+    skill_groups,
+)
+
+
+class TestFeaturedHighlights:
+    def test_requires_featured_and_impact(self):
+        exp = _mock_experience(
+            achievements=[
+                _mock_achievement(featured=True, impact="-85 %"),
+                _mock_achievement(featured=True, impact=""),
+                _mock_achievement(featured=False, impact="-35 %"),
+            ]
+        )
+        result = featured_highlights([exp])
+        assert len(result) == 1
+        assert result[0]["kpi"] == "-85 %"
+
+    def test_capped_at_three(self):
+        achievements = [
+            _mock_achievement(description=f"A{i}", featured=True, impact=f"+{i} %")
+            for i in range(5)
+        ]
+        result = featured_highlights([_mock_experience(achievements=achievements)])
+        assert len(result) == FEATURED_HIGHLIGHTS_CAP
+
+    def test_ref_combines_client_and_year(self):
+        exp = _mock_experience(
+            client_name="FlowUp",
+            end_date=date(2024, 6, 1),
+            is_current=False,
+            achievements=[_mock_achievement(featured=True, impact="-85 %")],
+        )
+        assert featured_highlights([exp])[0]["ref"] == "FlowUp, 2024"
+
+    def test_current_experience_uses_today_year(self):
+        exp = _mock_experience(
+            client_name="FlowUp",
+            is_current=True,
+            achievements=[_mock_achievement(featured=True, impact="x")],
+        )
+        assert str(date.today().year) in featured_highlights([exp])[0]["ref"]
+
+
+class TestSkillGroups:
+    def test_groups_non_featured_by_kind_label(self):
+        skills = [
+            _mock_skill(name="FastAPI", kind=_FakeEnum("technical")),
+            _mock_skill(name="Docker", kind=_FakeEnum("tool")),
+            _mock_skill(name="Airflow", kind=_FakeEnum("tool")),
+        ]
+        result = skill_groups(skills)
+        assert {g["label"] for g in result} == {"Technique", "Outil / logiciel"}
+        tools = next(g for g in result if g["label"] == "Outil / logiciel")
+        assert tools["names"] == "Docker · Airflow"
+
+    def test_excludes_featured_and_empty_kinds(self):
+        skills = [
+            _mock_skill(name="Python", kind=_FakeEnum("technical"), featured=True),
+        ]
+        assert skill_groups(skills) == []

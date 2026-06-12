@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,30 @@ export default function RecruiterOnboardingOrgPage() {
   const [joinCode, setJoinCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ organization_id: string | null }>("/recruiters/me/profile")
+      .then((profile) => {
+        if (cancelled) return;
+        if (profile.organization_id) {
+          // Already attached to an org (e.g. a demo invite code) — skip this step.
+          router.replace("/onboarding/recruiter/template");
+        } else {
+          setChecking(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setChecking(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  if (checking) return null;
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -55,68 +79,72 @@ export default function RecruiterOnboardingOrgPage() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <p className="text-xs font-medium text-muted-foreground">Étape 2 / 3</p>
-        <CardTitle>Votre organisation</CardTitle>
-        <CardDescription>
-          Créez votre cabinet ou rejoignez-en un existant.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant={mode === "create" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setMode("create")}
-          >
-            Créer
-          </Button>
-          <Button
-            type="button"
-            variant={mode === "join" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setMode("join")}
-          >
-            Rejoindre
-          </Button>
-        </div>
-        {mode === "create" ? (
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="org-name">Nom de l&apos;organisation</Label>
-              <Input
-                id="org-name"
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-                placeholder="ex: Acme Consulting"
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={saving}>
-              {saving ? "Création…" : "Créer et continuer →"}
+    <div className="mx-auto w-full max-w-lg">
+      <Card>
+        <CardHeader>
+          <p className="text-xs font-medium text-muted-foreground">
+            Étape 2 / 3
+          </p>
+          <CardTitle>Votre organisation</CardTitle>
+          <CardDescription>
+            Créez votre cabinet ou rejoignez-en un existant.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={mode === "create" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setMode("create")}
+            >
+              Créer
             </Button>
-          </form>
-        ) : (
-          <form onSubmit={handleJoin} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="join-code">Code d&apos;invitation</Label>
-              <Input
-                id="join-code"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                placeholder="JORG-XXXX-YYYY"
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={saving}>
-              {saving ? "Connexion…" : "Rejoindre et continuer →"}
+            <Button
+              type="button"
+              variant={mode === "join" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setMode("join")}
+            >
+              Rejoindre
             </Button>
-          </form>
-        )}
-      </CardContent>
-    </Card>
+          </div>
+          {mode === "create" ? (
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="org-name">Nom de l&apos;organisation</Label>
+                <Input
+                  id="org-name"
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
+                  placeholder="ex: Acme Consulting"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={saving}>
+                {saving ? "Création…" : "Créer et continuer →"}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleJoin} className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="join-code">Code d&apos;invitation</Label>
+                <Input
+                  id="join-code"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  placeholder="JORG-XXXX-YYYY"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={saving}>
+                {saving ? "Connexion…" : "Rejoindre et continuer →"}
+              </Button>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -1,0 +1,171 @@
+<!-- ════════════ PAGE 08 — IMPLÉMENTATION ════════════ -->
+<section class="sheet" data-screen-label="08 Implémentation">
+  <p class="kicker">05 · Implémentation</p>
+  <h2 class="doc-h2">Next.js + FastAPI : une source, deux rendus</h2>
+
+  <article class="rec" style="border-top-color: var(--doc-ink);">
+    <div class="rec-n">01</div>
+    <div>
+      <h4>HTML/CSS comme unique moteur de rendu</h4>
+      <p>Next.js rend la page dossier ; FastAPI pilote un Chromium headless (<code>playwright</code>) qui imprime cette même page en PDF. Zéro divergence web/PDF par construction. La génération Word actuelle devient un export secondaire, pas la référence visuelle.</p>
+    </div>
+  </article>
+  <article class="rec">
+    <div class="rec-n">02</div>
+    <div>
+      <h4>Tokens partagés, unités print</h4>
+      <p>Un seul fichier <code>cv.css</code> (cf. p. 05) consommé par le web et le PDF. Texte en <code>pt</code>, espacements en <code>mm</code>, <code>@page&nbsp;{ size: A4 }</code>, <code>break-inside: avoid</code> sur <code>.cv-xp</code> et <code>.hl-card</code>, <code>orphans/widows: 3</code> sur les paragraphes.</p>
+    </div>
+  </article>
+  <article class="rec">
+    <div class="rec-n">03</div>
+    <div>
+      <h4>Plafonds featured appliqués au rendu</h4>
+      <p>Quel que soit le nombre d'éléments marqués : <b>5 pastilles</b> et <b>3 faits marquants</b> maximum. Tri par récence puis présence d'une métrique ; le surplus conserve uniquement son traitement in-situ dans l'expérience. C'est le garde-fou anti « sapin de Noël » — côté code, pas côté discipline utilisateur.</p>
+    </div>
+  </article>
+  <article class="rec">
+    <div class="rec-n">04</div>
+    <div>
+      <h4>Champ « métrique » dédié dans le modèle de réalisation</h4>
+      <p>Réalisation = <code>action</code> + <code>stack[]</code> + <code>metric?</code>. Le rendu compose « action (techno) : <b>résultat</b> » et n'admet une réalisation en fait marquant page 1 que si <code>metric</code> est renseignée — le format optimal devient une contrainte de schéma.</p>
+    </div>
+  </article>
+  <article class="rec">
+    <div class="rec-n">05</div>
+    <div>
+      <h4>Densité adaptative</h4>
+      <p>Au-delà de 4 réalisations visibles par expérience : « + n autres réalisations » ; au-delà de 5 expériences : gabarit compact (contexte sur la ligne de titre). Le template reste lisible avec peu ou beaucoup de contenu sans jamais réserver d'espace vide.</p>
+    </div>
+  </article>
+  <article class="rec">
+    <div class="rec-n">06</div>
+    <div>
+      <h4>Mode anonyme par simple prop</h4>
+      <p><code>anonymous: true</code> → initiales + référence dossier, contacts masqués, noms de clients remplacés par leurs libellés génériques (« Éditeur SaaS B2B »). Même grille, aucun re-flow : cf. maquette M3.</p>
+    </div>
+  </article>
+  <article class="rec">
+    <div class="rec-n">07</div>
+    <div>
+      <h4>Test noir &amp; blanc automatisé</h4>
+      <p>En CI, capture du PDF en niveaux de gris (<code>filter: grayscale(1)</code>) et vérification que featured/standard restent distincts — la distinction repose sur graisse, bordure et fond, jamais sur la couleur seule. Le panneau « Tweaks » de ce document simule ce rendu.</p>
+    </div>
+  </article>
+
+  <div style="margin-top: auto; border-top: 0.6pt solid var(--doc-ink); padding-top: 4mm;">
+    <p class="spec-label" style="margin-bottom: 1.5mm;">Prochaine étape suggérée</p>
+    <p class="doc-p">Transposer <code>styles/cv.css</code> en composants React (<code>CvBand</code>, <code>SkillFeat</code>, <code>HighlightCard</code>, <code>XpItem</code>) branchés sur le modèle expériences / réalisations, puis valider l'export Playwright sur les trois variantes.</p>
+  </div>
+  <div class="folio"><span>Jorg — Refonte template</span><span>08</span></div>
+</section>
+
+<!-- ════════════ PAGE 09 — ANNEXE DOCX ════════════ -->
+<section class="sheet" data-screen-label="09 Annexe rendu DOCX">
+  <p class="kicker">06 · Annexe</p>
+  <h2 class="doc-h2">Rendu DOCX — le design survit à Word</h2>
+  <p class="doc-small" style="margin: 0 0 4mm 0;">Les trois maquettes sont livrées en <b>.docx natif</b> (dossier <code>exports/</code>), générées en OOXML direct, sans dépendance. Chaque composant du système a son équivalent Word — le tableau ci-dessous est la spécification pour le rendu côté FastAPI.</p>
+
+  <div style="display: flex; flex-direction: column;">
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 1.6mm 0; border-bottom: 0.6pt solid var(--doc-ink);">
+      <span class="spec-label" style="margin: 0;">Composant</span>
+      <span class="spec-label" style="margin: 0;">CSS — web &amp; PDF</span>
+      <span class="spec-label" style="margin: 0;">OOXML — Word</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Bandeau commercial</b><span><code>.cv-band</code> — grid 4 colonnes, bordure haute encre</span><span>Tableau 4 col. sans bordures internes, <code>tblBorders</code> haut 0,6 pt encre / bas filet</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Tête de section</b><span><code>.cv-h2</code> — carré accent + capitales espacées + filet</span><span>Run «&nbsp;■&nbsp;» accent + <code>w:caps</code>/<code>w:spacing</code> + <code>pBdr</code> bordure basse</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Skill featured</b><span><code>.skill-feat</code> — pastille bordée 1 pt, graisse 700</span><span>Bordure de run <code>w:bdr</code> 1 pt accent + gras (les runs adjacents de même bordure fusionnent en une pastille)</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Réalisation featured</b><span><code>.ach-feat</code> — barre gauche 1,6 pt + fond teinté</span><span><code>pBdr</code> gauche 1,6 pt accent + trame <code>w:shd</code> tint — survit au N&amp;B</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Faits marquants</b><span><code>.cv-highlights</code> — 3 cartes, gap 3 mm</span><span>Tableau 5 col. (carte / gouttière vide / carte…), cellules tramées wash + bordure haute accent 1,6 pt</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Niveaux (matrice)</b><span><code>.lvl-dots</code> — 4 points encre / filet</span><span>Runs «&nbsp;●&nbsp;» colorés encre ou filet, accent sur les lignes featured</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 30mm 1fr 1fr; gap: 4mm; padding: 2.2mm 0; border-bottom: 0.5pt solid var(--doc-line); font-size: 8.5pt; line-height: 1.5;">
+      <b>Pied de page</b><span><code>.cv-foot</code> — référence + pagination</span><span>Footer Word natif + champs <code>PAGE</code>/<code>NUMPAGES</code> — pagination automatique</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; margin-top: 5mm;">
+    <div>
+      <h3 class="doc-h3">Limites Word à connaître</h3>
+      <ul class="ba-notes" style="padding-left: 4mm;">
+        <li>Pas de <code>gap</code> CSS : les gouttières sont des colonnes vides de tableau.</li>
+        <li>Helvetica Neue absente de Windows : <b>Arial</b> (métriquement proche) déclarée dans <code>styles.xml</code>.</li>
+        <li>Tailles en demi-points, espacements en twips — l'échelle du système (p. 05) est convertie 1:1.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="doc-h3">Côté FastAPI</h3>
+      <p class="doc-p" style="font-size: 8.8pt;">Deux voies : <code>python-docx</code> (mais les bordures de run et trames fines demandent du XML brut via <code>OxmlElement</code>), ou <b>composer l'OOXML directement</b> à partir de gabarits de chaînes — c'est la méthode utilisée pour ces trois fichiers, plus simple à maintenir et sans dépendance.</p>
+    </div>
+  </div>
+
+  <div style="margin-top: auto; border-top: 0.6pt solid var(--doc-ink); padding-top: 4mm;">
+    <p class="spec-label" style="margin-bottom: 1.5mm;">Fichiers livrés</p>
+    <p class="doc-p" style="display: flex; gap: 6mm; flex-wrap: wrap;">
+      <a href="exports/Jorg - Profil Premium.docx" download style="color: var(--doc-accent); font-weight: 600;">Profil Premium.docx</a>
+      <a href="exports/Jorg - Compact ESN anonyme.docx" download style="color: var(--doc-accent); font-weight: 600;">Compact ESN anonyme.docx</a>
+      <a href="exports/Jorg - Dossier Technique.docx" download style="color: var(--doc-accent); font-weight: 600;">Dossier Technique.docx</a>
+    </p>
+  </div>
+  <div class="folio"><span>Jorg — Refonte template</span><span>09</span></div>
+</section>
+
+</div><!-- /.doc -->
+
+<div id="tweaks-root"></div>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+const ACCENTS = {
+  "#7C2D3E": { deep: "#5C1F2D", tint: "#F6EDEF" },
+  "#1E3A5F": { deep: "#152B47", tint: "#EBF0F5" },
+  "#0F5132": { deep: "#0A3B24", tint: "#EAF1ED" }
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accent": "#7C2D3E",
+  "grayscale": false
+}/*EDITMODE-END*/;
+
+function TweaksApp() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const a = ACCENTS[t.accent] ? t.accent : "#7C2D3E";
+    const d = ACCENTS[a];
+    root.style.setProperty("--cv-accent", a);
+    root.style.setProperty("--cv-accent-deep", d.deep);
+    root.style.setProperty("--cv-accent-tint", d.tint);
+    root.style.setProperty("--doc-accent", a);
+    root.style.setProperty("--doc-accent-tint", d.tint);
+    root.classList.toggle("grayscale", !!t.grayscale);
+  }, [t.accent, t.grayscale]);
+
+  return (
+    <TweaksPanel>
+      <TweakSection label="Identité" />
+      <TweakColor label="Accent" value={t.accent}
+                  options={["#7C2D3E", "#1E3A5F", "#0F5132"]}
+                  onChange={(v) => setTweak("accent", v)} />
+      <TweakSection label="Contrainte print" />
+      <TweakToggle label="Simulation N&B" value={t.grayscale}
+                   onChange={(v) => setTweak("grayscale", v)} />
+    </TweaksPanel>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("tweaks-root")).render(<TweaksApp />);
+</script>
+</body>
+</html>

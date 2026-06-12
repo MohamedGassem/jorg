@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusPill } from "@/components/ui/StatusPill";
 import {
@@ -15,14 +16,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Breadcrumb } from "@/components/breadcrumb";
+import { SkillChip } from "@/components/ui/SkillChip";
 import { api, ApiError } from "@/lib/api";
 import { mapBusinessError } from "@/lib/errors";
+import { OPPORTUNITY_EDIT_ENABLED } from "@/lib/feature-flags";
 import { initialsFromParts } from "@/lib/labels";
+import { cn } from "@/lib/utils";
 import type {
   BulkGenerateResult,
   OpportunityDetail,
+  OpportunityRead,
   RecruiterProfile,
   ShortlistCandidateInfo,
+  SkillReference,
 } from "@/types/api";
 
 interface TemplateItem {
@@ -30,6 +36,8 @@ interface TemplateItem {
   name: string;
   is_valid: boolean;
 }
+
+type SelectedSkill = { skill_ref_id: string; name: string };
 
 function shortlistCandidateName(
   shortlist: ShortlistCandidateInfo[],
@@ -57,6 +65,14 @@ export default function OpportunityDetailPage() {
   );
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>([]);
+  const [skillQuery, setSkillQuery] = useState("");
+  const [skillResults, setSkillResults] = useState<SkillReference[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -133,6 +149,102 @@ export default function OpportunityDetailPage() {
     }
   }
 
+  useEffect(() => {
+    const q = skillQuery.trim();
+    if (q.length < 2) {
+      setSkillResults([]);
+      return;
+    }
+    let active = true;
+    const handle = setTimeout(() => {
+      api
+        .get<SkillReference[]>(
+          `/skill-references/public?q=${encodeURIComponent(q)}`,
+        )
+        .then((res) => {
+          if (active) setSkillResults(res);
+        })
+        .catch(() => {
+          if (active) setSkillResults([]);
+        });
+    }, 250);
+    return () => {
+      active = false;
+      clearTimeout(handle);
+    };
+  }, [skillQuery]);
+
+  function addSkill(skill: SkillReference) {
+    setSelectedSkills((prev) =>
+      prev.some((s) => s.skill_ref_id === skill.id)
+        ? prev
+        : [...prev, { skill_ref_id: skill.id, name: skill.name }],
+    );
+    setSkillQuery("");
+    setSkillResults([]);
+  }
+
+  function removeSkill(refId: string) {
+    setSelectedSkills((prev) => prev.filter((s) => s.skill_ref_id !== refId));
+  }
+
+  function openEdit() {
+    if (!opp) return;
+    setEditTitle(opp.title);
+    setEditDescription(opp.description ?? "");
+    setSelectedSkills(
+      opp.required_skills.map((s) => ({
+        skill_ref_id: s.skill_ref_id,
+        name: s.name,
+      })),
+    );
+    setSkillQuery("");
+    setSkillResults([]);
+    setEditError(null);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setSkillQuery("");
+    setSkillResults([]);
+    setEditError(null);
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!orgId || !opp || !editTitle.trim()) return;
+    setSaving(true);
+    setEditError(null);
+    try {
+      const updated = await api.patch<OpportunityRead>(
+        `/organizations/${orgId}/opportunities/${opp.id}`,
+        {
+          title: editTitle.trim(),
+          description: editDescription.trim() || null,
+          skill_ref_ids: selectedSkills.map((s) => s.skill_ref_id),
+        },
+      );
+      setOpp((prev) =>
+        prev
+          ? {
+              ...prev,
+              title: updated.title,
+              description: updated.description,
+              required_skills: updated.required_skills,
+            }
+          : prev,
+      );
+      setEditing(false);
+    } catch (err) {
+      setEditError(
+        err instanceof ApiError ? mapBusinessError(err.detail) : "Erreur",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) return <p className="text-ink-3">Chargement…</p>;
   if (error)
     return (
@@ -164,11 +276,36 @@ export default function OpportunityDetailPage() {
                 {opp.description}
               </p>
             )}
+            {opp.required_skills.length > 0 && (
+              <div className="mt-3">
+                <p className="j-overline">Compétences requises</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {opp.required_skills.map((s) => (
+                    <SkillChip key={s.skill_ref_id} label={s.name} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <StatusPill tone={closed ? "muted" : "positive"}>
               {closed ? "clôturée" : "ouverte"}
             </StatusPill>
+            {!closed && !editing && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openEdit}
+                disabled={!OPPORTUNITY_EDIT_ENABLED}
+                title={
+                  OPPORTUNITY_EDIT_ENABLED
+                    ? undefined
+                    : "L'édition de mission sera disponible après l'alpha"
+                }
+              >
+                Modifier
+              </Button>
+            )}
             {!closed && (
               <Button
                 variant="outline"
@@ -181,6 +318,95 @@ export default function OpportunityDetailPage() {
             )}
           </div>
         </header>
+
+        {editing && (
+          <section className="rounded-lg border border-line bg-surface px-[26px] py-[22px]">
+            <form onSubmit={handleSave} className="max-w-xl space-y-4">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="opp-edit-title"
+                  className="text-[13.5px] text-ink-2"
+                >
+                  Titre de la mission
+                </Label>
+                <Input
+                  id="opp-edit-title"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  required
+                  placeholder="ex: Mission Data Engineer - Fintech"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="opp-edit-desc"
+                  className="text-[13.5px] text-ink-2"
+                >
+                  Contexte du besoin (optionnel)
+                </Label>
+                <textarea
+                  id="opp-edit-desc"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full rounded-md border border-line-2 bg-surface p-2 text-sm"
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="opp-edit-skills"
+                  className="text-[13.5px] text-ink-2"
+                >
+                  Compétences requises
+                </Label>
+                {selectedSkills.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedSkills.map((s) => (
+                      <SkillChip
+                        key={s.skill_ref_id}
+                        label={s.name}
+                        onRemove={() => removeSkill(s.skill_ref_id)}
+                      />
+                    ))}
+                  </div>
+                )}
+                <div className="relative">
+                  <Input
+                    id="opp-edit-skills"
+                    value={skillQuery}
+                    onChange={(e) => setSkillQuery(e.target.value)}
+                    placeholder="Rechercher une compétence…"
+                    autoComplete="off"
+                  />
+                  {skillResults.length > 0 && (
+                    <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-line bg-surface py-1 shadow-md">
+                      {skillResults.map((r) => (
+                        <li key={r.id}>
+                          <button
+                            type="button"
+                            onClick={() => addSkill(r)}
+                            className="flex w-full items-center px-3 py-1.5 text-left text-sm hover:bg-paper-2"
+                          >
+                            {r.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+              <ErrorAlert error={editError} />
+              <div className="flex items-center gap-2">
+                <Button type="submit" disabled={saving || !editTitle.trim()}>
+                  {saving ? "Enregistrement…" : "Enregistrer"}
+                </Button>
+                <Button type="button" variant="ghost" onClick={cancelEdit}>
+                  Annuler
+                </Button>
+              </div>
+            </form>
+          </section>
+        )}
 
         <section className="overflow-hidden rounded-lg border border-line bg-surface">
           <div className="flex items-center gap-2 border-b border-line px-[22px] pb-3.5 pt-4">
@@ -219,6 +445,24 @@ export default function OpportunityDetailPage() {
                   </p>
                   {c.title && <p className="text-xs text-ink-3">{c.title}</p>}
                 </div>
+                {c.match_score !== null && (
+                  <span
+                    className={cn(
+                      "inline-flex h-[22px] items-center rounded-[5px] border px-2 font-mono text-[11px] font-medium",
+                      c.match_score >= 70
+                        ? "border-accent-line bg-accent-soft text-primary"
+                        : "border-line bg-paper-2 text-ink-2",
+                    )}
+                  >
+                    {c.match_score}% compat.
+                  </span>
+                )}
+                <Link
+                  href={`/recruiter/candidates/${c.user_id}`}
+                  className={buttonVariants({ variant: "ghost", size: "sm" })}
+                >
+                  Consulter
+                </Link>
                 <Button
                   variant="ghost"
                   size="sm"
