@@ -822,3 +822,40 @@ async def test_filter_candidates_by_max_daily_rate(
     )
     assert r2.status_code == 200
     assert len(r2.json()) == 0
+
+
+async def test_filter_candidates_contract_type_includes_both(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    recruiter_headers: dict[str, str],
+) -> None:
+    org_r = await client.post(
+        "/organizations", json={"name": "Contract Org"}, headers=recruiter_headers
+    )
+    org_id = org_r.json()["id"]
+    await client.put(
+        "/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers
+    )
+
+    # Le candidat est ouvert aux deux types de contrat.
+    await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"contract_type": "both"},
+    )
+
+    inv = await client.post(
+        f"/organizations/{org_id}/invitations",
+        json={"candidate_email": "candidate@test.com"},
+        headers=recruiter_headers,
+    )
+    token = inv.json()["token"]
+    await client.post(f"/invitations/{token}/accept", headers=candidate_headers)
+
+    for contract_filter in ("freelance", "cdi", "both"):
+        r = await client.get(
+            f"/organizations/{org_id}/candidates?contract_type={contract_filter}",
+            headers=recruiter_headers,
+        )
+        assert r.status_code == 200
+        assert len(r.json()) == 1, f"filter {contract_filter} should match a 'both' candidate"
