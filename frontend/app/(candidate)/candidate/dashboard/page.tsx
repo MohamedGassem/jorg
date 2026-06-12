@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { StatCell } from "@/components/ui/StatCell";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
+import { completionPercent, profileCompletionChecks } from "@/lib/completion";
 import {
   EVENT_ICON_COMPONENTS,
   EVENT_LABELS,
@@ -40,10 +41,6 @@ type ActivityGroup = {
   count: number;
   latestEvent: ActivityEvent;
 };
-
-function isFilled(value: string | null | undefined): boolean {
-  return typeof value === "string" && value.trim().length > 0;
-}
 
 function compactActivity(events: ActivityEvent[]): ActivityGroup[] {
   const groups = new Map<string, ActivityGroup>();
@@ -205,21 +202,9 @@ export default function CandidateDashboardPage() {
   }
 
   const firstName = profile?.first_name ?? "";
-  const checklistDone = [
-    isFilled(profile?.first_name) &&
-      isFilled(profile?.last_name) &&
-      isFilled(profile?.title),
-    isFilled(profile?.summary),
-    hasExperience,
-    hasSkill,
-    isFilled(profile?.phone) &&
-      isFilled(profile?.location) &&
-      isFilled(profile?.work_mode),
-  ];
-  const completedCount = checklistDone.filter(Boolean).length;
-  const completionPct = Math.round(
-    (completedCount / checklistDone.length) * 100,
-  );
+  const checks = profileCompletionChecks(profile, { hasExperience, hasSkill });
+  const completedCount = checks.filter((c) => c.done).length;
+  const completionPct = completionPercent(checks);
   const pendingCount = pendingInvitations?.length ?? 0;
   const orgs = organizations ?? [];
   const activeCount = orgs.filter((o) => o.current_status === "active").length;
@@ -273,7 +258,7 @@ export default function CandidateDashboardPage() {
           icon={User}
           label="Complétude"
           value={`${completionPct}%`}
-          foot={`${completedCount} / ${checklistDone.length} sections`}
+          foot={`${completedCount} / ${checks.length} sections`}
         />
         <StatCell
           icon={Shield}
