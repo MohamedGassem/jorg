@@ -27,14 +27,21 @@ const MODEL_BADGES: Record<string, string> = {
   profil_premium: "Complet",
 };
 
+interface GenerationOutcome {
+  templateKey: string;
+  format: "docx" | "pdf";
+  doc: GeneratedDocument | null;
+  error: string | null;
+}
+
 export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
   const [templates, setTemplates] = useState<BuiltinTemplate[]>([]);
   const [templateKey, setTemplateKey] = useState("");
   const [format, setFormat] = useState<"docx" | "pdf">("docx");
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [result, setResult] = useState<GeneratedDocument | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<GenerationOutcome | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { download, errors: downloadErrors } = useDownload();
 
   useEffect(() => {
@@ -44,7 +51,7 @@ export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
       .get<BuiltinTemplate[]>("/templates/builtin")
       .then(setTemplates)
       .catch((err) =>
-        setError(
+        setLoadError(
           extractErrorMessage(
             err,
             "Impossible de charger les modèles de dossier",
@@ -54,19 +61,32 @@ export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
       .finally(() => setLoading(false));
   }, [open, templates.length]);
 
+  // Le résultat (ou l'erreur) n'est affiché que s'il correspond à la sélection
+  // courante : changer de modèle ou de format l'écarte automatiquement.
+  const current =
+    outcome && outcome.templateKey === templateKey && outcome.format === format
+      ? outcome
+      : null;
+  const result = current?.doc ?? null;
+  const error = loadError ?? current?.error ?? null;
+
   async function handleGenerate() {
     if (!templateKey) return;
     setGenerating(true);
-    setError(null);
-    setResult(null);
+    setOutcome(null);
     try {
       const doc = await api.post<GeneratedDocument>("/candidates/me/generate", {
         system_template_key: templateKey,
         format,
       });
-      setResult(doc);
+      setOutcome({ templateKey, format, doc, error: null });
     } catch (err) {
-      setError(extractErrorMessage(err, "Erreur de génération"));
+      setOutcome({
+        templateKey,
+        format,
+        doc: null,
+        error: extractErrorMessage(err, "Erreur de génération"),
+      });
     } finally {
       setGenerating(false);
     }
@@ -75,8 +95,7 @@ export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
   function handleClose() {
     setTemplateKey("");
     setFormat("docx");
-    setResult(null);
-    setError(null);
+    setOutcome(null);
     onOpenChange(false);
   }
 
