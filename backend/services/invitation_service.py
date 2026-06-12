@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
 from core.email import EmailMessage, get_email_backend
-from core.exceptions import GoneError
+from core.exceptions import ConflictError, GoneError
 from models.invitation import (
     AccessGrant,
     AccessGrantStatus,
@@ -66,6 +66,20 @@ async def create_invitation(
     result = await db.execute(select(User).where(User.email == candidate_email))
     candidate = result.scalar_one_or_none()
 
+    pending_result = await db.execute(
+        select(Invitation).where(
+            Invitation.organization_id == organization_id,
+            Invitation.candidate_email == candidate_email,
+            Invitation.status == InvitationStatus.PENDING,
+        )
+    )
+    if pending_result.scalar_one_or_none() is not None:
+        raise ConflictError("Une invitation est déjà en attente pour cet email")
+    if candidate is not None:
+        existing = await access_policy.get_live_access_grant(db, organization_id, candidate.id)
+        if existing is not None:
+            raise ConflictError("Ce candidat a déjà accordé l'accès à votre organisation")
+
     org_result = await db.execute(
         select(Organization.name).where(Organization.id == organization_id)
     )
@@ -96,6 +110,56 @@ async def create_invitation(
 async def get_invitation_by_token(db: AsyncSession, token: str) -> Invitation | None:
     result = await db.execute(select(Invitation).where(Invitation.token == token))
     return result.scalar_one_or_none()
+
+
+async def get_org_invitation(
+    db: AsyncSession, organization_id: UUID, invitation_id: UUID
+) -> Invitation | None:
+    result = await db.execute(
+        select(Invitation).where(
+            Invitation.id == invitation_id,
+            Invitation.organization_id == organization_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def cancel_invitation(db: AsyncSession, invitation: Invitation) -> None:
+    """Supprime une invitation pendante (aucun acces n'a encore ete cree)."""
+    if invitation.status != InvitationStatus.PENDING:
+        raise ConflictError(f"invitation is {invitation.status.value}")
+    candidate_email = invitation.candidate_email
+    organization_id = invitation.organization_id
+    await db.delete(invitation)
+    await db.commit()
+    logger.info(
+        "invitation.cancelled",
+        candidate_email=candidate_email,
+        organization_id=str(organization_id),
+    )
+
+
+async def resend_invitation(db: AsyncSession, invitation: Invitation) -> Invitation:
+    """Re-emet l'email d'une invitation pendante."""
+    from models.recruiter import Organization
+
+    if invitation.status != InvitationStatus.PENDING:
+        raise ConflictError(f"invitation is {invitation.status.value}")
+    org_result = await db.execute(
+        select(Organization.name).where(Organization.id == invitation.organization_id)
+    )
+    user_result = await db.execute(select(User).where(User.email == invitation.candidate_email))
+    _send_invitation_email(
+        invitation.candidate_email,
+        org_result.scalar_one_or_none(),
+        has_account=user_result.scalar_one_or_none() is not None,
+    )
+    logger.info(
+        "invitation.resent",
+        candidate_email=invitation.candidate_email,
+        organization_id=str(invitation.organization_id),
+    )
+    return invitation
 
 
 async def list_candidate_invitations(
