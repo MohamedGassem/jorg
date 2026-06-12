@@ -19,6 +19,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { SkillChip } from "@/components/ui/SkillChip";
 import { api, ApiError } from "@/lib/api";
 import { mapBusinessError } from "@/lib/errors";
+import { OPPORTUNITY_EDIT_ENABLED } from "@/lib/feature-flags";
 import { initialsFromParts } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type {
@@ -291,7 +292,17 @@ export default function OpportunityDetailPage() {
               {closed ? "clôturée" : "ouverte"}
             </StatusPill>
             {!closed && !editing && (
-              <Button variant="outline" size="sm" onClick={openEdit}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openEdit}
+                disabled={!OPPORTUNITY_EDIT_ENABLED}
+                title={
+                  OPPORTUNITY_EDIT_ENABLED
+                    ? undefined
+                    : "L'édition de mission sera disponible après l'alpha"
+                }
+              >
                 Modifier
               </Button>
             )}
