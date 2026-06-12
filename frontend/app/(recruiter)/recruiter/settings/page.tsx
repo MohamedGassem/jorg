@@ -216,9 +216,19 @@ export default function RecruiterSettingsPage() {
     setTimeout(() => setCodeCopied(false), 2000);
   }
 
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: {
+    key: Tab;
+    label: string;
+    disabled?: boolean;
+    disabledHint?: string;
+  }[] = [
     { key: "profil", label: "Profil personnel" },
-    { key: "organisation", label: "Organisation" },
+    {
+      key: "organisation",
+      label: "Organisation",
+      disabled: true,
+      disabledHint: "Réservé aux administrateurs de l'organisation",
+    },
     { key: "donnees", label: "Données" },
   ];
 
