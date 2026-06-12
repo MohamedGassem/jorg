@@ -12,9 +12,9 @@ export function LandingAlpha() {
         </h2>
         <p className="mx-auto mt-2 max-w-xl text-[15px] text-ink-2">
           Recruteurs : votre code d&apos;accès vous place dans une organisation
-          de démonstration, déjà remplie de profils d&apos;exemple, pour
-          explorer les fonctionnalités. Candidats : créez votre dossier de
-          compétences dès maintenant.
+          de démonstration pour explorer les fonctionnalités, avec des profils
+          d&apos;exemple et le dossier réel de Mohamed, le créateur de Jorg.
+          Candidats : créez votre dossier de compétences dès maintenant.
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/register?role=recruiter">

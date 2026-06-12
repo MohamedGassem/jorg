@@ -39,6 +39,11 @@ import type {
 } from "@/types/api";
 import { VALID_DOMAINS } from "@/types/api";
 
+// Convention du seed de démo : les profils fictifs sont sur @jorg.local.
+function isDemoProfile(email: string) {
+  return email.endsWith("@jorg.local");
+}
+
 const EMPTY_FILTERS = {
   availability_status: "",
   work_mode: "",
@@ -779,7 +784,12 @@ function CandidateRows({
               {initialsFromParts(c.first_name, c.last_name, c.email)}
             </span>
             <div className="min-w-0">
-              <p className="whitespace-nowrap text-sm font-medium">{name}</p>
+              <div className="flex items-center gap-2">
+                <p className="whitespace-nowrap text-sm font-medium">{name}</p>
+                {isDemoProfile(c.email) && (
+                  <StatusPill tone="muted">Exemple</StatusPill>
+                )}
+              </div>
               {c.title && <p className="text-xs text-ink-3">{c.title}</p>}
             </div>
           </div>
