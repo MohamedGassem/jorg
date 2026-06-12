@@ -539,3 +539,42 @@ Les 5 candidats de la revue d architecture (section 9) et les specs C3/C5 sont s
 reste D2 (transaction par requete), a planifier seule en derniere position comme prevu.
 Decision validee par Mohamed (2026-06-12) : criteres de completude = ceux du dashboard,
 photo et LinkedIn ne comptent pas.
+
+## 10. ARBITRAGES DU 2026-06-12 (Mohamed)
+
+| Decision                          | Arbitrage                                                                                                                                                                                                   | Consequence                                                                                          |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| n.1 Roles d org / code d equipe   | Pas besoin d ouvrir l onglet : l org de test accueille les recruteurs par defaut (code alpha). A rediscuter plus tard. La vraie priorite est ailleurs : **gestion des templates personnalises + tutoriel**. | Issue onglet Organisation abandonnee ; nouveau chantier F ci-dessous.                                |
+| n.2 Lien d invitation             | **Page publique d invitation validee** (porteur du lien).                                                                                                                                                   | Chantier B1 debloque, issue a creer.                                                                 |
+| n.3 Tracage des consultations     | **On ne trace pas** (risque de FOMO cote candidat).                                                                                                                                                         | Wording corrige partout (commit ac0a4b9, 6 ecrans + privacy + landing). Issue tracage abandonnee.    |
+| n.4 Donnees exposees au recruteur | Vision : **consentement granulaire du candidat** - cases a cocher par perimetre (dossier seul / + TJM-salaire / + coordonnees), et moyen de contact alternatif si les coordonnees ne sont pas partagees.    | Le chantier A est redefini : il depend du chantier G ci-dessous (scopes sur AccessGrant, migration). |
+| n.5 MOH-18 / MOH-5                | MOH-18 **obsolete** (a fermer). MOH-5 = ordre des onglets de la page Documents, pertinence douteuse (proposer fermeture).                                                                                   | Commentaires Linear prepares.                                                                        |
+
+Verification MOH-19 (2026-06-12) : rendu reel des 3 modeles builtin via le moteur -
+ecole, diplome, annees d experience, langues + niveaux tous presents. A fermer.
+
+### Chantier F - Templates personnalises ouverts + tutoriel (nouvelle priorite)
+
+- Constat : le backend est deja pret (upload POST /organizations/{org}/templates avec extraction
+  des placeholders, telechargement, suppression, flag is_valid, doc docs/template-syntax.md,
+  template d exemple GET /templates/sample). Le frontend verrouille tout (page Documents, encart
+  Post-alpha).
+- Spec courte : (F1) UI d upload sur la page Documents avec affichage des placeholders detectes
+  et de l etat de validation ; (F2) parcours de validation du mapping (quels placeholders requis,
+  message clair si is_valid=false, lien de telechargement du template pour correction) ;
+  (F3) tutoriel guide : page ou section "Creer votre modele" basee sur template-syntax.md +
+  bouton de telechargement du template d exemple ; (F4) prevoir la preview mock sur template org
+  (le moteur sait deja rendre, il manque la route preview pour un template org).
+- Prerequis de decision : critere exact de is_valid (quels placeholders minimum ?).
+
+### Chantier G - Consentement granulaire du candidat (redefinit le chantier A)
+
+- Spec courte : perimetres de partage portes par l AccessGrant (ex. scope_profile toujours,
+  scope_finances TJM/salaire, scope_contact coordonnees) ; cases a cocher cote candidat au moment
+  d accepter l invitation (et modifiables ensuite depuis Acces & partages) ; la fiche recruteur
+  (chantier A) et le docx genere respectent les scopes ; si scope_contact refuse, proposer un
+  moyen de contact alternatif (mise en relation via la plateforme, a specifier).
+- Impact : migration Alembic sur AccessGrant + filtrage dans le read-model "Accessible dossier"
+  (module deja prepare, ARCH#4) et dans le contexte du docx_engine.
+- Sequencement propose : G1 modele + migration + defaults retrocompatibles, G2 UI candidat
+  (acceptation + edition), G3 application des scopes au read-model et au docx, G4 contact alternatif.
