@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { SkillChip } from "@/components/ui/SkillChip";
+import { SkillPicker } from "@/components/SkillPicker";
 import { api, ApiError } from "@/lib/api";
 import { mapBusinessError } from "@/lib/errors";
 import { OPPORTUNITY_EDIT_ENABLED } from "@/lib/feature-flags";
@@ -74,8 +75,6 @@ export default function OpportunityDetailPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>([]);
-  const [skillQuery, setSkillQuery] = useState("");
-  const [skillResults, setSkillResults] = useState<SkillReference[]>([]);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -165,39 +164,12 @@ export default function OpportunityDetailPage() {
     }
   }
 
-  useEffect(() => {
-    const q = skillQuery.trim();
-    if (q.length < 2) {
-      setSkillResults([]);
-      return;
-    }
-    let active = true;
-    const handle = setTimeout(() => {
-      api
-        .get<SkillReference[]>(
-          `/skill-references/public?q=${encodeURIComponent(q)}`,
-        )
-        .then((res) => {
-          if (active) setSkillResults(res);
-        })
-        .catch(() => {
-          if (active) setSkillResults([]);
-        });
-    }, 250);
-    return () => {
-      active = false;
-      clearTimeout(handle);
-    };
-  }, [skillQuery]);
-
   function addSkill(skill: SkillReference) {
     setSelectedSkills((prev) =>
       prev.some((s) => s.skill_ref_id === skill.id)
         ? prev
         : [...prev, { skill_ref_id: skill.id, name: skill.name }],
     );
-    setSkillQuery("");
-    setSkillResults([]);
   }
 
   function removeSkill(refId: string) {
@@ -214,16 +186,12 @@ export default function OpportunityDetailPage() {
         name: s.name,
       })),
     );
-    setSkillQuery("");
-    setSkillResults([]);
     setEditError(null);
     setEditing(true);
   }
 
   function cancelEdit() {
     setEditing(false);
-    setSkillQuery("");
-    setSkillResults([]);
     setEditError(null);
   }
 
@@ -375,41 +343,12 @@ export default function OpportunityDetailPage() {
                 >
                   Compétences requises
                 </Label>
-                {selectedSkills.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedSkills.map((s) => (
-                      <SkillChip
-                        key={s.skill_ref_id}
-                        label={s.name}
-                        onRemove={() => removeSkill(s.skill_ref_id)}
-                      />
-                    ))}
-                  </div>
-                )}
-                <div className="relative">
-                  <Input
-                    id="opp-edit-skills"
-                    value={skillQuery}
-                    onChange={(e) => setSkillQuery(e.target.value)}
-                    placeholder="Rechercher une compétence…"
-                    autoComplete="off"
-                  />
-                  {skillResults.length > 0 && (
-                    <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-line bg-surface py-1 shadow-md">
-                      {skillResults.map((r) => (
-                        <li key={r.id}>
-                          <button
-                            type="button"
-                            onClick={() => addSkill(r)}
-                            className="flex w-full items-center px-3 py-1.5 text-left text-sm hover:bg-paper-2"
-                          >
-                            {r.name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                <SkillPicker
+                  id="opp-edit-skills"
+                  selected={selectedSkills}
+                  onAdd={addSkill}
+                  onRemove={removeSkill}
+                />
               </div>
               <ErrorAlert error={editError} />
               <div className="flex items-center gap-2">
