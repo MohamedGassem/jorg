@@ -1,5 +1,14 @@
 # backend/tests/integration/test_access_flow.py
 from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from models.invitation import (
+    Invitation,
+    InvitationStatus,
+    invitation_expiry,
+    make_invitation_token,
+)
 
 # ---- helpers ----------------------------------------------------------------
 
@@ -143,13 +152,27 @@ async def test_accept_is_idempotent(
     client: AsyncClient,
     recruiter_headers: dict[str, str],
     candidate_headers: dict[str, str],
+    db_session: AsyncSession,
 ) -> None:
     org_id = await _create_org_and_link(client, recruiter_headers)
     token = await _create_invite_token(client, recruiter_headers, org_id)
     r1 = await client.post(f"/invitations/{token}/accept", headers=candidate_headers)
-    # Second invite to same org
-    token2 = await _create_invite_token(client, recruiter_headers, org_id)
-    r2 = await client.post(f"/invitations/{token2}/accept", headers=candidate_headers)
+    # La dedup API empeche desormais une 2e invitation pendante vers la meme
+    # org : on en injecte une directement en base pour verifier que la garde
+    # d'idempotence de accept_invitation tient toujours (meme grant retourne).
+    first_result = await db_session.execute(select(Invitation).where(Invitation.token == token))
+    first = first_result.scalar_one()
+    inv2 = Invitation(
+        recruiter_id=first.recruiter_id,
+        organization_id=first.organization_id,
+        candidate_email="candidate@test.com",
+        token=make_invitation_token(),
+        status=InvitationStatus.PENDING,
+        expires_at=invitation_expiry(),
+    )
+    db_session.add(inv2)
+    await db_session.commit()
+    r2 = await client.post(f"/invitations/{inv2.token}/accept", headers=candidate_headers)
     assert r1.json()["id"] == r2.json()["id"]  # same grant returned
 
 
