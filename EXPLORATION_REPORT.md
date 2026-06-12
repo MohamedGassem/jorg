@@ -426,3 +426,73 @@ Non implemente volontairement (regles d'autonomie) : onglet Organisation des par
    en affichant clairement au candidat la liste des champs partages.
 5. **MOH-18 et MOH-5** : les deux issues sont ambigues vues du code (cf section 5) ; une ligne de
    clarification dans chaque issue debloquerait l'implementation.
+
+## 9. ARCHITECTURE - opportunites de deepening (revue /improve-codebase-architecture)
+
+Vocabulaire : module (interface + implementation), shallow (interface presque aussi complexe que
+l'implementation), seam (emplacement d'une interface), adapter, locality, leverage. Rapport visuel
+complet (avant/apres) : architecture-review-20260612-jorg.html (dossier temp, hors repo).
+
+### Deja decide, pas encore implemente (specs docs/superpowers/specs/, ne pas re-debattre)
+
+- **D2 - Transaction par requete** (spec 2026-06-04-wave5, DECIDED) : `get_db()` n'ouvre toujours pas
+  de transaction request-scoped ; 43 `commit()` repartis dans 17 fichiers services,
+  `accept_invitation` committe 3 fois (non atomique). Blast radius maximal, a faire en dernier comme prevu.
+- **C3 - Timeline pure** (spec 2026-06-04-wave4) : `candidate_service.list_organization_interactions`
+  (lignes 82-194) fusionne toujours 3 requetes + assemblage ; la fonction pure `assemble_timeline()`
+  prevue n'existe pas. Effort faible, deja designe, debloque les tests unitaires du journal.
+- **C5 - useMutation** (meme spec) : non code.
+
+### Candidats nouveaux
+
+1. **Espace de travail recruteur (frontend)** - Strong.
+   4 pages recruteur + l'app bar re-fetchent independamment profil/org/templates org/modeles Jorg
+   (8+ requetes redondantes par session), et chaque page reecrit ses etats chargement/org absente/erreur.
+   Deepening : provider `RecruiterWorkspaceProvider` au seam du layout `(recruiter)/layout.tsx`,
+   hook `useRecruiterWorkspace()`. Locality : etats vides/erreur ecrits une fois ; leverage : toute
+   nouvelle page recruteur obtient le contexte gratuitement.
+   Fichiers : frontend/app/(recruiter)/\*\*, components/app-bar.tsx, lib/hooks/useRecruiterOrg.ts.
+
+2. **Pipeline de generation unique + seam "source de template" (backend)** - Strong.
+   `generate_for_candidate` (100 l.) et `generate_for_self` (69 l.) dupliquent ~60 % du pipeline
+   (chargements, rendu, conversion PDF + fallback, stockage, enregistrement) ; la resolution
+   modele Jorg vs template org est un seam reel a deux adapters mais reste un if/elif inline.
+   Deepening : `resolve_template(...) -> ResolvedTemplate` + `render_and_store(profile_id, resolved, fmt)`,
+   les trois entrees (recruteur, self, bulk) devenant de fines orchestrations.
+   Fichiers : backend/services/documents/generation_service.py.
+
+3. **Dialog de generation unifie (frontend)** - Worth exploring.
+   538 lignes pour deux dialogs identiques a ~85 % (generate-dossier-dialog 301 l.,
+   candidate-generate-dossier-dialog 237 l.) ; l'encodage stringly-typed "system:key"/"org:id" vit
+   desormais dans 2 modules. Deepening : un `DossierGenerationDialog` dont l'interface est la cible
+   (`{kind:"recruiter",...} | {kind:"self"}`) + type partage `TemplateChoice`.
+
+4. **Read-model "dossier accessible" (backend)** - Worth exploring.
+   `recruiter_service.list_accessible_candidates` (lignes 171-336) soude builder de filtres,
+   batch-load des experiences et assemblage de dicts ; zero test unitaire (le bug du filtre "both"
+   corrige cette semaine n'etait testable qu'en integration). Le chantier A (fiche candidat complete)
+   va re-batcher formations/certifs/langues : test de suppression positif, approfondir avant.
+   Deepening : module "dossier accessible" (`list_views(org, filters)` / futur `get_view(org, candidate)`)
+   avec assembleur pur testable sans DB. Dependance : decision produit n.4 (perimetre des champs).
+
+5. **SkillPicker (frontend)** - Strong, tres faible effort.
+   Le hook `useSearchableSelect` existe (4 usages cote candidat) mais les 2 pages missions
+   re-implementent debounce + dropdown inline (~25 l. x2 + JSX duplique).
+   Deepening : composant `SkillPicker` (input + dropdown + chips) construit sur le hook.
+   Fichiers : recruiter/opportunities/page.tsx:43-66, opportunities/[id]/page.tsx.
+
+### Recommandation prioritaire
+
+Candidat 2 (pipeline de generation) d'abord : effort et risque faibles (couverts par les tests
+d'integration generation existants), et trois features du backlog (generation groupee enrichie,
+watermark, nouveaux modeles) passeront par ce seam. Le candidat 5 (SkillPicker) est une heure de
+travail a faire dans la foulee. Le candidat 1 (workspace recruteur) a le plus de leverage UX mais
+merite une session dediee. En parallele, planifier C3 (timeline pure), deja designe.
+
+### Tests : zones aveugles relevees
+
+Services sans tests unitaires (logique pure soudee aux requetes SQLAlchemy, testables uniquement
+en integration Postgres) : `candidate_service.list_organization_interactions`,
+`recruiter_service.list_accessible_candidates`, `invitation_service.accept_invitation`,
+`opportunity_service.get_opportunity_detail`, `rgpd_service`. Les candidats 2 et 4 et le C3
+deja decide reduisent directement cette liste.
