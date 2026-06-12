@@ -4,7 +4,7 @@ import tempfile
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
 from docx.shared import Inches
 
-from services.documents.docx_parser import extract_placeholders
+from services.documents.docx_parser import extract_placeholders, is_block_marker
 
 
 def _make_docx(paragraphs: list[str]) -> str:
@@ -136,6 +136,15 @@ def test_jinja2_loop_variables_are_excluded() -> None:
     assert not any(r.startswith("{{sk.") for r in result)
 
 
+def test_education_certification_language_loop_vars_are_block_markers() -> None:
+    """Loop variables for the documented edu/cert/lang loops are control
+    syntax, not mappable fields (see docs/template-syntax.md)."""
+    assert is_block_marker("{{edu.degree}}")
+    assert is_block_marker("{{cert.name}}")
+    assert is_block_marker("{{lang.name}}")
+    assert is_block_marker("{{lang.level_label}}")
+
+
 def test_profile_fields_detected_alongside_jinja2_blocks() -> None:
     """Top-level profile fields are still detected even when the template also
     uses Jinja2 blocks for experiences or skills."""
@@ -247,9 +256,9 @@ def test_placeholder_in_even_page_footer_is_detected() -> None:
 
 
 def test_custom_loop_variable_name_is_not_filtered() -> None:
-    """The _LOOP_VAR_RE filter only applies to exp.* and sk.* — the documented
-    loop variable names. A placeholder like {{item.foo}} does NOT match the
-    filter and will appear in detected_placeholders.
+    """The _LOOP_VAR_RE filter only applies to exp/sk/edu/cert/lang — the
+    documented loop variable names. A placeholder like {{item.foo}} does NOT
+    match the filter and will appear in detected_placeholders.
 
     This is the expected behaviour: recruiters using non-standard loop var
     names will see those placeholders in detected_placeholders and be alerted
