@@ -10,6 +10,8 @@
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
 
+**[Try the live demo →](https://alpha-jorg.up.railway.app/)**
+
 </div>
 
 Recruiting firms keep asking candidates for "an updated CV", reformat it by hand
