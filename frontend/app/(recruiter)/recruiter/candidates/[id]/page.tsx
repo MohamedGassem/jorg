@@ -14,6 +14,7 @@ import { useRecruiterOrg } from "@/lib/hooks";
 import {
   AVAILABILITY_LABELS,
   WORK_MODE_LABELS,
+  frMonthYear,
   initialsFromName,
   labelFor,
 } from "@/lib/labels";
@@ -66,9 +67,9 @@ function ExperienceBlock({ exp }: { exp: Experience }) {
           {exp.client_name} — {exp.role}
         </p>
         <p className="j-meta mt-0.5">
-          {exp.start_date}
+          {frMonthYear(exp.start_date)}
           {exp.end_date
-            ? ` → ${exp.end_date}`
+            ? ` → ${frMonthYear(exp.end_date)}`
             : exp.is_current
               ? " → aujourd'hui"
               : ""}

@@ -26,6 +26,7 @@ import {
   DOMAIN_LABELS,
   INVITATION_PILLS,
   WORK_MODE_LABELS,
+  frMonthYear,
   initialsFromParts,
   labelFor,
 } from "@/lib/labels";
@@ -146,9 +147,9 @@ function CandidateExperiencePanel({
                   {exp.client_name} - {exp.role}
                 </span>
                 <span className="font-mono text-[10px] text-ink-3">
-                  {exp.start_date}
+                  {frMonthYear(exp.start_date)}
                   {exp.end_date
-                    ? ` → ${exp.end_date}`
+                    ? ` → ${frMonthYear(exp.end_date)}`
                     : exp.is_current
                       ? " → présent"
                       : ""}
