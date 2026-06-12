@@ -226,7 +226,7 @@ export default function RecruiterSettingsPage() {
 
   if (!orgId) {
     return (
-      <div className="max-w-xl space-y-4">
+      <div className="flex w-full max-w-3xl flex-col gap-4">
         <h1 className="font-heading text-[27px] font-semibold leading-tight">
           Configuration
         </h1>
@@ -241,6 +241,8 @@ export default function RecruiterSettingsPage() {
           </Link>{" "}
           pour en créer ou rejoindre une.
         </p>
+        {/* Les droits sur les données ne dépendent pas d'une organisation. */}
+        <DonneesTab />
       </div>
     );
   }
