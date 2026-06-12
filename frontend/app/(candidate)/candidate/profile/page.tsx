@@ -25,7 +25,7 @@ import { SkillSection } from "@/components/candidate/skill-section";
 import { EducationSection } from "@/components/candidate/education-section";
 import { CertificationSection } from "@/components/candidate/certification-section";
 import { LanguageSection } from "@/components/candidate/language-section";
-import { CandidateGenerateDossierDialog } from "@/components/candidate-generate-dossier-dialog";
+import { DossierGenerationDialog } from "@/components/dossier-generation-dialog";
 import {
   Dialog,
   DialogContent,
@@ -301,9 +301,10 @@ function ProfileHero({
           ) : null}
         </DialogContent>
       </Dialog>
-      <CandidateGenerateDossierDialog
+      <DossierGenerationDialog
         open={generateOpen}
         onOpenChange={setGenerateOpen}
+        target={{ kind: "self" }}
       />
     </>
   );

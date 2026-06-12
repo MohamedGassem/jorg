@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import { InviteCandidateDialog } from "@/components/invite-candidate-dialog";
-import { GenerateDossierDialog } from "@/components/generate-dossier-dialog";
+import { DossierGenerationDialog } from "@/components/dossier-generation-dialog";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { SkillChip } from "@/components/ui/SkillChip";
 import { api } from "@/lib/api";
@@ -33,10 +33,8 @@ import {
 import { cn } from "@/lib/utils";
 import type {
   AccessibleCandidateRead,
-  BuiltinTemplate,
   Invitation,
   OpportunityRead,
-  Template,
 } from "@/types/api";
 import { VALID_DOMAINS } from "@/types/api";
 
@@ -247,10 +245,6 @@ export default function CandidatesPage() {
     candidateId: string;
     candidateName: string;
   } | null>(null);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [builtinTemplates, setBuiltinTemplates] = useState<BuiltinTemplate[]>(
-    [],
-  );
 
   function toggleCandidateExpand(userId: string) {
     setExpandedCandidates((prev) => {
@@ -295,14 +289,6 @@ export default function CandidatesPage() {
         .then((opps) =>
           setOpportunities(opps.filter((o) => o.status === "open")),
         )
-        .catch(() => {}),
-      api
-        .get<Template[]>(`/organizations/${orgId}/templates`)
-        .then(setTemplates)
-        .catch(() => {}),
-      api
-        .get<BuiltinTemplate[]>("/templates/builtin")
-        .then(setBuiltinTemplates)
         .catch(() => {}),
       api
         .get<Invitation[]>(`/organizations/${orgId}/invitations`)
@@ -432,16 +418,17 @@ export default function CandidatesPage() {
       />
 
       {generateFor && (
-        <GenerateDossierDialog
+        <DossierGenerationDialog
           open={!!generateFor}
           onOpenChange={(open) => {
             if (!open) setGenerateFor(null);
           }}
-          orgId={orgId}
-          candidateId={generateFor.candidateId}
-          candidateName={generateFor.candidateName}
-          templates={templates}
-          builtinTemplates={builtinTemplates}
+          target={{
+            kind: "recruiter",
+            orgId,
+            candidateId: generateFor.candidateId,
+            candidateName: generateFor.candidateName,
+          }}
         />
       )}
 

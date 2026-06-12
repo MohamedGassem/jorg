@@ -6,7 +6,7 @@ import { Eye, FolderOpen, Plus, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { GenerateDossierDialog } from "@/components/generate-dossier-dialog";
+import { DossierGenerationDialog } from "@/components/dossier-generation-dialog";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
@@ -20,10 +20,8 @@ import {
 } from "@/lib/labels";
 import type {
   AccessibleCandidateRead,
-  BuiltinTemplate,
   Experience,
   OpportunityRead,
-  Template,
 } from "@/types/api";
 
 function candidateName(c: AccessibleCandidateRead): string {
@@ -111,10 +109,6 @@ export default function CandidateDetailPage() {
   const [candidate, setCandidate] = useState<AccessibleCandidateRead | null>(
     null,
   );
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [builtinTemplates, setBuiltinTemplates] = useState<BuiltinTemplate[]>(
-    [],
-  );
   const [opportunities, setOpportunities] = useState<OpportunityRead[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
@@ -132,12 +126,6 @@ export default function CandidateDetailPage() {
           setCandidate(found);
           if (!found) setError("Candidat introuvable ou accès non autorisé.");
         }),
-      api
-        .get<Template[]>(`/organizations/${orgId}/templates`)
-        .then(setTemplates),
-      api
-        .get<BuiltinTemplate[]>("/templates/builtin")
-        .then(setBuiltinTemplates),
       api
         .get<OpportunityRead[]>(`/organizations/${orgId}/opportunities`)
         .then((opps) =>
@@ -209,14 +197,15 @@ export default function CandidateDetailPage() {
         }
       />
 
-      <GenerateDossierDialog
+      <DossierGenerationDialog
         open={generateOpen}
         onOpenChange={setGenerateOpen}
-        orgId={orgId!}
-        candidateId={candidateId}
-        candidateName={name}
-        templates={templates}
-        builtinTemplates={builtinTemplates}
+        target={{
+          kind: "recruiter",
+          orgId: orgId!,
+          candidateId,
+          candidateName: name,
+        }}
       />
 
       <div className="mx-auto grid w-full max-w-[1040px] grid-cols-1 items-start gap-5 pt-6 xl:grid-cols-[minmax(0,1fr)_320px]">

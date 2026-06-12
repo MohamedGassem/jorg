@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, FolderOpen, Mail, Plus, Shield, User } from "lucide-react";
-import { CandidateGenerateDossierDialog } from "@/components/candidate-generate-dossier-dialog";
+import { DossierGenerationDialog } from "@/components/dossier-generation-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { StatCell } from "@/components/ui/StatCell";
 import { StatusPill } from "@/components/ui/StatusPill";
@@ -467,9 +467,10 @@ export default function CandidateDashboardPage() {
         </div>
       </section>
 
-      <CandidateGenerateDossierDialog
+      <DossierGenerationDialog
         open={modelDialogOpen}
         onOpenChange={setModelDialogOpen}
+        target={{ kind: "self" }}
       />
     </div>
   );

@@ -22,6 +22,7 @@ import { api, ApiError } from "@/lib/api";
 import { mapBusinessError } from "@/lib/errors";
 import { OPPORTUNITY_EDIT_ENABLED } from "@/lib/feature-flags";
 import { initialsFromParts } from "@/lib/labels";
+import { parseTemplateChoice, templateChoiceBody } from "@/lib/template-choice";
 import { cn } from "@/lib/utils";
 import type {
   BuiltinTemplate,
@@ -125,15 +126,9 @@ export default function OpportunityDetailPage() {
     if (!orgId || !opp || !genTemplateChoice) return;
     setGenerating(true);
     try {
-      const body = genTemplateChoice.startsWith("system:")
-        ? {
-            system_template_key: genTemplateChoice.slice("system:".length),
-            format: genFormat,
-          }
-        : {
-            template_id: genTemplateChoice.slice("org:".length),
-            format: genFormat,
-          };
+      const choice = parseTemplateChoice(genTemplateChoice);
+      if (!choice) return;
+      const body = { ...templateChoiceBody(choice), format: genFormat };
       const results = await api.post<BulkGenerateResult[]>(
         `/organizations/${orgId}/opportunities/${opp.id}/generate`,
         body,
