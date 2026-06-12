@@ -18,12 +18,13 @@ import { logout } from "@/lib/auth";
 
 interface ExportDataButtonProps {
   exportUrl: string;
-  exportFilename: string;
+  /** Filename stem; the current date and `.json` are appended at click time. */
+  filePrefix: string;
 }
 
 export function ExportDataButton({
   exportUrl,
-  exportFilename,
+  filePrefix,
 }: ExportDataButtonProps) {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -32,7 +33,8 @@ export function ExportDataButton({
     setExporting(true);
     setExportError(null);
     try {
-      await api.download(exportUrl, exportFilename);
+      const today = new Date().toISOString().slice(0, 10);
+      await api.download(exportUrl, `${filePrefix}-${today}.json`);
     } catch (err) {
       setExportError(
         err instanceof ApiError ? err.detail : "Échec de l'export",

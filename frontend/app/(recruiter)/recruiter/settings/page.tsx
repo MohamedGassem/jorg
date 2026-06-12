@@ -116,7 +116,6 @@ function ProfilPersonnelTab() {
 
 function DonneesTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <>
@@ -133,7 +132,7 @@ function DonneesTab() {
           </div>
           <ExportDataButton
             exportUrl="/recruiters/me/export"
-            exportFilename={`jorg-recruteur-export-${today}.json`}
+            filePrefix="jorg-recruteur-export"
           />
         </div>
       </SettingsCard>

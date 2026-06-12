@@ -192,8 +192,6 @@ function RightRow({
 }
 
 function RgpdTab({ onRequestDeletion }: { onRequestDeletion: () => void }) {
-  const today = new Date().toISOString().slice(0, 10);
-
   return (
     <>
       <SettingsCard
@@ -207,7 +205,7 @@ function RgpdTab({ onRequestDeletion }: { onRequestDeletion: () => void }) {
             action={
               <ExportDataButton
                 exportUrl="/candidates/me/export"
-                exportFilename={`jorg-export-${today}.json`}
+                filePrefix="jorg-export"
               />
             }
           />
