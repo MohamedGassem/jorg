@@ -246,8 +246,9 @@ function RegisterForm() {
                 />
                 <p className="text-xs text-muted-foreground">
                   L&apos;accès recruteur se fait sur demande pendant
-                  l&apos;alpha. Ce code rattache votre compte à votre
-                  organisation.
+                  l&apos;alpha. Ce code vous place dans une organisation de
+                  démonstration, déjà remplie de profils d&apos;exemple, pour
+                  explorer les fonctionnalités.
                 </p>
               </div>
             )}
