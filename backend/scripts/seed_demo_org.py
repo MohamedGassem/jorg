@@ -38,6 +38,7 @@ from models.candidate_profile import (  # noqa: E402
     WorkMode,
 )
 from models.invitation import AccessGrant, AccessGrantStatus  # noqa: E402
+from models.opportunity import Opportunity, ShortlistEntry  # noqa: E402
 from models.recruiter import Organization  # noqa: E402
 from models.skill import Achievement, CandidateSkill, SkillReference  # noqa: E402
 from models.user import CURRENT_CONSENT_VERSION, User, UserRole  # noqa: E402
@@ -315,19 +316,18 @@ async def ensure_opportunity(
     organization_id: UUID,
     created_by: UUID,
     skill_index: dict[str, UUID],
-) -> None:
-    from models.opportunity import Opportunity
-
+) -> UUID:
     result = await db.execute(
         select(Opportunity).where(
             Opportunity.organization_id == organization_id,
             Opportunity.title == OPPORTUNITY_TITLE,
         )
     )
-    if result.scalar_one_or_none() is not None:
-        return
+    existing = result.scalar_one_or_none()
+    if existing is not None:
+        return existing.id
     skill_ref_ids = [skill_index[name] for name in OPPORTUNITY_SKILLS if name in skill_index]
-    await create_opportunity(
+    created = await create_opportunity(
         db,
         organization_id=organization_id,
         created_by=created_by,
@@ -337,6 +337,20 @@ async def ensure_opportunity(
             skill_ref_ids=skill_ref_ids,
         ),
     )
+    return created.id
+
+
+async def ensure_shortlisted(db: AsyncSession, opportunity_id: UUID, candidate_id: UUID) -> None:
+    result = await db.execute(
+        select(ShortlistEntry).where(
+            ShortlistEntry.opportunity_id == opportunity_id,
+            ShortlistEntry.candidate_id == candidate_id,
+        )
+    )
+    if result.scalar_one_or_none() is not None:
+        return
+    db.add(ShortlistEntry(opportunity_id=opportunity_id, candidate_id=candidate_id))
+    await db.commit()
 
 
 async def main() -> None:
@@ -364,19 +378,24 @@ async def main() -> None:
                 f"skipped: {', '.join(missing)}"
             )
 
-        first_candidate_id: UUID | None = None
+        candidate_ids: list[UUID] = []
         for spec in DEMO_CANDIDATES:
             user = await get_or_create_candidate(db, spec, skill_index)
             await ensure_active_grant(db, user.id, org_id)
-            if first_candidate_id is None:
-                first_candidate_id = user.id
+            candidate_ids.append(user.id)
             print(f"  candidate: {spec['email']} (id={user.id}) — active grant ensured")
 
         # The opportunity needs a creator; reuse the first demo candidate's user id
         # purely as the created_by value (no recruiter exists yet in the demo org).
-        assert first_candidate_id is not None
-        await ensure_opportunity(db, org_id, first_candidate_id, skill_index)
+        assert candidate_ids
+        opportunity_id = await ensure_opportunity(db, org_id, candidate_ids[0], skill_index)
         print(f"  opportunity: {OPPORTUNITY_TITLE} ensured")
+
+        # Shortlist every demo candidate so the opportunity shows a populated
+        # shortlist with compatibility scores.
+        for candidate_id in candidate_ids:
+            await ensure_shortlisted(db, opportunity_id, candidate_id)
+        print(f"  shortlist: {len(candidate_ids)} candidate(s) ensured")
 
         codes = await create_alpha_codes(db, args.codes, organization_id=org_id)
         print(f"\nGenerated {len(codes)} alpha invite code(s) linked to the demo org:")
