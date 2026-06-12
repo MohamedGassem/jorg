@@ -15,17 +15,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
+import { useRecruiterWorkspace } from "@/components/recruiter-workspace";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { JorgWordmark } from "@/components/ui/JorgWordmark";
 import { api } from "@/lib/api";
 import { logout as authLogout } from "@/lib/auth";
 import { initialsFromName, initialsFromParts } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-import type {
-  CandidateProfile,
-  Organization,
-  RecruiterProfile,
-} from "@/types/api";
+import type { CandidateProfile } from "@/types/api";
 
 export interface AppBarTab {
   href: string;
@@ -150,29 +147,14 @@ const RECRUITER_TABS: AppBarTab[] = [
 ];
 
 export function RecruiterAppBar() {
-  const [initials, setInitials] = useState<string | null>(null);
-  const [orgId, setOrgId] = useState<string | null>(null);
-  const [org, setOrg] = useState<Organization | null>(null);
-
-  useEffect(() => {
-    Promise.all([
-      api.get<RecruiterProfile>("/recruiters/me/profile"),
-      api.get<{ email: string }>("/auth/me"),
-    ])
-      .then(([profile, me]) => {
-        setInitials(
-          initialsFromParts(profile.first_name, profile.last_name, me.email),
-        );
-        if (profile.organization_id) {
-          setOrgId(profile.organization_id);
-          api
-            .get<Organization>(`/organizations/${profile.organization_id}`)
-            .then(setOrg)
-            .catch(() => {});
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const { profile, email, orgId, org } = useRecruiterWorkspace();
+  const initials = profile
+    ? initialsFromParts(
+        profile.first_name,
+        profile.last_name,
+        email ?? undefined,
+      )
+    : null;
 
   const context = (
     <span className="flex items-center gap-2">

@@ -18,6 +18,7 @@ import {
 import { Breadcrumb } from "@/components/breadcrumb";
 import { SkillChip } from "@/components/ui/SkillChip";
 import { SkillPicker } from "@/components/SkillPicker";
+import { useRecruiterWorkspace } from "@/components/recruiter-workspace";
 import { api, ApiError } from "@/lib/api";
 import { mapBusinessError } from "@/lib/errors";
 import { OPPORTUNITY_EDIT_ENABLED } from "@/lib/feature-flags";
@@ -25,20 +26,12 @@ import { initialsFromParts } from "@/lib/labels";
 import { parseTemplateChoice, templateChoiceBody } from "@/lib/template-choice";
 import { cn } from "@/lib/utils";
 import type {
-  BuiltinTemplate,
   BulkGenerateResult,
   OpportunityDetail,
   OpportunityRead,
-  RecruiterProfile,
   ShortlistCandidateInfo,
   SkillReference,
 } from "@/types/api";
-
-interface TemplateItem {
-  id: string;
-  name: string;
-  is_valid: boolean;
-}
 
 type SelectedSkill = { skill_ref_id: string; name: string };
 
@@ -55,14 +48,15 @@ function shortlistCandidateName(
 
 export default function OpportunityDetailPage() {
   const { id: oppId } = useParams<{ id: string }>();
-  const [orgId, setOrgId] = useState<string | null>(null);
+  const {
+    orgId,
+    templates: orgTemplates,
+    builtinTemplates,
+    loading: workspaceLoading,
+  } = useRecruiterWorkspace();
   const [opp, setOpp] = useState<OpportunityDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [templates, setTemplates] = useState<TemplateItem[]>([]);
-  const [builtinTemplates, setBuiltinTemplates] = useState<BuiltinTemplate[]>(
-    [],
-  );
   // "system:<key>" pour un modèle Jorg, "org:<id>" pour un modèle organisation.
   const [genTemplateChoice, setGenTemplateChoice] = useState("");
   const [genFormat, setGenFormat] = useState("docx");
@@ -80,31 +74,23 @@ export default function OpportunityDetailPage() {
   const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (workspaceLoading) return;
+    if (!orgId) {
+      setLoading(false);
+      return;
+    }
     api
-      .get<RecruiterProfile>("/recruiters/me/profile")
-      .then(async (p) => {
-        setOrgId(p.organization_id);
-        if (!p.organization_id) return;
-        const [oppData, tmplData, builtinData] = await Promise.all([
-          api.get<OpportunityDetail>(
-            `/organizations/${p.organization_id}/opportunities/${oppId}`,
-          ),
-          api.get<TemplateItem[]>(
-            `/organizations/${p.organization_id}/templates`,
-          ),
-          api.get<BuiltinTemplate[]>("/templates/builtin").catch(() => []),
-        ]);
-        setOpp(oppData);
-        setTemplates(tmplData.filter((t) => t.is_valid));
-        setBuiltinTemplates(builtinData);
-      })
+      .get<OpportunityDetail>(`/organizations/${orgId}/opportunities/${oppId}`)
+      .then(setOpp)
       .catch((err) =>
         setError(
           err instanceof ApiError ? mapBusinessError(err.detail) : "Erreur",
         ),
       )
       .finally(() => setLoading(false));
-  }, [oppId]);
+  }, [oppId, orgId, workspaceLoading]);
+
+  const templates = orgTemplates.filter((t) => t.is_valid);
 
   async function handleRemove(candidateId: string) {
     if (!orgId || !opp) return;

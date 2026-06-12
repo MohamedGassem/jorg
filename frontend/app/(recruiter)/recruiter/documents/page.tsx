@@ -10,13 +10,13 @@ import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { TabBar } from "@/components/ui/TabBar";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
-import { useDownload, useRecruiterOrg } from "@/lib/hooks";
+import { useDownload } from "@/lib/hooks";
+import { useRecruiterWorkspace } from "@/components/recruiter-workspace";
 import { downloadFilename } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type {
   BuiltinTemplate,
   GeneratedDocumentRecruiterView,
-  Template,
 } from "@/types/api";
 
 type DocTab = "dossiers" | "templates";
@@ -94,13 +94,15 @@ function DocumentModelCard({
 }
 
 export default function DocumentsPage() {
-  const { orgId, loading: orgLoading, error: orgError } = useRecruiterOrg();
+  const {
+    orgId,
+    templates,
+    builtinTemplates,
+    loading: orgLoading,
+    error: orgError,
+  } = useRecruiterWorkspace();
   const [activeTab, setActiveTab] = useState<DocTab>("dossiers");
   const [docs, setDocs] = useState<GeneratedDocumentRecruiterView[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [builtinTemplates, setBuiltinTemplates] = useState<BuiltinTemplate[]>(
-    [],
-  );
   const [docsLoading, setDocsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const { download, errors: downloadErrors } = useDownload();
@@ -109,36 +111,23 @@ export default function DocumentsPage() {
     if (!orgId) return;
     const controller = new AbortController();
     setDocsLoading(true);
-    Promise.all([
-      api
-        .get<GeneratedDocumentRecruiterView[]>(
-          `/organizations/${orgId}/documents`,
-        )
-        .then((data) => {
-          if (!controller.signal.aborted) setDocs(data);
-        })
-        .catch((err) => {
-          if (!controller.signal.aborted) {
-            setFetchError(
-              extractErrorMessage(err, "Impossible de charger les dossiers"),
-            );
-          }
-        }),
-      api
-        .get<Template[]>(`/organizations/${orgId}/templates`)
-        .then((data) => {
-          if (!controller.signal.aborted) setTemplates(data);
-        })
-        .catch(() => {}),
-      api
-        .get<BuiltinTemplate[]>("/templates/builtin")
-        .then((data) => {
-          if (!controller.signal.aborted) setBuiltinTemplates(data);
-        })
-        .catch(() => {}),
-    ]).finally(() => {
-      if (!controller.signal.aborted) setDocsLoading(false);
-    });
+    api
+      .get<GeneratedDocumentRecruiterView[]>(
+        `/organizations/${orgId}/documents`,
+      )
+      .then((data) => {
+        if (!controller.signal.aborted) setDocs(data);
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setFetchError(
+            extractErrorMessage(err, "Impossible de charger les dossiers"),
+          );
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDocsLoading(false);
+      });
     return () => controller.abort();
   }, [orgId]);
 

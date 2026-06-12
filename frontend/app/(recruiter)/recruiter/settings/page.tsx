@@ -15,7 +15,7 @@ import {
 } from "@/components/account-data-actions";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
-import { useRecruiterOrg } from "@/lib/hooks";
+import { useRecruiterWorkspace } from "@/components/recruiter-workspace";
 import { initialsFromParts } from "@/lib/labels";
 import type { OrgMember, Organization } from "@/types/api";
 
@@ -171,26 +171,29 @@ function DonneesTab() {
 }
 
 export default function RecruiterSettingsPage() {
-  const { orgId, loading: orgLoading } = useRecruiterOrg();
+  const {
+    orgId,
+    org: workspaceOrg,
+    loading: orgLoading,
+  } = useRecruiterWorkspace();
   const [activeTab, setActiveTab] = useState<Tab>("profil");
-  const [org, setOrg] = useState<Organization | null>(null);
+  // Copie locale du workspace : la regeneration du join code la met a jour.
+  const [org, setOrg] = useState<Organization | null>(workspaceOrg);
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
+    setOrg(workspaceOrg);
+  }, [workspaceOrg]);
+
+  useEffect(() => {
     if (!orgId) return;
-    Promise.all([
-      api
-        .get<Organization>(`/organizations/${orgId}`)
-        .then(setOrg)
-        .catch((err) => setError(extractErrorMessage(err, "Erreur"))),
-      api
-        .get<OrgMember[]>(`/organizations/${orgId}/members`)
-        .then(setMembers)
-        .catch(() => {}),
-    ]);
+    api
+      .get<OrgMember[]>(`/organizations/${orgId}/members`)
+      .then(setMembers)
+      .catch(() => {});
   }, [orgId]);
 
   async function handleRegenerateCode() {
