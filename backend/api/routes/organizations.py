@@ -5,11 +5,12 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 import core.storage as storage
+import services.documents.builtin_template_service as builtin_template_service
 import services.documents.template_service as template_service
 import services.recruiter_service as recruiter_service
 from api.deps import RecruiterOrgMember, get_db, require_role
@@ -224,4 +225,35 @@ async def download_template_file(
         path=str(file_path),
         filename=safe_name,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+
+
+@router.get("/{org_id}/templates/{template_id}/preview")
+async def preview_template(
+    org_id: UUID, template_id: UUID, member: RecruiterOrgMember, db: DB
+) -> Response:
+    await _get_org_or_404(db, org_id)
+    tmpl = await template_service.get_template(db, template_id, org_id)
+    if tmpl is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
+
+    file_path = Path(tmpl.word_file_path).resolve()
+    if not file_path.is_relative_to(storage.upload_dir()):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid file path")
+    if not file_path.exists():
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
+
+    try:
+        content = builtin_template_service.render_mock_preview_from_path(str(file_path))
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="template preview unavailable",
+        ) from exc
+
+    safe_stem = re.sub(r"[^\w\-. ]", "_", tmpl.name).strip() or "template"
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="apercu-{safe_stem}.docx"'},
     )

@@ -430,6 +430,33 @@ async def test_list_accessible_candidates_forbids_candidate_role(
 # ---- Template file download -------------------------------------------------
 
 
+async def test_preview_template_renders_mock_docx(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    docx_bytes = _make_docx_bytes(["{{first_name}} {{last_name}}"])
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "T"},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    template_id = up.json()["id"]
+    r = await client.get(
+        f"/organizations/{org_id}/templates/{template_id}/preview",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 200
+    assert r.content[:2] == b"PK"
+    assert "attachment" in r.headers["content-disposition"]
+
+
 async def test_download_template_file_ok(
     client: AsyncClient, recruiter_headers: dict[str, str]
 ) -> None:
