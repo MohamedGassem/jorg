@@ -1,0 +1,118 @@
+<!-- ════════════ PAGE 04 — STRUCTURE CIBLE ════════════ -->
+<section class="sheet" data-screen-label="04 Structure cible">
+  <p class="kicker">02 · Structure cible</p>
+  <h2 class="doc-h2">Wireframe — l'ordre suit la logique de décision</h2>
+  <p class="doc-small" style="margin: 0 0 4mm 0;">Qualifier (bandeau) → convaincre (featured) → vérifier (compétences, expériences) → administrer (formation, langues). Les zones bordeaux n'existent que si des éléments sont mis en avant.</p>
+
+  <div class="wf-cols">
+    <div>
+      <p class="wf-caption">Page 1 — above the fold</p>
+      <div class="wf-page">
+        <div class="wf-zone"><span class="wf-label">EN-TÊTE</span><br />Nom (ou initiales + réf.) · Titre du profil<br />Contacts à droite, corps réduit — masqués en mode anonyme</div>
+        <div class="wf-zone" style="border-width: 1pt;"><span class="wf-label">BANDEAU COMMERCIAL</span><br />Disponibilité · TJM · Mobilité · Séniorité</div>
+        <div class="wf-zone"><span class="wf-label">PROFIL</span> — 2-3 lignes, mots-clés en gras</div>
+        <div class="wf-zone wf-feat"><span class="wf-label">★ FAITS MARQUANTS</span> — 2-3 cartes max<br />KPI gros corps + 1 ligne + renvoi (client, année)<br />← réalisations featured, sans duplication du texte intégral</div>
+        <div class="wf-zone"><span class="wf-label">COMPÉTENCES</span><br /><span style="color: var(--doc-accent); font-weight: 700;">★ pastilles featured (5 max)</span> puis groupes par catégorie : label + valeurs en ligne</div>
+        <div class="wf-zone"><span class="wf-label">EXPÉRIENCE LA PLUS RÉCENTE</span><br />Rôle — Client · période · contexte 1 ligne · stack méta<br /><span style="color: var(--doc-accent);">▌réalisation featured = bordure + fond</span> · réalisations standard en tirets</div>
+      </div>
+    </div>
+    <div>
+      <p class="wf-caption">Pages suivantes</p>
+      <div class="wf-page">
+        <div class="wf-zone"><span class="wf-label">EXPÉRIENCES (suite)</span> — antichronologiques<br />Même gabarit ; les featured gardent leur traitement in-situ</div>
+        <div class="wf-zone wf-dim"><span class="wf-label">SYNOPTIQUE DES MISSIONS</span> — variante technique uniquement, en page 1 sous les compétences</div>
+        <div class="wf-zone"><span class="wf-label">FORMATION · CERTIFICATIONS</span> — 2 colonnes</div>
+        <div class="wf-zone"><span class="wf-label">LANGUES · PIED DE PAGE</span> — référence dossier + date de mise à jour</div>
+      </div>
+      <div style="margin-top: 4mm; display: flex; flex-direction: column; gap: 2.5mm;">
+        <p class="wf-note"><b>Plafonds anti-sapin de Noël.</b> Au rendu : 5 pastilles featured max, 3 faits marquants max. Au-delà, tri par récence puis présence d'un chiffre ; le surplus garde uniquement son traitement in-situ dans l'expérience.</p>
+        <p class="wf-note"><b>Zéro duplication.</b> Un fait marquant = KPI + résumé court + renvoi « → Client, année ». Le texte complet vit dans l'expérience, une seule fois.</p>
+        <p class="wf-note"><b>État sans featured.</b> Pastilles et faits marquants disparaissent ; la page 1 remonte d'un cran. Le template ne réserve jamais d'espace vide.</p>
+        <p class="wf-note"><b>Noir &amp; blanc.</b> La distinction featured tient par graisse + bordure + fond grisé — jamais par la couleur seule.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>Jorg — Refonte template</span><span>04</span></div>
+</section>
+
+<!-- ════════════ PAGE 05 — SYSTÈME DE DESIGN ════════════ -->
+<section class="sheet" data-screen-label="05 Système de design">
+  <p class="kicker">03 · Système de design</p>
+  <h2 class="doc-h2">Un accent, deux familles de gris, six corps</h2>
+
+  <div class="spec-block" style="border-top: none; padding-top: 0;">
+    <p class="spec-label">Échelle typographique — Helvetica Neue / Helvetica / Arial</p>
+    <div class="type-row"><span class="type-meta">name · 22 pt · 700</span><span style="font-family: var(--cv-font); font-size: 22pt; font-weight: 700; letter-spacing: -0.015em; color: var(--doc-ink); line-height: 1;">Joris Martin</span></div>
+    <div class="type-row"><span class="type-meta">role · 12 pt · 400 · accent</span><span style="font-family: var(--cv-font); font-size: 12pt; color: var(--doc-accent);">Lead Product Engineer</span></div>
+    <div class="type-row"><span class="type-meta">kpi · 15 pt · 700</span><span style="font-family: var(--cv-font); font-size: 15pt; font-weight: 700; color: var(--doc-ink);">−85 %</span></div>
+    <div class="type-row"><span class="type-meta">section · 8,5 pt · 700 · caps</span><span style="font-family: var(--cv-font); font-size: 8.5pt; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--doc-ink);">Expériences</span></div>
+    <div class="type-row"><span class="type-meta">body · 9,5 pt · 400</span><span style="font-family: var(--cv-font); font-size: 9.5pt; color: var(--doc-body);">Conception et livraison d'une plateforme de matching candidat-recruteur.</span></div>
+    <div class="type-row"><span class="type-meta">meta · 7,5 pt · 400</span><span style="font-family: var(--cv-font); font-size: 7.5pt; color: var(--doc-meta); letter-spacing: 0.02em;">Stack — PostgreSQL · Next.js · FastAPI</span></div>
+  </div>
+
+  <div class="spec-block">
+    <p class="spec-label">Palette — testée en niveaux de gris (luminances distinctes)</p>
+    <div class="swatches">
+      <div class="swatch"><div class="chip" style="background: #1B1A19;"></div><span class="sw-name">ink<br />#1B1A19</span></div>
+      <div class="swatch"><div class="chip" style="background: #3B3936;"></div><span class="sw-name">body<br />#3B3936</span></div>
+      <div class="swatch"><div class="chip" style="background: #716E69;"></div><span class="sw-name">meta<br />#716E69</span></div>
+      <div class="swatch"><div class="chip" style="background: #A8A49E;"></div><span class="sw-name">faint<br />#A8A49E</span></div>
+      <div class="swatch"><div class="chip" style="background: #E4E1DC;"></div><span class="sw-name">line<br />#E4E1DC</span></div>
+      <div class="swatch"><div class="chip" style="background: #7C2D3E;"></div><span class="sw-name">accent<br />#7C2D3E</span></div>
+      <div class="swatch"><div class="chip" style="background: #F6EDEF;"></div><span class="sw-name">accent-tint<br />#F6EDEF</span></div>
+    </div>
+  </div>
+
+  <div class="spec-block" style="display: grid; grid-template-columns: 58mm 1fr; gap: 6mm;">
+    <div>
+      <p class="spec-label">Espacements — base 1,5 mm</p>
+      <div class="space-row"><div class="space-bar" style="width: 6mm;"></div><span class="type-meta">sp-1 · 1,5 mm · intra-composant</span></div>
+      <div class="space-row"><div class="space-bar" style="width: 12mm;"></div><span class="type-meta">sp-2 · 3 mm · entre éléments</span></div>
+      <div class="space-row"><div class="space-bar" style="width: 20mm;"></div><span class="type-meta">sp-3 · 5 mm · entre sections</span></div>
+      <div class="space-row"><div class="space-bar" style="width: 32mm;"></div><span class="type-meta">sp-4 · 8 mm · respiration forte</span></div>
+      <div class="space-row"><div class="space-bar" style="width: 48mm;"></div><span class="type-meta">sp-5 · 12 mm · marges internes</span></div>
+      <p class="spec-label" style="margin-top: 5mm;">Composants featured</p>
+      <div style="display: flex; flex-direction: column; gap: 2.5mm; font-family: var(--cv-font);">
+        <div style="display: flex; gap: 2mm; align-items: center; flex-wrap: wrap;">
+          <span class="skill-feat">PostgreSQL <span class="lvl">avancé</span></span>
+          <span style="font-size: 8.5pt; color: var(--doc-meta);">vs</span>
+          <span class="skill-list">Airflow</span>
+        </div>
+        <div class="ach ach-feat" style="font-size: 8.5pt;">Réduction du temps de constitution <b>de plusieurs heures à quelques minutes</b> <span class="ach-kpi">(−85 %)</span></div>
+        <div class="ach" style="font-size: 8.5pt;">Mise en place de la CI/CD et des revues d'architecture</div>
+      </div>
+    </div>
+    <div>
+      <p class="spec-label">Tokens CSS — extrait de <span style="text-transform: none;">styles/cv.css</span></p>
+      <pre class="tokens">:root {
+  <span class="c">/* encres */</span>
+  --cv-ink: <span class="v">#1B1A19</span>;  --cv-body: <span class="v">#3B3936</span>;
+  --cv-meta: <span class="v">#716E69</span>; --cv-faint: <span class="v">#A8A49E</span>;
+  --cv-line: <span class="v">#E4E1DC</span>; --cv-wash: <span class="v">#F7F5F2</span>;
+
+  <span class="c">/* accent unique — survit au N&amp;B par graisse + bordure */</span>
+  --cv-accent: <span class="v">#7C2D3E</span>;
+  --cv-accent-deep: <span class="v">#5C1F2D</span>;
+  --cv-accent-tint: <span class="v">#F6EDEF</span>;
+
+  <span class="c">/* échelle typo (pt = fidélité print) */</span>
+  --cv-fs-name: <span class="v">22pt</span>; --cv-fs-role: <span class="v">12pt</span>;
+  --cv-fs-kpi: <span class="v">15pt</span>;  --cv-fs-h2: <span class="v">8.5pt</span>;
+  --cv-fs-body: <span class="v">9.5pt</span>; --cv-fs-meta: <span class="v">7.5pt</span>;
+
+  <span class="c">/* espacements (mm) */</span>
+  --cv-sp-1: <span class="v">1.5mm</span>; --cv-sp-2: <span class="v">3mm</span>;
+  --cv-sp-3: <span class="v">5mm</span>;   --cv-sp-4: <span class="v">8mm</span>;
+}
+
+<span class="c">/* skill featured : pastille bordée, graisse 700 */</span>
+.skill-feat { border: <span class="v">1pt solid var(--cv-accent)</span>;
+  font-weight: <span class="v">700</span>; color: <span class="v">var(--cv-accent-deep)</span>; }
+
+<span class="c">/* réalisation featured : barre + fond, pas de puce */</span>
+.ach-feat { border-left: <span class="v">1.6pt solid var(--cv-accent)</span>;
+  background: <span class="v">var(--cv-accent-tint)</span>; }</pre>
+    </div>
+  </div>
+  <div class="folio"><span>Jorg — Refonte template</span><span>05</span></div>
+</section>
