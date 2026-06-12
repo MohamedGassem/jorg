@@ -66,7 +66,7 @@ export default function PrivacyPage() {
         <p className="mt-2 text-[15px] text-ink-2">
           Jorg est construit autour d&apos;un principe simple : vos données vous
           appartiennent. Rien n&apos;est partagé sans votre accord, et chaque
-          consultation est tracée.
+          accès accordé, révoqué ou dossier généré est journalisé.
         </p>
 
         <section className="mt-8 rounded-lg border border-line bg-surface px-[26px] py-[22px]">
