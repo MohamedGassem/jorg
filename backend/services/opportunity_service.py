@@ -245,7 +245,8 @@ async def bulk_generate(
     db: AsyncSession,
     opportunity_id: UUID,
     organization_id: UUID,
-    template_id: UUID,
+    template_id: UUID | None,
+    system_template_key: str | None,
     generated_by_user_id: UUID,
     fmt: Literal["docx", "pdf"],
 ) -> list[BulkGenerateResult]:
@@ -261,7 +262,7 @@ async def bulk_generate(
                 db,
                 organization_id=organization_id,
                 template_id=template_id,
-                system_template_key=None,
+                system_template_key=system_template_key,
                 candidate_id=entry.candidate_id,
                 generated_by_user_id=generated_by_user_id,
                 fmt=fmt,

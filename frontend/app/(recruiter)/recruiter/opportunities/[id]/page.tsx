@@ -23,6 +23,7 @@ import { OPPORTUNITY_EDIT_ENABLED } from "@/lib/feature-flags";
 import { initialsFromParts } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type {
+  BuiltinTemplate,
   BulkGenerateResult,
   OpportunityDetail,
   OpportunityRead,
@@ -57,7 +58,11 @@ export default function OpportunityDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
-  const [genTemplateId, setGenTemplateId] = useState("");
+  const [builtinTemplates, setBuiltinTemplates] = useState<BuiltinTemplate[]>(
+    [],
+  );
+  // "system:<key>" pour un modèle Jorg, "org:<id>" pour un modèle organisation.
+  const [genTemplateChoice, setGenTemplateChoice] = useState("");
   const [genFormat, setGenFormat] = useState("docx");
   const [generating, setGenerating] = useState(false);
   const [genResults, setGenResults] = useState<BulkGenerateResult[] | null>(
@@ -80,16 +85,18 @@ export default function OpportunityDetailPage() {
       .then(async (p) => {
         setOrgId(p.organization_id);
         if (!p.organization_id) return;
-        const [oppData, tmplData] = await Promise.all([
+        const [oppData, tmplData, builtinData] = await Promise.all([
           api.get<OpportunityDetail>(
             `/organizations/${p.organization_id}/opportunities/${oppId}`,
           ),
           api.get<TemplateItem[]>(
             `/organizations/${p.organization_id}/templates`,
           ),
+          api.get<BuiltinTemplate[]>("/templates/builtin").catch(() => []),
         ]);
         setOpp(oppData);
         setTemplates(tmplData.filter((t) => t.is_valid));
+        setBuiltinTemplates(builtinData);
       })
       .catch((err) =>
         setError(
@@ -116,12 +123,21 @@ export default function OpportunityDetailPage() {
 
   async function handleBulkGenerate(e: React.FormEvent) {
     e.preventDefault();
-    if (!orgId || !opp || !genTemplateId) return;
+    if (!orgId || !opp || !genTemplateChoice) return;
     setGenerating(true);
     try {
+      const body = genTemplateChoice.startsWith("system:")
+        ? {
+            system_template_key: genTemplateChoice.slice("system:".length),
+            format: genFormat,
+          }
+        : {
+            template_id: genTemplateChoice.slice("org:".length),
+            format: genFormat,
+          };
       const results = await api.post<BulkGenerateResult[]>(
         `/organizations/${orgId}/opportunities/${opp.id}/generate`,
-        { template_id: genTemplateId, format: genFormat },
+        body,
       );
       setGenResults(results);
     } catch (err) {
@@ -476,79 +492,90 @@ export default function OpportunityDetailPage() {
           )}
         </section>
 
-        {opp.shortlist.length > 0 && templates.length > 0 && (
-          <section className="rounded-lg border border-accent-line bg-accent-soft-2 px-[26px] py-[22px]">
-            <h2 className="font-heading text-[17px] font-semibold">
-              Générer tous les dossiers
-            </h2>
-            <form
-              onSubmit={handleBulkGenerate}
-              className="mt-4 max-w-xl space-y-4"
-            >
-              <div className="space-y-1.5">
-                <Label className="text-[13.5px] text-ink-2">
-                  Modèle de dossier
-                </Label>
-                <Select
-                  value={genTemplateId}
-                  onValueChange={(v) => setGenTemplateId(v ?? "")}
+        {opp.shortlist.length > 0 &&
+          (templates.length > 0 || builtinTemplates.length > 0) && (
+            <section className="rounded-lg border border-accent-line bg-accent-soft-2 px-[26px] py-[22px]">
+              <h2 className="font-heading text-[17px] font-semibold">
+                Générer tous les dossiers
+              </h2>
+              <form
+                onSubmit={handleBulkGenerate}
+                className="mt-4 max-w-xl space-y-4"
+              >
+                <div className="space-y-1.5">
+                  <Label className="text-[13.5px] text-ink-2">
+                    Modèle de dossier
+                  </Label>
+                  <Select
+                    value={genTemplateChoice}
+                    onValueChange={(v) => setGenTemplateChoice(v ?? "")}
+                  >
+                    <SelectTrigger className="bg-surface">
+                      <SelectValue placeholder="Choisir un modèle de dossier..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {builtinTemplates.map((t) => (
+                        <SelectItem key={t.key} value={`system:${t.key}`}>
+                          {t.name} (modèle Jorg)
+                        </SelectItem>
+                      ))}
+                      {templates.map((t) => (
+                        <SelectItem key={t.id} value={`org:${t.id}`}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[13.5px] text-ink-2">Format</Label>
+                  <Select
+                    value={genFormat}
+                    onValueChange={(v) => setGenFormat(v ?? "docx")}
+                  >
+                    <SelectTrigger className="bg-surface">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="docx">Word (.docx)</SelectItem>
+                      <SelectItem value="pdf">PDF</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={generating || !genTemplateChoice}
                 >
-                  <SelectTrigger className="bg-surface">
-                    <SelectValue placeholder="Choisir un modèle de dossier..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {templates.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[13.5px] text-ink-2">Format</Label>
-                <Select
-                  value={genFormat}
-                  onValueChange={(v) => setGenFormat(v ?? "docx")}
-                >
-                  <SelectTrigger className="bg-surface">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="docx">Word (.docx)</SelectItem>
-                    <SelectItem value="pdf">PDF</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" disabled={generating || !genTemplateId}>
-                {generating
-                  ? "Génération en cours…"
-                  : `Générer pour ${opp.shortlist.length} candidat${opp.shortlist.length > 1 ? "s" : ""}`}
-              </Button>
-            </form>
-            <ErrorAlert error={bulkError} />
+                  {generating
+                    ? "Génération en cours…"
+                    : `Générer pour ${opp.shortlist.length} candidat${opp.shortlist.length > 1 ? "s" : ""}`}
+                </Button>
+              </form>
+              <ErrorAlert error={bulkError} />
 
-            {genResults && (
-              <div className="mt-4 space-y-1">
-                <p className="text-sm font-medium">Résultats :</p>
-                {genResults.map((r) => (
-                  <p key={r.candidate_id} className="text-sm">
-                    {shortlistCandidateName(opp.shortlist, r.candidate_id)}{" "}
-                    <span
-                      className={
-                        r.status === "ok" ? "text-success" : "text-destructive"
-                      }
-                    >
-                      {r.status === "ok"
-                        ? "Dossier généré"
-                        : `Échec - ${mapBusinessError(r.error ?? "Erreur")}`}
-                    </span>
-                  </p>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
+              {genResults && (
+                <div className="mt-4 space-y-1">
+                  <p className="text-sm font-medium">Résultats :</p>
+                  {genResults.map((r) => (
+                    <p key={r.candidate_id} className="text-sm">
+                      {shortlistCandidateName(opp.shortlist, r.candidate_id)}{" "}
+                      <span
+                        className={
+                          r.status === "ok"
+                            ? "text-success"
+                            : "text-destructive"
+                        }
+                      >
+                        {r.status === "ok"
+                          ? "Dossier généré"
+                          : `Échec - ${mapBusinessError(r.error ?? "Erreur")}`}
+                      </span>
+                    </p>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
       </div>
     </div>
   );

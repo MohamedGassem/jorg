@@ -122,6 +122,7 @@ async def bulk_generate(
         opportunity_id=opp_id,
         organization_id=org_id,
         template_id=data.template_id,
+        system_template_key=data.system_template_key,
         generated_by_user_id=member.user_id,
         fmt=data.format,
     )
