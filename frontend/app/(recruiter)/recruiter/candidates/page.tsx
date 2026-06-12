@@ -240,6 +240,8 @@ export default function CandidatesPage() {
   );
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [showInvitations, setShowInvitations] = useState(false);
+  const [invBusy, setInvBusy] = useState<string | null>(null);
+  const [invFeedback, setInvFeedback] = useState<Record<string, string>>({});
   const [inviteOpen, setInviteOpen] = useState(false);
   const [generateFor, setGenerateFor] = useState<{
     candidateId: string;
@@ -329,6 +331,38 @@ export default function CandidatesPage() {
   function resetFilters() {
     setFilters(EMPTY_FILTERS);
     if (orgId) fetchCandidates(orgId, EMPTY_FILTERS);
+  }
+
+  async function handleResendInvitation(inv: Invitation) {
+    if (!orgId) return;
+    setInvBusy(inv.id);
+    try {
+      await api.post(`/organizations/${orgId}/invitations/${inv.id}/resend`);
+      setInvFeedback((prev) => ({ ...prev, [inv.id]: "Email renvoyé" }));
+    } catch (err) {
+      setInvFeedback((prev) => ({
+        ...prev,
+        [inv.id]: extractErrorMessage(err, "Erreur"),
+      }));
+    } finally {
+      setInvBusy(null);
+    }
+  }
+
+  async function handleCancelInvitation(inv: Invitation) {
+    if (!orgId) return;
+    setInvBusy(inv.id);
+    try {
+      await api.delete(`/organizations/${orgId}/invitations/${inv.id}`);
+      setInvitations((prev) => prev.filter((i) => i.id !== inv.id));
+    } catch (err) {
+      setInvFeedback((prev) => ({
+        ...prev,
+        [inv.id]: extractErrorMessage(err, "Erreur"),
+      }));
+    } finally {
+      setInvBusy(null);
+    }
   }
 
   async function handleAddToOpportunity(candidateId: string, oppId: string) {
@@ -575,11 +609,37 @@ export default function CandidatesPage() {
                   <span className="min-w-0 flex-1 truncate text-sm">
                     {inv.candidate_email}
                   </span>
+                  {invFeedback[inv.id] && (
+                    <span className="j-meta text-[12.5px]">
+                      {invFeedback[inv.id]}
+                    </span>
+                  )}
                   <span className="j-meta text-[12.5px]">
                     expire le{" "}
                     {new Date(inv.expires_at).toLocaleDateString("fr-FR")}
                   </span>
                   <StatusPill tone={pill.tone}>{pill.label}</StatusPill>
+                  {inv.status === "pending" && (
+                    <span className="flex shrink-0 items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={invBusy === inv.id}
+                        onClick={() => handleResendInvitation(inv)}
+                      >
+                        Renvoyer
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-ink-2"
+                        disabled={invBusy === inv.id}
+                        onClick={() => handleCancelInvitation(inv)}
+                      >
+                        Annuler
+                      </Button>
+                    </span>
+                  )}
                 </div>
               );
             })}
