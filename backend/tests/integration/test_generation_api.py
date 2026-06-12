@@ -108,7 +108,12 @@ async def test_builtin_template_preview_downloads_mock_docx(
     )
     assert preview.status_code == 200
     doc = Document(io.BytesIO(preview.content))
-    text = "\n".join(p.text for p in doc.paragraphs)
+    paragraphs = list(doc.paragraphs)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                paragraphs.extend(cell.paragraphs)
+    text = "\n".join(p.text for p in paragraphs)
     assert "joris" in text.lower()
     assert "{{" not in text
 
