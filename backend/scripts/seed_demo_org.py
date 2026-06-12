@@ -20,6 +20,7 @@ import secrets
 import sys
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -51,7 +52,7 @@ ORG_NAME = "ACME Corporation"
 
 
 # Each demo candidate: emails on the @jorg.local domain so they're never real.
-DEMO_CANDIDATES = [
+DEMO_CANDIDATES: list[dict[str, Any]] = [
     {
         "email": "alice.demo@jorg.local",
         "first_name": "Alice",
@@ -228,7 +229,7 @@ async def _unique_slug(db: AsyncSession) -> str:
 
 
 async def get_or_create_candidate(
-    db: AsyncSession, spec: dict, skill_index: dict[str, UUID]
+    db: AsyncSession, spec: dict[str, Any], skill_index: dict[str, UUID]
 ) -> User:
     """Create the demo candidate user + profile + experiences + skills if absent."""
     result = await db.execute(select(User).where(User.email == spec["email"]))

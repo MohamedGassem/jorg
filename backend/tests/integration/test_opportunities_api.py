@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +20,7 @@ async def _create_opportunity(
     org_id: str,
     title: str = "Mission Alpha",
     skill_ref_ids: list[str] | None = None,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     payload: dict[str, object] = {"title": title}
     if skill_ref_ids is not None:
         payload["skill_ref_ids"] = skill_ref_ids

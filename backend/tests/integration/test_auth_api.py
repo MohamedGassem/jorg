@@ -1,6 +1,7 @@
 # backend/tests/integration/test_auth_api.py
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.user import OAuthProvider
 from services.auth.oauth_service import (
@@ -132,7 +133,9 @@ async def test_refresh_with_malformed_token_returns_401(client: AsyncClient) -> 
 # ---- Email verification tests ----------------------------------------------
 
 
-async def test_verify_email_marks_user_as_verified(client: AsyncClient, db_session) -> None:
+async def test_verify_email_marks_user_as_verified(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     from sqlalchemy import select
 
     from models.user import User

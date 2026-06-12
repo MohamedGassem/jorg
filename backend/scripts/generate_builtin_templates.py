@@ -222,8 +222,11 @@ def band_block(theme: Theme) -> str:
         ) + para(value_runs, spacing(0, 100, 240))
         return cell(content, col)
 
-    value = lambda text: run(text, bold=True, color=theme.ink, sz=theme.fs_body)  # noqa: E731
-    small = lambda text: run(text, color=theme.meta, sz=theme.fs_small)  # noqa: E731
+    def value(text: str) -> str:
+        return run(text, bold=True, color=theme.ink, sz=theme.fs_body)
+
+    def small(text: str) -> str:
+        return run(text, color=theme.meta, sz=theme.fs_small)
 
     cells = (
         band_cell(
@@ -610,10 +613,12 @@ def document_xml(body_xml: str) -> str:
 
 
 def footer_xml(theme: Theme, doc_label: str) -> str:
-    field = lambda instr: (  # noqa: E731
-        f'<w:fldSimple w:instr=" {instr} "><w:r><w:rPr><w:color w:val="{theme.faint}"/>'
-        '<w:sz w:val="13"/><w:szCs w:val="13"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>'
-    )
+    def field(instr: str) -> str:
+        return (
+            f'<w:fldSimple w:instr=" {instr} "><w:r><w:rPr><w:color w:val="{theme.faint}"/>'
+            '<w:sz w:val="13"/><w:szCs w:val="13"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>'
+        )
+
     left = run(
         "{{ first_name }} {{ last_name }}{% if title %} — {{ title }}{% endif %}",
         color=theme.faint,

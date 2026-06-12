@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from uuid import UUID
 
-from sqlalchemy import Text, and_, case, cast, or_, select
+from sqlalchemy import Case, ColumnElement, Text, and_, case, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.skill import SkillKind, SkillReference
@@ -28,7 +28,7 @@ def _is_hidden_esco_language(ref: SkillReference) -> bool:
     )
 
 
-def _match_clauses(query: str):
+def _match_clauses(query: str) -> tuple[ColumnElement[bool], Case[int]]:
     """Build the shared ILIKE match filter and priority ordering for a query.
     Returns (match_filter, priority)."""
     aliases_text = cast(SkillReference.aliases, Text)
