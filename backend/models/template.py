@@ -27,3 +27,5 @@ class Template(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     word_file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     detected_placeholders: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     is_valid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    unknown_placeholders: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    validation_error: Mapped[str | None] = mapped_column(Text, nullable=True)

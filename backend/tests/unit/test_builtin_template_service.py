@@ -1,4 +1,5 @@
 import io
+from pathlib import Path
 
 from docx import Document
 
@@ -49,9 +50,7 @@ def test_builtin_templates_render_mock_previews_without_unresolved_tags() -> Non
         assert "9 ans" in band_text
 
 
-def test_render_mock_preview_from_path_renders_any_docx(tmp_path) -> None:
-    from docx import Document
-
+def test_render_mock_preview_from_path_renders_any_docx(tmp_path: Path) -> None:
     from services.documents.builtin_template_service import render_mock_preview_from_path
 
     doc = Document()
