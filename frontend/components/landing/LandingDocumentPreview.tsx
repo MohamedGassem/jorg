@@ -67,6 +67,11 @@ export function LandingDocumentPreview() {
           Automatisation d&apos;un contrôle qualité par computer vision, gain
           d&apos;environ 1 ETP.
         </div>
+        <div className="mt-1.5 border-l-[3px] border-primary bg-accent-soft-2 py-1.5 pl-2.5 pr-2 text-[10.5px] leading-snug text-ink-2">
+          Gen AI / RAG : pilotage de 3 POCs sur données documentaires, avec
+          pipelines d&apos;ingestion, chunking, embeddings, recherche sémantique
+          et vector store.
+        </div>
       </div>
 
       {/* Pied de page ancré */}
