@@ -46,7 +46,7 @@ from services.auth.alpha_service import create_alpha_codes  # noqa: E402
 from services.opportunity_service import create_opportunity  # noqa: E402
 from services.recruiter_service import _slugify, _unique_join_code  # noqa: E402
 
-ORG_NAME = "Jorg · Découverte"
+ORG_NAME = "ACME Corporation"
 
 
 # Each demo candidate: emails on the @jorg.local domain so they're never real.
