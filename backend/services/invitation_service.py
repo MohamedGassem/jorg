@@ -191,6 +191,7 @@ async def list_candidate_invitations(
                 "status": inv.status,
                 "expires_at": inv.expires_at,
                 "created_at": inv.created_at,
+                "updated_at": inv.updated_at,
             }
         )
     return result
