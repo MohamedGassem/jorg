@@ -4,18 +4,17 @@ import { cn } from "@/lib/utils";
 const BASE =
   "inline-flex h-[22px] items-center gap-1 rounded-[5px] border px-2 font-mono text-[11px] font-medium transition-colors";
 
-export function SkillChip({
-  label,
-  active,
-  onClick,
-  onRemove,
-}: {
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-  onRemove?: () => void;
-}) {
+// `active` is only meaningful for the clickable filter variant, so the type
+// only accepts it alongside `onClick`.
+type SkillChipProps =
+  | { label: string; onClick: () => void; active?: boolean; onRemove?: never }
+  | { label: string; onRemove: () => void; onClick?: never; active?: never }
+  | { label: string; onClick?: never; onRemove?: never; active?: never };
+
+export function SkillChip(props: SkillChipProps) {
+  const { label, onClick, onRemove } = props;
   if (onClick) {
+    const active = props.active;
     return (
       <button
         type="button"
