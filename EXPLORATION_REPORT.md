@@ -265,8 +265,164 @@ onboarding/     candidate: profile (CV import) -> skills (1re experience)
 
 ## 4. IMPLEMENTE (Phase 2)
 
-_Rempli en Phase 3._
+| Commit                        | Description                                                                                                                                   | Mapping        | Verification                                                                 |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------------- |
+| `6d32641` fix(access)         | Revocation d'acces candidat reparee : GET /access/me puis DELETE /access/me/{grant_id} au lieu de la route fantome POST /access-grants/revoke | EXPLORATION#1  | tsc + eslint OK (pas de tests frontend dans le repo)                         |
+| `b774152` feat(invitations)   | Email envoye au candidat invite (lien acces si compte existant, inscription sinon) ; echec d'envoi loggue sans bloquer                        | EXPLORATION#2  | 2 tests d'integration ajoutes (`test_invitation_api.py`), passes             |
+| `7fb48ad` feat(opportunities) | Generation groupee acceptant les modeles Jorg builtin (`system_template_key`) ; la page mission les propose desormais                         | EXPLORATION#4  | 2 tests d'integration ajoutes (`test_opportunities_api.py`), passes ; tsc OK |
+| `4b73281` fix(recruteur)      | Filtre contrat freelance/cdi incluant les profils `both`                                                                                      | EXPLORATION#9  | 1 test d'integration ajoute (`test_recruiter_api.py`), passe                 |
+| `7a64d4b` fix(recruteur)      | Periodes d'experience au format mm/yyyy dans les vues recruteur (`frMonthYear`)                                                               | EXPLORATION#10 | tsc + eslint OK                                                              |
 
-## 5. ISSUES LINEAR A METTRE A JOUR / NOUVELLES ISSUES / POINTS DE DECISION
+Suite backend complete apres modifications : **506 passed, 1 skipped**.
+Limite : la verification visuelle navigateur n'a pas ete faite (environnement non lance pendant la session) ;
+les changements frontend sont couverts par typecheck + lint, les changements backend par les tests d'integration.
 
-_Rempli en Phase 3._
+Non implemente volontairement (regles d'autonomie) : onglet Organisation des parametres recruteur
+(verrou "administrateurs" possiblement intentionnel), verification d'email a l'acceptation
+(touche aux permissions), MOH-18 (ambigu), fiche candidat complete (contrat API multi-ecrans).
+
+## 5. ISSUES LINEAR A METTRE A JOUR
+
+- **MOH-19** (Bug - manques docx) : commentaire a ajouter -
+  "Le moteur (`docx_engine.py`) expose ecole, annees d'experience (avec derivation auto depuis les
+  experiences) et langues ; les 3 templates builtin contiennent les placeholders `edu.school`,
+  `years_of_experience` et la boucle `languages` (verifie par extraction du XML des .docx).
+  Reste a verifier un docx genere sur un profil reel puis fermer."
+- **MOH-18** (Improvement - type de skill en en-tete) : commentaire a ajouter -
+  "Deux surfaces candidates : (a) la colonne `kind_label` du tableau competences de
+  `dossier_technique.docx`, (b) les en-tetes de familles de la grille competences du profil
+  (`skill-section.tsx`). Preciser laquelle est visee avant d'agir."
+- **MOH-9** (Improvement - personnalisation opportunites) : commentaire a ajouter -
+  "L'edition (titre, description, skills requis) est entierement codee mais verrouillee par
+  `OPPORTUNITY_EDIT_ENABLED = !ALPHA` (`frontend/lib/feature-flags.ts`). Lever le flag suffit.
+  Par ailleurs la generation groupee accepte desormais les modeles Jorg (commit 7fb48ad)."
+
+## 6. NOUVELLES ISSUES PRETES A CREER
+
+1. **Rendre le code d'equipe accessible aux recruteurs**
+   - Label : Bug · Priorite : High
+   - Contexte : l'onglet Organisation des parametres recruteur est desactive ("Reserve aux
+     administrateurs") alors qu'aucun concept d'admin n'existe ; le join code et la liste des
+     membres sont implementes mais inaccessibles, donc personne ne peut rejoindre une org existante.
+   - Criteres d'acceptation : un membre d'org peut afficher/copier/regenerer le code et voir les
+     membres ; le parcours "Rejoindre" de l'onboarding est praticable de bout en bout.
+   - Fichiers : `frontend/app/(recruiter)/recruiter/settings/page.tsx` (lever `disabled: true`).
+   - Dependance : decision n.1 (roles d'org) - si on introduit des roles, cette issue devient le
+     lot 1 du chantier E.
+
+2. **Notifications recruteur (acceptation/refus d'invitation)**
+   - Label : Improvement · Priorite : Medium
+   - Contexte : `notification-bell.tsx` est un no-op cote recruteur ; le recruteur ne sait pas
+     qu'un candidat a accepte sans aller deplier la liste des invitations.
+   - Criteres : la cloche recruteur affiche les N derniers evenements (invitation acceptee/refusee,
+     dossier genere par un collegue), avec etat lu/non-lu comme cote candidat.
+   - Fichiers : `frontend/components/notification-bell.tsx`, potentiellement un endpoint
+     `GET /organizations/{org_id}/activity` (a defaut, composer invitations + documents existants).
+
+3. **Renvoyer, annuler et dedupliquer les invitations**
+   - Label : Improvement · Priorite : Medium
+   - Contexte : pas de DELETE ni de renvoi d'invitation ; `create_invitation` ne verifie ni
+     invitation pendante existante ni grant actif (doublons possibles, invitation zombie 30 jours
+     en cas de faute de frappe).
+   - Criteres : 409 explicite si invitation pendante ou acces deja actif pour le meme email/org ;
+     action "Renvoyer l'email" et "Annuler" sur chaque invitation pendante cote recruteur.
+   - Fichiers : `backend/services/invitation_service.py`, `backend/api/routes/invitations.py`,
+     `frontend/app/(recruiter)/recruiter/candidates/page.tsx`.
+
+4. **Unifier le calcul de completude du dossier candidat**
+   - Label : Improvement · Priorite : Low
+   - Contexte : le dashboard (5 criteres) et le hero du profil (6 criteres differents) affichent
+     deux pourcentages differents pour le meme dossier.
+   - Criteres : une seule fonction partagee (ex. `lib/completion.ts`) consommee par les deux ecrans.
+   - Fichiers : `frontend/app/(candidate)/candidate/dashboard/page.tsx:208`,
+     `frontend/app/(candidate)/candidate/profile/page.tsx:73`.
+
+5. **Tracabilite des consultations : tracer ou reformuler**
+   - Label : Bug · Priorite : Medium
+   - Contexte : l'UI promet "chaque consultation est tracee cote candidat" mais aucun evenement de
+     consultation n'existe (seuls invitations/grants/generations sont jouralises). Promesse RGPD/confiance.
+   - Criteres : soit un evenement `profile_viewed` est enregistre quand un recruteur ouvre la fiche
+     (avec anti-spam type 1 evenement/jour/recruteur), soit le wording est corrige partout.
+   - Fichiers : `recruiter/dashboard/page.tsx:412`, `recruiter/candidates/[id]/page.tsx:204`,
+     backend `candidate_service.list_organization_interactions` si on trace.
+   - Dependance : decision n.3.
+
+6. **Verifier l'email a l'acceptation d'une invitation**
+   - Label : Improvement · Priorite : Low
+   - Contexte : `POST /invitations/{token}/accept` accepte tout candidat connecte porteur du token.
+     Acceptable tant que le token ne circule que dans l'app ; a re-evaluer maintenant que l'email
+     d'invitation existe (commit b774152, le lien n'inclut volontairement pas le token).
+   - Criteres : decision documentee (verification stricte vs porteur-du-lien) + test correspondant.
+   - Fichiers : `backend/api/routes/invitations.py:67`.
+
+7. **Vue candidats en cartes (MOH-6, complement)**
+   - Label : Improvement · Priorite : Medium
+   - Contexte : la liste est une table dense ; MOH-6 demande des cartes. Proposition : toggle
+     table/cartes persiste en localStorage, cartes reprenant identite, dispo, TJM, top skills, CTA.
+   - Fichiers : `frontend/app/(recruiter)/recruiter/candidates/page.tsx`.
+
+## 7. GROS CHANTIERS - decoupage propose
+
+### Chantier A - Fiche candidat recruteur complete
+
+1. **A1. Endpoint detail candidat** - Feature, High.
+   `GET /organizations/{org_id}/candidates/{candidate_id}` (schema `AccessibleCandidateDetail` :
+   profil etendu + education + certifications + langues + CandidateSkill), garde par
+   `require_live_access`. Tests d'integration (acces refuse sans grant actif).
+   Fichiers : `api/routes/organizations.py`, `services/recruiter_service.py`, `schemas/recruiter.py`.
+2. **A2. Fiche recruteur enrichie** - Feature, High. Depend de A1.
+   La page `[id]` consomme A1 et affiche resume, formation, certifs, langues, infos pratiques.
+   Fichiers : `frontend/app/(recruiter)/recruiter/candidates/[id]/page.tsx`, `types/api.ts`.
+3. **A3. Apercu candidat aligne** - Improvement, Medium. Depend de A2.
+   Le dialog "ce qu'un recruteur verra" reprend exactement les sections de A2.
+   Fichiers : `frontend/app/(candidate)/candidate/profile/page.tsx`.
+
+### Chantier B - Cycle de vie des invitations
+
+1. **B1. Lien d'invitation porteur de token** - Feature, High.
+   Page publique `/invitation/{token}` (nom de l'org, CTA inscription/connexion), pre-rattachement
+   de l'invitation au compte cree meme si l'email differe. Decision n.2 prealable.
+2. **B2. Renvoi / annulation / dedup** - issue n.3 ci-dessus, integrable ici.
+3. **B3. Notifications recruteur** - issue n.2 ci-dessus, integrable ici.
+
+### Chantier C - Suggestion de formulation de realisation (MOH-8)
+
+1. **C1. Service LLM minimal** - Feature, Medium. Config fournisseur + endpoint suggestion
+   (entree : description brute + contexte experience ; sortie : 2-3 formulations orientees impact).
+2. **C2. UI suggestion** - Feature, Medium. Depend de C1. Bouton dans le formulaire achievement,
+   choix/edition par le candidat, jamais d'ecriture automatique.
+3. **C3. Mention RGPD** - Improvement, Medium. Depend de C1. Politique de confidentialite mise a jour
+   (envoi de donnees profil a un sous-traitant LLM).
+
+### Chantier D - Parsing CV par LLM (MOH-7)
+
+1. **D1. Extraction structuree LLM** - Feature, High. Depend de C1 (meme infra fournisseur).
+   `llm_extraction.py` produit le json `proposed_profile` ; fallback heuristique conserve.
+2. **D2. Scoring et A/B interne** - Improvement, Medium. Depend de D1. Le score qualite existant
+   s'applique aux sorties LLM ; comparaison heuristique vs LLM sur un corpus de CV de test.
+
+### Chantier E - Roles d'organisation
+
+1. **E1. (court terme) Ouvrir l'onglet Organisation** - issue n.1 ci-dessus.
+2. **E2. Role admin/member** - Feature, Low (post-alpha). Migration Alembic (`RecruiterProfile.role`),
+   garde sur regenerate-join-code, UI conditionnee. Depend de la decision n.1.
+
+## 8. POINTS DE DECISION
+
+1. **Roles d'organisation** : ouvrir l'onglet Organisation a tous les membres (10 minutes, aligne
+   sur le backend actuel) ou introduire admin/member (migration + gardes) ?
+   **Recommandation : ouvrir a tous maintenant** (une org alpha = une petite equipe de confiance),
+   roles en post-alpha.
+2. **Politique du lien d'invitation** : verification stricte de l'email a l'acceptation, ou
+   "porteur du lien = invite" (pattern dominant chez les ATS) ?
+   **Recommandation : porteur du lien**, avec expiration 30 jours deja en place et usage unique du token.
+3. **Tracabilite des consultations** : tracer reellement les consultations de fiche (evenement
+   `profile_viewed`, valeur differenciante du produit) ou corriger le wording ?
+   **Recommandation : tracer** - c'est l'argument de confiance central du produit ; en attendant,
+   corriger le wording est un quick win honnete.
+4. **Perimetre des donnees exposees au recruteur** (chantier A) : le docx expose deja phone/email
+   de contact, l'app non. Aligner l'app sur le docx, ou restreindre le docx ?
+   **Recommandation : aligner l'app sur le docx** (le candidat a deja consenti via le grant),
+   en affichant clairement au candidat la liste des champs partages.
+5. **MOH-18 et MOH-5** : les deux issues sont ambigues vues du code (cf section 5) ; une ligne de
+   clarification dans chaque issue debloquerait l'implementation.
