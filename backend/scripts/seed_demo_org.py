@@ -53,8 +53,8 @@ ORG_NAME = "ACME Corporation"
 # Each demo candidate: emails on the @jorg.local domain so they're never real.
 DEMO_CANDIDATES = [
     {
-        "email": "marie.demo@jorg.local",
-        "first_name": "Marie",
+        "email": "alice.demo@jorg.local",
+        "first_name": "Alice",
         "last_name": "Laurent (démo)",
         "title": "Développeuse Full-Stack",
         "summary": (
@@ -177,6 +177,9 @@ DEMO_CANDIDATES = [
 
 OPPORTUNITY_TITLE = "Développeur Full-Stack"
 OPPORTUNITY_SKILLS = ["React", "TypeScript", "Node.js"]
+
+# Existing real account to surface in the demo org (looked up, never created).
+REAL_PROFILE_EMAIL = "mohamed.gassem@gmail.com"
 
 
 async def _find_displayable_skill_refs(db: AsyncSession, names: list[str]) -> dict[str, UUID]:
@@ -353,6 +356,21 @@ async def ensure_shortlisted(db: AsyncSession, opportunity_id: UUID, candidate_i
     await db.commit()
 
 
+async def attach_existing_user(db: AsyncSession, email: str, organization_id: UUID) -> UUID | None:
+    """Grant an already-existing user access to the org (looked up by email).
+
+    Returns the user id, or None if no such user exists (e.g. a fresh DB).
+    """
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user is None:
+        print(f"  note: existing user {email} not found — skipped")
+        return None
+    await ensure_active_grant(db, user.id, organization_id)
+    print(f"  existing user: {email} (id={user.id}) — active grant ensured")
+    return user.id
+
+
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Seed the Jorg demonstration organization.")
     parser.add_argument("--codes", type=int, default=5, help="Number of alpha codes to generate.")
@@ -391,7 +409,12 @@ async def main() -> None:
         opportunity_id = await ensure_opportunity(db, org_id, candidate_ids[0], skill_index)
         print(f"  opportunity: {OPPORTUNITY_TITLE} ensured")
 
-        # Shortlist every demo candidate so the opportunity shows a populated
+        # Surface an existing real account in the demo org, if present.
+        real_id = await attach_existing_user(db, REAL_PROFILE_EMAIL, org_id)
+        if real_id is not None:
+            candidate_ids.append(real_id)
+
+        # Shortlist every candidate so the opportunity shows a populated
         # shortlist with compatibility scores.
         for candidate_id in candidate_ids:
             await ensure_shortlisted(db, opportunity_id, candidate_id)
