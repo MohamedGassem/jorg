@@ -167,7 +167,9 @@ async def test_upload_template_detects_placeholders(
     assert "{{NOM}}" in data["detected_placeholders"]
     assert "{{PRENOM}}" in data["detected_placeholders"]
     assert "{{TITRE}}" in data["detected_placeholders"]
-    assert data["is_valid"] is False
+    # Le rendu mock reussit (balises inconnues rendues vides) : valide avec avertissements.
+    assert data["is_valid"] is True
+    assert set(data["unknown_placeholders"]) == {"{{NOM}}", "{{PRENOM}}", "{{TITRE}}"}
 
 
 async def test_list_templates(client: AsyncClient, recruiter_headers: dict[str, str]) -> None:
@@ -210,6 +212,7 @@ async def test_upload_template_with_standard_placeholders_is_valid(
     )
     assert r.status_code == 201
     assert r.json()["is_valid"] is True
+    assert r.json()["unknown_placeholders"] == []
 
 
 async def test_delete_template(client: AsyncClient, recruiter_headers: dict[str, str]) -> None:

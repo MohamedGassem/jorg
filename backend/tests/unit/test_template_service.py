@@ -1,43 +1,62 @@
 # backend/tests/unit/test_template_service.py
-"""Unit tests for template_service pure functions."""
+"""Unit tests for render-based template validation."""
 
-from services.documents.template_service import _compute_is_valid
+from pathlib import Path
 
+from docx import Document
 
-def test_compute_is_valid_true_when_all_detected_are_known_fields() -> None:
-    assert _compute_is_valid(["{{first_name}}", "{{last_name}}", "{{annual_salary}}"]) is True
-
-
-def test_compute_is_valid_false_when_any_placeholder_is_unknown() -> None:
-    assert _compute_is_valid(["{{first_name}}", "{{CUSTOM_HEADER}}"]) is False
+from services.documents.template_service import TemplateValidation, validate_template
 
 
-def test_compute_is_valid_false_for_old_mustache_placeholders() -> None:
-    assert _compute_is_valid(["{{NOM}}", "{{PRENOM}}"]) is False
+def _docx(tmp_path: Path, paragraphs: list[str]) -> str:
+    doc = Document()
+    for text in paragraphs:
+        doc.add_paragraph(text)
+    path = tmp_path / "t.docx"
+    doc.save(str(path))
+    return str(path)
 
 
-def test_compute_is_valid_false_when_empty_detected() -> None:
-    assert _compute_is_valid([]) is False
+def test_template_with_known_placeholders_is_valid(tmp_path: Path) -> None:
+    path = _docx(tmp_path, ["{{first_name}} {{last_name}}", "{{availability_label}}"])
+    result = validate_template(path, ["{{first_name}}", "{{last_name}}", "{{availability_label}}"])
+    assert result == TemplateValidation(True, [], None)
 
 
-def test_compute_is_valid_covers_all_profile_fields() -> None:
-    all_profile = [
-        "{{first_name}}",
-        "{{last_name}}",
-        "{{title}}",
-        "{{summary}}",
-        "{{phone}}",
-        "{{email_contact}}",
-        "{{linkedin_url}}",
-        "{{location}}",
-        "{{years_of_experience}}",
-        "{{daily_rate}}",
-        "{{annual_salary}}",
-        "{{availability_status}}",
-        "{{work_mode}}",
-        "{{location_preference}}",
-        "{{mission_duration}}",
-        "{{contract_type}}",
-        "{{preferred_domains}}",
-    ]
-    assert _compute_is_valid(all_profile) is True
+def test_template_with_spaces_and_doc_loops_is_valid(tmp_path: Path) -> None:
+    # Conforme a docs/template-syntax.md : espaces toleres, boucles edu/cert/lang.
+    path = _docx(
+        tmp_path,
+        [
+            "{{ first_name }}",
+            "{%p for edu in educations %}",
+            "{{edu.degree}}",
+            "{%p endfor %}",
+        ],
+    )
+    result = validate_template(path, ["{{ first_name }}"])
+    assert result.is_valid is True
+    assert result.unknown_placeholders == []
+
+
+def test_unknown_placeholder_is_warning_not_blocking(tmp_path: Path) -> None:
+    path = _docx(tmp_path, ["{{NOM}} {{first_name}}"])
+    result = validate_template(path, ["{{NOM}}", "{{first_name}}"])
+    assert result.is_valid is True
+    assert result.unknown_placeholders == ["{{NOM}}"]
+    assert result.validation_error is None
+
+
+def test_broken_jinja_is_invalid(tmp_path: Path) -> None:
+    path = _docx(tmp_path, ["{%p for exp in experiences %}", "{{exp.role}}"])  # endfor manquant
+    result = validate_template(path, [])
+    assert result.is_valid is False
+    assert result.validation_error is not None
+
+
+def test_unreadable_file_is_invalid(tmp_path: Path) -> None:
+    path = tmp_path / "not_a_docx.docx"
+    path.write_bytes(b"garbage")
+    result = validate_template(str(path), [])
+    assert result.is_valid is False
+    assert result.validation_error is not None
