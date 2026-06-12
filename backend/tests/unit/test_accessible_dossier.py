@@ -1,11 +1,13 @@
 import uuid
 from types import SimpleNamespace
+from typing import cast
 
+from models.candidate_profile import Experience
 from services.recruiter_service import assemble_accessible_candidates
 
 
-def _row(profile_id=None, **overrides):
-    base = {
+def _row(profile_id: uuid.UUID | None = None, **overrides: object) -> SimpleNamespace:
+    base: dict[str, object] = {
         "user_id": uuid.uuid4(),
         "email": "c@test.com",
         "first_name": "Jean",
@@ -26,7 +28,7 @@ def _row(profile_id=None, **overrides):
 def test_assembles_fields_and_attaches_experiences() -> None:
     pid = uuid.uuid4()
     row = _row(profile_id=pid)
-    exp = object()
+    exp = cast("Experience", object())
     views = assemble_accessible_candidates([row], {pid: [exp]})
     assert len(views) == 1
     assert views[0]["user_id"] == row.user_id
