@@ -1,7 +1,6 @@
 "use client";
 
-import { useAsyncData } from "./useAsyncData";
-import { api } from "@/lib/api";
+import { useRecruiterWorkspace } from "@/components/recruiter-workspace";
 import type { RecruiterProfile } from "@/types/api";
 
 interface RecruiterOrgState {
@@ -11,20 +10,8 @@ interface RecruiterOrgState {
   error: string | null;
 }
 
+/** Vue restreinte du workspace recruteur (compatibilité des pages existantes). */
 export function useRecruiterOrg(): RecruiterOrgState {
-  const {
-    data: profile,
-    loading,
-    error,
-  } = useAsyncData<RecruiterProfile>(
-    () => api.get<RecruiterProfile>("/recruiters/me/profile"),
-    "Impossible de charger le profil",
-  );
-
-  return {
-    orgId: profile?.organization_id ?? null,
-    profile,
-    loading,
-    error,
-  };
+  const { orgId, profile, loading, error } = useRecruiterWorkspace();
+  return { orgId, profile, loading, error };
 }

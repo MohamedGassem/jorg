@@ -523,3 +523,19 @@ en integration Postgres) : `candidate_service.list_organization_interactions`,
 `recruiter_service.list_accessible_candidates`, `invitation_service.accept_invitation`,
 `opportunity_service.get_opportunity_detail`, `rgpd_service`. Les candidats 2 et 4 et le C3
 deja decide reduisent directement cette liste.
+
+### Vague 3 architecture (plan `2026-06-12-vague3-architecture.md`, livree)
+
+Base : dev apres merge de la PR #47, branche `exploration/vague3-architecture`.
+
+| Commit                        | Description                                                                                                                                                                                                                                                | Mapping | Verification                                               |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------- |
+| `a87aa97` refactor(recruteur) | Assembleur pur `assemble_accessible_candidates` + batch-loader nomme ; terme Accessible dossier et Recruiter workspace dans CONTEXT.md                                                                                                                     | ARCH#4  | 2 tests unitaires ajoutes + 36 integration recruteur verts |
+| `c5fabce` refactor(frontend)  | `RecruiterWorkspaceProvider` au seam du layout (profil, email, org, templates, modeles Jorg charges une fois) ; `useRecruiterOrg` devient une vue restreinte ; app bar, dashboard, documents, mission detail et settings purges de leurs fetchs redondants | ARCH#1  | tsc + eslint                                               |
+| `15b19e0` refactor(frontend)  | invite-candidate-dialog sur useAsyncOp ; spec C5 (useMutation) consideree couverte par useAsyncOp, pas de hook doublon                                                                                                                                     | C5      | tsc + eslint                                               |
+
+Fin de vague 3 : suite backend complete **522 passed, 1 skipped** ; tsc sans erreur ; eslint 0 erreur.
+Les 5 candidats de la revue d architecture (section 9) et les specs C3/C5 sont soldes ;
+reste D2 (transaction par requete), a planifier seule en derniere position comme prevu.
+Decision validee par Mohamed (2026-06-12) : criteres de completude = ceux du dashboard,
+photo et LinkedIn ne comptent pas.

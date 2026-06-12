@@ -1,6 +1,7 @@
 # backend/services/recruiter_service.py
 import re
 import secrets
+from collections.abc import Sequence
 from typing import Any, Self
 from uuid import UUID
 
@@ -306,24 +307,39 @@ async def list_accessible_candidates(
     result = await db.execute(stmt)
     rows = result.all()
 
-    # Load experiences with achievements + skill_tags for all profiles in one query
     profile_ids = [row.profile_id for row in rows if row.profile_id is not None]
-    experiences_by_profile: dict[UUID, list[Experience]] = {}
-    if profile_ids:
-        exp_result = await db.execute(
-            select(Experience)
-            .where(Experience.profile_id.in_(profile_ids))
-            .options(
-                selectinload(Experience.achievements)
-                .selectinload(Achievement.skill_tags)
-                .selectinload(AchievementSkillTag.skill_ref),
-                selectinload(Experience.skill_usages).selectinload(ExperienceSkillUsage.skill_ref),
-            )
-            .order_by(Experience.start_date.desc())
-        )
-        for exp in exp_result.scalars().all():
-            experiences_by_profile.setdefault(exp.profile_id, []).append(exp)
+    experiences_by_profile = await _batch_load_experiences(db, profile_ids)
+    return assemble_accessible_candidates(rows, experiences_by_profile)
 
+
+async def _batch_load_experiences(
+    db: AsyncSession, profile_ids: list[UUID]
+) -> dict[UUID, list[Experience]]:
+    """Experiences (+ achievements + skill usages) de tous les profils en une requete."""
+    experiences_by_profile: dict[UUID, list[Experience]] = {}
+    if not profile_ids:
+        return experiences_by_profile
+    exp_result = await db.execute(
+        select(Experience)
+        .where(Experience.profile_id.in_(profile_ids))
+        .options(
+            selectinload(Experience.achievements)
+            .selectinload(Achievement.skill_tags)
+            .selectinload(AchievementSkillTag.skill_ref),
+            selectinload(Experience.skill_usages).selectinload(ExperienceSkillUsage.skill_ref),
+        )
+        .order_by(Experience.start_date.desc())
+    )
+    for exp in exp_result.scalars().all():
+        experiences_by_profile.setdefault(exp.profile_id, []).append(exp)
+    return experiences_by_profile
+
+
+def assemble_accessible_candidates(
+    rows: Sequence[Any],
+    experiences_by_profile: dict[UUID, list[Experience]],
+) -> list[dict[str, Any]]:
+    """Mise en forme pure du dossier accessible. Aucune I/O."""
     return [
         {
             "user_id": row.user_id,
