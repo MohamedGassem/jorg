@@ -9,6 +9,8 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.config import get_settings
+from core.email import EmailMessage, get_email_backend
 from core.exceptions import GoneError
 from models.invitation import (
     AccessGrant,
@@ -24,6 +26,34 @@ from services import access_policy
 logger = structlog.get_logger()
 
 
+def _send_invitation_email(candidate_email: str, org_name: str | None, has_account: bool) -> None:
+    """Notify the invited candidate by email. Never blocks invitation creation."""
+    frontend_url = get_settings().frontend_url
+    org_label = org_name or "Une organisation"
+    if has_account:
+        link = f"{frontend_url}/candidate/access"
+        action = f"Connectez-vous pour accepter ou refuser : {link}"
+    else:
+        link = f"{frontend_url}/register?role=candidate"
+        action = f"Créez votre espace candidat pour répondre : {link}"
+    message = EmailMessage(
+        to=candidate_email,
+        subject=f"{org_label} souhaite accéder à votre dossier sur Jorg",
+        body=(
+            "Bonjour,\n\n"
+            f"{org_label} vous invite à partager votre dossier de compétences sur Jorg.\n"
+            "Rien n'est partagé sans votre accord explicite, et vous pouvez révoquer "
+            "l'accès à tout moment.\n\n"
+            f"{action}\n\n"
+            "Cette invitation expire dans 30 jours."
+        ),
+    )
+    try:
+        get_email_backend().send(message)
+    except Exception:
+        logger.exception("invitation.email_failed", candidate_email=candidate_email)
+
+
 async def create_invitation(
     db: AsyncSession,
     recruiter_id: UUID,
@@ -31,8 +61,15 @@ async def create_invitation(
     candidate_email: str,
 ) -> Invitation:
     """Create an invitation; links to existing candidate user if found."""
+    from models.recruiter import Organization
+
     result = await db.execute(select(User).where(User.email == candidate_email))
     candidate = result.scalar_one_or_none()
+
+    org_result = await db.execute(
+        select(Organization.name).where(Organization.id == organization_id)
+    )
+    org_name = org_result.scalar_one_or_none()
 
     invitation = Invitation(
         recruiter_id=recruiter_id,
@@ -46,6 +83,7 @@ async def create_invitation(
     db.add(invitation)
     await db.commit()
     await db.refresh(invitation)
+    _send_invitation_email(candidate_email, org_name, has_account=candidate is not None)
     logger.info(
         "invitation.sent",
         recruiter_id=str(invitation.recruiter_id),
