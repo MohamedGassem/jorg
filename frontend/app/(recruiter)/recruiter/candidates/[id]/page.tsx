@@ -192,7 +192,7 @@ export default function CandidateDetailPage() {
         trailing={
           <span className="j-meta flex items-center gap-1.5 text-[11.5px]">
             <Eye className="size-[13px]" strokeWidth={1.6} />
-            Consultation visible par le candidat
+            Accès journalisé côté candidat
           </span>
         }
       />
@@ -353,8 +353,8 @@ export default function CandidateDetailPage() {
             <hr className="my-4 border-line" />
             <p className="j-meta flex gap-2 text-[11.5px] leading-relaxed">
               <ShieldCheck className="size-3.5 shrink-0" strokeWidth={1.6} />
-              Le candidat peut retirer cet accès à tout moment. Votre
-              consultation figure dans son journal.
+              Le candidat peut retirer cet accès à tout moment. Les dossiers que
+              vous générez figurent dans son journal.
             </p>
           </section>
         </aside>

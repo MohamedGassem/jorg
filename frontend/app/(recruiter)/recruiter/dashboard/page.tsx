@@ -397,7 +397,7 @@ export default function RecruiterDashboardPage() {
               </div>
             )}
             <p className="j-meta mt-auto flex items-center gap-2 pt-3 text-[11.5px]">
-              Chaque consultation est tracée côté candidat.
+              Chaque dossier généré est journalisé côté candidat.
             </p>
           </article>
         </div>
