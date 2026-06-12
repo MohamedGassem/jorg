@@ -54,9 +54,8 @@ async def _load_required_skills(
     return by_opp
 
 
-async def _to_read(db: AsyncSession, opp: Opportunity) -> OpportunityRead:
-    """Hydrate a single opportunity into an OpportunityRead with its required skills."""
-    skills = (await _load_required_skills(db, [opp.id]))[opp.id]
+def _build_read(opp: Opportunity, skills: list[OpportunitySkillOut]) -> OpportunityRead:
+    """Map an Opportunity and its required skills into an OpportunityRead."""
     return OpportunityRead(
         id=opp.id,
         organization_id=opp.organization_id,
@@ -67,6 +66,12 @@ async def _to_read(db: AsyncSession, opp: Opportunity) -> OpportunityRead:
         updated_at=opp.updated_at,
         required_skills=skills,
     )
+
+
+async def _to_read(db: AsyncSession, opp: Opportunity) -> OpportunityRead:
+    """Hydrate a single opportunity into an OpportunityRead with its required skills."""
+    skills = (await _load_required_skills(db, [opp.id]))[opp.id]
+    return _build_read(opp, skills)
 
 
 async def _sync_required_skills(
@@ -109,19 +114,7 @@ async def list_opportunities(db: AsyncSession, organization_id: UUID) -> list[Op
     )
     opps = list(result.scalars().all())
     skills_by_opp = await _load_required_skills(db, [opp.id for opp in opps])
-    return [
-        OpportunityRead(
-            id=opp.id,
-            organization_id=opp.organization_id,
-            title=opp.title,
-            description=opp.description,
-            status=opp.status,
-            created_at=opp.created_at,
-            updated_at=opp.updated_at,
-            required_skills=skills_by_opp.get(opp.id, []),
-        )
-        for opp in opps
-    ]
+    return [_build_read(opp, skills_by_opp.get(opp.id, [])) for opp in opps]
 
 
 async def get_opportunity(
