@@ -277,6 +277,18 @@ Suite backend complete apres modifications : **506 passed, 1 skipped**.
 Limite : la verification visuelle navigateur n'a pas ete faite (environnement non lance pendant la session) ;
 les changements frontend sont couverts par typecheck + lint, les changements backend par les tests d'integration.
 
+### Vague 1 architecture (plan `2026-06-12-vague1-quickwins.md`, livree)
+
+| Commit                         | Description                                                                                                                                  | Mapping         | Verification                                                                    |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------- |
+| merge dev                      | Synchronisation avec dev (920d42c) avant la vague                                                                                            | process         | suite backend 506 passed                                                        |
+| `41678a3` refactor(frontend)   | `SkillPicker` construit sur `useSearchableSelect`, remplace les 2 reimplementations inline des pages missions (-45 lignes nettes)            | ARCH#5          | tsc + eslint OK                                                                 |
+| `cb36351` refactor(generation) | Seam `resolve_template` (ResolvedTemplate) + pipeline unique `_render_and_store` ; les 2 points d'entree deviennent des orchestrations fines | ARCH#2          | 3 tests unitaires ajoutes + 30 tests integration generation/opportunites passes |
+| `338d5be` refactor(candidat)   | `assemble_timeline` pure extraite de `list_organization_interactions`                                                                        | C3 (spec wave4) | 6 tests unitaires ajoutes + 48 tests integration candidat/access passes         |
+
+Fin de vague 1 : suite backend complete **515 passed, 1 skipped** ; tsc sans erreur ; eslint 0 erreur
+(1 warning preexistant dans `useAsyncData.ts`, herite de dev, non touche).
+
 Non implemente volontairement (regles d'autonomie) : onglet Organisation des parametres recruteur
 (verrou "administrateurs" possiblement intentionnel), verification d'email a l'acceptation
 (touche aux permissions), MOH-18 (ambigu), fiche candidat complete (contrat API multi-ecrans).
