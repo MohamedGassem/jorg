@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -446,6 +446,12 @@ export default function OpportunityDetailPage() {
                     {c.match_score}% compat.
                   </span>
                 )}
+                <Link
+                  href={`/recruiter/candidates/${c.user_id}`}
+                  className={buttonVariants({ variant: "ghost", size: "sm" })}
+                >
+                  Consulter
+                </Link>
                 <Button
                   variant="ghost"
                   size="sm"
