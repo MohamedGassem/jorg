@@ -155,6 +155,13 @@ export function frDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("fr-FR");
 }
 
+/** Mois/année court pour les périodes d'expérience (mm/yyyy), aligné sur le docx. */
+export function frMonthYear(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("fr-FR", { month: "2-digit", year: "numeric" });
+}
+
 export function relativeDate(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const days = Math.floor(diff / 86400000);

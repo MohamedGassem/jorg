@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Row, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import BusinessRuleError
@@ -79,42 +79,12 @@ _INVITATION_EVENT_TYPE = {
 }
 
 
-async def list_organization_interactions(
-    db: AsyncSession, user_id: UUID, user_email: str
+def assemble_timeline(
+    invitations: list[tuple[Invitation, Organization]],
+    grants: list[tuple[AccessGrant, Organization]],
+    documents: list[tuple[GeneratedDocument, Template | None, RecruiterProfile | None]],
 ) -> list[OrganizationInteractionCard]:
-    inv_result = await db.execute(
-        select(Invitation, Organization)
-        .join(Organization, Organization.id == Invitation.organization_id)
-        .where(
-            or_(
-                Invitation.candidate_id == user_id,
-                Invitation.candidate_email == user_email,
-            )
-        )
-    )
-    invitations = inv_result.all()
-
-    grant_result = await db.execute(
-        select(AccessGrant, Organization)
-        .join(Organization, Organization.id == AccessGrant.organization_id)
-        .where(AccessGrant.candidate_id == user_id)
-    )
-    grants = grant_result.all()
-
-    grant_ids = [grant.id for grant, _ in grants]
-    doc_rows: list[Row[tuple[GeneratedDocument, Template | None, RecruiterProfile | None]]] = []
-    if grant_ids:
-        doc_result = await db.execute(
-            select(GeneratedDocument, Template, RecruiterProfile)
-            .outerjoin(Template, Template.id == GeneratedDocument.template_id)
-            .outerjoin(
-                RecruiterProfile,
-                RecruiterProfile.user_id == GeneratedDocument.generated_by_user_id,
-            )
-            .where(GeneratedDocument.access_grant_id.in_(grant_ids))
-        )
-        doc_rows = list(doc_result.all())  # type: ignore[arg-type]
-
+    """Assemblage pur du journal par organisation. Aucune I/O."""
     orgs: dict[str, dict[str, Any]] = {}
 
     for inv, org in invitations:
@@ -142,7 +112,7 @@ async def list_organization_interactions(
             )
 
     grant_org_map = {str(grant.id): str(org.id) for grant, org in grants}
-    for doc, tmpl, recruiter in doc_rows:
+    for doc, tmpl, recruiter in documents:
         doc_oid = grant_org_map.get(str(doc.access_grant_id))
         if doc_oid and doc_oid in orgs:
             oid = doc_oid
@@ -192,3 +162,44 @@ async def list_organization_interactions(
         reverse=True,
     )
     return result
+
+
+async def list_organization_interactions(
+    db: AsyncSession, user_id: UUID, user_email: str
+) -> list[OrganizationInteractionCard]:
+    inv_result = await db.execute(
+        select(Invitation, Organization)
+        .join(Organization, Organization.id == Invitation.organization_id)
+        .where(
+            or_(
+                Invitation.candidate_id == user_id,
+                Invitation.candidate_email == user_email,
+            )
+        )
+    )
+    invitations = [(row.Invitation, row.Organization) for row in inv_result.all()]
+
+    grant_result = await db.execute(
+        select(AccessGrant, Organization)
+        .join(Organization, Organization.id == AccessGrant.organization_id)
+        .where(AccessGrant.candidate_id == user_id)
+    )
+    grants = [(row.AccessGrant, row.Organization) for row in grant_result.all()]
+
+    grant_ids = [grant.id for grant, _ in grants]
+    documents: list[tuple[GeneratedDocument, Template | None, RecruiterProfile | None]] = []
+    if grant_ids:
+        doc_result = await db.execute(
+            select(GeneratedDocument, Template, RecruiterProfile)
+            .outerjoin(Template, Template.id == GeneratedDocument.template_id)
+            .outerjoin(
+                RecruiterProfile,
+                RecruiterProfile.user_id == GeneratedDocument.generated_by_user_id,
+            )
+            .where(GeneratedDocument.access_grant_id.in_(grant_ids))
+        )
+        documents = [
+            (row.GeneratedDocument, row.Template, row.RecruiterProfile) for row in doc_result.all()
+        ]
+
+    return assemble_timeline(invitations, grants, documents)

@@ -49,6 +49,32 @@ async def list_org_invitations(
     return await invitation_service.list_org_invitations(db, org_id)
 
 
+@router.delete(
+    "/organizations/{org_id}/invitations/{invitation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def cancel_invitation(
+    org_id: UUID, invitation_id: UUID, member: RecruiterOrgMember, db: DB
+) -> None:
+    invitation = await invitation_service.get_org_invitation(db, org_id, invitation_id)
+    if invitation is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="invitation not found")
+    await invitation_service.cancel_invitation(db, invitation)
+
+
+@router.post(
+    "/organizations/{org_id}/invitations/{invitation_id}/resend",
+    response_model=InvitationRead,
+)
+async def resend_invitation(
+    org_id: UUID, invitation_id: UUID, member: RecruiterOrgMember, db: DB
+) -> Invitation:
+    invitation = await invitation_service.get_org_invitation(db, org_id, invitation_id)
+    if invitation is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="invitation not found")
+    return await invitation_service.resend_invitation(db, invitation)
+
+
 # ---- Candidate: view + respond to invitations -------------------------------
 
 

@@ -28,6 +28,7 @@ import {
 import { useAsyncData, useDownload } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import type {
+  AccessGrant,
   GeneratedDocumentCandidateView,
   Invitation,
   OrganizationInteractionCard,
@@ -101,8 +102,16 @@ export default function AccessPage() {
 
   async function handleRevoke(orgId: string) {
     setRevoking(orgId);
+    setActionError(null);
     try {
-      await api.post("/access-grants/revoke", { organization_id: orgId });
+      const grants = await api.get<AccessGrant[]>("/access/me");
+      const grant = grants.find(
+        (g) => g.organization_id === orgId && g.status === "active",
+      );
+      if (!grant) {
+        throw new ApiError(404, "Aucun accès actif pour cette organisation.");
+      }
+      await api.delete(`/access/me/${grant.id}`);
       refetchOrgs();
     } catch (err) {
       setActionError(

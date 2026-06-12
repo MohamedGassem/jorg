@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models.candidate_profile import CandidateProfile, Experience
+from models.candidate_profile import CandidateProfile, ContractType, Experience
 from models.invitation import AccessGrant
 from models.recruiter import Organization, RecruiterProfile
 from models.skill import (
@@ -205,7 +205,14 @@ class CandidateQueryBuilder:
         return self
 
     def filter_contract_type(self, contract_type: str) -> Self:
-        self._stmt = self._stmt.where(CandidateProfile.contract_type == contract_type)
+        # Un candidat "both" (Freelance ou CDI) doit ressortir des recherches
+        # freelance comme des recherches cdi.
+        if contract_type in (ContractType.FREELANCE, ContractType.CDI):
+            self._stmt = self._stmt.where(
+                CandidateProfile.contract_type.in_([contract_type, ContractType.BOTH])
+            )
+        else:
+            self._stmt = self._stmt.where(CandidateProfile.contract_type == contract_type)
         return self
 
     def filter_mission_duration(self, duration: str) -> Self:

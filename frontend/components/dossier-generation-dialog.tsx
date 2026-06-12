@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,17 +14,29 @@ import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useDownload } from "@/lib/hooks";
 import { downloadFilename } from "@/lib/labels";
+import {
+  parseTemplateChoice,
+  templateChoiceBody,
+  templateChoiceValue,
+  type TemplateChoice,
+} from "@/lib/template-choice";
 import { cn } from "@/lib/utils";
 import type { BuiltinTemplate, GeneratedDocument, Template } from "@/types/api";
+
+/** La cible détermine l'endpoint et les modèles proposés. */
+export type GenerationTarget =
+  | {
+      kind: "recruiter";
+      orgId: string;
+      candidateId: string;
+      candidateName: string;
+    }
+  | { kind: "self" };
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  orgId: string;
-  candidateId: string;
-  candidateName: string;
-  templates: Template[];
-  builtinTemplates: BuiltinTemplate[];
+  target: GenerationTarget;
 }
 
 const MODEL_BADGES: Record<string, string> = {
@@ -34,68 +46,96 @@ const MODEL_BADGES: Record<string, string> = {
 };
 
 interface GenerationOutcome {
-  templateChoice: string;
+  choiceValue: string;
   format: "docx" | "pdf";
   doc: GeneratedDocument | null;
   error: string | null;
 }
 
-export function GenerateDossierDialog({
-  open,
-  onOpenChange,
-  orgId,
-  candidateId,
-  candidateName,
-  templates,
-  builtinTemplates,
-}: Props) {
-  const [templateChoice, setTemplateChoice] = useState("");
+export function DossierGenerationDialog({ open, onOpenChange, target }: Props) {
+  const [builtinTemplates, setBuiltinTemplates] = useState<BuiltinTemplate[]>(
+    [],
+  );
+  const [orgTemplates, setOrgTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [choice, setChoice] = useState<TemplateChoice | null>(null);
   const [format, setFormat] = useState<"docx" | "pdf">("docx");
   const [generating, setGenerating] = useState(false);
   const [outcome, setOutcome] = useState<GenerationOutcome | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { download, errors: downloadErrors } = useDownload();
 
-  const validTemplates = templates.filter((t) => t.is_valid);
-  const hasTemplates = builtinTemplates.length > 0 || validTemplates.length > 0;
+  const orgId = target.kind === "recruiter" ? target.orgId : null;
 
+  useEffect(() => {
+    if (!open || loaded) return;
+    setLoading(true);
+    Promise.all([
+      api.get<BuiltinTemplate[]>("/templates/builtin"),
+      orgId
+        ? api
+            .get<Template[]>(`/organizations/${orgId}/templates`)
+            .then((list) => list.filter((t) => t.is_valid))
+        : Promise.resolve([] as Template[]),
+    ])
+      .then(([builtins, orgs]) => {
+        setBuiltinTemplates(builtins);
+        setOrgTemplates(orgs);
+        setLoaded(true);
+      })
+      .catch((err) =>
+        setLoadError(
+          extractErrorMessage(
+            err,
+            "Impossible de charger les modèles de dossier",
+          ),
+        ),
+      )
+      .finally(() => setLoading(false));
+  }, [open, loaded, orgId]);
+
+  const choiceValue = choice ? templateChoiceValue(choice) : "";
   // Le résultat (ou l'erreur) n'est affiché que s'il correspond à la sélection
   // courante : changer de modèle ou de format l'écarte automatiquement.
   const current =
-    outcome &&
-    outcome.templateChoice === templateChoice &&
-    outcome.format === format
+    outcome && outcome.choiceValue === choiceValue && outcome.format === format
       ? outcome
       : null;
   const result = current?.doc ?? null;
-  const error = current?.error ?? null;
-  const selectedTemplateName = templateChoice.startsWith("system:")
-    ? builtinTemplates.find((t) => `system:${t.key}` === templateChoice)?.name
-    : validTemplates.find((t) => `org:${t.id}` === templateChoice)?.name;
+  const error = loadError ?? current?.error ?? null;
+
+  const selectedTemplateName = choice
+    ? choice.source === "jorg"
+      ? builtinTemplates.find((t) => t.key === choice.key)?.name
+      : orgTemplates.find((t) => t.id === choice.id)?.name
+    : undefined;
+
+  const hasTemplates = builtinTemplates.length > 0 || orgTemplates.length > 0;
 
   async function handleGenerate() {
-    if (!templateChoice) return;
+    if (!choice) return;
     setGenerating(true);
     setOutcome(null);
     try {
-      const body = templateChoice.startsWith("system:")
-        ? {
-            candidate_id: candidateId,
-            system_template_key: templateChoice.slice("system:".length),
-            format,
-          }
-        : {
-            candidate_id: candidateId,
-            template_id: templateChoice.slice("org:".length),
-            format,
-          };
-      const doc = await api.post<GeneratedDocument>(
-        `/organizations/${orgId}/generate`,
-        body,
-      );
-      setOutcome({ templateChoice, format, doc, error: null });
+      const doc =
+        target.kind === "recruiter"
+          ? await api.post<GeneratedDocument>(
+              `/organizations/${target.orgId}/generate`,
+              {
+                candidate_id: target.candidateId,
+                ...templateChoiceBody(choice),
+                format,
+              },
+            )
+          : await api.post<GeneratedDocument>("/candidates/me/generate", {
+              ...templateChoiceBody(choice),
+              format,
+            });
+      setOutcome({ choiceValue, format, doc, error: null });
     } catch (err) {
       setOutcome({
-        templateChoice,
+        choiceValue,
         format,
         doc: null,
         error: extractErrorMessage(err, "Erreur de génération"),
@@ -106,10 +146,14 @@ export function GenerateDossierDialog({
   }
 
   function handleClose() {
-    setTemplateChoice("");
+    setChoice(null);
     setFormat("docx");
     setOutcome(null);
     onOpenChange(false);
+  }
+
+  function selectValue(value: string) {
+    setChoice(parseTemplateChoice(value));
   }
 
   return (
@@ -117,11 +161,15 @@ export function GenerateDossierDialog({
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>
-            Générer un dossier candidat - {candidateName}
+            {target.kind === "recruiter"
+              ? `Générer un dossier candidat - ${target.candidateName}`
+              : "Générer mon dossier Jorg"}
           </DialogTitle>
         </DialogHeader>
 
-        {!hasTemplates ? (
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Chargement...</p>
+        ) : !hasTemplates && loaded ? (
           <p className="text-sm text-muted-foreground">
             Aucun modèle de dossier disponible pour le moment.
           </p>
@@ -131,20 +179,26 @@ export function GenerateDossierDialog({
               <div>
                 <p className="text-sm font-medium">Modèle de dossier</p>
                 <p className="text-sm text-muted-foreground">
-                  Sélectionnez le modèle qui correspond au niveau de détail
-                  attendu par le client.
+                  {target.kind === "recruiter"
+                    ? "Sélectionnez le modèle qui correspond au niveau de détail attendu par le client."
+                    : "Choisissez le format de présentation adapté à votre dossier."}
                 </p>
               </div>
 
               {builtinTemplates.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Modèles Jorg
-                  </p>
+                  {target.kind === "recruiter" && (
+                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                      Modèles Jorg
+                    </p>
+                  )}
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                     {builtinTemplates.map((template) => {
-                      const value = `system:${template.key}`;
-                      const selected = templateChoice === value;
+                      const value = templateChoiceValue({
+                        source: "jorg",
+                        key: template.key,
+                      });
+                      const selected = choiceValue === value;
                       return (
                         <div
                           key={template.key}
@@ -157,7 +211,7 @@ export function GenerateDossierDialog({
                         >
                           <button
                             type="button"
-                            onClick={() => setTemplateChoice(value)}
+                            onClick={() => selectValue(value)}
                             className="w-full text-left"
                           >
                             <div className="flex items-center justify-between gap-2">
@@ -197,20 +251,23 @@ export function GenerateDossierDialog({
                 </div>
               )}
 
-              {validTemplates.length > 0 && (
+              {target.kind === "recruiter" && orgTemplates.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                     Modèles organisation
                   </p>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    {validTemplates.map((template) => {
-                      const value = `org:${template.id}`;
-                      const selected = templateChoice === value;
+                    {orgTemplates.map((template) => {
+                      const value = templateChoiceValue({
+                        source: "org",
+                        id: template.id,
+                      });
+                      const selected = choiceValue === value;
                       return (
                         <button
                           key={template.id}
                           type="button"
-                          onClick={() => setTemplateChoice(value)}
+                          onClick={() => selectValue(value)}
                           className={cn(
                             "rounded-lg border bg-surface p-3 text-left transition-colors",
                             selected
@@ -266,7 +323,13 @@ export function GenerateDossierDialog({
                     download(
                       `/documents/${result.id}/download`,
                       downloadFilename(
-                        ["dossier", candidateName, selectedTemplateName],
+                        target.kind === "recruiter"
+                          ? [
+                              "dossier",
+                              target.candidateName,
+                              selectedTemplateName,
+                            ]
+                          : ["mon dossier", selectedTemplateName],
                         result.file_format,
                       ),
                       result.id,
@@ -284,10 +347,7 @@ export function GenerateDossierDialog({
                 <ErrorAlert error={downloadErrors[result.id] ?? null} />
               </div>
             ) : (
-              <Button
-                onClick={handleGenerate}
-                disabled={generating || !templateChoice}
-              >
+              <Button onClick={handleGenerate} disabled={generating || !choice}>
                 {generating
                   ? "Génération..."
                   : `Générer le dossier ${format.toUpperCase()}`}

@@ -25,6 +25,7 @@ class InvitationRead(BaseModel):
     status: InvitationStatus
     expires_at: datetime
     created_at: datetime
+    updated_at: datetime
 
 
 class AccessGrantRead(BaseModel):

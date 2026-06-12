@@ -9,6 +9,7 @@ import { CvImport } from "@/components/cv-import";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
+import { completionPercent, profileCompletionChecks } from "@/lib/completion";
 import {
   AVAILABILITY_LABELS,
   CONTRACT_TYPE_LABELS,
@@ -24,7 +25,7 @@ import { SkillSection } from "@/components/candidate/skill-section";
 import { EducationSection } from "@/components/candidate/education-section";
 import { CertificationSection } from "@/components/candidate/certification-section";
 import { LanguageSection } from "@/components/candidate/language-section";
-import { CandidateGenerateDossierDialog } from "@/components/candidate-generate-dossier-dialog";
+import { DossierGenerationDialog } from "@/components/dossier-generation-dialog";
 import {
   Dialog,
   DialogContent,
@@ -70,27 +71,15 @@ function deriveYearsOfExperience(experiences: Experience[]): number | null {
   return Math.max(years, 0);
 }
 
-function completionChecks(
-  p: CandidateProfile,
-): { label: string; done: boolean }[] {
-  return [
-    { label: "Photo de profil", done: Boolean(p.avatar_url) },
-    { label: "Titre", done: Boolean(p.title) },
-    { label: "Résumé", done: Boolean(p.summary) },
-    { label: "Localisation", done: Boolean(p.location) },
-    { label: "Profil LinkedIn", done: Boolean(p.linkedin_url) },
-    {
-      label: "Disponibilité",
-      done: p.availability_status !== "not_available",
-    },
-  ];
-}
-
 function ProfileHero({
   profile,
+  hasExperience,
+  hasSkill,
   onEdit,
 }: {
   profile: CandidateProfile;
+  hasExperience: boolean;
+  hasSkill: boolean;
   onEdit: () => void;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -119,10 +108,8 @@ function ProfileHero({
     }
   }
 
-  const checks = completionChecks(profile);
-  const completion = Math.round(
-    (checks.filter((c) => c.done).length / checks.length) * 100,
-  );
+  const checks = profileCompletionChecks(profile, { hasExperience, hasSkill });
+  const completion = completionPercent(checks);
   const missing = checks.filter((c) => !c.done);
   const fullName =
     [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "-";
@@ -314,9 +301,10 @@ function ProfileHero({
           ) : null}
         </DialogContent>
       </Dialog>
-      <CandidateGenerateDossierDialog
+      <DossierGenerationDialog
         open={generateOpen}
         onOpenChange={setGenerateOpen}
+        target={{ kind: "self" }}
       />
     </>
   );
@@ -706,12 +694,22 @@ function ProfileTabs() {
 export default function ProfilePage() {
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [hasExperience, setHasExperience] = useState(false);
+  const [hasSkill, setHasSkill] = useState(false);
 
   useEffect(() => {
     api
       .get<CandidateProfile>("/candidates/me/profile")
       .then(setProfile)
       .catch(console.error);
+    api
+      .get<Experience[]>("/candidates/me/experiences")
+      .then((experiences) => setHasExperience(experiences.length > 0))
+      .catch(() => {});
+    api
+      .get<Skill[]>("/candidates/me/skills")
+      .then((skills) => setHasSkill(skills.length > 0))
+      .catch(() => {});
   }, []);
 
   async function handleContactDetected(contact: {
@@ -747,7 +745,12 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto w-full max-w-[920px] space-y-[18px]">
-      <ProfileHero profile={profile} onEdit={() => setEditOpen(true)} />
+      <ProfileHero
+        profile={profile}
+        hasExperience={hasExperience}
+        hasSkill={hasSkill}
+        onEdit={() => setEditOpen(true)}
+      />
       <CvImport onContactDetected={handleContactDetected} />
       <Suspense
         fallback={<div className="h-10 animate-pulse rounded-lg bg-muted" />}

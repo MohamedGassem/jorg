@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Literal
 from uuid import UUID
 
@@ -116,42 +117,60 @@ async def _load_languages(db: AsyncSession, profile_id: UUID) -> list[Language]:
     return list(result.scalars().all())
 
 
-async def generate_for_candidate(
+@dataclass(frozen=True)
+class ResolvedTemplate:
+    """Sortie du seam "source de template" : modèle Jorg ou template organisation."""
+
+    path: str
+    name: str
+    template_id: UUID | None  # None pour un modèle Jorg builtin
+    filename_token: str
+
+
+async def resolve_template(
     db: AsyncSession,
-    organization_id: UUID,
+    *,
+    organization_id: UUID | None,
     template_id: UUID | None,
     system_template_key: str | None,
-    candidate_id: UUID,
-    generated_by_user_id: UUID,
-    fmt: Literal["docx", "pdf"],
-) -> GeneratedDocument:
-    """Full pipeline: verify grant → load data → generate → save → record."""
-    # 1. Verify active access grant
-    grant = await access_policy.require_live_access(db, organization_id, candidate_id)
-
-    # 2. Load template
-    resolved_template_id: UUID | None = None
+) -> ResolvedTemplate:
     if system_template_key:
         builtin = builtin_template_service.get_builtin_template(system_template_key)
         if builtin is None:
             raise NotFoundError("Template not found")
-        template_path = builtin.word_file_path
-        template_name = builtin.name
-        filename_template_token = builtin.key
-    elif template_id:
+        return ResolvedTemplate(
+            path=builtin.word_file_path,
+            name=builtin.name,
+            template_id=None,
+            filename_token=builtin.key,
+        )
+    if template_id:
+        if organization_id is None:
+            raise BusinessRuleError("Template is required")
         tmpl = await template_service.get_template(db, template_id, organization_id)
         if tmpl is None:
             raise NotFoundError("Template not found")
         if not tmpl.is_valid:
             raise BusinessRuleError("Template is not fully mapped")
-        template_path = tmpl.word_file_path
-        template_name = tmpl.name
-        resolved_template_id = template_id
-        filename_template_token = str(template_id)
-    else:
-        raise BusinessRuleError("Template is required")
+        return ResolvedTemplate(
+            path=tmpl.word_file_path,
+            name=tmpl.name,
+            template_id=template_id,
+            filename_token=str(template_id),
+        )
+    raise BusinessRuleError("Template is required")
 
-    # 3. Load candidate profile
+
+async def _render_and_store(
+    db: AsyncSession,
+    *,
+    candidate_id: UUID,
+    resolved: ResolvedTemplate,
+    fmt: Literal["docx", "pdf"],
+    access_grant_id: UUID | None,
+    generated_by_user_id: UUID | None,
+) -> GeneratedDocument:
+    """Pipeline commun : chargements -> rendu -> (PDF) -> stockage -> enregistrement."""
     profile = await _load_profile(db, candidate_id)
     experiences = await _load_experiences(db, profile.id)
     skills = await _load_skills(db, profile.id)
@@ -159,10 +178,9 @@ async def generate_for_candidate(
     certifications = await _load_certifications(db, profile.id)
     languages = await _load_languages(db, profile.id)
 
-    # 4. Generate document bytes
     try:
         docx_bytes = generate_document(
-            template_path,
+            resolved.path,
             profile,  # type: ignore[arg-type]
             experiences,  # type: ignore[arg-type]
             skills,  # type: ignore[arg-type]
@@ -173,14 +191,14 @@ async def generate_for_candidate(
     except ValueError as exc:
         raise BusinessRuleError(str(exc)) from exc
 
-    # 5. Save to storage (convert to PDF in memory if requested)
     storage = get_storage()
-    base_filename = f"doc_{candidate_id}_{filename_template_token}"
+    base_filename = f"doc_{candidate_id}_{resolved.filename_token}"
+    actual_format: str = "docx"
     if fmt == "pdf":
         try:
             pdf_bytes = await _convert_to_pdf(docx_bytes)
             storage_key = await storage.save(pdf_bytes, f"{base_filename}.pdf")
-            actual_format: str = "pdf"
+            actual_format = "pdf"
         except BusinessRuleError as exc:
             # Gotenberg unavailable — fall back to docx and record actual format
             logger.warning(
@@ -190,26 +208,51 @@ async def generate_for_candidate(
                 reason=exc.detail,
             )
             storage_key = await storage.save(docx_bytes, f"{base_filename}.docx")
-            actual_format = "docx"
     else:
         storage_key = await storage.save(docx_bytes, f"{base_filename}.docx")
-        actual_format = "docx"
 
-    # 6. Record generated document
     doc = GeneratedDocument(
-        access_grant_id=grant.id,
-        template_id=resolved_template_id,
+        access_grant_id=access_grant_id,
+        template_id=resolved.template_id,
         generated_by_user_id=generated_by_user_id,
         file_path=storage_key,
         file_format=actual_format,
-        template_name=template_name,
+        template_name=resolved.name,
     )
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
+    return doc
+
+
+async def generate_for_candidate(
+    db: AsyncSession,
+    organization_id: UUID,
+    template_id: UUID | None,
+    system_template_key: str | None,
+    candidate_id: UUID,
+    generated_by_user_id: UUID,
+    fmt: Literal["docx", "pdf"],
+) -> GeneratedDocument:
+    """Full pipeline: verify grant → resolve template → render and store."""
+    grant = await access_policy.require_live_access(db, organization_id, candidate_id)
+    resolved = await resolve_template(
+        db,
+        organization_id=organization_id,
+        template_id=template_id,
+        system_template_key=system_template_key,
+    )
+    doc = await _render_and_store(
+        db,
+        candidate_id=candidate_id,
+        resolved=resolved,
+        fmt=fmt,
+        access_grant_id=grant.id,
+        generated_by_user_id=generated_by_user_id,
+    )
     logger.info(
         "document.generated",
-        template_id=str(resolved_template_id) if resolved_template_id else None,
+        template_id=str(resolved.template_id) if resolved.template_id else None,
         system_template_key=system_template_key,
         candidate_id=str(candidate_id),
         format=fmt,
@@ -225,61 +268,17 @@ async def generate_for_self(
     fmt: Literal["docx", "pdf"],
 ) -> GeneratedDocument:
     """Generate a document directly for the candidate, without recruiter access grant."""
-    builtin = builtin_template_service.get_builtin_template(system_template_key)
-    if builtin is None:
-        raise NotFoundError("Template not found")
-
-    profile = await _load_profile(db, candidate_id)
-    experiences = await _load_experiences(db, profile.id)
-    skills = await _load_skills(db, profile.id)
-    education = await _load_education(db, profile.id)
-    certifications = await _load_certifications(db, profile.id)
-    languages = await _load_languages(db, profile.id)
-
-    try:
-        docx_bytes = generate_document(
-            builtin.word_file_path,
-            profile,  # type: ignore[arg-type]
-            experiences,  # type: ignore[arg-type]
-            skills,  # type: ignore[arg-type]
-            education,  # type: ignore[arg-type]
-            certifications,  # type: ignore[arg-type]
-            languages,  # type: ignore[arg-type]
-        )
-    except ValueError as exc:
-        raise BusinessRuleError(str(exc)) from exc
-
-    storage = get_storage()
-    base_filename = f"doc_{candidate_id}_{builtin.key}"
-    if fmt == "pdf":
-        try:
-            pdf_bytes = await _convert_to_pdf(docx_bytes)
-            storage_key = await storage.save(pdf_bytes, f"{base_filename}.pdf")
-            actual_format: str = "pdf"
-        except BusinessRuleError as exc:
-            logger.warning(
-                "pdf_conversion_unavailable",
-                candidate_id=str(candidate_id),
-                fallback="docx",
-                reason=exc.detail,
-            )
-            storage_key = await storage.save(docx_bytes, f"{base_filename}.docx")
-            actual_format = "docx"
-    else:
-        storage_key = await storage.save(docx_bytes, f"{base_filename}.docx")
-        actual_format = "docx"
-
-    doc = GeneratedDocument(
-        access_grant_id=None,
-        template_id=None,
-        generated_by_user_id=candidate_id,
-        file_path=storage_key,
-        file_format=actual_format,
-        template_name=builtin.name,
+    resolved = await resolve_template(
+        db, organization_id=None, template_id=None, system_template_key=system_template_key
     )
-    db.add(doc)
-    await db.commit()
-    await db.refresh(doc)
+    doc = await _render_and_store(
+        db,
+        candidate_id=candidate_id,
+        resolved=resolved,
+        fmt=fmt,
+        access_grant_id=None,
+        generated_by_user_id=candidate_id,
+    )
     logger.info(
         "document.generated.self",
         system_template_key=system_template_key,

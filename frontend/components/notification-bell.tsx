@@ -7,7 +7,9 @@ import { api } from "@/lib/api";
 import { EVENT_ICONS, EVENT_LABELS, relativeDate } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type {
+  GeneratedDocumentRecruiterView,
   InteractionEvent,
+  Invitation,
   OrganizationInteractionCard,
 } from "@/types/api";
 
@@ -82,7 +84,53 @@ export function NotificationBell({ portal, orgId }: Props) {
         })
         .catch(() => {});
     }
-    // recruiter: no-op for now - future: fetch recent docs/candidates
+    if (portal === "recruiter" && orgId) {
+      Promise.all([
+        api
+          .get<Invitation[]>(`/organizations/${orgId}/invitations`)
+          .catch(() => [] as Invitation[]),
+        api
+          .get<
+            GeneratedDocumentRecruiterView[]
+          >(`/organizations/${orgId}/documents`)
+          .catch(() => [] as GeneratedDocumentRecruiterView[]),
+      ]).then(([invitations, documents]) => {
+        const invItems = invitations
+          .filter(
+            (inv) => inv.status === "accepted" || inv.status === "rejected",
+          )
+          .map((inv) => ({
+            key: `invitation_${inv.status}:${inv.id}`,
+            icon: inv.status === "accepted" ? "✅" : "❌",
+            label: `${inv.candidate_email} a ${inv.status === "accepted" ? "accepté" : "refusé"} l'invitation`,
+            sortDate: inv.updated_at,
+            href: "/recruiter/candidates",
+          }));
+        const docItems = documents.map((doc) => ({
+          key: `document_generated:${doc.id}`,
+          icon: "📄",
+          label: `Dossier généré — ${
+            [doc.candidate_first_name, doc.candidate_last_name]
+              .filter(Boolean)
+              .join(" ") || "candidat"
+          }`,
+          sortDate: doc.generated_at,
+          href: "/recruiter/documents",
+        }));
+        setItems(
+          [...invItems, ...docItems]
+            .sort(
+              (a, b) =>
+                new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime(),
+            )
+            .slice(0, 5)
+            .map(({ sortDate: _sortDate, ...item }) => ({
+              ...item,
+              date: relativeDate(_sortDate),
+            })),
+        );
+      });
+    }
   }, [portal, orgId]);
 
   // Close on outside click

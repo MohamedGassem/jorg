@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import { InviteCandidateDialog } from "@/components/invite-candidate-dialog";
-import { GenerateDossierDialog } from "@/components/generate-dossier-dialog";
+import { DossierGenerationDialog } from "@/components/dossier-generation-dialog";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { SkillChip } from "@/components/ui/SkillChip";
 import { api } from "@/lib/api";
@@ -26,16 +26,15 @@ import {
   DOMAIN_LABELS,
   INVITATION_PILLS,
   WORK_MODE_LABELS,
+  frMonthYear,
   initialsFromParts,
   labelFor,
 } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type {
   AccessibleCandidateRead,
-  BuiltinTemplate,
   Invitation,
   OpportunityRead,
-  Template,
 } from "@/types/api";
 import { VALID_DOMAINS } from "@/types/api";
 
@@ -146,9 +145,9 @@ function CandidateExperiencePanel({
                   {exp.client_name} - {exp.role}
                 </span>
                 <span className="font-mono text-[10px] text-ink-3">
-                  {exp.start_date}
+                  {frMonthYear(exp.start_date)}
                   {exp.end_date
-                    ? ` → ${exp.end_date}`
+                    ? ` → ${frMonthYear(exp.end_date)}`
                     : exp.is_current
                       ? " → présent"
                       : ""}
@@ -239,15 +238,13 @@ export default function CandidatesPage() {
   );
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [showInvitations, setShowInvitations] = useState(false);
+  const [invBusy, setInvBusy] = useState<string | null>(null);
+  const [invFeedback, setInvFeedback] = useState<Record<string, string>>({});
   const [inviteOpen, setInviteOpen] = useState(false);
   const [generateFor, setGenerateFor] = useState<{
     candidateId: string;
     candidateName: string;
   } | null>(null);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [builtinTemplates, setBuiltinTemplates] = useState<BuiltinTemplate[]>(
-    [],
-  );
 
   function toggleCandidateExpand(userId: string) {
     setExpandedCandidates((prev) => {
@@ -294,14 +291,6 @@ export default function CandidatesPage() {
         )
         .catch(() => {}),
       api
-        .get<Template[]>(`/organizations/${orgId}/templates`)
-        .then(setTemplates)
-        .catch(() => {}),
-      api
-        .get<BuiltinTemplate[]>("/templates/builtin")
-        .then(setBuiltinTemplates)
-        .catch(() => {}),
-      api
         .get<Invitation[]>(`/organizations/${orgId}/invitations`)
         .then(setInvitations)
         .catch(() => {}),
@@ -328,6 +317,38 @@ export default function CandidatesPage() {
   function resetFilters() {
     setFilters(EMPTY_FILTERS);
     if (orgId) fetchCandidates(orgId, EMPTY_FILTERS);
+  }
+
+  async function handleResendInvitation(inv: Invitation) {
+    if (!orgId) return;
+    setInvBusy(inv.id);
+    try {
+      await api.post(`/organizations/${orgId}/invitations/${inv.id}/resend`);
+      setInvFeedback((prev) => ({ ...prev, [inv.id]: "Email renvoyé" }));
+    } catch (err) {
+      setInvFeedback((prev) => ({
+        ...prev,
+        [inv.id]: extractErrorMessage(err, "Erreur"),
+      }));
+    } finally {
+      setInvBusy(null);
+    }
+  }
+
+  async function handleCancelInvitation(inv: Invitation) {
+    if (!orgId) return;
+    setInvBusy(inv.id);
+    try {
+      await api.delete(`/organizations/${orgId}/invitations/${inv.id}`);
+      setInvitations((prev) => prev.filter((i) => i.id !== inv.id));
+    } catch (err) {
+      setInvFeedback((prev) => ({
+        ...prev,
+        [inv.id]: extractErrorMessage(err, "Erreur"),
+      }));
+    } finally {
+      setInvBusy(null);
+    }
   }
 
   async function handleAddToOpportunity(candidateId: string, oppId: string) {
@@ -397,16 +418,17 @@ export default function CandidatesPage() {
       />
 
       {generateFor && (
-        <GenerateDossierDialog
+        <DossierGenerationDialog
           open={!!generateFor}
           onOpenChange={(open) => {
             if (!open) setGenerateFor(null);
           }}
-          orgId={orgId}
-          candidateId={generateFor.candidateId}
-          candidateName={generateFor.candidateName}
-          templates={templates}
-          builtinTemplates={builtinTemplates}
+          target={{
+            kind: "recruiter",
+            orgId,
+            candidateId: generateFor.candidateId,
+            candidateName: generateFor.candidateName,
+          }}
         />
       )}
 
@@ -574,11 +596,37 @@ export default function CandidatesPage() {
                   <span className="min-w-0 flex-1 truncate text-sm">
                     {inv.candidate_email}
                   </span>
+                  {invFeedback[inv.id] && (
+                    <span className="j-meta text-[12.5px]">
+                      {invFeedback[inv.id]}
+                    </span>
+                  )}
                   <span className="j-meta text-[12.5px]">
                     expire le{" "}
                     {new Date(inv.expires_at).toLocaleDateString("fr-FR")}
                   </span>
                   <StatusPill tone={pill.tone}>{pill.label}</StatusPill>
+                  {inv.status === "pending" && (
+                    <span className="flex shrink-0 items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={invBusy === inv.id}
+                        onClick={() => handleResendInvitation(inv)}
+                      >
+                        Renvoyer
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-ink-2"
+                        disabled={invBusy === inv.id}
+                        onClick={() => handleCancelInvitation(inv)}
+                      >
+                        Annuler
+                      </Button>
+                    </span>
+                  )}
                 </div>
               );
             })}
