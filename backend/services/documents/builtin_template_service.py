@@ -18,6 +18,7 @@ from services.documents.docx_engine import (
     EducationProtocol,
     LanguageProtocol,
     SkillProtocol,
+    build_context,
     generate_document,
 )
 
@@ -170,7 +171,8 @@ class _MockLanguage:
     level: Any
 
 
-def render_mock_preview(template: BuiltinTemplate) -> bytes:
+def _mock_render_inputs() -> tuple[Any, list[Any], list[Any], list[Any], list[Any], list[Any]]:
+    """Build the fictitious candidate used for previews and validation."""
     profile = _MockProfile(preferred_domains=["tech", "finance"])
     python_ref = _MockSkillRef("Python", _MockEnum(SkillKind.technical.value))
     postgres_ref = _MockSkillRef("PostgreSQL", _MockEnum(SkillKind.tool.value))
@@ -266,12 +268,37 @@ def render_mock_preview(template: BuiltinTemplate) -> bytes:
         _MockLanguage("Francais", _MockEnum(LanguageLevel.NATIVE.value)),
         _MockLanguage("Anglais", _MockEnum(LanguageLevel.C1.value)),
     ]
+    return profile, experiences, skills, education, certifications, languages
+
+
+def render_mock_preview_from_path(file_path: str) -> bytes:
+    """Render any docxtpl file against the mock candidate data."""
+    profile, experiences, skills, education, certifications, languages = _mock_render_inputs()
     return generate_document(
-        template.word_file_path,
+        file_path,
         profile,
         experiences,
         cast("list[SkillProtocol]", skills),
         cast("list[EducationProtocol]", education),
         cast("list[CertificationProtocol]", certifications),
         cast("list[LanguageProtocol]", languages),
+    )
+
+
+def render_mock_preview(template: BuiltinTemplate) -> bytes:
+    return render_mock_preview_from_path(template.word_file_path)
+
+
+def mock_context_keys() -> frozenset[str]:
+    """Top-level context keys known to the rendering engine."""
+    profile, experiences, skills, education, certifications, languages = _mock_render_inputs()
+    return frozenset(
+        build_context(
+            profile,
+            experiences,
+            cast("list[SkillProtocol]", skills),
+            cast("list[EducationProtocol]", education),
+            cast("list[CertificationProtocol]", certifications),
+            cast("list[LanguageProtocol]", languages),
+        ).keys()
     )

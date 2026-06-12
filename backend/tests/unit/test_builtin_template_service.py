@@ -47,3 +47,26 @@ def test_builtin_templates_render_mock_previews_without_unresolved_tags() -> Non
         band_text = " | ".join(cell.text for row in band.rows for cell in row.cells)
         assert "850 €" in band_text
         assert "9 ans" in band_text
+
+
+def test_render_mock_preview_from_path_renders_any_docx(tmp_path) -> None:
+    from docx import Document
+
+    from services.documents.builtin_template_service import render_mock_preview_from_path
+
+    doc = Document()
+    doc.add_paragraph("{{first_name}} {{last_name}}")
+    path = tmp_path / "t.docx"
+    doc.save(str(path))
+    content = render_mock_preview_from_path(str(path))
+    assert content[:2] == b"PK"  # zip magic = docx valide
+
+
+def test_mock_context_keys_contains_scalars_and_collections() -> None:
+    from services.documents.builtin_template_service import mock_context_keys
+
+    keys = mock_context_keys()
+    assert "first_name" in keys
+    assert "availability_label" in keys
+    assert "educations" in keys
+    assert "skill_groups" in keys
