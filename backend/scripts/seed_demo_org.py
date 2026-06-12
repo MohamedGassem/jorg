@@ -175,8 +175,8 @@ DEMO_CANDIDATES = [
     },
 ]
 
-OPPORTUNITY_TITLE = "Développeur Full-Stack"
-OPPORTUNITY_SKILLS = ["React", "TypeScript", "Node.js"]
+OPPORTUNITY_TITLE = "Data Scientist"
+OPPORTUNITY_SKILLS = ["Python", "PyTorch", "Scikit-learn", "Pandas"]
 
 # Existing real account to surface in the demo org (looked up, never created).
 REAL_PROFILE_EMAIL = "mohamed.gassem@gmail.com"
@@ -336,7 +336,7 @@ async def ensure_opportunity(
         created_by=created_by,
         data=OpportunityCreate(
             title=OPPORTUNITY_TITLE,
-            description="Mission de développement full-stack pour une équipe produit.",
+            description="Mission de data science : modèles ML en production.",
             skill_ref_ids=skill_ref_ids,
         ),
     )
