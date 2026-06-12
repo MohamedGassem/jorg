@@ -228,6 +228,8 @@ export interface Template {
   word_file_path: string;
   detected_placeholders: string[];
   is_valid: boolean;
+  unknown_placeholders: string[];
+  validation_error: string | null;
   created_at: string;
   updated_at: string;
 }
