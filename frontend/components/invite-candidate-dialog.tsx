@@ -11,7 +11,8 @@ import {
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { useAsyncOp } from "@/lib/hooks/useAsyncOp";
 import type { Invitation } from "@/types/api";
 
 interface Props {
@@ -28,17 +29,14 @@ export function InviteCandidateDialog({
   onInvited,
 }: Props) {
   const [email, setEmail] = useState("");
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const op = useAsyncOp("Erreur lors de l'envoi");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
-    setSending(true);
-    setError(null);
     setSuccess(null);
-    try {
+    await op.run(async () => {
       const inv = await api.post<Invitation>(
         `/organizations/${orgId}/invitations`,
         { candidate_email: email.trim() },
@@ -46,17 +44,13 @@ export function InviteCandidateDialog({
       setSuccess(`Invitation envoyée à ${email.trim()}`);
       setEmail("");
       onInvited?.(inv);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.detail : "Erreur lors de l'envoi");
-    } finally {
-      setSending(false);
-    }
+    });
   }
 
   function handleClose() {
     setEmail("");
-    setError(null);
     setSuccess(null);
+    op.clearError();
     onOpenChange(false);
   }
 
@@ -78,7 +72,7 @@ export function InviteCandidateDialog({
               required
             />
           </div>
-          <ErrorAlert error={error} />
+          <ErrorAlert error={op.error} />
           {success && (
             <p role="status" className="text-sm text-success">
               {success}
@@ -88,8 +82,8 @@ export function InviteCandidateDialog({
             <Button type="button" variant="outline" onClick={handleClose}>
               Fermer
             </Button>
-            <Button type="submit" disabled={sending}>
-              {sending ? "Envoi…" : "Envoyer l'invitation"}
+            <Button type="submit" disabled={op.saving}>
+              {op.saving ? "Envoi…" : "Envoyer l'invitation"}
             </Button>
           </div>
         </form>
