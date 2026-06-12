@@ -9,7 +9,14 @@ import { CvImport } from "@/components/cv-import";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
-import { relativeDate } from "@/lib/labels";
+import {
+  AVAILABILITY_LABELS,
+  CONTRACT_TYPE_LABELS,
+  WORK_MODE_LABELS,
+  frDate,
+  labelFor,
+  relativeDate,
+} from "@/lib/labels";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { TabBar } from "@/components/ui/TabBar";
 import { ExperienceSection } from "@/components/candidate/experience-section";
@@ -25,10 +32,25 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  type AvailabilityStatus,
   type CandidateProfile,
+  type ContractType,
   type Experience,
   type Skill,
+  type WorkMode,
 } from "@/types/api";
+
+const WORK_MODE_ITEMS: Record<string, string> = {
+  "": "Non précisé",
+  ...WORK_MODE_LABELS,
+};
 
 function deriveYearsOfExperience(experiences: Experience[]): number | null {
   const startTimes = experiences
@@ -104,6 +126,21 @@ function ProfileHero({
   const missing = checks.filter((c) => !c.done);
   const fullName =
     [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "-";
+  const availabilityLabel =
+    profile.availability_status === "available_from" &&
+    profile.availability_date
+      ? `Disponible le ${frDate(profile.availability_date)}`
+      : labelFor(AVAILABILITY_LABELS, profile.availability_status);
+  const conditions = [
+    availabilityLabel,
+    labelFor(CONTRACT_TYPE_LABELS, profile.contract_type),
+    profile.daily_rate ? `${profile.daily_rate} €/j` : null,
+    profile.annual_salary
+      ? `${profile.annual_salary.toLocaleString("fr-FR")} €/an`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const initials =
     [profile.first_name?.[0], profile.last_name?.[0]]
       .filter(Boolean)
@@ -174,6 +211,9 @@ function ProfileHero({
               {[profile.title, profile.location].filter(Boolean).join(" · ") ||
                 "Titre et localisation à compléter"}
             </p>
+            {conditions && (
+              <p className="mt-0.5 text-[13.5px] text-ink-3">{conditions}</p>
+            )}
             {profile.updated_at && (
               <p className="j-meta mt-1.5">
                 Mis à jour {relativeDate(profile.updated_at)}
@@ -300,6 +340,28 @@ function EditProfileDrawer({
   const [yearsOfExperience, setYearsOfExperience] = useState(
     profile.years_of_experience?.toString() ?? "",
   );
+  const [availabilityStatus, setAvailabilityStatus] =
+    useState<AvailabilityStatus>(profile.availability_status);
+  const [availabilityDate, setAvailabilityDate] = useState(
+    profile.availability_date ?? "",
+  );
+  const [contractType, setContractType] = useState<ContractType>(
+    profile.contract_type,
+  );
+  const [dailyRate, setDailyRate] = useState(
+    profile.daily_rate?.toString() ?? "",
+  );
+  const [annualSalary, setAnnualSalary] = useState(
+    profile.annual_salary?.toString() ?? "",
+  );
+  const [workMode, setWorkMode] = useState<WorkMode | "">(
+    profile.work_mode ?? "",
+  );
+  const [locationPreference, setLocationPreference] = useState(
+    profile.location_preference ?? "",
+  );
+  const [phone, setPhone] = useState(profile.phone ?? "");
+  const [emailContact, setEmailContact] = useState(profile.email_contact ?? "");
   const [suggestedYears, setSuggestedYears] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -311,6 +373,15 @@ function EditProfileDrawer({
       setLinkedinUrl(profile.linkedin_url ?? "");
       setSummary(profile.summary ?? "");
       setYearsOfExperience(profile.years_of_experience?.toString() ?? "");
+      setAvailabilityStatus(profile.availability_status);
+      setAvailabilityDate(profile.availability_date ?? "");
+      setContractType(profile.contract_type);
+      setDailyRate(profile.daily_rate?.toString() ?? "");
+      setAnnualSalary(profile.annual_salary?.toString() ?? "");
+      setWorkMode(profile.work_mode ?? "");
+      setLocationPreference(profile.location_preference ?? "");
+      setPhone(profile.phone ?? "");
+      setEmailContact(profile.email_contact ?? "");
       setError(null);
       api
         .get<Experience[]>("/candidates/me/experiences")
@@ -326,6 +397,15 @@ function EditProfileDrawer({
     profile.linkedin_url,
     profile.summary,
     profile.years_of_experience,
+    profile.availability_status,
+    profile.availability_date,
+    profile.contract_type,
+    profile.daily_rate,
+    profile.annual_salary,
+    profile.work_mode,
+    profile.location_preference,
+    profile.phone,
+    profile.email_contact,
   ]);
 
   async function handleSave() {
@@ -333,6 +413,8 @@ function EditProfileDrawer({
     setError(null);
     try {
       const parsedYears = parseInt(yearsOfExperience, 10);
+      const parsedRate = parseInt(dailyRate, 10);
+      const parsedSalary = parseInt(annualSalary, 10);
       const updated = await api.put<CandidateProfile>(
         "/candidates/me/profile",
         {
@@ -341,6 +423,18 @@ function EditProfileDrawer({
           linkedin_url: linkedinUrl || null,
           summary: summary || null,
           years_of_experience: Number.isNaN(parsedYears) ? null : parsedYears,
+          availability_status: availabilityStatus,
+          availability_date:
+            availabilityStatus === "available_from" && availabilityDate
+              ? availabilityDate
+              : null,
+          contract_type: contractType,
+          daily_rate: Number.isNaN(parsedRate) ? null : parsedRate,
+          annual_salary: Number.isNaN(parsedSalary) ? null : parsedSalary,
+          work_mode: workMode || null,
+          location_preference: locationPreference || null,
+          phone: phone || null,
+          email_contact: emailContact || null,
         },
       );
       onSave(updated);
@@ -358,7 +452,7 @@ function EditProfileDrawer({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Modifier le profil</DialogTitle>
         </DialogHeader>
@@ -403,6 +497,135 @@ function EditProfileDrawer({
                   expériences)
                 </button>
               )}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="edit-availability">Disponibilité</Label>
+            <Select
+              value={availabilityStatus}
+              items={AVAILABILITY_LABELS}
+              onValueChange={(v) =>
+                setAvailabilityStatus(v as AvailabilityStatus)
+              }
+            >
+              <SelectTrigger id="edit-availability">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="available_now">
+                  {AVAILABILITY_LABELS.available_now}
+                </SelectItem>
+                <SelectItem value="available_from">
+                  {AVAILABILITY_LABELS.available_from}
+                </SelectItem>
+                <SelectItem value="not_available">
+                  {AVAILABILITY_LABELS.not_available}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {availabilityStatus === "available_from" && (
+            <div className="space-y-1">
+              <Label htmlFor="edit-availability-date">
+                Disponible à partir du
+              </Label>
+              <Input
+                id="edit-availability-date"
+                type="date"
+                value={availabilityDate}
+                onChange={(e) => setAvailabilityDate(e.target.value)}
+              />
+            </div>
+          )}
+          <div className="space-y-1">
+            <Label htmlFor="edit-contract">Type de contrat recherché</Label>
+            <Select
+              value={contractType}
+              items={CONTRACT_TYPE_LABELS}
+              onValueChange={(v) => setContractType(v as ContractType)}
+            >
+              <SelectTrigger id="edit-contract">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="freelance">Freelance (TJM)</SelectItem>
+                <SelectItem value="cdi">CDI (salaire annuel)</SelectItem>
+                <SelectItem value="both">Les deux</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {contractType !== "cdi" && (
+            <div className="space-y-1">
+              <Label htmlFor="edit-daily-rate">TJM souhaité (€/jour)</Label>
+              <Input
+                id="edit-daily-rate"
+                type="number"
+                min={0}
+                value={dailyRate}
+                onChange={(e) => setDailyRate(e.target.value)}
+              />
+            </div>
+          )}
+          {contractType !== "freelance" && (
+            <div className="space-y-1">
+              <Label htmlFor="edit-annual-salary">
+                Salaire annuel souhaité (€)
+              </Label>
+              <Input
+                id="edit-annual-salary"
+                type="number"
+                min={0}
+                value={annualSalary}
+                onChange={(e) => setAnnualSalary(e.target.value)}
+              />
+            </div>
+          )}
+          <div className="space-y-1">
+            <Label htmlFor="edit-work-mode">Mode de travail</Label>
+            <Select
+              value={workMode}
+              items={WORK_MODE_ITEMS}
+              onValueChange={(v) => setWorkMode(v as WorkMode | "")}
+            >
+              <SelectTrigger id="edit-work-mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(WORK_MODE_ITEMS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="edit-location-preference">
+              Mobilité / zone géographique
+            </Label>
+            <Input
+              id="edit-location-preference"
+              value={locationPreference}
+              placeholder="ex: Île-de-France, full remote"
+              onChange={(e) => setLocationPreference(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="edit-phone">Téléphone</Label>
+            <Input
+              id="edit-phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="edit-email-contact">Email de contact</Label>
+            <Input
+              id="edit-email-contact"
+              type="email"
+              value={emailContact}
+              onChange={(e) => setEmailContact(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
             <Label htmlFor="edit-linkedin">LinkedIn</Label>

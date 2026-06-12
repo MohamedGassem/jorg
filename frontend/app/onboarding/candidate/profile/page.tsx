@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { CvImport } from "@/components/cv-import";
 import { api, ApiError } from "@/lib/api";
+import { CONTRACT_TYPE_LABELS } from "@/lib/labels";
 import type { ContractType } from "@/types/api";
 
 export default function CandidateOnboardingProfilePage() {
@@ -114,6 +115,7 @@ export default function CandidateOnboardingProfilePage() {
               <Label htmlFor="contract">Type de contrat recherché</Label>
               <Select
                 value={contractType}
+                items={CONTRACT_TYPE_LABELS}
                 onValueChange={(v) => setContractType(v as ContractType)}
               >
                 <SelectTrigger id="contract">
