@@ -1,8 +1,5 @@
 <div align="center">
 
-<!-- TODO(visuel): bannière du projet — décommenter une fois docs/assets/banner.png ajouté -->
-<!-- <img src="docs/assets/banner.png" alt="Jorg" width="640" /> -->
-
 # Jorg
 
 **Candidates own their profile. Recruiters generate the documents.**
@@ -25,8 +22,9 @@ always from up-to-date data, without ever receiving a CV file.
 Candidates control their own data. They grant access per organisation and can
 revoke it at any time.
 
-<!-- TODO(visuel): démo du flux template + profil → document généré -->
-<!-- <img src="docs/assets/demo.gif" alt="Generating a document from a template and a candidate profile" width="720" /> -->
+<div align="center">
+  <img src="docs/assets/demo.gif" alt="Generating a document from a template and a candidate profile" width="720" />
+</div>
 
 ## How it works
 
@@ -37,12 +35,9 @@ revoke it at any time.
 
 ## Screenshots
 
-<!-- TODO(visuel): décommenter une fois les captures ajoutées dans docs/assets/ -->
-<!--
-| Candidate profile | Recruiter dashboard |
-| ----------------- | ------------------- |
-| ![Candidate profile](docs/assets/screenshot-candidate.png) | ![Recruiter dashboard](docs/assets/screenshot-recruiter.png) |
--->
+| Candidate profile                                          | Recruiter dashboard                                          |
+| ---------------------------------------------------------- | ------------------------------------------------------------ |
+| ![Candidate profile](docs/assets/screenshot_candidate.png) | ![Recruiter dashboard](docs/assets/screenshot_recruiter.png) |
 
 ## Stack
 
