@@ -107,6 +107,10 @@ async def register(
             detail="email already registered",
         ) from e
 
+    # Alpha: no confirmation email is sent and the user is logged in immediately,
+    # so mark the email as verified to keep the flag meaningful for any gating.
+    user.email_verified = True
+
     recruiter_profile = None
 
     # For recruiter: consume the alpha code now that the user was created
