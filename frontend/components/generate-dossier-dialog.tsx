@@ -13,6 +13,7 @@ import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useDownload } from "@/lib/hooks";
+import { downloadFilename } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type { BuiltinTemplate, GeneratedDocument, Template } from "@/types/api";
 
@@ -67,6 +68,9 @@ export function GenerateDossierDialog({
       : null;
   const result = current?.doc ?? null;
   const error = current?.error ?? null;
+  const selectedTemplateName = templateChoice.startsWith("system:")
+    ? builtinTemplates.find((t) => `system:${t.key}` === templateChoice)?.name
+    : validTemplates.find((t) => `org:${t.id}` === templateChoice)?.name;
 
   async function handleGenerate() {
     if (!templateChoice) return;
@@ -176,7 +180,10 @@ export function GenerateDossierDialog({
                             onClick={() =>
                               download(
                                 `/templates/builtin/${template.key}/preview`,
-                                `apercu-${template.key}.docx`,
+                                downloadFilename(
+                                  ["apercu", template.name],
+                                  "docx",
+                                ),
                                 `preview-${template.key}`,
                               )
                             }
@@ -258,7 +265,10 @@ export function GenerateDossierDialog({
                   onClick={() =>
                     download(
                       `/documents/${result.id}/download`,
-                      `dossier.${result.file_format}`,
+                      downloadFilename(
+                        ["dossier", candidateName, selectedTemplateName],
+                        result.file_format,
+                      ),
                       result.id,
                     )
                   }

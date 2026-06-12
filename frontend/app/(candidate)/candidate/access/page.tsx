@@ -20,6 +20,7 @@ import {
   EVENT_LABELS,
   INVITATION_PILLS,
   ORG_STATUS_PILLS,
+  downloadFilename,
   frDate,
   initialsFromName,
   relativeDate,
@@ -396,7 +397,13 @@ export default function AccessPage() {
                     onClick={() =>
                       download(
                         `/documents/${doc.id}/download`,
-                        `dossier-${doc.id}.${doc.file_format}`,
+                        downloadFilename(
+                          [
+                            doc.template_name ?? "dossier",
+                            doc.organization_name,
+                          ],
+                          doc.file_format,
+                        ),
                         doc.id,
                       )
                     }

@@ -11,6 +11,7 @@ import { TabBar } from "@/components/ui/TabBar";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useDownload, useRecruiterOrg } from "@/lib/hooks";
+import { downloadFilename } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type {
   BuiltinTemplate,
@@ -291,7 +292,15 @@ export default function DocumentsPage() {
                             onClick={() =>
                               download(
                                 `/documents/${doc.id}/download`,
-                                `dossier.${doc.file_format}`,
+                                downloadFilename(
+                                  [
+                                    doc.opportunity_title ??
+                                      doc.template_name ??
+                                      "dossier",
+                                    candidateName,
+                                  ],
+                                  doc.file_format,
+                                ),
                                 doc.id,
                               )
                             }
@@ -347,7 +356,7 @@ export default function DocumentsPage() {
                     onPreview={() =>
                       download(
                         `/templates/builtin/${template.key}/preview`,
-                        `apercu-${template.key}.docx`,
+                        downloadFilename(["apercu", template.name], "docx"),
                         `builtin-${template.key}`,
                       )
                     }

@@ -13,6 +13,7 @@ import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useDownload } from "@/lib/hooks";
+import { downloadFilename } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type { BuiltinTemplate, GeneratedDocument } from "@/types/api";
 
@@ -155,7 +156,7 @@ export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
                         onClick={() =>
                           download(
                             `/templates/builtin/${template.key}/preview`,
-                            `apercu-${template.key}.docx`,
+                            downloadFilename(["apercu", template.name], "docx"),
                             `candidate-preview-${template.key}`,
                           )
                         }
@@ -197,7 +198,13 @@ export function CandidateGenerateDossierDialog({ open, onOpenChange }: Props) {
                   onClick={() =>
                     download(
                       `/documents/${result.id}/download`,
-                      `mon-dossier.${result.file_format}`,
+                      downloadFilename(
+                        [
+                          "mon dossier",
+                          templates.find((t) => t.key === templateKey)?.name,
+                        ],
+                        result.file_format,
+                      ),
                       result.id,
                     )
                   }

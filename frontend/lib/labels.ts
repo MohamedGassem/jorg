@@ -127,6 +127,29 @@ export function initialsFromParts(
   return letters || extraFallback?.[0]?.toUpperCase() || "?";
 }
 
+/** Slug ASCII pour un segment de nom de fichier (accents retirés, tirets). */
+function fileSlug(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** Nom de fichier de téléchargement aligné sur le nom affiché dans l'UI. */
+export function downloadFilename(
+  parts: (string | null | undefined)[],
+  extension: string,
+): string {
+  const slug = parts
+    .filter((p): p is string => Boolean(p))
+    .map(fileSlug)
+    .filter(Boolean)
+    .join("-");
+  return `${slug || "dossier"}.${extension}`;
+}
+
 /** Short French date (dd/mm/yyyy). */
 export function frDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("fr-FR");
