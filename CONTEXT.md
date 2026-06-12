@@ -23,3 +23,18 @@ words as defined here; do not drift to synonyms.
   `recruiter_profile.organization_id == org_id`. Checked by
   `access_policy.is_member` and enforced on routes by the `RecruiterOrgMember`
   FastAPI dependency (`api/deps.py`).
+
+## Recruiter views
+
+- **Accessible dossier** — the recruiter-facing read model of a candidate under
+  live access: identity and availability fields plus experiences (with
+  achievements and skill usages). Owned by `services/recruiter_service.py`:
+  `CandidateQueryBuilder` (filters), `_batch_load_experiences` (one query for
+  all profiles), `assemble_accessible_candidates` (pure shaping, unit-tested).
+  The future candidate-detail endpoint extends this module, not the pages.
+- **Recruiter workspace** — the per-session recruiter context (profile, email,
+  organization, org templates, builtin templates) loaded once at the
+  `(recruiter)/layout.tsx` seam by `RecruiterWorkspaceProvider`
+  (`frontend/components/recruiter-workspace.tsx`) and consumed via
+  `useRecruiterWorkspace()` (or its narrow view `useRecruiterOrg()`).
+  Pages never re-fetch this context; page-specific data stays in pages.
