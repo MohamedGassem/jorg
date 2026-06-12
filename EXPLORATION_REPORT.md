@@ -1,4 +1,4 @@
-# EXPLORATION_REPORT - Audit UX Jorg (branche exploration/goal-audit-ux)
+﻿# EXPLORATION_REPORT - Audit UX Jorg (branche exploration/goal-audit-ux)
 
 Date : 2026-06-12. Base : dev @ 093b6b9.
 Convention : chaque trouvaille est marquee **[CONSTAT]** (verifie dans le code, reference donnee)
@@ -289,6 +289,21 @@ les changements frontend sont couverts par typecheck + lint, les changements bac
 Fin de vague 1 : suite backend complete **515 passed, 1 skipped** ; tsc sans erreur ; eslint 0 erreur
 (1 warning preexistant dans `useAsyncData.ts`, herite de dev, non touche).
 
+### Vague 2 UX (plan `2026-06-12-vague2-ux.md`, livree)
+
+| Commit                       | Description                                                                                                                                             | Mapping        | Verification                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------- |
+| `369b0ac` feat(invitations)  | Dedup (409 si invitation pendante ou acces actif), annulation (DELETE, pending only) et renvoi d'email (POST .../resend)                                | EXPLORATION#3  | 5 tests d'integration ajoutes         |
+| `12c29eb` feat(recruteur)    | Boutons Renvoyer / Annuler sur les invitations pendantes (page Candidats)                                                                               | EXPLORATION#3  | tsc + eslint                          |
+| `4fb9d0a` feat(recruteur)    | Cloche de notifications recruteur : invitations acceptees/refusees + dossiers generes (InvitationRead expose updated_at, additif)                       | EXPLORATION#2  | tsc + eslint, tests invitations verts |
+| `5a59622` refactor(candidat) | lib/completion.ts : source unique de completude (criteres du dashboard) consommee par dashboard et hero du profil                                       | EXPLORATION#11 | tsc + eslint                          |
+| `8957736` refactor(frontend) | DossierGenerationDialog unifie (cible recruteur/self) + type TemplateChoice ; -176 lignes nettes, les pages ne fetchent plus les modeles pour le dialog | ARCH#3         | tsc + eslint                          |
+| `79bbed2` test(invitations)  | test_accept_is_idempotent adapte a la dedup (2e invitation injectee en base)                                                                            | EXPLORATION#3  | suite complete verte                  |
+
+Fin de vague 2 : suite backend complete **520 passed, 1 skipped** ; tsc sans erreur ; eslint 0 erreur.
+Choix a valider : les criteres canoniques de completude sont ceux du dashboard (identite+titre,
+resume, experience, competence, contact+dispo) ; l'avatar et LinkedIn ne comptent plus.
+
 Non implemente volontairement (regles d'autonomie) : onglet Organisation des parametres recruteur
 (verrou "administrateurs" possiblement intentionnel), verification d'email a l'acceptation
 (touche aux permissions), MOH-18 (ambigu), fiche candidat complete (contrat API multi-ecrans).
@@ -312,7 +327,7 @@ Non implemente volontairement (regles d'autonomie) : onglet Organisation des par
 ## 6. NOUVELLES ISSUES PRETES A CREER
 
 1. **Rendre le code d'equipe accessible aux recruteurs**
-   - Label : Bug · Priorite : High
+   - Label : Bug Â· Priorite : High
    - Contexte : l'onglet Organisation des parametres recruteur est desactive ("Reserve aux
      administrateurs") alors qu'aucun concept d'admin n'existe ; le join code et la liste des
      membres sont implementes mais inaccessibles, donc personne ne peut rejoindre une org existante.
@@ -323,7 +338,7 @@ Non implemente volontairement (regles d'autonomie) : onglet Organisation des par
      lot 1 du chantier E.
 
 2. **Notifications recruteur (acceptation/refus d'invitation)**
-   - Label : Improvement · Priorite : Medium
+   - Label : Improvement Â· Priorite : Medium
    - Contexte : `notification-bell.tsx` est un no-op cote recruteur ; le recruteur ne sait pas
      qu'un candidat a accepte sans aller deplier la liste des invitations.
    - Criteres : la cloche recruteur affiche les N derniers evenements (invitation acceptee/refusee,
@@ -332,7 +347,7 @@ Non implemente volontairement (regles d'autonomie) : onglet Organisation des par
      `GET /organizations/{org_id}/activity` (a defaut, composer invitations + documents existants).
 
 3. **Renvoyer, annuler et dedupliquer les invitations**
-   - Label : Improvement · Priorite : Medium
+   - Label : Improvement Â· Priorite : Medium
    - Contexte : pas de DELETE ni de renvoi d'invitation ; `create_invitation` ne verifie ni
      invitation pendante existante ni grant actif (doublons possibles, invitation zombie 30 jours
      en cas de faute de frappe).
@@ -342,7 +357,7 @@ Non implemente volontairement (regles d'autonomie) : onglet Organisation des par
      `frontend/app/(recruiter)/recruiter/candidates/page.tsx`.
 
 4. **Unifier le calcul de completude du dossier candidat**
-   - Label : Improvement · Priorite : Low
+   - Label : Improvement Â· Priorite : Low
    - Contexte : le dashboard (5 criteres) et le hero du profil (6 criteres differents) affichent
      deux pourcentages differents pour le meme dossier.
    - Criteres : une seule fonction partagee (ex. `lib/completion.ts`) consommee par les deux ecrans.
@@ -350,7 +365,7 @@ Non implemente volontairement (regles d'autonomie) : onglet Organisation des par
      `frontend/app/(candidate)/candidate/profile/page.tsx:73`.
 
 5. **Tracabilite des consultations : tracer ou reformuler**
-   - Label : Bug · Priorite : Medium
+   - Label : Bug Â· Priorite : Medium
    - Contexte : l'UI promet "chaque consultation est tracee cote candidat" mais aucun evenement de
      consultation n'existe (seuls invitations/grants/generations sont jouralises). Promesse RGPD/confiance.
    - Criteres : soit un evenement `profile_viewed` est enregistre quand un recruteur ouvre la fiche
@@ -360,7 +375,7 @@ Non implemente volontairement (regles d'autonomie) : onglet Organisation des par
    - Dependance : decision n.3.
 
 6. **Verifier l'email a l'acceptation d'une invitation**
-   - Label : Improvement · Priorite : Low
+   - Label : Improvement Â· Priorite : Low
    - Contexte : `POST /invitations/{token}/accept` accepte tout candidat connecte porteur du token.
      Acceptable tant que le token ne circule que dans l'app ; a re-evaluer maintenant que l'email
      d'invitation existe (commit b774152, le lien n'inclut volontairement pas le token).
@@ -368,7 +383,7 @@ Non implemente volontairement (regles d'autonomie) : onglet Organisation des par
    - Fichiers : `backend/api/routes/invitations.py:67`.
 
 7. **Vue candidats en cartes (MOH-6, complement)**
-   - Label : Improvement · Priorite : Medium
+   - Label : Improvement Â· Priorite : Medium
    - Contexte : la liste est une table dense ; MOH-6 demande des cartes. Proposition : toggle
      table/cartes persiste en localStorage, cartes reprenant identite, dispo, TJM, top skills, CTA.
    - Fichiers : `frontend/app/(recruiter)/recruiter/candidates/page.tsx`.
