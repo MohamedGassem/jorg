@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -20,6 +21,8 @@ class TemplateRead(BaseModel):
     is_valid: bool
     unknown_placeholders: list[str]
     validation_error: str | None
+    status: str
+    templatize_report: dict[str, Any] | None
     created_at: datetime
     updated_at: datetime
 
