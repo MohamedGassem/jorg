@@ -173,8 +173,9 @@ async def test_cannot_generate_with_invalid_template(
     candidate_headers: dict[str, str],
 ) -> None:
     org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
-    # Unknown placeholders are unsupported and make the template invalid.
-    docx_bytes = _make_docx_bytes(["{{NOM}} {{UNMAPPED}}"])
+    # Broken Jinja syntax (loop without endfor) fails the mock render: invalid.
+    # Unknown placeholders alone are only warnings since render-based validation.
+    docx_bytes = _make_docx_bytes(["{%p for exp in experiences %}", "{{exp.role}}"])
     r = await client.post(
         f"/organizations/{org_id}/templates",
         headers=recruiter_headers,

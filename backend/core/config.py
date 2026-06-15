@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     # Gotenberg PDF service (empty = disabled)
     gotenberg_url: str | None = None
 
+    # LLM (assisted templating - empty = feature disabled)
+    anthropic_api_key: str | None = None
+    llm_model: str = "claude-opus-4-8"
+
     # Admin secret for privileged endpoints (e.g. alpha code generation)
     admin_secret: str | None = None
 

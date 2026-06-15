@@ -228,6 +228,15 @@ export interface Template {
   word_file_path: string;
   detected_placeholders: string[];
   is_valid: boolean;
+  unknown_placeholders: string[];
+  validation_error: string | null;
+  status: "active" | "draft";
+  templatize_report: {
+    mappings: { find: string; placeholder: string }[];
+    warnings: string[];
+    rejected: string[];
+    render_error: string | null;
+  } | null;
   created_at: string;
   updated_at: string;
 }

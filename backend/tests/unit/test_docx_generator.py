@@ -296,3 +296,24 @@ def test_complete_dossier_context_uses_per_experience_skills_and_extra_sections(
     assert "Formation Diplome d'ingenieur INSA Lyon" in text
     assert "Certification AWS Solutions Architect Amazon Web Services" in text
     assert "Langue Anglais Avancé" in text
+
+
+def test_build_context_exposes_known_top_level_keys() -> None:
+    from services.documents.docx_engine import build_context
+
+    context = build_context(profile=_mock_profile(), experiences=[], skills=[])
+    for key in (
+        "first_name",
+        "availability_label",
+        "work_mode_label",
+        "contract_type_label",
+        "mission_duration_label",
+        "experiences",
+        "skills",
+        "educations",
+        "certifications",
+        "languages",
+        "featured_achievements",
+        "skill_groups",
+    ):
+        assert key in context

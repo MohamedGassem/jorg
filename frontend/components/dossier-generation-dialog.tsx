@@ -76,7 +76,9 @@ export function DossierGenerationDialog({ open, onOpenChange, target }: Props) {
       orgId
         ? api
             .get<Template[]>(`/organizations/${orgId}/templates`)
-            .then((list) => list.filter((t) => t.is_valid))
+            .then((list) =>
+              list.filter((t) => t.is_valid && t.status === "active"),
+            )
         : Promise.resolve([] as Template[]),
     ])
       .then(([builtins, orgs]) => {
