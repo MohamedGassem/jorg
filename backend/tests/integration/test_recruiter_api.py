@@ -1,5 +1,6 @@
 # backend/tests/integration/test_recruiter_api.py
 import io
+from typing import Any
 
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
 from httpx import AsyncClient
@@ -455,6 +456,94 @@ async def test_preview_template_renders_mock_docx(
     assert r.status_code == 200
     assert r.content[:2] == b"PK"
     assert "attachment" in r.headers["content-disposition"]
+
+
+async def test_templatize_returns_503_when_llm_disabled(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    docx_bytes = _make_docx_bytes(["Jean Dupont"])
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "T"},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    template_id = up.json()["id"]
+    r = await client.post(
+        f"/organizations/{org_id}/templates/{template_id}/templatize",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 503
+
+
+async def test_capabilities_reports_assisted_templating_flag(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    r = await client.get("/templates/capabilities", headers=recruiter_headers)
+    assert r.status_code == 200
+    assert r.json() == {"assisted_templating": False}
+
+
+async def test_activate_draft_template(
+    client: AsyncClient, recruiter_headers: dict[str, str], monkeypatch: Any
+) -> None:
+    from services.documents.templatize_service import TemplatizeOutcome
+
+    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+        doc = Document()
+        doc.add_paragraph("{{first_name}}")
+        buf = io.BytesIO()
+        doc.save(buf)
+        return TemplatizeOutcome(
+            docx_bytes=buf.getvalue(),
+            report={"mappings": [], "warnings": [], "rejected": [], "render_error": None},
+            render_error=None,
+        )
+
+    monkeypatch.setattr(
+        "api.routes.organizations.templatize_service.run_templatize_pipeline", fake_pipeline
+    )
+    monkeypatch.setattr(
+        "api.routes.organizations.llm_client.get_anthropic_client", lambda: object()
+    )
+
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    docx_bytes = _make_docx_bytes(["Jean Dupont"])
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "T"},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    template_id = up.json()["id"]
+
+    r = await client.post(
+        f"/organizations/{org_id}/templates/{template_id}/templatize",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "draft"
+    assert r.json()["templatize_report"]["render_error"] is None
+
+    r = await client.post(
+        f"/organizations/{org_id}/templates/{template_id}/activate",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "active"
 
 
 async def test_download_template_file_ok(

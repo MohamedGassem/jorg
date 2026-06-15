@@ -1,5 +1,6 @@
 # backend/services/template_service.py
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -99,3 +100,31 @@ async def get_template(
 async def delete_template(db: AsyncSession, template: Template) -> None:
     await db.delete(template)
     await db.commit()
+
+
+async def apply_templatize_outcome(
+    db: AsyncSession,
+    template: Template,
+    new_file_path: str,
+    detected_placeholders: list[str],
+    report: dict[str, Any],
+) -> Template:
+    """Persist the templatized draft: new file, revalidation, draft status."""
+    validation = validate_template(new_file_path, detected_placeholders)
+    template.word_file_path = new_file_path
+    template.detected_placeholders = detected_placeholders
+    template.is_valid = validation.is_valid
+    template.unknown_placeholders = validation.unknown_placeholders
+    template.validation_error = validation.validation_error
+    template.status = "draft"
+    template.templatize_report = report
+    await db.commit()
+    await db.refresh(template)
+    return template
+
+
+async def activate_template(db: AsyncSession, template: Template) -> Template:
+    template.status = "active"
+    await db.commit()
+    await db.refresh(template)
+    return template

@@ -12,8 +12,11 @@ from starlette.requests import Request
 import core.storage as storage
 import services.documents.builtin_template_service as builtin_template_service
 import services.documents.template_service as template_service
+import services.documents.templatize_service as templatize_service
+import services.llm.client as llm_client
 import services.recruiter_service as recruiter_service
 from api.deps import RecruiterOrgMember, get_db, require_role
+from core.config import get_settings
 from core.limiter import limiter
 from models.candidate_profile import AvailabilityStatus, ContractType, MissionDuration, WorkMode
 from models.recruiter import Organization, RecruiterProfile
@@ -30,6 +33,7 @@ from schemas.recruiter import (
 from schemas.template import TemplateRead
 from services import access_policy
 from services.documents.docx_parser import extract_placeholders
+from services.llm.templatize import TemplatizeLLMError
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
 
@@ -257,3 +261,51 @@ async def preview_template(
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="apercu-{safe_stem}.docx"'},
     )
+
+
+@router.post("/{org_id}/templates/{template_id}/templatize", response_model=TemplateRead)
+async def templatize_template(
+    org_id: UUID, template_id: UUID, member: RecruiterOrgMember, db: DB
+) -> Template:
+    await _get_org_or_404(db, org_id)
+    tmpl = await template_service.get_template(db, template_id, org_id)
+    if tmpl is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
+
+    anthropic_client = llm_client.get_anthropic_client()
+    if anthropic_client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="assisted templating is not configured",
+        )
+
+    file_path = Path(tmpl.word_file_path).resolve()
+    if not file_path.is_relative_to(storage.upload_dir()) or not file_path.exists():
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
+
+    try:
+        outcome = await templatize_service.run_templatize_pipeline(
+            anthropic_client, get_settings().llm_model, str(file_path)
+        )
+    except TemplatizeLLMError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="assisted templating failed, use the manual flow",
+        ) from exc
+
+    new_path = storage.save_upload(outcome.docx_bytes, f"templatized-{tmpl.name}.docx")
+    placeholders = extract_placeholders(new_path)
+    return await template_service.apply_templatize_outcome(
+        db, tmpl, new_path, placeholders, outcome.report
+    )
+
+
+@router.post("/{org_id}/templates/{template_id}/activate", response_model=TemplateRead)
+async def activate_template(
+    org_id: UUID, template_id: UUID, member: RecruiterOrgMember, db: DB
+) -> Template:
+    await _get_org_or_404(db, org_id)
+    tmpl = await template_service.get_template(db, template_id, org_id)
+    if tmpl is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
+    return await template_service.activate_template(db, tmpl)
