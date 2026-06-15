@@ -154,6 +154,11 @@ def apply_operations(file_path: str, plan: TemplatizePlan) -> ApplyResult:
     doc = Document(file_path)
     paragraphs = list(doc.paragraphs)
     tables = list(doc.tables)
+    # Freeze rows up front, like paragraphs. Operations insert/delete elements;
+    # resolving targets against this snapshot keeps every index aligned with the
+    # structure the plan was computed against (live re-reads would shift after a
+    # wrap_table_rows_loop and silently mis-target later ops on the same table).
+    table_rows = [list(table.rows) for table in tables]
     rejected: list[str] = []
     residual_flags: list[str] = []
 
@@ -163,11 +168,10 @@ def apply_operations(file_path: str, plan: TemplatizePlan) -> ApplyResult:
     def row_at(table_index: int, row_index: int) -> tuple[Any, Any] | None:
         if not 0 <= table_index < len(tables):
             return None
-        table = tables[table_index]
-        rows = list(table.rows)
+        rows = table_rows[table_index]
         if not 0 <= row_index < len(rows):
             return None
-        return table, rows[row_index]
+        return tables[table_index], rows[row_index]
 
     for operation in plan.operations:
         label = operation.op

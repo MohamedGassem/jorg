@@ -29,15 +29,19 @@ class TemplatizeOutcome:
 
 
 def _try_render(docx_bytes: bytes) -> str | None:
-    """Render the candidate bytes against mock data; return the error message if any."""
+    """Render the candidate bytes against mock data; return the error message if any.
+
+    Any render failure (syntax, unreadable file, or a runtime error) is returned
+    as a message so the pipeline can retry or report it, never raised.
+    """
     with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
         tmp.write(docx_bytes)
         tmp_path = tmp.name
     try:
         render_mock_preview_from_path(tmp_path)
         return None
-    except ValueError as exc:
-        return str(exc)
+    except Exception as exc:
+        return str(exc) or exc.__class__.__name__
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 

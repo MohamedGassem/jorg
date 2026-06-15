@@ -546,6 +546,66 @@ async def test_activate_draft_template(
     assert r.json()["status"] == "active"
 
 
+async def test_templatize_always_runs_from_source(
+    client: AsyncClient, recruiter_headers: dict[str, str], monkeypatch: Any
+) -> None:
+    # Regression: re-templatizing must re-run from the original upload, not from
+    # the previous templatized draft, and must drop the superseded draft file.
+    from pathlib import Path
+
+    from services.documents.templatize_service import TemplatizeOutcome
+
+    seen_paths: list[str] = []
+
+    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+        seen_paths.append(path)
+        doc = Document()
+        doc.add_paragraph("{{first_name}}")
+        buf = io.BytesIO()
+        doc.save(buf)
+        return TemplatizeOutcome(
+            docx_bytes=buf.getvalue(),
+            report={"mappings": [], "warnings": [], "rejected": [], "render_error": None},
+            render_error=None,
+        )
+
+    monkeypatch.setattr(
+        "api.routes.organizations.templatize_service.run_templatize_pipeline", fake_pipeline
+    )
+    monkeypatch.setattr(
+        "api.routes.organizations.llm_client.get_anthropic_client", lambda: object()
+    )
+
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "T"},
+        files={
+            "file": (
+                "t.docx",
+                _make_docx_bytes(["Jean Dupont"]),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    template_id = up.json()["id"]
+
+    await client.post(
+        f"/organizations/{org_id}/templates/{template_id}/templatize",
+        headers=recruiter_headers,
+    )
+    await client.post(
+        f"/organizations/{org_id}/templates/{template_id}/templatize",
+        headers=recruiter_headers,
+    )
+
+    # Both runs received the same (source) path, not the first draft's output.
+    assert seen_paths[0] == seen_paths[1]
+    # The superseded draft from run 1 was deleted; the source path still exists.
+    assert Path(seen_paths[0]).exists()
+
+
 async def test_download_template_file_ok(
     client: AsyncClient, recruiter_headers: dict[str, str]
 ) -> None:

@@ -205,6 +205,8 @@ async def delete_template(
     if tmpl is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
     storage.delete_file(tmpl.word_file_path)
+    if tmpl.source_file_path and tmpl.source_file_path != tmpl.word_file_path:
+        storage.delete_file(tmpl.source_file_path)
     await template_service.delete_template(db, tmpl)
 
 
@@ -279,13 +281,14 @@ async def templatize_template(
             detail="assisted templating is not configured",
         )
 
-    file_path = Path(tmpl.word_file_path).resolve()
-    if not file_path.is_relative_to(storage.upload_dir()) or not file_path.exists():
+    # Always templatize from the original upload, never from a previous draft.
+    source_path = Path(tmpl.source_file_path or tmpl.word_file_path).resolve()
+    if not source_path.is_relative_to(storage.upload_dir()) or not source_path.exists():
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
 
     try:
         outcome = await templatize_service.run_templatize_pipeline(
-            anthropic_client, get_settings().llm_model, str(file_path)
+            anthropic_client, get_settings().llm_model, str(source_path)
         )
     except TemplatizeLLMError as exc:
         raise HTTPException(
@@ -293,11 +296,16 @@ async def templatize_template(
             detail="assisted templating failed, use the manual flow",
         ) from exc
 
+    previous_path = tmpl.word_file_path
     new_path = storage.save_upload(outcome.docx_bytes, f"templatized-{tmpl.name}.docx")
     placeholders = extract_placeholders(new_path)
-    return await template_service.apply_templatize_outcome(
-        db, tmpl, new_path, placeholders, outcome.report
+    template = await template_service.apply_templatize_outcome(
+        db, tmpl, new_path, placeholders, outcome.report, outcome.render_error
     )
+    # Drop the superseded draft file, but never the preserved source.
+    if previous_path not in (template.source_file_path, new_path):
+        storage.delete_file(previous_path)
+    return template
 
 
 @router.post("/{org_id}/templates/{template_id}/activate", response_model=TemplateRead)

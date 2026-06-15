@@ -29,22 +29,41 @@ def _placeholder_root(placeholder: str) -> str:
     return inner.split("|")[0].strip().split(".")[0].strip()
 
 
+def unknown_placeholders(detected_placeholders: list[str]) -> list[str]:
+    """Placeholders whose root is not a known rendering-context key (warnings only)."""
+    known = mock_context_keys()
+    return [ph for ph in detected_placeholders if _placeholder_root(ph) not in known]
+
+
+def mock_render_error(word_file_path: str) -> str | None:
+    """Render against mock data; return the error message, or None on success.
+
+    Any render failure (Jinja syntax error, unreadable file, or a runtime error
+    such as a type mismatch in a filter) is reported rather than raised, so an
+    upload of a broken template is marked invalid instead of returning a 500.
+    """
+    try:
+        render_mock_preview_from_path(word_file_path)
+    except Exception as exc:
+        return str(exc) or exc.__class__.__name__
+    return None
+
+
 def validate_template(word_file_path: str, detected_placeholders: list[str]) -> TemplateValidation:
     """Validate by rendering against mock data; unknown placeholders are warnings.
 
     The mock render is the source of truth: if it succeeds the template is
-    valid (ChainableUndefined renders unknown tags as empty strings). Only a
-    Jinja syntax error or an unreadable file marks the template invalid.
+    valid (ChainableUndefined renders unknown tags as empty strings). A render
+    failure of any kind marks the template invalid.
     """
-    try:
-        render_mock_preview_from_path(word_file_path)
-    except ValueError as exc:
-        return TemplateValidation(
-            is_valid=False, unknown_placeholders=[], validation_error=str(exc)
-        )
-    known = mock_context_keys()
-    unknown = [ph for ph in detected_placeholders if _placeholder_root(ph) not in known]
-    return TemplateValidation(is_valid=True, unknown_placeholders=unknown, validation_error=None)
+    error = mock_render_error(word_file_path)
+    if error is not None:
+        return TemplateValidation(is_valid=False, unknown_placeholders=[], validation_error=error)
+    return TemplateValidation(
+        is_valid=True,
+        unknown_placeholders=unknown_placeholders(detected_placeholders),
+        validation_error=None,
+    )
 
 
 async def create_template(
@@ -63,6 +82,7 @@ async def create_template(
         name=name,
         description=description,
         word_file_path=word_file_path,
+        source_file_path=word_file_path,
         detected_placeholders=detected_placeholders,
         is_valid=validation.is_valid,
         unknown_placeholders=validation.unknown_placeholders,
@@ -108,14 +128,21 @@ async def apply_templatize_outcome(
     new_file_path: str,
     detected_placeholders: list[str],
     report: dict[str, Any],
+    render_error: str | None,
 ) -> Template:
-    """Persist the templatized draft: new file, revalidation, draft status."""
-    validation = validate_template(new_file_path, detected_placeholders)
+    """Persist the templatized draft: new file, draft status.
+
+    The pipeline already rendered the candidate bytes, so its ``render_error``
+    is reused instead of rendering a second time. Unknown placeholders are
+    recomputed from the new file's detected placeholders (no render needed).
+    """
     template.word_file_path = new_file_path
     template.detected_placeholders = detected_placeholders
-    template.is_valid = validation.is_valid
-    template.unknown_placeholders = validation.unknown_placeholders
-    template.validation_error = validation.validation_error
+    template.is_valid = render_error is None
+    template.unknown_placeholders = (
+        unknown_placeholders(detected_placeholders) if render_error is None else []
+    )
+    template.validation_error = render_error
     template.status = "draft"
     template.templatize_report = report
     await db.commit()

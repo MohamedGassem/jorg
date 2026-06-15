@@ -130,6 +130,42 @@ def test_wrap_table_rows_loop_inserts_dedicated_rows(tmp_path: Path) -> None:
     assert table.cell(3, 0).text == "{%tr endfor %}"
 
 
+def test_table_op_after_wrap_targets_original_row(tmp_path: Path) -> None:
+    # Regression: rows must be addressed against the frozen snapshot. A
+    # wrap_table_rows_loop inserts a row before row 1, so a later replace_text on
+    # row 1 must still hit the original "ACME" row, not the inserted tag row.
+    def build(doc: object) -> None:
+        table = doc.add_table(rows=2, cols=1)  # type: ignore[attr-defined]
+        table.cell(0, 0).text = "Client"
+        table.cell(1, 0).text = "ACME"
+
+    path = _doc_path(tmp_path, build)
+    plan = TemplatizePlan(
+        operations=[
+            WrapTableRowsLoopOp(
+                op="wrap_table_rows_loop",
+                table=0,
+                start_row=1,
+                end_row=1,
+                loop_var="exp",
+                collection="experiences",
+            ),
+            ReplaceTextOp(
+                op="replace_text",
+                target={"kind": "cell", "table": 0, "row": 1, "cell": 0},
+                find="ACME",
+                placeholder="{{exp.client_name}}",
+            ),
+        ]
+    )
+    result = apply_operations(path, plan)
+    assert result.rejected == []
+    table = _load(result.docx_bytes).tables[0]  # type: ignore[attr-defined]
+    assert table.cell(1, 0).text == "{%tr for exp in experiences %}"
+    assert table.cell(2, 0).text == "{{exp.client_name}}"
+    assert table.cell(3, 0).text == "{%tr endfor %}"
+
+
 def test_delete_block_removes_paragraphs_and_rows(tmp_path: Path) -> None:
     def build(doc: object) -> None:
         doc.add_paragraph("Garde")  # type: ignore[attr-defined]

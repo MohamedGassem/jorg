@@ -60,3 +60,13 @@ def test_unreadable_file_is_invalid(tmp_path: Path) -> None:
     result = validate_template(str(path), [])
     assert result.is_valid is False
     assert result.validation_error is not None
+
+
+def test_runtime_render_error_is_invalid_not_raised(tmp_path: Path) -> None:
+    # {{ daily_rate * 1.2 }} multiplies a string by a float at render time:
+    # a runtime TypeError, not a Jinja syntax error. It must mark the template
+    # invalid rather than propagating as a 500.
+    path = _docx(tmp_path, ["{{ daily_rate * 1.2 }}"])
+    result = validate_template(path, ["{{ daily_rate }}"])
+    assert result.is_valid is False
+    assert result.validation_error is not None
