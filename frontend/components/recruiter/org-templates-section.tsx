@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, Eye, Trash2, Upload } from "lucide-react";
+import { Download, Eye, Sparkles, Trash2, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -16,6 +16,8 @@ export function OrgTemplatesSection({ orgId }: { orgId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [name, setName] = useState("");
+  const [assistedEnabled, setAssistedEnabled] = useState(false);
+  const [templatizing, setTemplatizing] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { download, errors: downloadErrors } = useDownload();
 
@@ -31,6 +33,41 @@ export function OrgTemplatesSection({ orgId }: { orgId: string }) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    api
+      .get<{ assisted_templating: boolean }>("/templates/capabilities")
+      .then((caps) => setAssistedEnabled(caps.assisted_templating))
+      .catch(() => setAssistedEnabled(false));
+  }, []);
+
+  async function handleTemplatize(template: Template) {
+    setTemplatizing(template.id);
+    setError(null);
+    try {
+      await api.post<Template>(
+        `/organizations/${orgId}/templates/${template.id}/templatize`,
+      );
+      refresh();
+    } catch (err) {
+      setError(
+        extractErrorMessage(err, "Échec de la templatisation automatique"),
+      );
+    } finally {
+      setTemplatizing(null);
+    }
+  }
+
+  async function handleActivate(template: Template) {
+    try {
+      await api.post<Template>(
+        `/organizations/${orgId}/templates/${template.id}/activate`,
+      );
+      refresh();
+    } catch (err) {
+      setError(extractErrorMessage(err, "Échec de l'activation"));
+    }
+  }
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,31 +151,67 @@ export function OrgTemplatesSection({ orgId }: { orgId: string }) {
 
       <div className="mt-3 text-sm text-muted-foreground">
         <p className="font-medium text-foreground">Créer votre modèle</p>
-        <ol className="mt-1 list-decimal space-y-1 pl-5">
-          <li>
-            Téléchargez le{" "}
-            <button
-              type="button"
-              className="underline"
-              onClick={() =>
-                download(
-                  "/templates/sample",
-                  "jorg-sample-template.docx",
-                  "sample",
-                )
-              }
-            >
-              modèle d&apos;exemple
-            </button>{" "}
-            pour voir les balises disponibles ({"{{first_name}}"}, {"{{title}}"}
-            , boucles expériences, formations...).
-          </li>
-          <li>Insérez les balises dans votre propre document Word.</li>
-          <li>
-            Importez-le ci-dessus, puis vérifiez l&apos;aperçu généré sur un
-            candidat fictif avant de l&apos;utiliser.
-          </li>
-        </ol>
+        {assistedEnabled ? (
+          <>
+            <ol className="mt-1 list-decimal space-y-1 pl-5">
+              <li>
+                Importez votre modèle Word tel quel, avec son candidat
+                d&apos;exemple.
+              </li>
+              <li>
+                Cliquez sur « Templatiser avec l&apos;IA » : Jorg remplace le
+                contenu d&apos;exemple par les balises et insère les boucles.
+              </li>
+              <li>
+                Vérifiez l&apos;aperçu et la liste des remplacements, puis
+                activez le modèle.
+              </li>
+            </ol>
+            <p className="mt-1">
+              Vous préférez la main ? Téléchargez le{" "}
+              <button
+                type="button"
+                className="underline"
+                onClick={() =>
+                  download(
+                    "/templates/sample",
+                    "jorg-sample-template.docx",
+                    "sample",
+                  )
+                }
+              >
+                modèle d&apos;exemple
+              </button>{" "}
+              et insérez les balises vous-même (doc avancée).
+            </p>
+          </>
+        ) : (
+          <ol className="mt-1 list-decimal space-y-1 pl-5">
+            <li>
+              Téléchargez le{" "}
+              <button
+                type="button"
+                className="underline"
+                onClick={() =>
+                  download(
+                    "/templates/sample",
+                    "jorg-sample-template.docx",
+                    "sample",
+                  )
+                }
+              >
+                modèle d&apos;exemple
+              </button>{" "}
+              pour voir les balises disponibles ({"{{first_name}}"},{" "}
+              {"{{title}}"}, boucles expériences, formations...).
+            </li>
+            <li>Insérez les balises dans votre propre document Word.</li>
+            <li>
+              Importez-le ci-dessus, puis vérifiez l&apos;aperçu généré sur un
+              candidat fictif avant de l&apos;utiliser.
+            </li>
+          </ol>
+        )}
         {downloadErrors["sample"] && (
           <p className="mt-1 text-xs text-danger">{downloadErrors["sample"]}</p>
         )}
@@ -161,9 +234,14 @@ export function OrgTemplatesSection({ orgId }: { orgId: string }) {
                     {template.detected_placeholders.length > 1 ? "s" : ""}
                   </p>
                 </div>
-                <Badge variant={template.is_valid ? "success" : "warning"}>
-                  {template.is_valid ? "Valide" : "Invalide"}
-                </Badge>
+                <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                  {template.status === "draft" && (
+                    <Badge variant="warning">Brouillon</Badge>
+                  )}
+                  <Badge variant={template.is_valid ? "success" : "warning"}>
+                    {template.is_valid ? "Valide" : "Invalide"}
+                  </Badge>
+                </div>
               </div>
               {template.validation_error && (
                 <p className="mt-2 text-xs text-danger">
@@ -205,6 +283,19 @@ export function OrgTemplatesSection({ orgId }: { orgId: string }) {
                   <Download className="size-3.5" strokeWidth={1.6} />
                   Fichier
                 </Button>
+                {assistedEnabled && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={templatizing !== null}
+                    onClick={() => handleTemplatize(template)}
+                  >
+                    <Sparkles className="size-3.5" strokeWidth={1.6} />
+                    {templatizing === template.id
+                      ? "Analyse en cours..."
+                      : "Templatiser avec l'IA"}
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"
@@ -214,6 +305,57 @@ export function OrgTemplatesSection({ orgId }: { orgId: string }) {
                   Supprimer
                 </Button>
               </div>
+              {template.status === "draft" && template.templatize_report && (
+                <div className="mt-3 rounded-md border border-border bg-paper-2 p-3 text-xs">
+                  <p className="font-semibold">Revue de la templatisation</p>
+                  {template.templatize_report.render_error ? (
+                    <p className="mt-1 text-danger">
+                      Le rendu a échoué :{" "}
+                      {template.templatize_report.render_error}. Téléchargez le
+                      fichier pour corriger à la main, puis ré-importez-le.
+                    </p>
+                  ) : (
+                    <>
+                      <ul className="mt-1 space-y-0.5">
+                        {template.templatize_report.mappings.map((m, i) => (
+                          <li key={i}>
+                            « {m.find} » → <code>{m.placeholder}</code>
+                          </li>
+                        ))}
+                      </ul>
+                      {template.templatize_report.warnings.length > 0 && (
+                        <p className="mt-2">
+                          À relire :{" "}
+                          {template.templatize_report.warnings.join(" ; ")}
+                        </p>
+                      )}
+                      {template.templatize_report.rejected.length > 0 && (
+                        <p className="mt-2 text-danger">
+                          Opérations ignorées :{" "}
+                          {template.templatize_report.rejected.join(" ; ")}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  <p className="mt-2 text-muted-foreground">
+                    Vérifiez l&apos;aperçu (candidat fictif), puis activez le
+                    modèle pour le rendre disponible à la génération.
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <Button size="sm" onClick={() => handleActivate(template)}>
+                      Activer
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={templatizing !== null}
+                      onClick={() => handleTemplatize(template)}
+                    >
+                      Relancer l&apos;analyse
+                    </Button>
+                  </div>
+                </div>
+              )}
               {(downloadErrors[`preview-${template.id}`] ??
                 downloadErrors[`file-${template.id}`]) && (
                 <p className="mt-1 text-xs text-danger">
