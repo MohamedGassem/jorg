@@ -93,8 +93,11 @@ export default function PrivacyPage() {
             encadré par des garanties appropriées (clauses contractuelles
             types). Si vous vous connectez via Google ou LinkedIn, ces
             fournisseurs n&apos;interviennent que pour l&apos;authentification.
-            Aucune donnée n&apos;est revendue ni partagée à des fins
-            publicitaires.
+            Lorsqu&apos;une organisation utilise la templatisation assistée, le
+            modèle de document importé peut être transmis à Anthropic
+            (sous-traitant IA, États-Unis), qui ne s&apos;entraîne pas sur les
+            données transmises via son API. Aucune donnée n&apos;est revendue ni
+            partagée à des fins publicitaires.
           </p>
         </section>
 
