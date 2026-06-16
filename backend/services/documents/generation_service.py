@@ -152,6 +152,8 @@ async def resolve_template(
             raise NotFoundError("Template not found")
         if not tmpl.is_valid:
             raise BusinessRuleError("Template is not fully mapped")
+        if tmpl.status != "active":
+            raise BusinessRuleError("Template is not active")
         return ResolvedTemplate(
             path=tmpl.word_file_path,
             name=tmpl.name,

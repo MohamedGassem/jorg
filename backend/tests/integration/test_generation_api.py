@@ -1,6 +1,7 @@
 # backend/tests/integration/test_generation_api.py
 import io
 
+import pytest
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
 from httpx import AsyncClient
 
@@ -431,3 +432,63 @@ async def test_download_generated_document(
     r = await client.get(f"/documents/{doc_id}/download", headers=recruiter_headers)
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("application/vnd.openxmlformats-officedocument")
+
+
+async def test_cannot_generate_with_draft_template(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Un brouillon templatise (is_valid=True, status="draft") ne doit pas etre
+    # generable tant qu'il n'a pas ete active, meme par appel direct a l'API.
+    from typing import Any
+
+    from services.documents.templatize_service import TemplatizeOutcome
+
+    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+        doc = Document()
+        doc.add_paragraph("{{first_name}}")
+        buf = io.BytesIO()
+        doc.save(buf)
+        return TemplatizeOutcome(
+            docx_bytes=buf.getvalue(),
+            report={"mappings": [], "warnings": [], "rejected": [], "render_error": None},
+            render_error=None,
+        )
+
+    monkeypatch.setattr(
+        "api.routes.organizations.templatize_service.run_templatize_pipeline", fake_pipeline
+    )
+    monkeypatch.setattr(
+        "api.routes.organizations.llm_client.get_anthropic_client", lambda: object()
+    )
+
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
+    template_id = await _upload_valid_template(client, recruiter_headers, org_id)
+
+    tz = await client.post(
+        f"/organizations/{org_id}/templates/{template_id}/templatize",
+        headers=recruiter_headers,
+    )
+    assert tz.status_code == 200
+    assert tz.json()["status"] == "draft"
+    assert tz.json()["is_valid"] is True
+
+    r = await client.post(
+        f"/organizations/{org_id}/generate",
+        headers=recruiter_headers,
+        json={"candidate_id": candidate_id, "template_id": template_id, "format": "docx"},
+    )
+    assert r.status_code == 422
+
+    await client.post(
+        f"/organizations/{org_id}/templates/{template_id}/activate",
+        headers=recruiter_headers,
+    )
+    r2 = await client.post(
+        f"/organizations/{org_id}/generate",
+        headers=recruiter_headers,
+        json={"candidate_id": candidate_id, "template_id": template_id, "format": "docx"},
+    )
+    assert r2.status_code == 201
