@@ -508,10 +508,10 @@ async def test_activate_draft_template(
         )
 
     monkeypatch.setattr(
-        "api.routes.organizations.templatize_service.run_templatize_pipeline", fake_pipeline
+        "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
     )
     monkeypatch.setattr(
-        "api.routes.organizations.llm_client.get_anthropic_client", lambda: object()
+        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
     )
 
     org_id = await _setup_org_and_link(client, recruiter_headers)
@@ -570,10 +570,10 @@ async def test_templatize_always_runs_from_source(
         )
 
     monkeypatch.setattr(
-        "api.routes.organizations.templatize_service.run_templatize_pipeline", fake_pipeline
+        "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
     )
     monkeypatch.setattr(
-        "api.routes.organizations.llm_client.get_anthropic_client", lambda: object()
+        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
     )
 
     org_id = await _setup_org_and_link(client, recruiter_headers)
@@ -1057,10 +1057,10 @@ async def test_templatize_is_rate_limited(
         )
 
     monkeypatch.setattr(
-        "api.routes.organizations.templatize_service.run_templatize_pipeline", fake_pipeline
+        "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
     )
     monkeypatch.setattr(
-        "api.routes.organizations.llm_client.get_anthropic_client", lambda: object()
+        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
     )
 
     org_id = await _setup_org_and_link(client, recruiter_headers)

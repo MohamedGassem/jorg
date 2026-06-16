@@ -458,10 +458,10 @@ async def test_cannot_generate_with_draft_template(
         )
 
     monkeypatch.setattr(
-        "api.routes.organizations.templatize_service.run_templatize_pipeline", fake_pipeline
+        "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
     )
     monkeypatch.setattr(
-        "api.routes.organizations.llm_client.get_anthropic_client", lambda: object()
+        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
     )
 
     org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
