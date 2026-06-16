@@ -163,3 +163,19 @@ async def test_resend_invitation_sends_email_again(
     assert r.status_code == 200
     assert len(sent) == 2
     assert sent[1].to == "nouveau@exemple.com"
+
+
+@pytest.mark.asyncio
+async def test_accept_with_scopes_persists_choices(
+    client: AsyncClient, recruiter_headers: dict[str, str], candidate_headers: dict[str, str]
+) -> None:
+    _org_id, inv = await _setup_org_and_invite(client, recruiter_headers)
+    r = await client.post(
+        f"/invitations/{inv['token']}/accept",
+        headers=candidate_headers,
+        json={"share_finances": False, "share_contact": True},
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["share_finances"] is False
+    assert body["share_contact"] is True
