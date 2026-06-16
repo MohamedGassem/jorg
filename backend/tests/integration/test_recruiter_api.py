@@ -1038,3 +1038,53 @@ async def test_filter_candidates_contract_type_includes_both(
         )
         assert r.status_code == 200
         assert len(r.json()) == 1, f"filter {contract_filter} should match a 'both' candidate"
+
+
+async def test_templatize_is_rate_limited(
+    client: AsyncClient, recruiter_headers: dict[str, str], monkeypatch: Any
+) -> None:
+    from services.documents.templatize_service import TemplatizeOutcome
+
+    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+        doc = Document()
+        doc.add_paragraph("{{first_name}}")
+        buf = io.BytesIO()
+        doc.save(buf)
+        return TemplatizeOutcome(
+            docx_bytes=buf.getvalue(),
+            report={"mappings": [], "warnings": [], "rejected": [], "render_error": None},
+            render_error=None,
+        )
+
+    monkeypatch.setattr(
+        "api.routes.organizations.templatize_service.run_templatize_pipeline", fake_pipeline
+    )
+    monkeypatch.setattr(
+        "api.routes.organizations.llm_client.get_anthropic_client", lambda: object()
+    )
+
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    docx_bytes = _make_docx_bytes(["Jean Dupont"])
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "T"},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    template_id = up.json()["id"]
+
+    statuses = []
+    for _ in range(6):
+        r = await client.post(
+            f"/organizations/{org_id}/templates/{template_id}/templatize",
+            headers=recruiter_headers,
+        )
+        statuses.append(r.status_code)
+    assert statuses[:5] == [200, 200, 200, 200, 200]
+    assert statuses[5] == 429

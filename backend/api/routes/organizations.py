@@ -266,8 +266,9 @@ async def preview_template(
 
 
 @router.post("/{org_id}/templates/{template_id}/templatize", response_model=TemplateRead)
+@limiter.limit("5/minute")
 async def templatize_template(
-    org_id: UUID, template_id: UUID, member: RecruiterOrgMember, db: DB
+    request: Request, org_id: UUID, template_id: UUID, member: RecruiterOrgMember, db: DB
 ) -> Template:
     await _get_org_or_404(db, org_id)
     tmpl = await template_service.get_template(db, template_id, org_id)
