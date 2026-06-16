@@ -9,6 +9,10 @@ from typing import Any
 from services.documents.templatize_ops import TemplatizePlan
 from services.llm.client import LLMRefusalError, parse_structured
 
+# Les sous-champs de boucle (exp.client_name, edu.degree, ...) sont listes a la
+# main et doivent rester alignes avec les *_flat de docx_engine. Le test
+# test_syntax_guide_collections_exist_in_render_context garde l'alignement au
+# niveau des collections ; verifier les sous-champs a tout changement de build_context.
 _SYNTAX_GUIDE = """\
 Syntaxe docxtpl disponible :
 - Champs scalaires : {{first_name}}, {{last_name}}, {{title}}, etc. (liste fournie plus bas).

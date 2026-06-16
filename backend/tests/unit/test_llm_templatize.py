@@ -49,3 +49,13 @@ async def test_request_plan_returns_parsed_output() -> None:
         render_errors=None,
     )
     assert plan == expected
+
+
+def test_syntax_guide_collections_exist_in_render_context() -> None:
+    from services.documents.builtin_template_service import mock_context_keys
+    from services.llm.templatize import _SYNTAX_GUIDE
+
+    context_keys = mock_context_keys()
+    for collection in ("experiences", "skills", "educations", "certifications", "languages"):
+        assert collection in _SYNTAX_GUIDE, f"{collection} absent du guide de syntaxe"
+        assert collection in context_keys, f"{collection} absent du contexte de rendu"
