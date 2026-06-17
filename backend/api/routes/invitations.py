@@ -9,12 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import services.invitation_service as invitation_service
 from api.deps import RecruiterOrgMember, get_db, require_role
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
+from models.recruiter import Organization
 from models.user import User, UserRole
 from schemas.invitation import (
     AcceptInvitationRequest,
     AccessGrantRead,
     InvitationCreate,
     InvitationRead,
+    PublicInvitationRead,
 )
 
 router = APIRouter(tags=["invitations"])
@@ -78,6 +80,25 @@ async def resend_invitation(
     if invitation is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="invitation not found")
     return await invitation_service.resend_invitation(db, invitation)
+
+
+# ---- Public: resolve a token without authentication -------------------------
+
+
+@router.get("/public/invitations/{token}", response_model=PublicInvitationRead)
+async def public_invitation(token: str, db: DB) -> dict[str, Any]:
+    inv = await invitation_service.get_invitation_by_token(db, token)
+    if inv is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="invitation not found")
+    org_result = await db.execute(
+        select(Organization.name).where(Organization.id == inv.organization_id)
+    )
+    return {
+        "organization_name": org_result.scalar_one_or_none(),
+        "candidate_email": inv.candidate_email,
+        "status": inv.status,
+        "expires_at": inv.expires_at,
+    }
 
 
 # ---- Candidate: view + respond to invitations -------------------------------

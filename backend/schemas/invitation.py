@@ -33,6 +33,13 @@ class AcceptInvitationRequest(BaseModel):
     share_contact: bool = True
 
 
+class PublicInvitationRead(BaseModel):
+    organization_name: str | None
+    candidate_email: str
+    status: InvitationStatus
+    expires_at: datetime
+
+
 class AccessGrantRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

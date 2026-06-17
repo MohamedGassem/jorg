@@ -50,8 +50,8 @@ async def test_invitation_sends_email_to_existing_candidate(
     message = sent[0]
     assert message.to == "candidate@test.com"
     assert "Acme Conseil" in message.subject
-    # Existing account: the email points to the access page, not registration.
-    assert "/candidate/access" in message.body
+    # The email carries the token so the candidate lands on the public invitation page.
+    assert "/invitation/" in message.body
 
 
 @pytest.mark.asyncio
@@ -74,7 +74,7 @@ async def test_invitation_sends_registration_email_to_unknown_candidate(
     sent = client.email_backend.sent  # type: ignore[attr-defined]
     assert len(sent) == 1
     assert sent[0].to == "nouveau@exemple.com"
-    assert "/register?role=candidate" in sent[0].body
+    assert "/invitation/" in sent[0].body
 
 
 async def _setup_org_and_invite(
@@ -212,4 +212,25 @@ async def test_update_grant_scopes_unknown_grant_returns_404(
         headers=candidate_headers,
         json={"share_finances": False, "share_contact": False},
     )
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_public_invitation_lookup(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    _org_id, inv = await _setup_org_and_invite(client, recruiter_headers)
+    r = await client.get(f"/public/invitations/{inv['token']}")  # pas d'auth
+    assert r.status_code == 200
+    body = r.json()
+    assert body["organization_name"]
+    assert body["status"] == "pending"
+    assert body["candidate_email"] == "candidate@test.com"
+
+
+@pytest.mark.asyncio
+async def test_public_invitation_lookup_unknown_token_returns_404(
+    client: AsyncClient,
+) -> None:
+    r = await client.get("/public/invitations/does-not-exist")
     assert r.status_code == 404

@@ -26,16 +26,17 @@ from services import access_policy
 logger = structlog.get_logger()
 
 
-def _send_invitation_email(candidate_email: str, org_name: str | None, has_account: bool) -> None:
+def _send_invitation_email(
+    candidate_email: str, org_name: str | None, has_account: bool, token: str
+) -> None:
     """Notify the invited candidate by email. Never blocks invitation creation."""
     frontend_url = get_settings().frontend_url
     org_label = org_name or "Une organisation"
+    link = f"{frontend_url}/invitation/{token}"
     if has_account:
-        link = f"{frontend_url}/candidate/access"
-        action = f"Connectez-vous pour accepter ou refuser : {link}"
+        action = f"Connectez-vous et confirmez : {link}"
     else:
-        link = f"{frontend_url}/register?role=candidate"
-        action = f"Créez votre espace candidat pour répondre : {link}"
+        action = f"Créez votre espace candidat puis confirmez : {link}"
     message = EmailMessage(
         to=candidate_email,
         subject=f"{org_label} souhaite accéder à votre dossier sur Jorg",
@@ -97,7 +98,9 @@ async def create_invitation(
     db.add(invitation)
     await db.commit()
     await db.refresh(invitation)
-    _send_invitation_email(candidate_email, org_name, has_account=candidate is not None)
+    _send_invitation_email(
+        candidate_email, org_name, has_account=candidate is not None, token=invitation.token
+    )
     logger.info(
         "invitation.sent",
         recruiter_id=str(invitation.recruiter_id),
@@ -153,6 +156,7 @@ async def resend_invitation(db: AsyncSession, invitation: Invitation) -> Invitat
         invitation.candidate_email,
         org_result.scalar_one_or_none(),
         has_account=user_result.scalar_one_or_none() is not None,
+        token=invitation.token,
     )
     logger.info(
         "invitation.resent",
