@@ -185,10 +185,16 @@ async def templatize_template(
 
     previous_path = tmpl.word_file_path
     new_path = storage.save_upload(outcome.docx_bytes, f"templatized-{tmpl.name}.docx")
-    placeholders = extract_placeholders(new_path)
-    template = await template_service.apply_templatize_outcome(
-        db, tmpl, new_path, placeholders, outcome.report, outcome.render_error
-    )
+    try:
+        placeholders = extract_placeholders(new_path)
+        template = await template_service.apply_templatize_outcome(
+            db, tmpl, new_path, placeholders, outcome.report, outcome.render_error
+        )
+    except Exception:
+        # The request transaction rolls back on any error; drop the freshly
+        # saved file so it does not outlive the row that would reference it.
+        storage.delete_file(new_path)
+        raise
     # Drop the superseded draft file, but never the preserved source.
     if previous_path not in (template.source_file_path, new_path):
         storage.delete_file(previous_path)
