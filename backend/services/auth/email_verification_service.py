@@ -61,6 +61,6 @@ async def confirm_email(db: AsyncSession, token: str) -> User:
         raise InvalidVerificationTokenError("user not found")
 
     user.email_verified = True
-    await db.commit()
+    await db.flush()
     await db.refresh(user)
     return user

@@ -34,7 +34,7 @@ class CRUDService[T: Base]:
         fields[self._owner_field] = owner_id
         obj = self._model(**fields)
         db.add(obj)
-        await db.commit()
+        await db.flush()
         await db.refresh(obj)
         return obj
 
@@ -50,10 +50,10 @@ class CRUDService[T: Base]:
     async def update(self, db: AsyncSession, obj: T, data: Any) -> T:
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(obj, field, value)
-        await db.commit()
+        await db.flush()
         await db.refresh(obj)
         return obj
 
     async def delete(self, db: AsyncSession, obj: T) -> None:
         await db.delete(obj)
-        await db.commit()
+        await db.flush()

@@ -23,7 +23,7 @@ async def create_state(db: AsyncSession, provider: str, role: str) -> str:
             expires_at=now + timedelta(minutes=_TTL_MINUTES),
         )
     )
-    await db.commit()
+    await db.flush()
     return state
 
 
@@ -45,7 +45,7 @@ async def consume_state(db: AsyncSession, state: str) -> tuple[str, str] | None:
     row = result.one_or_none()
     # Sweep expired rows as a side-effect (separate condition, no overlap with above)
     await db.execute(delete(OAuthState).where(OAuthState.expires_at < now))
-    await db.commit()
+    await db.flush()
     if row is None:
         return None
     return row.provider, row.role

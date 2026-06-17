@@ -136,7 +136,7 @@ async def find_or_create_oauth_user(
         user.oauth_provider = info.provider
         user.oauth_subject = info.subject
         user.email_verified = True
-        await db.commit()
+        await db.flush()
         await db.refresh(user)
         return user
 
@@ -150,7 +150,7 @@ async def find_or_create_oauth_user(
         consent_version=CURRENT_CONSENT_VERSION,
     )
     db.add(user)
-    await db.commit()
+    await db.flush()
     await db.refresh(user)
     return user
 

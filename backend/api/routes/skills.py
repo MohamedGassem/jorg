@@ -144,7 +144,7 @@ async def create_my_skill(
     )
     try:
         db.add(skill)
-        await db.commit()
+        await db.flush()
         await db.refresh(skill)
     except IntegrityError:
         await db.rollback()
@@ -190,7 +190,7 @@ async def update_my_skill(
     for field, value in update_data.items():
         setattr(skill, field, value)
 
-    await db.commit()
+    await db.flush()
     result = await db.execute(
         select(CandidateSkill)
         .where(CandidateSkill.id == skill_id)
@@ -210,7 +210,7 @@ async def delete_my_skill(skill_id: UUID, profile: CandidateProfile_dep, db: DB)
     if skill is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="skill not found")
     await db.delete(skill)
-    await db.commit()
+    await db.flush()
 
 
 # ---- ExperienceSkillUsage ----------------------------------------------------
@@ -246,7 +246,7 @@ async def add_skill_usage(
     )
     try:
         db.add(usage)
-        await db.commit()
+        await db.flush()
         await db.refresh(usage)
     except IntegrityError:
         await db.rollback()
@@ -280,7 +280,7 @@ async def delete_skill_usage(
     if usage is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="usage not found")
     await db.delete(usage)
-    await db.commit()
+    await db.flush()
 
 
 # ---- Metrics -----------------------------------------------------------------
@@ -311,7 +311,7 @@ async def create_achievement(
         featured=data.featured,
     )
     db.add(achievement)
-    await db.commit()
+    await db.flush()
     result = await db.execute(
         select(AchievementModel)
         .where(AchievementModel.id == achievement.id)
@@ -368,7 +368,7 @@ async def update_achievement(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="achievement not found")
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(achievement, field, value)
-    await db.commit()
+    await db.flush()
     result = await db.execute(
         select(AchievementModel)
         .where(AchievementModel.id == achievement_id)
@@ -399,7 +399,7 @@ async def delete_achievement(
     if achievement is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="achievement not found")
     await db.delete(achievement)
-    await db.commit()
+    await db.flush()
 
 
 # ---- AchievementSkillTag -----------------------------------------------------
@@ -445,7 +445,7 @@ async def add_skill_tag(
     )
     try:
         db.add(tag)
-        await db.commit()
+        await db.flush()
     except IntegrityError:
         await db.rollback()
         raise HTTPException(
@@ -493,4 +493,4 @@ async def delete_skill_tag(
     if tag is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="skill tag not found")
     await db.delete(tag)
-    await db.commit()
+    await db.flush()

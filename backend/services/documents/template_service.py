@@ -89,7 +89,7 @@ async def create_template(
         validation_error=validation.validation_error,
     )
     db.add(template)
-    await db.commit()
+    await db.flush()
     await db.refresh(template)
     logger.info(
         "template.uploaded",
@@ -119,7 +119,7 @@ async def get_template(
 
 async def delete_template(db: AsyncSession, template: Template) -> None:
     await db.delete(template)
-    await db.commit()
+    await db.flush()
 
 
 async def apply_templatize_outcome(
@@ -145,13 +145,13 @@ async def apply_templatize_outcome(
     template.validation_error = render_error
     template.status = "draft"
     template.templatize_report = report
-    await db.commit()
+    await db.flush()
     await db.refresh(template)
     return template
 
 
 async def activate_template(db: AsyncSession, template: Template) -> Template:
     template.status = "active"
-    await db.commit()
+    await db.flush()
     await db.refresh(template)
     return template

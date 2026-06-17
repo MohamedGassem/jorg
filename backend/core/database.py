@@ -31,5 +31,16 @@ AsyncSessionLocal = async_sessionmaker(
 
 
 async def get_db() -> AsyncGenerator[AsyncSession]:
+    """Request-scoped session with a single commit boundary.
+
+    The session commits once when the request handler returns normally and
+    rolls back on any exception. Services issue ``flush()`` instead of
+    committing so the whole request is atomic.
+    """
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise

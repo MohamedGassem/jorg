@@ -96,7 +96,7 @@ async def create_invitation(
         expires_at=invitation_expiry(),
     )
     db.add(invitation)
-    await db.commit()
+    await db.flush()
     await db.refresh(invitation)
     _send_invitation_email(
         candidate_email, org_name, has_account=candidate is not None, token=invitation.token
@@ -134,7 +134,7 @@ async def cancel_invitation(db: AsyncSession, invitation: Invitation) -> None:
     candidate_email = invitation.candidate_email
     organization_id = invitation.organization_id
     await db.delete(invitation)
-    await db.commit()
+    await db.flush()
     logger.info(
         "invitation.cancelled",
         candidate_email=candidate_email,
@@ -232,6 +232,8 @@ async def accept_invitation(
         expires = expires.replace(tzinfo=UTC)
     if expires < now:
         invitation.status = InvitationStatus.EXPIRED
+        # Persist the EXPIRED marking before raising: it must survive the 410
+        # response (the request rolls back otherwise).
         await db.commit()
         raise GoneError("Invitation has expired")
 
@@ -242,7 +244,7 @@ async def accept_invitation(
     if existing is not None:
         existing.share_finances = share_finances
         existing.share_contact = share_contact
-        await db.commit()
+        await db.flush()
         await db.refresh(existing)
         return existing
 
@@ -255,7 +257,7 @@ async def accept_invitation(
         share_contact=share_contact,
     )
     db.add(grant)
-    await db.commit()
+    await db.flush()
     await db.refresh(grant)
     logger.info(
         "access.granted",
@@ -267,7 +269,7 @@ async def accept_invitation(
 
 async def reject_invitation(db: AsyncSession, invitation: Invitation) -> Invitation:
     invitation.status = InvitationStatus.REJECTED
-    await db.commit()
+    await db.flush()
     await db.refresh(invitation)
     return invitation
 
@@ -280,7 +282,7 @@ async def list_candidate_grants(db: AsyncSession, candidate_id: UUID) -> list[Ac
 async def revoke_grant(db: AsyncSession, grant: AccessGrant) -> AccessGrant:
     grant.status = AccessGrantStatus.REVOKED
     grant.revoked_at = datetime.now(UTC)
-    await db.commit()
+    await db.flush()
     await db.refresh(grant)
     logger.info(
         "access.revoked",
@@ -295,6 +297,6 @@ async def update_grant_scopes(
 ) -> AccessGrant:
     grant.share_finances = share_finances
     grant.share_contact = share_contact
-    await db.commit()
+    await db.flush()
     await db.refresh(grant)
     return grant

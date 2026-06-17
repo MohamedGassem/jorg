@@ -2,6 +2,7 @@
 import io
 from typing import Any
 
+import pytest
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
 from httpx import AsyncClient
 
@@ -1133,3 +1134,70 @@ async def test_candidate_detail_without_grant_is_forbidden(
         f"/organizations/{org_id}/candidates/{unknown_candidate}", headers=recruiter_headers
     )
     assert r.status_code == 403
+
+
+async def test_templatize_cleans_orphan_file_when_persistence_fails(
+    client: AsyncClient, recruiter_headers: dict[str, str], monkeypatch: Any
+) -> None:
+    # If the post-save persistence step fails, the request transaction rolls
+    # back; the freshly saved templatized file must be deleted too.
+    import core.storage as storage
+    from services.documents.templatize_service import TemplatizeOutcome
+
+    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+        doc = Document()
+        doc.add_paragraph("{{first_name}}")
+        buf = io.BytesIO()
+        doc.save(buf)
+        return TemplatizeOutcome(
+            docx_bytes=buf.getvalue(),
+            report={"mappings": [], "warnings": [], "rejected": [], "render_error": None},
+            render_error=None,
+        )
+
+    monkeypatch.setattr(
+        "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
+    )
+    monkeypatch.setattr(
+        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
+    )
+
+    deleted: list[str] = []
+    real_delete = storage.delete_file
+
+    def recording_delete(path: Any) -> None:
+        deleted.append(str(path))
+        real_delete(path)
+
+    monkeypatch.setattr(storage, "delete_file", recording_delete)
+
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    docx_bytes = _make_docx_bytes(["Jean Dupont"])
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "T"},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    template_id = up.json()["id"]
+
+    # Only fail placeholder extraction for the templatize call (upload above also
+    # extracts placeholders, so the patch goes in after the upload succeeds).
+    def boom(path: Any) -> list[str]:
+        raise RuntimeError("placeholder extraction blew up")
+
+    monkeypatch.setattr("api.routes.org_templates.extract_placeholders", boom)
+
+    with pytest.raises(RuntimeError):
+        await client.post(
+            f"/organizations/{org_id}/templates/{template_id}/templatize",
+            headers=recruiter_headers,
+        )
+
+    assert any("templatized-" in p for p in deleted)

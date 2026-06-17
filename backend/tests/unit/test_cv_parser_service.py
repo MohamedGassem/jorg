@@ -311,7 +311,7 @@ async def test_missing_proposal_table_becomes_service_error(
             self.add = Mock()
             self.rolled_back = False
 
-        async def commit(self) -> None:
+        async def flush(self) -> None:
             raise ProgrammingError(
                 "INSERT INTO cv_extraction_proposals",
                 {},

@@ -45,7 +45,7 @@ async def get_or_create_profile(db: AsyncSession, user_id: UUID) -> CandidatePro
     if profile is None:
         profile = CandidateProfile(user_id=user_id)
         db.add(profile)
-        await db.commit()
+        await db.flush()
         await db.refresh(profile)
     return profile
 
@@ -64,7 +64,7 @@ async def update_profile(
         )
     for field, value in updates.items():
         setattr(profile, field, value)
-    await db.commit()
+    await db.flush()
     await db.refresh(profile)
     return profile
 

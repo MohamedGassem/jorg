@@ -103,7 +103,14 @@ async def db_session(db_engine: Any) -> AsyncGenerator[AsyncSession]:
 @pytest_asyncio.fixture
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     async def override_get_db() -> AsyncGenerator[AsyncSession]:
-        yield db_session
+        # Mirror the production get_db commit boundary: commit once per request
+        # on success, roll back on error. Services only flush().
+        try:
+            yield db_session
+            await db_session.commit()
+        except Exception:
+            await db_session.rollback()
+            raise
 
     app.dependency_overrides[get_db] = override_get_db
 

@@ -149,7 +149,7 @@ async def delete_candidate_account(db: AsyncSession, user: User) -> None:
 
     # 3. Supprimer l'utilisateur — CASCADE SQL s'occupe du reste.
     await db.delete(user)
-    await db.commit()
+    await db.flush()
 
 
 async def export_recruiter_data(db: AsyncSession, user: User) -> RecruiterExport:
@@ -200,4 +200,4 @@ async def delete_recruiter_account(db: AsyncSession, user: User) -> None:
     - L'organisation et ses autres membres survivent (aucune FK supprimée côté orga).
     """
     await db.delete(user)
-    await db.commit()
+    await db.flush()
