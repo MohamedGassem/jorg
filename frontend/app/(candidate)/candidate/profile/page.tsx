@@ -42,8 +42,11 @@ import {
 import {
   type AvailabilityStatus,
   type CandidateProfile,
+  type Certification,
   type ContractType,
+  type Education,
   type Experience,
+  type Language,
   type Skill,
   type WorkMode,
 } from "@/types/api";
@@ -89,18 +92,38 @@ function ProfileHero({
     profile: CandidateProfile | null;
     experiences: Experience[];
     skills: Skill[];
+    education: Education[];
+    certifications: Certification[];
+    languages: Language[];
   } | null>(null);
 
   async function loadPreview() {
     setPreviewLoading(true);
     setPreviewOpen(true);
     try {
-      const [profileData, experiences, skills] = await Promise.all([
+      const [
+        profileData,
+        experiences,
+        skills,
+        education,
+        certifications,
+        languages,
+      ] = await Promise.all([
         api.get<CandidateProfile>("/candidates/me/profile"),
         api.get<Experience[]>("/candidates/me/experiences"),
         api.get<Skill[]>("/candidates/me/skills"),
+        api.get<Education[]>("/candidates/me/education"),
+        api.get<Certification[]>("/candidates/me/certifications"),
+        api.get<Language[]>("/candidates/me/languages"),
       ]);
-      setPreviewData({ profile: profileData, experiences, skills });
+      setPreviewData({
+        profile: profileData,
+        experiences,
+        skills,
+        education,
+        certifications,
+        languages,
+      });
     } catch {
       // show partial data on error
     } finally {
@@ -293,6 +316,55 @@ function ProfileHero({
                               : ""}
                         </p>
                       </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {previewData.education.length > 0 && (
+                <div>
+                  <p className="mb-2 font-medium">Formations</p>
+                  <div className="space-y-2">
+                    {previewData.education.map((edu) => (
+                      <div key={edu.id}>
+                        <p className="font-medium">
+                          {[edu.degree, edu.field_of_study]
+                            .filter(Boolean)
+                            .join(" · ") || edu.school}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {edu.school}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {previewData.certifications.length > 0 && (
+                <div>
+                  <p className="mb-2 font-medium">Certifications</p>
+                  <div className="space-y-2">
+                    {previewData.certifications.map((cert) => (
+                      <div key={cert.id}>
+                        <p className="font-medium">{cert.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {cert.issuer}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {previewData.languages.length > 0 && (
+                <div>
+                  <p className="mb-1 font-medium">Langues</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {previewData.languages.map((lang) => (
+                      <span
+                        key={lang.id}
+                        className="rounded-full border border-border/60 px-2.5 py-0.5 text-xs"
+                      >
+                        {lang.name} · {lang.level}
+                      </span>
                     ))}
                   </div>
                 </div>

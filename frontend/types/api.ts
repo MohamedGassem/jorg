@@ -332,6 +332,19 @@ export interface AccessibleCandidateRead {
   experiences: Experience[];
 }
 
+export interface AccessibleCandidateDetail extends AccessibleCandidateRead {
+  summary: string | null;
+  location: string | null;
+  years_of_experience: number | null;
+  phone: string | null;
+  email_contact: string | null;
+  annual_salary: number | null;
+  education: Education[];
+  certifications: Certification[];
+  languages: Language[];
+  candidate_skills: Skill[];
+}
+
 export interface ApiError {
   detail: string;
 }
