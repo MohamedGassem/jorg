@@ -18,7 +18,7 @@ async def test_create_state_returns_token(mock_db: AsyncMock) -> None:
     state = await oauth_state_service.create_state(mock_db, "google", "candidate")
     assert len(state) > 16
     mock_db.add.assert_called_once()
-    mock_db.commit.assert_called_once()
+    mock_db.flush.assert_called_once()
 
 
 async def test_consume_state_returns_provider_and_role(mock_db: AsyncMock) -> None:
@@ -33,7 +33,7 @@ async def test_consume_state_returns_provider_and_role(mock_db: AsyncMock) -> No
 
     assert result == ("google", "candidate")
     assert mock_db.execute.call_count == 2
-    mock_db.commit.assert_called_once()
+    mock_db.flush.assert_called_once()
 
 
 async def test_consume_state_returns_none_for_missing(mock_db: AsyncMock) -> None:
@@ -46,7 +46,7 @@ async def test_consume_state_returns_none_for_missing(mock_db: AsyncMock) -> Non
 
     assert result is None
     assert mock_db.execute.call_count == 2
-    mock_db.commit.assert_called_once()
+    mock_db.flush.assert_called_once()
 
 
 async def test_consume_state_returns_none_for_expired(mock_db: AsyncMock) -> None:
@@ -61,4 +61,4 @@ async def test_consume_state_returns_none_for_expired(mock_db: AsyncMock) -> Non
 
     assert result is None
     assert mock_db.execute.call_count == 2
-    mock_db.commit.assert_called_once()
+    mock_db.flush.assert_called_once()

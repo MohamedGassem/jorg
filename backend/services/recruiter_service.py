@@ -84,7 +84,7 @@ async def create_organization(
     if profile is not None:
         profile.organization_id = org.id
 
-    await db.commit()
+    await db.flush()
     await db.refresh(org)
     return org
 
@@ -113,14 +113,14 @@ async def join_organization(db: AsyncSession, user_id: UUID, code: str) -> Recru
     if profile.organization_id is not None:
         raise ValueError("already_in_org")  # already in a different org
     profile.organization_id = org.id
-    await db.commit()
+    await db.flush()
     await db.refresh(profile)
     return profile
 
 
 async def regenerate_join_code(db: AsyncSession, org: Organization) -> Organization:
     org.join_code = await _unique_join_code(db)
-    await db.commit()
+    await db.flush()
     await db.refresh(org)
     return org
 
@@ -157,7 +157,7 @@ async def get_or_create_profile(db: AsyncSession, user_id: UUID) -> RecruiterPro
     if profile is None:
         profile = RecruiterProfile(user_id=user_id)
         db.add(profile)
-        await db.commit()
+        await db.flush()
         await db.refresh(profile)
     return profile
 
@@ -169,7 +169,7 @@ async def update_profile(
 ) -> RecruiterProfile:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(profile, field, value)
-    await db.commit()
+    await db.flush()
     await db.refresh(profile)
     return profile
 

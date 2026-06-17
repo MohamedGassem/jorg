@@ -60,6 +60,6 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Use
         raise InvalidResetTokenError("user not found")
 
     user.hashed_password = hash_password(new_password)
-    await db.commit()
+    await db.flush()
     await db.refresh(user)
     return user

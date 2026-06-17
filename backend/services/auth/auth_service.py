@@ -49,7 +49,7 @@ async def register_user(
         consent_version=CURRENT_CONSENT_VERSION,
     )
     db.add(user)
-    await db.commit()
+    await db.flush()
     await db.refresh(user)
     return user
 
@@ -81,7 +81,7 @@ async def issue_token_pair(db: AsyncSession, user: User) -> tuple[str, str]:
         expires_at=datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days),
     )
     db.add(record)
-    await db.commit()
+    await db.flush()
     return access, refresh
 
 
@@ -108,10 +108,12 @@ async def rotate_refresh_token(db: AsyncSession, raw_token: str) -> tuple[str, s
     user_result = await db.execute(select(User).where(User.id == record.user_id))
     user = user_result.scalar_one_or_none()
     if user is None or not user.is_active:
+        # Persist the revocation before raising: a refresh token for a dead or
+        # inactive user must stay revoked even though the request returns 401.
         await db.commit()
         raise InvalidCredentialsError("user not found or inactive")
 
-    await db.commit()
+    await db.flush()
     return await issue_token_pair(db, user)
 
 
@@ -122,4 +124,4 @@ async def revoke_refresh_token(db: AsyncSession, raw_token: str) -> None:
     record = result.scalar_one_or_none()
     if record and record.revoked_at is None:
         record.revoked_at = datetime.now(UTC)
-        await db.commit()
+        await db.flush()

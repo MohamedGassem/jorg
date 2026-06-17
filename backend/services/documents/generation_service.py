@@ -226,7 +226,7 @@ async def _render_and_store(
         template_name=resolved.name,
     )
     db.add(doc)
-    await db.commit()
+    await db.flush()
     await db.refresh(doc)
     return doc
 

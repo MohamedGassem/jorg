@@ -21,7 +21,7 @@ async def create_alpha_codes(
         obj = AlphaInviteCode(code=_generate_code(), organization_id=organization_id)
         db.add(obj)
         codes.append(obj.code)
-    await db.commit()
+    await db.flush()
     return codes
 
 
@@ -42,5 +42,5 @@ async def validate_and_consume_code(
     if consume:
         obj.used_by = recruiter_id
         obj.used_at = datetime.now(UTC)
-        await db.commit()
+        await db.flush()
     return obj
