@@ -269,6 +269,13 @@ export interface AccessGrant {
   granted_at: string;
   revoked_at: string | null;
   created_at: string;
+  share_finances: boolean;
+  share_contact: boolean;
+}
+
+export interface AcceptInvitationRequest {
+  share_finances: boolean;
+  share_contact: boolean;
 }
 
 export interface GeneratedDocument {

@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { StatusPill } from "@/components/ui/StatusPill";
@@ -28,6 +29,7 @@ import {
 import { useAsyncData, useDownload } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import type {
+  AcceptInvitationRequest,
   AccessGrant,
   GeneratedDocumentCandidateView,
   Invitation,
@@ -60,6 +62,24 @@ export default function AccessPage() {
     "Impossible de charger les invitations",
   );
   const [actionError, setActionError] = useState<string | null>(null);
+  const [consent, setConsent] = useState<
+    Record<string, AcceptInvitationRequest>
+  >({});
+
+  function invitationConsent(id: string): AcceptInvitationRequest {
+    return consent[id] ?? { share_finances: true, share_contact: true };
+  }
+
+  function setConsentField(
+    id: string,
+    field: keyof AcceptInvitationRequest,
+    value: boolean,
+  ) {
+    setConsent((prev) => ({
+      ...prev,
+      [id]: { ...invitationConsent(id), [field]: value },
+    }));
+  }
 
   const {
     data: orgs,
@@ -89,10 +109,17 @@ export default function AccessPage() {
     (inv) => inv.status !== "pending",
   );
 
-  async function respond(token: string, action: "accept" | "reject") {
+  async function respond(
+    token: string,
+    action: "accept" | "reject",
+    scopes?: AcceptInvitationRequest,
+  ) {
     setActionError(null);
     try {
-      await api.post(`/invitations/${token}/${action}`);
+      await api.post(
+        `/invitations/${token}/${action}`,
+        action === "accept" ? scopes : undefined,
+      );
       refetchInvitations();
       refetchOrgs();
     } catch (err) {
@@ -192,6 +219,26 @@ export default function AccessPage() {
                 {frDate(inv.expires_at)} · rien n&apos;est partagé sans votre
                 accord.
               </p>
+              <div className="mt-3 flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[13px] text-ink-2">
+                  <Checkbox
+                    checked={invitationConsent(inv.id).share_finances}
+                    onCheckedChange={(v) =>
+                      setConsentField(inv.id, "share_finances", v)
+                    }
+                  />
+                  Partager mon TJM / ma rémunération
+                </label>
+                <label className="flex items-center gap-2 text-[13px] text-ink-2">
+                  <Checkbox
+                    checked={invitationConsent(inv.id).share_contact}
+                    onCheckedChange={(v) =>
+                      setConsentField(inv.id, "share_contact", v)
+                    }
+                  />
+                  Partager mes coordonnées (téléphone, email)
+                </label>
+              </div>
             </div>
             <div className="flex shrink-0 gap-2">
               <Button
@@ -201,7 +248,12 @@ export default function AccessPage() {
               >
                 Refuser
               </Button>
-              <Button size="sm" onClick={() => respond(inv.token, "accept")}>
+              <Button
+                size="sm"
+                onClick={() =>
+                  respond(inv.token, "accept", invitationConsent(inv.id))
+                }
+              >
                 <Check className="size-4" strokeWidth={1.6} />
                 Autoriser
               </Button>
