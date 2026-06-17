@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import services.invitation_service as invitation_service
 from api.deps import RecruiterOrgMember, get_db, require_role
-from models.invitation import AccessGrant, Invitation, InvitationStatus
+from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
 from models.user import User, UserRole
 from schemas.invitation import (
     AcceptInvitationRequest,
@@ -152,3 +152,28 @@ async def revoke_grant(grant_id: UUID, current_user: CandidateUser, db: DB) -> A
     if grant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="access grant not found")
     return await invitation_service.revoke_grant(db, grant)
+
+
+@router.patch("/access/me/{grant_id}", response_model=AccessGrantRead)
+async def update_grant_scopes(
+    grant_id: UUID,
+    payload: AcceptInvitationRequest,
+    current_user: CandidateUser,
+    db: DB,
+) -> AccessGrant:
+    result = await db.execute(
+        select(AccessGrant).where(
+            AccessGrant.id == grant_id,
+            AccessGrant.candidate_id == current_user.id,
+            AccessGrant.status == AccessGrantStatus.ACTIVE,
+        )
+    )
+    grant = result.scalar_one_or_none()
+    if grant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="access grant not found")
+    return await invitation_service.update_grant_scopes(
+        db,
+        grant,
+        share_finances=payload.share_finances,
+        share_contact=payload.share_contact,
+    )

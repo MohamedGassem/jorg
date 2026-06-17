@@ -284,3 +284,13 @@ async def revoke_grant(db: AsyncSession, grant: AccessGrant) -> AccessGrant:
         organization_id=str(grant.organization_id),
     )
     return grant
+
+
+async def update_grant_scopes(
+    db: AsyncSession, grant: AccessGrant, *, share_finances: bool, share_contact: bool
+) -> AccessGrant:
+    grant.share_finances = share_finances
+    grant.share_contact = share_contact
+    await db.commit()
+    await db.refresh(grant)
+    return grant
