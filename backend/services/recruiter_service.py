@@ -10,7 +10,15 @@ from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models.candidate_profile import CandidateProfile, ContractType, Experience
+from core.exceptions import NotFoundError
+from models.candidate_profile import (
+    CandidateProfile,
+    Certification,
+    ContractType,
+    Education,
+    Experience,
+    Language,
+)
 from models.invitation import AccessGrant
 from models.recruiter import Organization, RecruiterProfile
 from models.skill import (
@@ -357,3 +365,130 @@ def assemble_accessible_candidates(
         }
         for row in rows
     ]
+
+
+def assemble_candidate_detail(
+    row: Any,
+    *,
+    experiences: Sequence[Any],
+    education: Sequence[Any],
+    certifications: Sequence[Any],
+    languages: Sequence[Any],
+    candidate_skills: Sequence[Any],
+    share_finances: bool,
+    share_contact: bool,
+) -> dict[str, Any]:
+    """Mise en forme pure de la fiche detaillee ; masque les champs hors scope."""
+    return {
+        "user_id": row.user_id,
+        "email": row.email,
+        "first_name": row.first_name,
+        "last_name": row.last_name,
+        "title": row.title,
+        "summary": row.summary,
+        "location": row.location,
+        "years_of_experience": row.years_of_experience,
+        "phone": row.phone if share_contact else None,
+        "email_contact": row.email_contact if share_contact else None,
+        "daily_rate": row.daily_rate if share_finances else None,
+        "annual_salary": row.annual_salary if share_finances else None,
+        "contract_type": row.contract_type,
+        "availability_status": row.availability_status,
+        "work_mode": row.work_mode,
+        "location_preference": row.location_preference,
+        "preferred_domains": row.preferred_domains,
+        "experiences": list(experiences),
+        "education": list(education),
+        "certifications": list(certifications),
+        "languages": list(languages),
+        "candidate_skills": list(candidate_skills),
+    }
+
+
+async def get_accessible_candidate_detail(
+    db: AsyncSession,
+    organization_id: UUID,
+    candidate_id: UUID,
+    grant: AccessGrant,
+) -> dict[str, Any]:
+    """Charge la fiche detaillee d'un candidat accessible, filtree par les scopes du grant."""
+    row = (
+        await db.execute(
+            select(
+                User.id.label("user_id"),
+                User.email,
+                CandidateProfile.id.label("profile_id"),
+                CandidateProfile.first_name,
+                CandidateProfile.last_name,
+                CandidateProfile.title,
+                CandidateProfile.summary,
+                CandidateProfile.location,
+                CandidateProfile.years_of_experience,
+                CandidateProfile.phone,
+                CandidateProfile.email_contact,
+                CandidateProfile.daily_rate,
+                CandidateProfile.annual_salary,
+                CandidateProfile.contract_type,
+                CandidateProfile.availability_status,
+                CandidateProfile.work_mode,
+                CandidateProfile.location_preference,
+                CandidateProfile.preferred_domains,
+            )
+            .join(CandidateProfile, CandidateProfile.user_id == User.id)
+            .where(User.id == candidate_id)
+        )
+    ).one_or_none()
+    if row is None:
+        raise NotFoundError("Candidate profile not found")
+
+    profile_id = row.profile_id
+    experiences = (await _batch_load_experiences(db, [profile_id])).get(profile_id, [])
+    education = (
+        (
+            await db.execute(
+                select(Education)
+                .where(Education.profile_id == profile_id)
+                .order_by(Education.end_date.desc().nulls_last())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    certifications = (
+        (
+            await db.execute(
+                select(Certification)
+                .where(Certification.profile_id == profile_id)
+                .order_by(Certification.issue_date.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    languages = (
+        (await db.execute(select(Language).where(Language.profile_id == profile_id)))
+        .scalars()
+        .all()
+    )
+    candidate_skills = (
+        (
+            await db.execute(
+                select(CandidateSkill)
+                .where(CandidateSkill.candidate_id == profile_id)
+                .options(selectinload(CandidateSkill.skill_ref))
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    return assemble_candidate_detail(
+        row,
+        experiences=experiences,
+        education=education,
+        certifications=certifications,
+        languages=languages,
+        candidate_skills=candidate_skills,
+        share_finances=grant.share_finances,
+        share_contact=grant.share_contact,
+    )

@@ -19,12 +19,12 @@ import {
   labelFor,
 } from "@/lib/labels";
 import type {
-  AccessibleCandidateRead,
+  AccessibleCandidateDetail,
   Experience,
   OpportunityRead,
 } from "@/types/api";
 
-function candidateName(c: AccessibleCandidateRead): string {
+function candidateName(c: AccessibleCandidateDetail): string {
   return c.first_name && c.last_name
     ? `${c.first_name} ${c.last_name}`
     : c.email;
@@ -106,7 +106,7 @@ function ExperienceBlock({ exp }: { exp: Experience }) {
 export default function CandidateDetailPage() {
   const { id: candidateId } = useParams<{ id: string }>();
   const { orgId, loading: orgLoading } = useRecruiterOrg();
-  const [candidate, setCandidate] = useState<AccessibleCandidateRead | null>(
+  const [candidate, setCandidate] = useState<AccessibleCandidateDetail | null>(
     null,
   );
   const [opportunities, setOpportunities] = useState<OpportunityRead[]>([]);
@@ -120,12 +120,10 @@ export default function CandidateDetailPage() {
     if (!orgId) return;
     Promise.all([
       api
-        .get<AccessibleCandidateRead[]>(`/organizations/${orgId}/candidates`)
-        .then((list) => {
-          const found = list.find((c) => c.user_id === candidateId) ?? null;
-          setCandidate(found);
-          if (!found) setError("Candidat introuvable ou accès non autorisé.");
-        }),
+        .get<AccessibleCandidateDetail>(
+          `/organizations/${orgId}/candidates/${candidateId}`,
+        )
+        .then((detail) => setCandidate(detail)),
       api
         .get<OpportunityRead[]>(`/organizations/${orgId}/opportunities`)
         .then((opps) =>
@@ -178,9 +176,18 @@ export default function CandidateDetailPage() {
     availabilityLabel,
     workModeLabel,
     candidate.daily_rate ? `${candidate.daily_rate} €/j` : null,
+    candidate.annual_salary ? `${candidate.annual_salary} €/an` : null,
   ]
     .filter(Boolean)
     .join(" · ");
+
+  const declaredSkills = candidate.candidate_skills;
+  const contactItems = [
+    candidate.phone ? { label: "Téléphone", value: candidate.phone } : null,
+    candidate.email_contact
+      ? { label: "Email", value: candidate.email_contact }
+      : null,
+  ].filter((item): item is { label: string; value: string } => item !== null);
 
   return (
     <div className="flex w-full flex-col">
@@ -232,9 +239,24 @@ export default function CandidateDetailPage() {
                 {metaLine && <p className="j-meta mt-1.5">{metaLine}</p>}
               </div>
             </div>
+            {candidate.summary && (
+              <p className="mt-4 text-[14px] leading-relaxed text-ink-2">
+                {candidate.summary}
+              </p>
+            )}
+            {contactItems.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1.5 border-t border-line pt-3.5">
+                {contactItems.map((item) => (
+                  <span key={item.label} className="text-[13px] text-ink-2">
+                    <span className="j-meta">{item.label} : </span>
+                    {item.value}
+                  </span>
+                ))}
+              </div>
+            )}
           </section>
 
-          {/* Compétences */}
+          {/* Compétences mobilisées (issues des expériences) */}
           {skills.length > 0 && (
             <FicheSection title="Compétences" count={skills.length}>
               <div className="flex flex-wrap gap-2">
@@ -250,6 +272,30 @@ export default function CandidateDetailPage() {
             </FicheSection>
           )}
 
+          {/* Compétences déclarées */}
+          {declaredSkills.length > 0 && (
+            <FicheSection
+              title="Compétences déclarées"
+              count={declaredSkills.length}
+            >
+              <div className="flex flex-wrap gap-2">
+                {declaredSkills.map((sk) => (
+                  <span
+                    key={sk.id}
+                    className="inline-flex h-7 items-center gap-1.5 rounded-md border border-line-2 bg-paper-2 px-3 text-[13px] font-medium text-ink-2"
+                  >
+                    {sk.skill_ref.name}
+                    {sk.self_assessed_level && (
+                      <span className="j-meta text-[11px]">
+                        {sk.self_assessed_level}
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </FicheSection>
+          )}
+
           {/* Expériences */}
           {candidate.experiences.length > 0 && (
             <FicheSection
@@ -259,6 +305,71 @@ export default function CandidateDetailPage() {
               <div className="flex flex-col gap-[18px]">
                 {candidate.experiences.map((exp) => (
                   <ExperienceBlock key={exp.id} exp={exp} />
+                ))}
+              </div>
+            </FicheSection>
+          )}
+
+          {/* Formations */}
+          {candidate.education.length > 0 && (
+            <FicheSection title="Formations" count={candidate.education.length}>
+              <div className="flex flex-col gap-3">
+                {candidate.education.map((edu) => (
+                  <div key={edu.id}>
+                    <p className="text-[14px] font-semibold">
+                      {[edu.degree, edu.field_of_study]
+                        .filter(Boolean)
+                        .join(" · ") || edu.school}
+                    </p>
+                    <p className="j-meta mt-0.5">
+                      {edu.school}
+                      {edu.end_date ? ` · ${frMonthYear(edu.end_date)}` : ""}
+                    </p>
+                    {edu.description && (
+                      <p className="mt-1 text-[13px] text-ink-2">
+                        {edu.description}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </FicheSection>
+          )}
+
+          {/* Certifications */}
+          {candidate.certifications.length > 0 && (
+            <FicheSection
+              title="Certifications"
+              count={candidate.certifications.length}
+            >
+              <div className="flex flex-col gap-3">
+                {candidate.certifications.map((cert) => (
+                  <div key={cert.id}>
+                    <p className="text-[14px] font-semibold">{cert.name}</p>
+                    <p className="j-meta mt-0.5">
+                      {cert.issuer}
+                      {cert.issue_date
+                        ? ` · ${frMonthYear(cert.issue_date)}`
+                        : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </FicheSection>
+          )}
+
+          {/* Langues */}
+          {candidate.languages.length > 0 && (
+            <FicheSection title="Langues" count={candidate.languages.length}>
+              <div className="flex flex-wrap gap-2">
+                {candidate.languages.map((lang) => (
+                  <span
+                    key={lang.id}
+                    className="inline-flex h-7 items-center gap-1.5 rounded-md border border-line-2 bg-paper-2 px-3 text-[13px] font-medium text-ink-2"
+                  >
+                    {lang.name}
+                    <span className="j-meta text-[11px]">{lang.level}</span>
+                  </span>
                 ))}
               </div>
             </FicheSection>
