@@ -278,6 +278,13 @@ export interface AcceptInvitationRequest {
   share_contact: boolean;
 }
 
+export interface PublicInvitationRead {
+  organization_name: string | null;
+  candidate_email: string;
+  status: InvitationStatus;
+  expires_at: string;
+}
+
 export interface GeneratedDocument {
   id: string;
   access_grant_id: string;
