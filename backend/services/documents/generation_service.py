@@ -171,6 +171,8 @@ async def _render_and_store(
     fmt: Literal["docx", "pdf"],
     access_grant_id: UUID | None,
     generated_by_user_id: UUID | None,
+    share_finances: bool = True,
+    share_contact: bool = True,
 ) -> GeneratedDocument:
     """Pipeline commun : chargements -> rendu -> (PDF) -> stockage -> enregistrement."""
     profile = await _load_profile(db, candidate_id)
@@ -189,6 +191,8 @@ async def _render_and_store(
             education,  # type: ignore[arg-type]
             certifications,  # type: ignore[arg-type]
             languages,  # type: ignore[arg-type]
+            share_finances=share_finances,
+            share_contact=share_contact,
         )
     except ValueError as exc:
         raise BusinessRuleError(str(exc)) from exc
@@ -251,6 +255,8 @@ async def generate_for_candidate(
         fmt=fmt,
         access_grant_id=grant.id,
         generated_by_user_id=generated_by_user_id,
+        share_finances=grant.share_finances,
+        share_contact=grant.share_contact,
     )
     logger.info(
         "document.generated",

@@ -406,12 +406,15 @@ def build_context(
     education: Sequence[EducationProtocol] | None = None,
     certifications: Sequence[CertificationProtocol] | None = None,
     languages: Sequence[LanguageProtocol] | None = None,
+    *,
+    share_finances: bool = True,
+    share_contact: bool = True,
 ) -> dict[str, Any]:
     """Build the full docxtpl rendering context (used for rendering and validation)."""
     education_items = [education_flat(edu) for edu in education or []]
     certification_items = [certification_flat(cert) for cert in certifications or []]
     language_items = [language_flat(language) for language in languages or []]
-    return {
+    context = {
         **profile_flat(profile),
         "experiences": [exp_flat(exp) for exp in experiences],
         "years_of_experience": str(
@@ -426,6 +429,13 @@ def build_context(
         "skill_groups": skill_groups(skills),
         **_group_skills_by_kind(skills),
     }
+    if not share_contact:
+        context["phone"] = ""
+        context["email_contact"] = ""
+    if not share_finances:
+        context["daily_rate"] = ""
+        context["annual_salary"] = ""
+    return context
 
 
 def generate_document(
@@ -436,10 +446,22 @@ def generate_document(
     education: Sequence[EducationProtocol] | None = None,
     certifications: Sequence[CertificationProtocol] | None = None,
     languages: Sequence[LanguageProtocol] | None = None,
+    *,
+    share_finances: bool = True,
+    share_contact: bool = True,
 ) -> bytes:
     """Render a docxtpl (Jinja2) Word template and return the result as bytes."""
     tpl = DocxTemplate(template_path)
-    context = build_context(profile, experiences, skills, education, certifications, languages)
+    context = build_context(
+        profile,
+        experiences,
+        skills,
+        education,
+        certifications,
+        languages,
+        share_finances=share_finances,
+        share_contact=share_contact,
+    )
     try:
         tpl.render(context, jinja_env=_JINJA_ENV)
     except (FileNotFoundError, zipfile.BadZipFile, PackageNotFoundError) as exc:
