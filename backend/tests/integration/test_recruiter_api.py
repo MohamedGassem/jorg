@@ -1088,3 +1088,48 @@ async def test_templatize_is_rate_limited(
         statuses.append(r.status_code)
     assert statuses[:5] == [200, 200, 200, 200, 200]
     assert statuses[5] == 429
+
+
+async def _setup_org_with_grant(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> tuple[str, str]:
+    """Create org, link recruiter, invite+accept candidate. Returns (org_id, candidate_id)."""
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    profile = await client.get("/candidates/me/profile", headers=candidate_headers)
+    candidate_id: str = profile.json()["user_id"]
+    inv = await client.post(
+        f"/organizations/{org_id}/invitations",
+        headers=recruiter_headers,
+        json={"candidate_email": "candidate@test.com"},
+    )
+    token = inv.json()["token"]
+    await client.post(f"/invitations/{token}/accept", headers=candidate_headers)
+    return org_id, candidate_id
+
+
+async def test_candidate_detail_requires_live_access(
+    client: AsyncClient, recruiter_headers: dict[str, str], candidate_headers: dict[str, str]
+) -> None:
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
+    r = await client.get(
+        f"/organizations/{org_id}/candidates/{candidate_id}", headers=recruiter_headers
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "education" in body
+    assert "certifications" in body
+    assert "languages" in body
+    assert "candidate_skills" in body
+
+
+async def test_candidate_detail_without_grant_is_forbidden(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    unknown_candidate = "00000000-0000-0000-0000-000000000000"
+    r = await client.get(
+        f"/organizations/{org_id}/candidates/{unknown_candidate}", headers=recruiter_headers
+    )
+    assert r.status_code == 403

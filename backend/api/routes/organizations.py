@@ -13,6 +13,7 @@ from models.candidate_profile import AvailabilityStatus, ContractType, MissionDu
 from models.recruiter import Organization, RecruiterProfile
 from models.user import User, UserRole
 from schemas.recruiter import (
+    AccessibleCandidateDetail,
     AccessibleCandidateRead,
     OrganizationCreate,
     OrganizationRead,
@@ -124,3 +125,12 @@ async def list_accessible_candidates(
         domain=domain,
         q=q,
     )
+
+
+@router.get("/{org_id}/candidates/{candidate_id}", response_model=AccessibleCandidateDetail)
+async def get_candidate_detail(
+    org_id: UUID, candidate_id: UUID, member: RecruiterOrgMember, db: DB
+) -> dict[str, Any]:
+    await _get_org_or_404(db, org_id)
+    grant = await access_policy.require_live_access(db, org_id, candidate_id)
+    return await recruiter_service.get_accessible_candidate_detail(db, org_id, candidate_id, grant)
