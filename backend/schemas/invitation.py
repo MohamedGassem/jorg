@@ -28,6 +28,11 @@ class InvitationRead(BaseModel):
     updated_at: datetime
 
 
+class AcceptInvitationRequest(BaseModel):
+    share_finances: bool = True
+    share_contact: bool = True
+
+
 class AccessGrantRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -38,3 +43,5 @@ class AccessGrantRead(BaseModel):
     granted_at: datetime
     revoked_at: datetime | None
     created_at: datetime
+    share_finances: bool
+    share_contact: bool

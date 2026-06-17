@@ -1,7 +1,7 @@
 // frontend/app/(candidate)/candidate/access/page.tsx
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   Bell,
   Check,
@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { StatusPill } from "@/components/ui/StatusPill";
@@ -28,6 +29,7 @@ import {
 import { useAsyncData, useDownload } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import type {
+  AcceptInvitationRequest,
   AccessGrant,
   GeneratedDocumentCandidateView,
   Invitation,
@@ -60,6 +62,24 @@ export default function AccessPage() {
     "Impossible de charger les invitations",
   );
   const [actionError, setActionError] = useState<string | null>(null);
+  const [consent, setConsent] = useState<
+    Record<string, AcceptInvitationRequest>
+  >({});
+
+  function invitationConsent(id: string): AcceptInvitationRequest {
+    return consent[id] ?? { share_finances: true, share_contact: true };
+  }
+
+  function setConsentField(
+    id: string,
+    field: keyof AcceptInvitationRequest,
+    value: boolean,
+  ) {
+    setConsent((prev) => ({
+      ...prev,
+      [id]: { ...invitationConsent(id), [field]: value },
+    }));
+  }
 
   const {
     data: orgs,
@@ -81,6 +101,43 @@ export default function AccessPage() {
   const [revoking, setRevoking] = useState<string | null>(null);
   const { download, errors: downloadErrors } = useDownload();
 
+  const { data: grants, refetch: refetchGrants } = useAsyncData<AccessGrant[]>(
+    () => api.get("/access/me"),
+    "Impossible de charger les partages",
+  );
+  const activeGrantByOrg = new Map<string, AccessGrant>();
+  for (const g of grants ?? []) {
+    if (g.status === "active") activeGrantByOrg.set(g.organization_id, g);
+  }
+  const [editingGrant, setEditingGrant] = useState<string | null>(null);
+  const [scopeDraft, setScopeDraft] = useState<AcceptInvitationRequest>({
+    share_finances: true,
+    share_contact: true,
+  });
+  const [savingScopes, setSavingScopes] = useState(false);
+
+  function startEditScopes(grant: AccessGrant) {
+    setEditingGrant(grant.id);
+    setScopeDraft({
+      share_finances: grant.share_finances,
+      share_contact: grant.share_contact,
+    });
+  }
+
+  async function saveScopes(grantId: string) {
+    setSavingScopes(true);
+    setActionError(null);
+    try {
+      await api.patch(`/access/me/${grantId}`, scopeDraft);
+      setEditingGrant(null);
+      refetchGrants();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.detail : "Erreur");
+    } finally {
+      setSavingScopes(false);
+    }
+  }
+
   const loading = invLoading || orgsLoading;
   const pendingInvitations = (invitations ?? []).filter(
     (inv) => inv.status === "pending",
@@ -89,10 +146,17 @@ export default function AccessPage() {
     (inv) => inv.status !== "pending",
   );
 
-  async function respond(token: string, action: "accept" | "reject") {
+  async function respond(
+    token: string,
+    action: "accept" | "reject",
+    scopes?: AcceptInvitationRequest,
+  ) {
     setActionError(null);
     try {
-      await api.post(`/invitations/${token}/${action}`);
+      await api.post(
+        `/invitations/${token}/${action}`,
+        action === "accept" ? scopes : undefined,
+      );
       refetchInvitations();
       refetchOrgs();
     } catch (err) {
@@ -192,6 +256,26 @@ export default function AccessPage() {
                 {frDate(inv.expires_at)} · rien n&apos;est partagé sans votre
                 accord.
               </p>
+              <div className="mt-3 flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[13px] text-ink-2">
+                  <Checkbox
+                    checked={invitationConsent(inv.id).share_finances}
+                    onCheckedChange={(v) =>
+                      setConsentField(inv.id, "share_finances", v)
+                    }
+                  />
+                  Partager mon TJM / ma rémunération
+                </label>
+                <label className="flex items-center gap-2 text-[13px] text-ink-2">
+                  <Checkbox
+                    checked={invitationConsent(inv.id).share_contact}
+                    onCheckedChange={(v) =>
+                      setConsentField(inv.id, "share_contact", v)
+                    }
+                  />
+                  Partager mes coordonnées (téléphone, email)
+                </label>
+              </div>
             </div>
             <div className="flex shrink-0 gap-2">
               <Button
@@ -201,7 +285,12 @@ export default function AccessPage() {
               >
                 Refuser
               </Button>
-              <Button size="sm" onClick={() => respond(inv.token, "accept")}>
+              <Button
+                size="sm"
+                onClick={() =>
+                  respond(inv.token, "accept", invitationConsent(inv.id))
+                }
+              >
                 <Check className="size-4" strokeWidth={1.6} />
                 Autoriser
               </Button>
@@ -263,53 +352,128 @@ export default function AccessPage() {
                     org.current_status === "revoked" ||
                     org.current_status === "expired";
                   const { granted, lastActivity } = eventDates(org);
+                  const grant = activeGrantByOrg.get(org.organization_id);
                   return (
-                    <tr
-                      key={org.organization_id}
-                      className={cn(
-                        "border-b border-line last:border-b-0",
-                        inactive && "opacity-55",
-                      )}
-                    >
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-[11px]">
-                          <span className="grid size-[30px] place-items-center rounded-[7px] border border-line bg-paper-2 font-heading text-[13px] font-semibold text-ink-2">
-                            {initialsFromName(org.organization_name)}
-                          </span>
-                          <span className="whitespace-nowrap text-sm font-medium">
-                            {org.organization_name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="j-meta text-[12.5px]">
-                          {granted ?? "—"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="j-meta text-[12.5px]">
-                          {lastActivity ?? "—"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <StatusPill tone={pill.tone}>{pill.label}</StatusPill>
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        {org.current_status === "active" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-ink-2"
-                            disabled={revoking === org.organization_id}
-                            onClick={() => handleRevoke(org.organization_id)}
-                          >
-                            {revoking === org.organization_id
-                              ? "Révocation…"
-                              : "Révoquer"}
-                          </Button>
+                    <Fragment key={org.organization_id}>
+                      <tr
+                        className={cn(
+                          "border-b border-line last:border-b-0",
+                          inactive && "opacity-55",
+                          grant && editingGrant === grant.id && "border-b-0",
                         )}
-                      </td>
-                    </tr>
+                      >
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-[11px]">
+                            <span className="grid size-[30px] place-items-center rounded-[7px] border border-line bg-paper-2 font-heading text-[13px] font-semibold text-ink-2">
+                              {initialsFromName(org.organization_name)}
+                            </span>
+                            <span className="whitespace-nowrap text-sm font-medium">
+                              {org.organization_name}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className="j-meta text-[12.5px]">
+                            {granted ?? "—"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className="j-meta text-[12.5px]">
+                            {lastActivity ?? "—"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <StatusPill tone={pill.tone}>{pill.label}</StatusPill>
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          {org.current_status === "active" && (
+                            <div className="flex justify-end gap-1">
+                              {grant && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-ink-2"
+                                  onClick={() =>
+                                    editingGrant === grant.id
+                                      ? setEditingGrant(null)
+                                      : startEditScopes(grant)
+                                  }
+                                >
+                                  Partage
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-ink-2"
+                                disabled={revoking === org.organization_id}
+                                onClick={() =>
+                                  handleRevoke(org.organization_id)
+                                }
+                              >
+                                {revoking === org.organization_id
+                                  ? "Révocation…"
+                                  : "Révoquer"}
+                              </Button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                      {grant && editingGrant === grant.id && (
+                        <tr className="border-b border-line last:border-b-0">
+                          <td colSpan={5} className="bg-paper-2 px-4 pb-4 pt-1">
+                            <div className="flex flex-col gap-2.5">
+                              <p className="j-meta text-[12px]">
+                                Ce que cette organisation peut inclure dans un
+                                dossier généré
+                              </p>
+                              <label className="flex items-center gap-2 text-[13px] text-ink-2">
+                                <Checkbox
+                                  checked={scopeDraft.share_finances}
+                                  onCheckedChange={(v) =>
+                                    setScopeDraft((d) => ({
+                                      ...d,
+                                      share_finances: v,
+                                    }))
+                                  }
+                                />
+                                Partager mon TJM / ma rémunération
+                              </label>
+                              <label className="flex items-center gap-2 text-[13px] text-ink-2">
+                                <Checkbox
+                                  checked={scopeDraft.share_contact}
+                                  onCheckedChange={(v) =>
+                                    setScopeDraft((d) => ({
+                                      ...d,
+                                      share_contact: v,
+                                    }))
+                                  }
+                                />
+                                Partager mes coordonnées (téléphone, email)
+                              </label>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  disabled={savingScopes}
+                                  onClick={() => saveScopes(grant.id)}
+                                >
+                                  {savingScopes
+                                    ? "Enregistrement…"
+                                    : "Enregistrer"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setEditingGrant(null)}
+                                >
+                                  Annuler
+                                </Button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>

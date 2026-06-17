@@ -211,7 +211,12 @@ async def get_active_grant(
 
 
 async def accept_invitation(
-    db: AsyncSession, invitation: Invitation, candidate_id: UUID
+    db: AsyncSession,
+    invitation: Invitation,
+    candidate_id: UUID,
+    *,
+    share_finances: bool = True,
+    share_contact: bool = True,
 ) -> AccessGrant:
     """Accept invitation → create (or return existing) AccessGrant.
 
@@ -231,7 +236,10 @@ async def accept_invitation(
 
     existing = await get_active_grant(db, candidate_id, invitation.organization_id)
     if existing is not None:
+        existing.share_finances = share_finances
+        existing.share_contact = share_contact
         await db.commit()
+        await db.refresh(existing)
         return existing
 
     grant = AccessGrant(
@@ -239,6 +247,8 @@ async def accept_invitation(
         organization_id=invitation.organization_id,
         status=AccessGrantStatus.ACTIVE,
         granted_at=now,
+        share_finances=share_finances,
+        share_contact=share_contact,
     )
     db.add(grant)
     await db.commit()
@@ -273,4 +283,14 @@ async def revoke_grant(db: AsyncSession, grant: AccessGrant) -> AccessGrant:
         candidate_id=str(grant.candidate_id),
         organization_id=str(grant.organization_id),
     )
+    return grant
+
+
+async def update_grant_scopes(
+    db: AsyncSession, grant: AccessGrant, *, share_finances: bool, share_contact: bool
+) -> AccessGrant:
+    grant.share_finances = share_finances
+    grant.share_contact = share_contact
+    await db.commit()
+    await db.refresh(grant)
     return grant

@@ -8,9 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import services.invitation_service as invitation_service
 from api.deps import RecruiterOrgMember, get_db, require_role
-from models.invitation import AccessGrant, Invitation, InvitationStatus
+from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
 from models.user import User, UserRole
-from schemas.invitation import AccessGrantRead, InvitationCreate, InvitationRead
+from schemas.invitation import (
+    AcceptInvitationRequest,
+    AccessGrantRead,
+    InvitationCreate,
+    InvitationRead,
+)
 
 router = APIRouter(tags=["invitations"])
 
@@ -90,7 +95,12 @@ async def list_my_invitations(current_user: CandidateUser, db: DB) -> list[dict[
     response_model=AccessGrantRead,
     status_code=status.HTTP_201_CREATED,
 )
-async def accept_invitation(token: str, current_user: CandidateUser, db: DB) -> AccessGrant:
+async def accept_invitation(
+    token: str,
+    current_user: CandidateUser,
+    db: DB,
+    payload: AcceptInvitationRequest | None = None,
+) -> AccessGrant:
     invitation = await invitation_service.get_invitation_by_token(db, token)
     if invitation is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="invitation not found")
@@ -99,7 +109,14 @@ async def accept_invitation(token: str, current_user: CandidateUser, db: DB) -> 
             status_code=status.HTTP_409_CONFLICT,
             detail=f"invitation is {invitation.status.value}",
         )
-    return await invitation_service.accept_invitation(db, invitation, current_user.id)
+    scopes = payload or AcceptInvitationRequest()
+    return await invitation_service.accept_invitation(
+        db,
+        invitation,
+        current_user.id,
+        share_finances=scopes.share_finances,
+        share_contact=scopes.share_contact,
+    )
 
 
 @router.post("/invitations/{token}/reject", response_model=InvitationRead)
@@ -135,3 +152,28 @@ async def revoke_grant(grant_id: UUID, current_user: CandidateUser, db: DB) -> A
     if grant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="access grant not found")
     return await invitation_service.revoke_grant(db, grant)
+
+
+@router.patch("/access/me/{grant_id}", response_model=AccessGrantRead)
+async def update_grant_scopes(
+    grant_id: UUID,
+    payload: AcceptInvitationRequest,
+    current_user: CandidateUser,
+    db: DB,
+) -> AccessGrant:
+    result = await db.execute(
+        select(AccessGrant).where(
+            AccessGrant.id == grant_id,
+            AccessGrant.candidate_id == current_user.id,
+            AccessGrant.status == AccessGrantStatus.ACTIVE,
+        )
+    )
+    grant = result.scalar_one_or_none()
+    if grant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="access grant not found")
+    return await invitation_service.update_grant_scopes(
+        db,
+        grant,
+        share_finances=payload.share_finances,
+        share_contact=payload.share_contact,
+    )
