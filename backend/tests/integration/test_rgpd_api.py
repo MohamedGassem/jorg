@@ -435,3 +435,53 @@ async def test_recruiter_delete_preserves_org_and_nulls_generated_docs(
     refreshed_doc = doc_q.scalar_one()
     assert refreshed_doc.generated_by_user_id is None
     assert refreshed_doc.file_path == "generated/rec-doc.docx"
+
+
+async def test_recruiter_delete_preserves_owned_template(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    """Deleting a recruiter who created a template must not be blocked by its FK.
+
+    templates.created_by_user_id is ON DELETE SET NULL: the template survives for
+    the organization, its creator is anonymised.
+    """
+    import io
+    from uuid import UUID
+
+    from docx import Document  # type: ignore[import-untyped,unused-ignore]
+
+    from models.template import Template
+
+    org_r = await client.post(
+        "/organizations", headers=recruiter_headers, json={"name": "Template Owner Co"}
+    )
+    org_id = org_r.json()["id"]
+
+    doc = Document()
+    doc.add_paragraph("Nom: {{last_name}}")
+    buf = io.BytesIO()
+    doc.save(buf)
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "Owned"},
+        files={
+            "file": (
+                "t.docx",
+                buf.getvalue(),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    assert up.status_code == 201, up.text
+    template_id = UUID(up.json()["id"])
+
+    r = await client.delete("/recruiters/me", headers=recruiter_headers)
+    assert r.status_code == 204
+
+    db_session.expire_all()
+    t_q = await db_session.execute(select(Template).where(Template.id == template_id))
+    template = t_q.scalar_one()
+    assert template.created_by_user_id is None
