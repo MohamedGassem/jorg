@@ -28,6 +28,23 @@ class InvitationRead(BaseModel):
     updated_at: datetime
 
 
+class RecruiterInvitationRead(BaseModel):
+    """Recruiter-facing view of an invitation. Omits the bearer ``token``:
+    only the invited candidate needs it, and a recruiter cannot accept."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    recruiter_id: UUID
+    organization_id: UUID
+    candidate_email: str
+    candidate_id: UUID | None
+    status: InvitationStatus
+    expires_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
 class AcceptInvitationRequest(BaseModel):
     share_finances: bool = True
     share_contact: bool = True

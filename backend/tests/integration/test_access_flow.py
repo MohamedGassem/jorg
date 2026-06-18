@@ -207,6 +207,21 @@ async def test_accept_unknown_token_returns_404(
     assert r.status_code == 404
 
 
+async def test_accept_rejects_email_mismatch(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> None:
+    # Invitation addressed to a different email than the authenticated candidate:
+    # holding the token must not let that candidate bind the grant to their profile.
+    org_id = await _create_org_and_link(client, recruiter_headers)
+    token = await _create_invite_token(
+        client, recruiter_headers, org_id, email="someone.else@test.com"
+    )
+    r = await client.post(f"/invitations/{token}/accept", headers=candidate_headers)
+    assert r.status_code == 403
+
+
 # ---- access grants ----------------------------------------------------------
 
 

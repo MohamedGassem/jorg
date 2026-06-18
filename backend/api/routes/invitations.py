@@ -17,6 +17,7 @@ from schemas.invitation import (
     InvitationCreate,
     InvitationRead,
     PublicInvitationRead,
+    RecruiterInvitationRead,
 )
 
 router = APIRouter(tags=["invitations"])
@@ -46,7 +47,7 @@ async def create_invitation(
 
 @router.get(
     "/organizations/{org_id}/invitations",
-    response_model=list[InvitationRead],
+    response_model=list[RecruiterInvitationRead],
 )
 async def list_org_invitations(
     org_id: UUID,
@@ -129,6 +130,11 @@ async def accept_invitation(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"invitation is {invitation.status.value}",
+        )
+    if invitation.candidate_email.lower() != current_user.email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="this invitation was sent to a different email address",
         )
     scopes = payload or AcceptInvitationRequest()
     return await invitation_service.accept_invitation(
