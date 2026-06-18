@@ -434,6 +434,76 @@ async def test_download_generated_document(
     assert r.headers["content-type"].startswith("application/vnd.openxmlformats-officedocument")
 
 
+async def _revoke_candidate_grant(
+    client: AsyncClient, candidate_headers: dict[str, str], org_id: str
+) -> None:
+    grants = await client.get("/access/me", headers=candidate_headers)
+    grant_id = next(g["id"] for g in grants.json() if g["organization_id"] == org_id)
+    r = await client.delete(f"/access/me/{grant_id}", headers=candidate_headers)
+    assert r.status_code == 200
+
+
+async def test_recruiter_cannot_download_after_revocation(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> None:
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
+    template_id = await _upload_valid_template(client, recruiter_headers, org_id)
+    gen = await client.post(
+        f"/organizations/{org_id}/generate",
+        headers=recruiter_headers,
+        json={"candidate_id": candidate_id, "template_id": template_id, "format": "docx"},
+    )
+    doc_id = gen.json()["id"]
+
+    await _revoke_candidate_grant(client, candidate_headers, org_id)
+
+    r = await client.get(f"/documents/{doc_id}/download", headers=recruiter_headers)
+    assert r.status_code == 403
+
+
+async def test_candidate_still_downloads_after_revocation(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> None:
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
+    template_id = await _upload_valid_template(client, recruiter_headers, org_id)
+    gen = await client.post(
+        f"/organizations/{org_id}/generate",
+        headers=recruiter_headers,
+        json={"candidate_id": candidate_id, "template_id": template_id, "format": "docx"},
+    )
+    doc_id = gen.json()["id"]
+
+    await _revoke_candidate_grant(client, candidate_headers, org_id)
+
+    # The candidate keeps access to documents built from their own data.
+    r = await client.get(f"/documents/{doc_id}/download", headers=candidate_headers)
+    assert r.status_code == 200
+
+
+async def test_org_documents_excludes_revoked_grant(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> None:
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
+    template_id = await _upload_valid_template(client, recruiter_headers, org_id)
+    await client.post(
+        f"/organizations/{org_id}/generate",
+        headers=recruiter_headers,
+        json={"candidate_id": candidate_id, "template_id": template_id, "format": "docx"},
+    )
+
+    await _revoke_candidate_grant(client, candidate_headers, org_id)
+
+    r = await client.get(f"/organizations/{org_id}/documents", headers=recruiter_headers)
+    assert r.status_code == 200
+    assert r.json() == []
+
+
 async def test_cannot_generate_with_draft_template(
     client: AsyncClient,
     recruiter_headers: dict[str, str],

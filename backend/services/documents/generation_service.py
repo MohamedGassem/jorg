@@ -396,7 +396,7 @@ async def list_org_documents_view(
         .join(AccessGrant, GeneratedDocument.access_grant_id == AccessGrant.id)
         .outerjoin(CandidateProfile, CandidateProfile.user_id == AccessGrant.candidate_id)
         .outerjoin(Template, GeneratedDocument.template_id == Template.id)
-        .where(AccessGrant.organization_id == organization_id)
+        .where(AccessGrant.organization_id == organization_id, access_policy.active_grant_clause())
         .order_by(GeneratedDocument.generated_at.desc())
     )
     return [
@@ -419,7 +419,7 @@ async def list_org_documents(db: AsyncSession, organization_id: UUID) -> list[Ge
     result = await db.execute(
         select(GeneratedDocument)
         .join(AccessGrant, GeneratedDocument.access_grant_id == AccessGrant.id)
-        .where(AccessGrant.organization_id == organization_id)
+        .where(AccessGrant.organization_id == organization_id, access_policy.active_grant_clause())
         .order_by(GeneratedDocument.generated_at.desc())
     )
     return list(result.scalars().all())
