@@ -310,6 +310,7 @@ def test_build_context_hides_finances_and_contact_when_scoped_out() -> None:
     )
     assert ctx["phone"] == ""
     assert ctx["email_contact"] == ""
+    assert ctx["linkedin_url"] == ""
     assert ctx["daily_rate"] == ""
     assert ctx["annual_salary"] == ""
 

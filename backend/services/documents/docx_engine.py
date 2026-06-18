@@ -432,6 +432,7 @@ def build_context(
     if not share_contact:
         context["phone"] = ""
         context["email_contact"] = ""
+        context["linkedin_url"] = ""
     if not share_finances:
         context["daily_rate"] = ""
         context["annual_salary"] = ""

@@ -51,6 +51,12 @@ async def upload_template(
 ) -> Template:
     await _get_org_or_404(db, org_id)
 
+    # Reject oversized uploads before materialising the whole file in memory.
+    if file.size is not None and file.size > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="file exceeds 10 MB limit",
+        )
     content = await file.read()
     if len(content) > _MAX_UPLOAD_BYTES:
         raise HTTPException(
