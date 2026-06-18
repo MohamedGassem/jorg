@@ -10,13 +10,14 @@ import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { TabBar } from "@/components/ui/TabBar";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
-import { useDownload, useRecruiterOrg } from "@/lib/hooks";
+import { useDownload } from "@/lib/hooks";
+import { OrgTemplatesSection } from "@/components/recruiter/org-templates-section";
+import { useRecruiterWorkspace } from "@/components/recruiter-workspace";
 import { downloadFilename } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type {
   BuiltinTemplate,
   GeneratedDocumentRecruiterView,
-  Template,
 } from "@/types/api";
 
 type DocTab = "dossiers" | "templates";
@@ -94,13 +95,14 @@ function DocumentModelCard({
 }
 
 export default function DocumentsPage() {
-  const { orgId, loading: orgLoading, error: orgError } = useRecruiterOrg();
+  const {
+    orgId,
+    builtinTemplates,
+    loading: orgLoading,
+    error: orgError,
+  } = useRecruiterWorkspace();
   const [activeTab, setActiveTab] = useState<DocTab>("dossiers");
   const [docs, setDocs] = useState<GeneratedDocumentRecruiterView[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [builtinTemplates, setBuiltinTemplates] = useState<BuiltinTemplate[]>(
-    [],
-  );
   const [docsLoading, setDocsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const { download, errors: downloadErrors } = useDownload();
@@ -109,36 +111,23 @@ export default function DocumentsPage() {
     if (!orgId) return;
     const controller = new AbortController();
     setDocsLoading(true);
-    Promise.all([
-      api
-        .get<GeneratedDocumentRecruiterView[]>(
-          `/organizations/${orgId}/documents`,
-        )
-        .then((data) => {
-          if (!controller.signal.aborted) setDocs(data);
-        })
-        .catch((err) => {
-          if (!controller.signal.aborted) {
-            setFetchError(
-              extractErrorMessage(err, "Impossible de charger les dossiers"),
-            );
-          }
-        }),
-      api
-        .get<Template[]>(`/organizations/${orgId}/templates`)
-        .then((data) => {
-          if (!controller.signal.aborted) setTemplates(data);
-        })
-        .catch(() => {}),
-      api
-        .get<BuiltinTemplate[]>("/templates/builtin")
-        .then((data) => {
-          if (!controller.signal.aborted) setBuiltinTemplates(data);
-        })
-        .catch(() => {}),
-    ]).finally(() => {
-      if (!controller.signal.aborted) setDocsLoading(false);
-    });
+    api
+      .get<GeneratedDocumentRecruiterView[]>(
+        `/organizations/${orgId}/documents`,
+      )
+      .then((data) => {
+        if (!controller.signal.aborted) setDocs(data);
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setFetchError(
+            extractErrorMessage(err, "Impossible de charger les dossiers"),
+          );
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDocsLoading(false);
+      });
     return () => controller.abort();
   }, [orgId]);
 
@@ -366,51 +355,7 @@ export default function DocumentsPage() {
             )}
           </section>
 
-          <section className="rounded-lg border border-dashed border-border bg-muted/20 p-5">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h2 className="font-heading text-base font-semibold">
-                  Modèles personnalisés
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  L&apos;import de modèles personnalisés est volontairement
-                  fermé pendant l&apos;alpha pour garantir la qualité des
-                  dossiers générés.
-                </p>
-              </div>
-              <Badge variant="warning">Post-alpha</Badge>
-            </div>
-
-            {templates.length > 0 && (
-              <ul className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
-                {templates.map((template) => (
-                  <li
-                    key={template.id}
-                    className="rounded-lg border border-border bg-background p-3 text-sm"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium">{template.name}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {template.detected_placeholders.length} champ
-                          {template.detected_placeholders.length > 1
-                            ? "s"
-                            : ""}{" "}
-                          détecté
-                          {template.detected_placeholders.length > 1 ? "s" : ""}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={template.is_valid ? "success" : "warning"}
-                      >
-                        {template.is_valid ? "Valide" : "À vérifier"}
-                      </Badge>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          <OrgTemplatesSection orgId={orgId} />
         </div>
       )}
     </div>

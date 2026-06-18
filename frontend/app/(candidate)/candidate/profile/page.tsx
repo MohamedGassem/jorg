@@ -9,6 +9,7 @@ import { CvImport } from "@/components/cv-import";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
+import { completionPercent, profileCompletionChecks } from "@/lib/completion";
 import {
   AVAILABILITY_LABELS,
   CONTRACT_TYPE_LABELS,
@@ -24,7 +25,7 @@ import { SkillSection } from "@/components/candidate/skill-section";
 import { EducationSection } from "@/components/candidate/education-section";
 import { CertificationSection } from "@/components/candidate/certification-section";
 import { LanguageSection } from "@/components/candidate/language-section";
-import { CandidateGenerateDossierDialog } from "@/components/candidate-generate-dossier-dialog";
+import { DossierGenerationDialog } from "@/components/dossier-generation-dialog";
 import {
   Dialog,
   DialogContent,
@@ -41,8 +42,11 @@ import {
 import {
   type AvailabilityStatus,
   type CandidateProfile,
+  type Certification,
   type ContractType,
+  type Education,
   type Experience,
+  type Language,
   type Skill,
   type WorkMode,
 } from "@/types/api";
@@ -70,27 +74,15 @@ function deriveYearsOfExperience(experiences: Experience[]): number | null {
   return Math.max(years, 0);
 }
 
-function completionChecks(
-  p: CandidateProfile,
-): { label: string; done: boolean }[] {
-  return [
-    { label: "Photo de profil", done: Boolean(p.avatar_url) },
-    { label: "Titre", done: Boolean(p.title) },
-    { label: "Résumé", done: Boolean(p.summary) },
-    { label: "Localisation", done: Boolean(p.location) },
-    { label: "Profil LinkedIn", done: Boolean(p.linkedin_url) },
-    {
-      label: "Disponibilité",
-      done: p.availability_status !== "not_available",
-    },
-  ];
-}
-
 function ProfileHero({
   profile,
+  hasExperience,
+  hasSkill,
   onEdit,
 }: {
   profile: CandidateProfile;
+  hasExperience: boolean;
+  hasSkill: boolean;
   onEdit: () => void;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -100,18 +92,38 @@ function ProfileHero({
     profile: CandidateProfile | null;
     experiences: Experience[];
     skills: Skill[];
+    education: Education[];
+    certifications: Certification[];
+    languages: Language[];
   } | null>(null);
 
   async function loadPreview() {
     setPreviewLoading(true);
     setPreviewOpen(true);
     try {
-      const [profileData, experiences, skills] = await Promise.all([
+      const [
+        profileData,
+        experiences,
+        skills,
+        education,
+        certifications,
+        languages,
+      ] = await Promise.all([
         api.get<CandidateProfile>("/candidates/me/profile"),
         api.get<Experience[]>("/candidates/me/experiences"),
         api.get<Skill[]>("/candidates/me/skills"),
+        api.get<Education[]>("/candidates/me/education"),
+        api.get<Certification[]>("/candidates/me/certifications"),
+        api.get<Language[]>("/candidates/me/languages"),
       ]);
-      setPreviewData({ profile: profileData, experiences, skills });
+      setPreviewData({
+        profile: profileData,
+        experiences,
+        skills,
+        education,
+        certifications,
+        languages,
+      });
     } catch {
       // show partial data on error
     } finally {
@@ -119,10 +131,8 @@ function ProfileHero({
     }
   }
 
-  const checks = completionChecks(profile);
-  const completion = Math.round(
-    (checks.filter((c) => c.done).length / checks.length) * 100,
-  );
+  const checks = profileCompletionChecks(profile, { hasExperience, hasSkill });
+  const completion = completionPercent(checks);
   const missing = checks.filter((c) => !c.done);
   const fullName =
     [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "-";
@@ -310,13 +320,63 @@ function ProfileHero({
                   </div>
                 </div>
               )}
+              {previewData.education.length > 0 && (
+                <div>
+                  <p className="mb-2 font-medium">Formations</p>
+                  <div className="space-y-2">
+                    {previewData.education.map((edu) => (
+                      <div key={edu.id}>
+                        <p className="font-medium">
+                          {[edu.degree, edu.field_of_study]
+                            .filter(Boolean)
+                            .join(" · ") || edu.school}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {edu.school}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {previewData.certifications.length > 0 && (
+                <div>
+                  <p className="mb-2 font-medium">Certifications</p>
+                  <div className="space-y-2">
+                    {previewData.certifications.map((cert) => (
+                      <div key={cert.id}>
+                        <p className="font-medium">{cert.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {cert.issuer}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {previewData.languages.length > 0 && (
+                <div>
+                  <p className="mb-1 font-medium">Langues</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {previewData.languages.map((lang) => (
+                      <span
+                        key={lang.id}
+                        className="rounded-full border border-border/60 px-2.5 py-0.5 text-xs"
+                      >
+                        {lang.name} · {lang.level}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : null}
         </DialogContent>
       </Dialog>
-      <CandidateGenerateDossierDialog
+      <DossierGenerationDialog
         open={generateOpen}
         onOpenChange={setGenerateOpen}
+        target={{ kind: "self" }}
       />
     </>
   );
@@ -706,12 +766,22 @@ function ProfileTabs() {
 export default function ProfilePage() {
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [hasExperience, setHasExperience] = useState(false);
+  const [hasSkill, setHasSkill] = useState(false);
 
   useEffect(() => {
     api
       .get<CandidateProfile>("/candidates/me/profile")
       .then(setProfile)
       .catch(console.error);
+    api
+      .get<Experience[]>("/candidates/me/experiences")
+      .then((experiences) => setHasExperience(experiences.length > 0))
+      .catch(() => {});
+    api
+      .get<Skill[]>("/candidates/me/skills")
+      .then((skills) => setHasSkill(skills.length > 0))
+      .catch(() => {});
   }, []);
 
   async function handleContactDetected(contact: {
@@ -747,7 +817,12 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto w-full max-w-[920px] space-y-[18px]">
-      <ProfileHero profile={profile} onEdit={() => setEditOpen(true)} />
+      <ProfileHero
+        profile={profile}
+        hasExperience={hasExperience}
+        hasSkill={hasSkill}
+        onEdit={() => setEditOpen(true)}
+      />
       <CvImport onContactDetected={handleContactDetected} />
       <Suspense
         fallback={<div className="h-10 animate-pulse rounded-lg bg-muted" />}

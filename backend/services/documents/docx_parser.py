@@ -13,10 +13,10 @@ _PLACEHOLDER_RE = re.compile(r"\{\{[^}]+\}\}")
 # Old Mustache block markers: {{#EXPERIENCES}}, {{/EXPERIENCES}}
 _MUSTACHE_BLOCK_RE = re.compile(r"^\{\{[#/]")
 
-# Jinja2 loop variable access: {{exp.*}}, {{sk.*}}
+# Jinja2 loop variable access: {{exp.*}}, {{sk.*}}, {{edu.*}}, {{cert.*}}, {{lang.*}}
 # These are resolved inside {%p for ... %} / {%tr for ... %} blocks and are
-# not standalone mappable fields.
-_LOOP_VAR_RE = re.compile(r"^\{\{(exp|sk)\.")
+# not standalone mappable fields (see docs/template-syntax.md).
+_LOOP_VAR_RE = re.compile(r"^\{\{(exp|sk|edu|cert|lang)\.")
 
 
 def _iter_paragraphs(doc: Any) -> list[str]:
@@ -49,9 +49,10 @@ def is_block_marker(placeholder: str) -> bool:
 
     Excluded patterns:
     - Old Mustache block markers: ``{{#EXPERIENCES}}``, ``{{/EXPERIENCES}}``
-    - Jinja2 loop variable access: ``{{exp.role}}``, ``{{sk.name}}``, etc.
-      These appear inside ``{%p for exp in experiences %}`` blocks and are
-      resolved automatically — recruiters do not map them individually.
+    - Jinja2 loop variable access: ``{{exp.role}}``, ``{{sk.name}}``,
+      ``{{edu.degree}}``, ``{{cert.name}}``, ``{{lang.name}}``, etc.
+      These appear inside ``{%p for ... %}`` blocks and are resolved
+      automatically — recruiters do not map them individually.
 
     Note: Jinja2 block tags (``{%p for ... %}``, ``{%tr endfor %}``) use ``{%``
     rather than ``{{`` and are never matched by the placeholder regex at all.
@@ -64,7 +65,8 @@ def extract_placeholders(file_path: str) -> list[str]:
 
     Preserves first-occurrence order. Excludes:
     - Old Mustache block markers: ``{{#EXPERIENCES}}``, ``{{/EXPERIENCES}}``
-    - Jinja2 loop variables: ``{{exp.*}}``, ``{{sk.*}}``
+    - Jinja2 loop variables: ``{{exp.*}}``, ``{{sk.*}}``, ``{{edu.*}}``,
+      ``{{cert.*}}``, ``{{lang.*}}``
     - Jinja2 block tags (``{%p ... %}``, ``{%tr ... %}``): excluded naturally
       because they use ``{%`` rather than ``{{``.
 

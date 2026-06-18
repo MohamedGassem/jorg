@@ -106,7 +106,8 @@ async def download_document(
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="document not found")
 
-    from models.invitation import AccessGrant  # lazy: avoids circular import
+    # lazy import: avoids circular import
+    from models.invitation import AccessGrant, AccessGrantStatus
 
     grant = None
     if doc.access_grant_id is not None:
@@ -122,10 +123,15 @@ async def download_document(
         if grant is not None
         else doc.generated_by_user_id == current_user.id
     )
+    # A recruiter keeps access only while the candidate's grant is still active:
+    # revoking consent cuts off the recruiter from documents built under it.
     is_recruiter_of_org = False
     if current_user.role == UserRole.RECRUITER and grant is not None:
         profile = await recruiter_service.get_or_create_profile(db, current_user.id)
-        is_recruiter_of_org = access_policy.is_member(profile, grant.organization_id)
+        is_recruiter_of_org = (
+            access_policy.is_member(profile, grant.organization_id)
+            and grant.status == AccessGrantStatus.ACTIVE
+        )
 
     if not is_candidate and not is_recruiter_of_org:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="access denied")

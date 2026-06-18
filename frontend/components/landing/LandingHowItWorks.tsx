@@ -9,7 +9,7 @@ const STEPS = [
   {
     title: "Il accorde l'accès",
     detail:
-      "Rien n'est partagé sans son accord. Chaque consultation est tracée, chaque accès est révocable.",
+      "Rien n'est partagé sans son accord. Chaque accès est journalisé et révocable à tout moment.",
   },
   {
     title: "Le recruteur génère",

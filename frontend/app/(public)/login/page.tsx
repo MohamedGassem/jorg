@@ -61,7 +61,7 @@ function AuthTrustPanel() {
       </div>
       <p className="j-meta mt-4 flex items-center gap-2 text-[11.5px]">
         <ShieldCheck className="size-3.5" strokeWidth={1.6} />
-        Chaque consultation est tracée et visible par le candidat.
+        Accès et dossiers générés sont journalisés et visibles par le candidat.
       </p>
     </aside>
   );

@@ -33,7 +33,7 @@ async def store_cv_extraction_proposal(
     )
     db.add(row)
     try:
-        await db.commit()
+        await db.flush()
     except ProgrammingError as exc:
         await db.rollback()
         if _is_missing_proposal_table(exc):

@@ -228,6 +228,15 @@ export interface Template {
   word_file_path: string;
   detected_placeholders: string[];
   is_valid: boolean;
+  unknown_placeholders: string[];
+  validation_error: string | null;
+  status: "active" | "draft";
+  templatize_report: {
+    mappings: { find: string; placeholder: string }[];
+    warnings: string[];
+    rejected: string[];
+    render_error: string | null;
+  } | null;
   created_at: string;
   updated_at: string;
 }
@@ -249,6 +258,7 @@ export interface Invitation {
   status: InvitationStatus;
   expires_at: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface AccessGrant {
@@ -259,6 +269,20 @@ export interface AccessGrant {
   granted_at: string;
   revoked_at: string | null;
   created_at: string;
+  share_finances: boolean;
+  share_contact: boolean;
+}
+
+export interface AcceptInvitationRequest {
+  share_finances: boolean;
+  share_contact: boolean;
+}
+
+export interface PublicInvitationRead {
+  organization_name: string | null;
+  candidate_email: string;
+  status: InvitationStatus;
+  expires_at: string;
 }
 
 export interface GeneratedDocument {
@@ -313,6 +337,19 @@ export interface AccessibleCandidateRead {
   location_preference: string | null;
   preferred_domains: string[] | null;
   experiences: Experience[];
+}
+
+export interface AccessibleCandidateDetail extends AccessibleCandidateRead {
+  summary: string | null;
+  location: string | null;
+  years_of_experience: number | null;
+  phone: string | null;
+  email_contact: string | null;
+  annual_salary: number | null;
+  education: Education[];
+  certifications: Certification[];
+  languages: Language[];
+  candidate_skills: Skill[];
 }
 
 export interface ApiError {

@@ -1,5 +1,6 @@
 import { RecruiterAppBar } from "@/components/app-bar";
 import { AppLegalFooter } from "@/components/AppLegalFooter";
+import { RecruiterWorkspaceProvider } from "@/components/recruiter-workspace";
 
 export default function RecruiterLayout({
   children,
@@ -7,15 +8,17 @@ export default function RecruiterLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
-      <RecruiterAppBar />
-      <main
-        className="mx-auto w-full min-w-0 max-w-[var(--shell)] flex-1 px-7 py-[26px]"
-        id="main-content"
-      >
-        {children}
-      </main>
-      <AppLegalFooter />
-    </div>
+    <RecruiterWorkspaceProvider>
+      <div className="flex min-h-dvh flex-col bg-background">
+        <RecruiterAppBar />
+        <main
+          className="mx-auto w-full min-w-0 max-w-[var(--shell)] flex-1 px-7 py-[26px]"
+          id="main-content"
+        >
+          {children}
+        </main>
+        <AppLegalFooter />
+      </div>
+    </RecruiterWorkspaceProvider>
   );
 }

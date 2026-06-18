@@ -101,7 +101,7 @@ async def create_opportunity(
     db.add(opp)
     await db.flush()
     await _sync_required_skills(db, opp.id, data.skill_ref_ids)
-    await db.commit()
+    await db.flush()
     await db.refresh(opp)
     return await _to_read(db, opp)
 
@@ -139,7 +139,7 @@ async def update_opportunity(
     # skill_ref_ids is None means "leave unchanged"; [] means "clear".
     if skill_ref_ids is not None:
         await _sync_required_skills(db, opp.id, skill_ref_ids)
-    await db.commit()
+    await db.flush()
     await db.refresh(opp)
     return await _to_read(db, opp)
 
@@ -218,7 +218,7 @@ async def add_to_shortlist(
     entry = ShortlistEntry(opportunity_id=opportunity_id, candidate_id=candidate_id)
     db.add(entry)
     try:
-        await db.commit()
+        await db.flush()
     except IntegrityError as err:
         await db.rollback()
         raise ConflictError("already_in_shortlist") from err
@@ -237,7 +237,7 @@ async def remove_from_shortlist(db: AsyncSession, opportunity_id: UUID, candidat
     if entry is None:
         return False
     await db.delete(entry)
-    await db.commit()
+    await db.flush()
     return True
 
 
@@ -245,7 +245,8 @@ async def bulk_generate(
     db: AsyncSession,
     opportunity_id: UUID,
     organization_id: UUID,
-    template_id: UUID,
+    template_id: UUID | None,
+    system_template_key: str | None,
     generated_by_user_id: UUID,
     fmt: Literal["docx", "pdf"],
 ) -> list[BulkGenerateResult]:
@@ -261,7 +262,7 @@ async def bulk_generate(
                 db,
                 organization_id=organization_id,
                 template_id=template_id,
-                system_template_key=None,
+                system_template_key=system_template_key,
                 candidate_id=entry.candidate_id,
                 generated_by_user_id=generated_by_user_id,
                 fmt=fmt,

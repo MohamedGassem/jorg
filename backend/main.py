@@ -19,6 +19,7 @@ from api.routes.candidates import router as candidates_router
 from api.routes.generation import router as generation_router
 from api.routes.invitations import router as invitations_router
 from api.routes.opportunities import router as opportunities_router
+from api.routes.org_templates import router as org_templates_router
 from api.routes.organizations import router as organizations_router
 from api.routes.recruiters import router as recruiters_router
 from api.routes.skills import router as skills_router
@@ -112,6 +113,7 @@ app.include_router(admin_router)
 app.include_router(auth_router)
 app.include_router(candidates_router)
 app.include_router(organizations_router)
+app.include_router(org_templates_router)
 app.include_router(recruiters_router)
 app.include_router(invitations_router)
 app.include_router(generation_router)

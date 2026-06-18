@@ -9,6 +9,7 @@ import services.documents.builtin_template_service as builtin_template_service
 from api.deps import CurrentUser, require_role
 from models.user import User, UserRole
 from schemas.template import BuiltinTemplateRead
+from services.llm.client import assisted_templating_enabled
 
 router = APIRouter(tags=["templates"])
 
@@ -29,6 +30,11 @@ async def download_sample_template(current_user: RecruiterUser) -> FileResponse:
         filename="jorg-sample-template.docx",
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
+
+
+@router.get("/templates/capabilities")
+async def template_capabilities(current_user: RecruiterUser) -> dict[str, bool]:
+    return {"assisted_templating": assisted_templating_enabled()}
 
 
 @router.get("/templates/builtin", response_model=list[BuiltinTemplateRead])

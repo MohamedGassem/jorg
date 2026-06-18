@@ -15,14 +15,13 @@ import { OnboardingOrg } from "@/components/onboarding-org";
 import { StatCell } from "@/components/ui/StatCell";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
-import { useRecruiterOrg } from "@/lib/hooks";
+import { useRecruiterWorkspace } from "@/components/recruiter-workspace";
 import { cn } from "@/lib/utils";
 import type {
   AccessibleCandidateRead,
   GeneratedDocumentRecruiterView,
   Invitation,
   OpportunityRead,
-  Organization,
 } from "@/types/api";
 import {
   AVAILABILITY_LABELS,
@@ -34,7 +33,7 @@ import {
 
 export default function RecruiterDashboardPage() {
   const router = useRouter();
-  const { orgId, profile, loading: orgLoading } = useRecruiterOrg();
+  const { orgId, org, profile, loading: orgLoading } = useRecruiterWorkspace();
 
   useEffect(() => {
     if (orgLoading) return;
@@ -43,7 +42,6 @@ export default function RecruiterDashboardPage() {
     }
   }, [profile, orgLoading, router]);
 
-  const [org, setOrg] = useState<Organization | null>(null);
   const [candidates, setCandidates] = useState<AccessibleCandidateRead[]>([]);
   const [openOpportunityCount, setOpenOpportunityCount] = useState<
     number | null
@@ -60,10 +58,6 @@ export default function RecruiterDashboardPage() {
   useEffect(() => {
     if (orgLoading || !profile?.onboarding_completed) return;
     if (!orgId) return;
-
-    const orgPromise = api
-      .get<Organization>(`/organizations/${orgId}`)
-      .catch(() => null);
 
     const candidatesPromise = api
       .get<AccessibleCandidateRead[]>(`/organizations/${orgId}/candidates`)
@@ -84,41 +78,35 @@ export default function RecruiterDashboardPage() {
       .catch(() => null);
 
     Promise.all([
-      orgPromise,
       candidatesPromise,
       opportunitiesPromise,
       invitationsPromise,
       documentsPromise,
-    ]).then(
-      ([orgData, candidatesData, opportunities, invitations, documents]) => {
-        if (orgData !== null) {
-          setOrg(orgData);
-        }
-        if (candidatesData !== null) {
-          setCandidates(candidatesData);
-        }
-        if (opportunities !== null) {
-          setOpenOpportunityCount(
-            opportunities.filter((o) => o.status === "open").length,
-          );
-        }
-        if (invitations !== null) {
-          setPendingInvitationCount(
-            invitations.filter((inv) => inv.status === "pending").length,
-          );
-        }
-        if (documents !== null) {
-          setDocCount(documents.length);
-          const sorted = [...documents].sort(
-            (a, b) =>
-              new Date(b.generated_at).getTime() -
-              new Date(a.generated_at).getTime(),
-          );
-          setRecentDocs(sorted.slice(0, 4));
-        }
-        setDataLoading(false);
-      },
-    );
+    ]).then(([candidatesData, opportunities, invitations, documents]) => {
+      if (candidatesData !== null) {
+        setCandidates(candidatesData);
+      }
+      if (opportunities !== null) {
+        setOpenOpportunityCount(
+          opportunities.filter((o) => o.status === "open").length,
+        );
+      }
+      if (invitations !== null) {
+        setPendingInvitationCount(
+          invitations.filter((inv) => inv.status === "pending").length,
+        );
+      }
+      if (documents !== null) {
+        setDocCount(documents.length);
+        const sorted = [...documents].sort(
+          (a, b) =>
+            new Date(b.generated_at).getTime() -
+            new Date(a.generated_at).getTime(),
+        );
+        setRecentDocs(sorted.slice(0, 4));
+      }
+      setDataLoading(false);
+    });
   }, [orgId, orgLoading, profile, profile?.onboarding_completed]);
 
   if (orgLoading || (!!orgId && dataLoading)) {
@@ -409,7 +397,7 @@ export default function RecruiterDashboardPage() {
               </div>
             )}
             <p className="j-meta mt-auto flex items-center gap-2 pt-3 text-[11.5px]">
-              Chaque consultation est tracée côté candidat.
+              Chaque dossier généré est journalisé côté candidat.
             </p>
           </article>
         </div>

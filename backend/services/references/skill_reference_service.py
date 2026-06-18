@@ -84,7 +84,7 @@ async def get_or_create_by_name(
         creator_candidate_id=creator_candidate_id,
     )
     db.add(ref)
-    await db.commit()
+    await db.flush()
     await db.refresh(ref)
     return ref, True
 

@@ -8,6 +8,10 @@ interface JwtPayload {
   exp: number;
 }
 
+// UX-only routing gate. The JWT is base64-decoded (not signature-verified) just
+// to redirect on an obviously wrong/expired role. The backend re-validates every
+// request and remains the authoritative authorization boundary; never rely on
+// this gate as a security check.
 export function proxy(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("access_token")?.value;
@@ -30,8 +34,10 @@ export function proxy(request: NextRequest): NextResponse {
     const payload = jwtDecode<JwtPayload>(token);
     const now = Math.floor(Date.now() / 1000);
     if (payload.exp < now) return redirectToLogin();
-    if (pathname.startsWith("/candidate") && payload.role !== "candidate") return redirectToLogin();
-    if (pathname.startsWith("/recruiter") && payload.role !== "recruiter") return redirectToLogin();
+    if (pathname.startsWith("/candidate") && payload.role !== "candidate")
+      return redirectToLogin();
+    if (pathname.startsWith("/recruiter") && payload.role !== "recruiter")
+      return redirectToLogin();
   } catch {
     return redirectToLogin();
   }

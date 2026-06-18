@@ -7,7 +7,13 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from models.candidate_profile import AvailabilityStatus, ContractType, WorkMode
-from schemas.candidate import ExperienceRead
+from schemas.candidate import (
+    CertificationRead,
+    EducationRead,
+    ExperienceRead,
+    LanguageRead,
+)
+from schemas.skill import CandidateSkillRead
 
 # ---- Organization -----------------------------------------------------------
 
@@ -87,3 +93,18 @@ class AccessibleCandidateRead(BaseModel):
     location_preference: str | None = None
     preferred_domains: list[str] | None = None
     experiences: list[ExperienceRead] = []
+
+
+class AccessibleCandidateDetail(AccessibleCandidateRead):
+    """Fiche detaillee d'un candidat accessible, filtree par les scopes du grant."""
+
+    summary: str | None = None
+    location: str | None = None
+    years_of_experience: int | None = None
+    phone: str | None = None
+    email_contact: str | None = None
+    annual_salary: int | None = None
+    education: list[EducationRead] = []
+    certifications: list[CertificationRead] = []
+    languages: list[LanguageRead] = []
+    candidate_skills: list[CandidateSkillRead] = []

@@ -147,7 +147,7 @@ async def register(
             # to it (unless they already belong to an org).
             if alpha_code.organization_id is not None and recruiter_profile.organization_id is None:
                 recruiter_profile.organization_id = alpha_code.organization_id
-            await db.commit()
+            await db.flush()
 
     # Save first_name / last_name to profile at registration time
     if payload.first_name or payload.last_name:
@@ -161,7 +161,7 @@ async def register(
                 candidate_profile.first_name = payload.first_name
             if payload.last_name:
                 candidate_profile.last_name = payload.last_name
-            await db.commit()
+            await db.flush()
         elif user.role == UserRole.RECRUITER:
             from services.recruiter_service import get_or_create_profile
 
@@ -171,7 +171,7 @@ async def register(
                 recruiter_profile.first_name = payload.first_name
             if payload.last_name:
                 recruiter_profile.last_name = payload.last_name
-            await db.commit()
+            await db.flush()
 
     access, refresh = await issue_token_pair(db, user)
     _set_auth_cookies(response, access, refresh)

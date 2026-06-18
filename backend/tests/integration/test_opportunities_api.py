@@ -335,3 +335,55 @@ async def test_match_score_none_when_no_required_skills(
         f"/organizations/{org_id}/opportunities/{opp['id']}", headers=recruiter_headers
     )
     assert detail.json()["shortlist"][0]["match_score"] is None
+
+
+async def test_bulk_generate_with_builtin_template(
+    client: AsyncClient,
+    recruiter_headers: dict,
+    candidate_headers: dict,
+    db_session: AsyncSession,
+) -> None:
+    org_id = await _setup_org(client, recruiter_headers)
+    skill = await _create_skill_ref(db_session, "BulkGenSkill")
+    opp = await _create_opportunity(client, recruiter_headers, org_id)
+    cand_user_id = await _shortlist_candidate_with_skills(
+        client, recruiter_headers, candidate_headers, org_id, str(opp["id"]), [skill]
+    )
+
+    r = await client.post(
+        f"/organizations/{org_id}/opportunities/{opp['id']}/generate",
+        json={"system_template_key": "compact_esn", "format": "docx"},
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 200, r.text
+    results = r.json()
+    assert len(results) == 1
+    assert results[0]["candidate_id"] == cand_user_id
+    assert results[0]["status"] == "ok", results[0]
+    assert results[0]["doc_id"] is not None
+
+
+async def test_bulk_generate_requires_exactly_one_template_source(
+    client: AsyncClient,
+    recruiter_headers: dict,
+) -> None:
+    org_id = await _setup_org(client, recruiter_headers)
+    opp = await _create_opportunity(client, recruiter_headers, org_id)
+
+    neither = await client.post(
+        f"/organizations/{org_id}/opportunities/{opp['id']}/generate",
+        json={"format": "docx"},
+        headers=recruiter_headers,
+    )
+    assert neither.status_code == 422
+
+    both = await client.post(
+        f"/organizations/{org_id}/opportunities/{opp['id']}/generate",
+        json={
+            "template_id": str(uuid.uuid4()),
+            "system_template_key": "compact_esn",
+            "format": "docx",
+        },
+        headers=recruiter_headers,
+    )
+    assert both.status_code == 422

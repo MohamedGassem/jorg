@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from models.opportunity import OpportunityStatus
 
@@ -61,8 +61,15 @@ class ShortlistAddRequest(BaseModel):
 
 
 class BulkGenerateRequest(BaseModel):
-    template_id: UUID
+    template_id: UUID | None = None
+    system_template_key: str | None = None
     format: Literal["docx", "pdf"] = "docx"
+
+    @model_validator(mode="after")
+    def exactly_one_template_source(self) -> BulkGenerateRequest:
+        if bool(self.template_id) == bool(self.system_template_key):
+            raise ValueError("provide exactly one of template_id or system_template_key")
+        return self
 
 
 class BulkGenerateResult(BaseModel):

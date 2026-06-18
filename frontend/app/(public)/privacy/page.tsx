@@ -66,7 +66,7 @@ export default function PrivacyPage() {
         <p className="mt-2 text-[15px] text-ink-2">
           Jorg est construit autour d&apos;un principe simple : vos données vous
           appartiennent. Rien n&apos;est partagé sans votre accord, et chaque
-          consultation est tracée.
+          accès accordé, révoqué ou dossier généré est journalisé.
         </p>
 
         <section className="mt-8 rounded-lg border border-line bg-surface px-[26px] py-[22px]">
@@ -93,8 +93,11 @@ export default function PrivacyPage() {
             encadré par des garanties appropriées (clauses contractuelles
             types). Si vous vous connectez via Google ou LinkedIn, ces
             fournisseurs n&apos;interviennent que pour l&apos;authentification.
-            Aucune donnée n&apos;est revendue ni partagée à des fins
-            publicitaires.
+            Lorsqu&apos;une organisation utilise la templatisation assistée, le
+            modèle de document importé peut être transmis à Anthropic
+            (sous-traitant IA, États-Unis), qui ne s&apos;entraîne pas sur les
+            données transmises via son API. Aucune donnée n&apos;est revendue ni
+            partagée à des fins publicitaires.
           </p>
         </section>
 

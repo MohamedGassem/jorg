@@ -1,6 +1,8 @@
 # backend/tests/integration/test_recruiter_api.py
 import io
+from typing import Any
 
+import pytest
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
 from httpx import AsyncClient
 
@@ -167,7 +169,9 @@ async def test_upload_template_detects_placeholders(
     assert "{{NOM}}" in data["detected_placeholders"]
     assert "{{PRENOM}}" in data["detected_placeholders"]
     assert "{{TITRE}}" in data["detected_placeholders"]
-    assert data["is_valid"] is False
+    # Le rendu mock reussit (balises inconnues rendues vides) : valide avec avertissements.
+    assert data["is_valid"] is True
+    assert set(data["unknown_placeholders"]) == {"{{NOM}}", "{{PRENOM}}", "{{TITRE}}"}
 
 
 async def test_list_templates(client: AsyncClient, recruiter_headers: dict[str, str]) -> None:
@@ -210,6 +214,7 @@ async def test_upload_template_with_standard_placeholders_is_valid(
     )
     assert r.status_code == 201
     assert r.json()["is_valid"] is True
+    assert r.json()["unknown_placeholders"] == []
 
 
 async def test_delete_template(client: AsyncClient, recruiter_headers: dict[str, str]) -> None:
@@ -425,6 +430,181 @@ async def test_list_accessible_candidates_forbids_candidate_role(
 
 
 # ---- Template file download -------------------------------------------------
+
+
+async def test_preview_template_renders_mock_docx(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    docx_bytes = _make_docx_bytes(["{{first_name}} {{last_name}}"])
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "T"},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    template_id = up.json()["id"]
+    r = await client.get(
+        f"/organizations/{org_id}/templates/{template_id}/preview",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 200
+    assert r.content[:2] == b"PK"
+    assert "attachment" in r.headers["content-disposition"]
+
+
+async def test_templatize_returns_503_when_llm_disabled(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    docx_bytes = _make_docx_bytes(["Jean Dupont"])
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "T"},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    template_id = up.json()["id"]
+    r = await client.post(
+        f"/organizations/{org_id}/templates/{template_id}/templatize",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 503
+
+
+async def test_capabilities_reports_assisted_templating_flag(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    r = await client.get("/templates/capabilities", headers=recruiter_headers)
+    assert r.status_code == 200
+    assert r.json() == {"assisted_templating": False}
+
+
+async def test_activate_draft_template(
+    client: AsyncClient, recruiter_headers: dict[str, str], monkeypatch: Any
+) -> None:
+    from services.documents.templatize_service import TemplatizeOutcome
+
+    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+        doc = Document()
+        doc.add_paragraph("{{first_name}}")
+        buf = io.BytesIO()
+        doc.save(buf)
+        return TemplatizeOutcome(
+            docx_bytes=buf.getvalue(),
+            report={"mappings": [], "warnings": [], "rejected": [], "render_error": None},
+            render_error=None,
+        )
+
+    monkeypatch.setattr(
+        "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
+    )
+    monkeypatch.setattr(
+        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
+    )
+
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    docx_bytes = _make_docx_bytes(["Jean Dupont"])
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "T"},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    template_id = up.json()["id"]
+
+    r = await client.post(
+        f"/organizations/{org_id}/templates/{template_id}/templatize",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "draft"
+    assert r.json()["templatize_report"]["render_error"] is None
+
+    r = await client.post(
+        f"/organizations/{org_id}/templates/{template_id}/activate",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "active"
+
+
+async def test_templatize_always_runs_from_source(
+    client: AsyncClient, recruiter_headers: dict[str, str], monkeypatch: Any
+) -> None:
+    # Regression: re-templatizing must re-run from the original upload, not from
+    # the previous templatized draft, and must drop the superseded draft file.
+    from pathlib import Path
+
+    from services.documents.templatize_service import TemplatizeOutcome
+
+    seen_paths: list[str] = []
+
+    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+        seen_paths.append(path)
+        doc = Document()
+        doc.add_paragraph("{{first_name}}")
+        buf = io.BytesIO()
+        doc.save(buf)
+        return TemplatizeOutcome(
+            docx_bytes=buf.getvalue(),
+            report={"mappings": [], "warnings": [], "rejected": [], "render_error": None},
+            render_error=None,
+        )
+
+    monkeypatch.setattr(
+        "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
+    )
+    monkeypatch.setattr(
+        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
+    )
+
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "T"},
+        files={
+            "file": (
+                "t.docx",
+                _make_docx_bytes(["Jean Dupont"]),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    template_id = up.json()["id"]
+
+    await client.post(
+        f"/organizations/{org_id}/templates/{template_id}/templatize",
+        headers=recruiter_headers,
+    )
+    await client.post(
+        f"/organizations/{org_id}/templates/{template_id}/templatize",
+        headers=recruiter_headers,
+    )
+
+    # Both runs received the same (source) path, not the first draft's output.
+    assert seen_paths[0] == seen_paths[1]
+    # The superseded draft from run 1 was deleted; the source path still exists.
+    assert Path(seen_paths[0]).exists()
 
 
 async def test_download_template_file_ok(
@@ -822,3 +1002,202 @@ async def test_filter_candidates_by_max_daily_rate(
     )
     assert r2.status_code == 200
     assert len(r2.json()) == 0
+
+
+async def test_filter_candidates_contract_type_includes_both(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    recruiter_headers: dict[str, str],
+) -> None:
+    org_r = await client.post(
+        "/organizations", json={"name": "Contract Org"}, headers=recruiter_headers
+    )
+    org_id = org_r.json()["id"]
+    await client.put(
+        "/recruiters/me/profile", json={"organization_id": org_id}, headers=recruiter_headers
+    )
+
+    # Le candidat est ouvert aux deux types de contrat.
+    await client.put(
+        "/candidates/me/profile",
+        headers=candidate_headers,
+        json={"contract_type": "both"},
+    )
+
+    inv = await client.post(
+        f"/organizations/{org_id}/invitations",
+        json={"candidate_email": "candidate@test.com"},
+        headers=recruiter_headers,
+    )
+    token = inv.json()["token"]
+    await client.post(f"/invitations/{token}/accept", headers=candidate_headers)
+
+    for contract_filter in ("freelance", "cdi", "both"):
+        r = await client.get(
+            f"/organizations/{org_id}/candidates?contract_type={contract_filter}",
+            headers=recruiter_headers,
+        )
+        assert r.status_code == 200
+        assert len(r.json()) == 1, f"filter {contract_filter} should match a 'both' candidate"
+
+
+async def test_templatize_is_rate_limited(
+    client: AsyncClient, recruiter_headers: dict[str, str], monkeypatch: Any
+) -> None:
+    from services.documents.templatize_service import TemplatizeOutcome
+
+    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+        doc = Document()
+        doc.add_paragraph("{{first_name}}")
+        buf = io.BytesIO()
+        doc.save(buf)
+        return TemplatizeOutcome(
+            docx_bytes=buf.getvalue(),
+            report={"mappings": [], "warnings": [], "rejected": [], "render_error": None},
+            render_error=None,
+        )
+
+    monkeypatch.setattr(
+        "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
+    )
+    monkeypatch.setattr(
+        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
+    )
+
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    docx_bytes = _make_docx_bytes(["Jean Dupont"])
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "T"},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    template_id = up.json()["id"]
+
+    statuses = []
+    for _ in range(6):
+        r = await client.post(
+            f"/organizations/{org_id}/templates/{template_id}/templatize",
+            headers=recruiter_headers,
+        )
+        statuses.append(r.status_code)
+    assert statuses[:5] == [200, 200, 200, 200, 200]
+    assert statuses[5] == 429
+
+
+async def _setup_org_with_grant(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> tuple[str, str]:
+    """Create org, link recruiter, invite+accept candidate. Returns (org_id, candidate_id)."""
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    profile = await client.get("/candidates/me/profile", headers=candidate_headers)
+    candidate_id: str = profile.json()["user_id"]
+    inv = await client.post(
+        f"/organizations/{org_id}/invitations",
+        headers=recruiter_headers,
+        json={"candidate_email": "candidate@test.com"},
+    )
+    token = inv.json()["token"]
+    await client.post(f"/invitations/{token}/accept", headers=candidate_headers)
+    return org_id, candidate_id
+
+
+async def test_candidate_detail_requires_live_access(
+    client: AsyncClient, recruiter_headers: dict[str, str], candidate_headers: dict[str, str]
+) -> None:
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
+    r = await client.get(
+        f"/organizations/{org_id}/candidates/{candidate_id}", headers=recruiter_headers
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "education" in body
+    assert "certifications" in body
+    assert "languages" in body
+    assert "candidate_skills" in body
+
+
+async def test_candidate_detail_without_grant_is_forbidden(
+    client: AsyncClient, recruiter_headers: dict[str, str]
+) -> None:
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    unknown_candidate = "00000000-0000-0000-0000-000000000000"
+    r = await client.get(
+        f"/organizations/{org_id}/candidates/{unknown_candidate}", headers=recruiter_headers
+    )
+    assert r.status_code == 403
+
+
+async def test_templatize_cleans_orphan_file_when_persistence_fails(
+    client: AsyncClient, recruiter_headers: dict[str, str], monkeypatch: Any
+) -> None:
+    # If the post-save persistence step fails, the request transaction rolls
+    # back; the freshly saved templatized file must be deleted too.
+    import core.storage as storage
+    from services.documents.templatize_service import TemplatizeOutcome
+
+    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+        doc = Document()
+        doc.add_paragraph("{{first_name}}")
+        buf = io.BytesIO()
+        doc.save(buf)
+        return TemplatizeOutcome(
+            docx_bytes=buf.getvalue(),
+            report={"mappings": [], "warnings": [], "rejected": [], "render_error": None},
+            render_error=None,
+        )
+
+    monkeypatch.setattr(
+        "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
+    )
+    monkeypatch.setattr(
+        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
+    )
+
+    deleted: list[str] = []
+    real_delete = storage.delete_file
+
+    def recording_delete(path: Any) -> None:
+        deleted.append(str(path))
+        real_delete(path)
+
+    monkeypatch.setattr(storage, "delete_file", recording_delete)
+
+    org_id = await _setup_org_and_link(client, recruiter_headers)
+    docx_bytes = _make_docx_bytes(["Jean Dupont"])
+    up = await client.post(
+        f"/organizations/{org_id}/templates",
+        headers=recruiter_headers,
+        data={"name": "T"},
+        files={
+            "file": (
+                "t.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    template_id = up.json()["id"]
+
+    # Only fail placeholder extraction for the templatize call (upload above also
+    # extracts placeholders, so the patch goes in after the upload succeeds).
+    def boom(path: Any) -> list[str]:
+        raise RuntimeError("placeholder extraction blew up")
+
+    monkeypatch.setattr("api.routes.org_templates.extract_placeholders", boom)
+
+    with pytest.raises(RuntimeError):
+        await client.post(
+            f"/organizations/{org_id}/templates/{template_id}/templatize",
+            headers=recruiter_headers,
+        )
+
+    assert any("templatized-" in p for p in deleted)
