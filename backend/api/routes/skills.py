@@ -1,4 +1,5 @@
 # backend/api/routes/skills.py
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -20,9 +21,12 @@ from models.skill import (
 )
 from models.skill import (
     CandidateSkill,
+    EvidenceSource,
     ExperienceSkillUsage,
+    ReviewStatus,
     SkillKind,
     SkillReference,
+    UsageRole,
 )
 from schemas.skill import (
     AchievementCreate,
@@ -33,12 +37,19 @@ from schemas.skill import (
     CandidateSkillCreate,
     CandidateSkillRead,
     CandidateSkillUpdate,
+    ExperienceSkillUsageConfirm,
     ExperienceSkillUsageCreate,
     ExperienceSkillUsageRead,
     SkillMetricsRead,
     SkillReferenceCreate,
     SkillReferenceRead,
 )
+from services.cv.skill_matching import (
+    build_candidate_skill_index,
+    build_skill_index,
+    merge_skill_indexes,
+)
+from services.skill_usage_linker import propose_skill_usages
 
 router = APIRouter(tags=["skills"])
 
@@ -281,6 +292,95 @@ async def delete_skill_usage(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="usage not found")
     await db.delete(usage)
     await db.flush()
+
+
+# ---- Régime B : proposition (linker) + confirmation candidat -----------------
+
+
+@router.post(
+    "/candidates/me/experiences/{exp_id}/skill-usages/suggest",
+    response_model=list[ExperienceSkillUsageRead],
+    status_code=status.HTTP_201_CREATED,
+)
+async def suggest_skill_usages(
+    exp_id: UUID, profile: CandidateProfile_dep, db: DB
+) -> list[ExperienceSkillUsage]:
+    """Linker déterministe : propose des usages en pending depuis le texte de l'expérience."""
+    exp = await _get_experience_or_404(exp_id, profile.id, db)
+    existing = await db.execute(
+        select(ExperienceSkillUsage.skill_ref_id).where(
+            ExperienceSkillUsage.experience_id == exp_id
+        )
+    )
+    existing_ids = set(existing.scalars().all())
+    index = merge_skill_indexes(
+        await build_skill_index(db),
+        await build_candidate_skill_index(db, profile.id),
+    )
+    text = " ".join(
+        part for part in (exp.description, exp.context, exp.achievements_summary) if part
+    )
+    proposals = propose_skill_usages(text, index, existing_ids)
+    for proposal in proposals:
+        db.add(
+            ExperienceSkillUsage(
+                experience_id=exp_id,
+                skill_ref_id=proposal.skill_ref_id,
+                usage_role=UsageRole.user,  # placeholder : usage_role est déprécié (#62)
+                intensity=None,  # NULL = pré-confirmation
+                source=EvidenceSource.cv_import,
+                review_status=ReviewStatus.pending,
+                confidence=proposal.confidence,
+            )
+        )
+    await db.flush()
+    proposed_ids = [p.skill_ref_id for p in proposals]
+    if not proposed_ids:
+        return []
+    result = await db.execute(
+        select(ExperienceSkillUsage)
+        .where(
+            ExperienceSkillUsage.experience_id == exp_id,
+            ExperienceSkillUsage.skill_ref_id.in_(proposed_ids),
+            ExperienceSkillUsage.review_status == ReviewStatus.pending,
+        )
+        .options(selectinload(ExperienceSkillUsage.skill_ref))
+    )
+    return list(result.scalars().all())
+
+
+@router.post(
+    "/candidates/me/experiences/{exp_id}/skill-usages/{usage_id}/confirm",
+    response_model=ExperienceSkillUsageRead,
+)
+async def confirm_skill_usage(
+    exp_id: UUID,
+    usage_id: UUID,
+    data: ExperienceSkillUsageConfirm,
+    profile: CandidateProfile_dep,
+    db: DB,
+) -> ExperienceSkillUsage:
+    """Confirmation candidat : pending -> accepted, porte l'intensité."""
+    await _get_experience_or_404(exp_id, profile.id, db)
+    result = await db.execute(
+        select(ExperienceSkillUsage).where(
+            ExperienceSkillUsage.id == usage_id,
+            ExperienceSkillUsage.experience_id == exp_id,
+        )
+    )
+    usage = result.scalar_one_or_none()
+    if usage is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="usage not found")
+    usage.review_status = ReviewStatus.accepted
+    usage.intensity = data.intensity
+    usage.validated_at = datetime.now(UTC)
+    await db.flush()
+    reloaded = await db.execute(
+        select(ExperienceSkillUsage)
+        .where(ExperienceSkillUsage.id == usage.id)
+        .options(selectinload(ExperienceSkillUsage.skill_ref))
+    )
+    return reloaded.scalar_one()
 
 
 # ---- Metrics -----------------------------------------------------------------
