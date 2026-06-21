@@ -12,6 +12,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -50,6 +51,53 @@ class UsageIntensity(StrEnum):
     primary = "primary"
     secondary = "secondary"
     incidental = "incidental"
+
+
+class EvidenceSource(StrEnum):
+    cv_import = "cv_import"
+    manual_candidate = "manual_candidate"
+    llm_inferred = "llm_inferred"
+    recruiter_curated = "recruiter_curated"
+
+
+class ReviewStatus(StrEnum):
+    pending = "pending"
+    accepted = "accepted"
+    edited = "edited"
+    rejected = "rejected"
+
+
+# Types Enum partagés : le même objet sur les deux tables de preuve, sinon create_all
+# (tests d'intégration) tente de créer deux fois le type PG de même nom.
+_EVIDENCE_SOURCE_ENUM = Enum(
+    EvidenceSource, name="evidence_source", values_callable=lambda obj: [e.value for e in obj]
+)
+_REVIEW_STATUS_ENUM = Enum(
+    ReviewStatus, name="review_status", values_callable=lambda obj: [e.value for e in obj]
+)
+
+
+class ProvenanceMixin:
+    """Provenance et état de revue d'une preuve L2 (tag expérience ou réalisation).
+
+    Backfill et création par les chemins actuels : manual_candidate / accepted.
+    Le linker (régime B) crée des preuves cv_import|llm_inferred en review_status pending.
+    """
+
+    source: Mapped[EvidenceSource] = mapped_column(
+        _EVIDENCE_SOURCE_ENUM,
+        default=EvidenceSource.manual_candidate,
+        server_default=EvidenceSource.manual_candidate.value,
+        nullable=False,
+    )
+    review_status: Mapped[ReviewStatus] = mapped_column(
+        _REVIEW_STATUS_ENUM,
+        default=ReviewStatus.accepted,
+        server_default=ReviewStatus.accepted.value,
+        nullable=False,
+    )
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class SkillReference(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -123,7 +171,7 @@ class CandidateSkill(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __table_args__ = (UniqueConstraint("candidate_id", "skill_ref_id", name="uq_candidate_skill"),)
 
 
-class AchievementSkillTag(Base):
+class AchievementSkillTag(Base, ProvenanceMixin):
     __tablename__ = "achievement_skill_tags"
 
     achievement_id: Mapped[UUID] = mapped_column(
@@ -173,7 +221,7 @@ class Achievement(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
 
-class ExperienceSkillUsage(Base, UUIDPrimaryKeyMixin):
+class ExperienceSkillUsage(Base, UUIDPrimaryKeyMixin, ProvenanceMixin):
     __tablename__ = "experience_skill_usages"
 
     experience_id: Mapped[UUID] = mapped_column(
@@ -190,14 +238,14 @@ class ExperienceSkillUsage(Base, UUIDPrimaryKeyMixin):
         Enum(UsageRole, name="usage_role", values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
     )
-    intensity: Mapped[UsageIntensity] = mapped_column(
+    intensity: Mapped[UsageIntensity | None] = mapped_column(
         Enum(
             UsageIntensity,
             name="usage_intensity",
             values_callable=lambda obj: [e.value for e in obj],
         ),
         default=UsageIntensity.secondary,
-        nullable=False,
+        nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

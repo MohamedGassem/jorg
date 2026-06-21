@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from models.skill import SkillKind, UsageIntensity, UsageRole
+from models.skill import EvidenceSource, ReviewStatus, SkillKind, UsageIntensity, UsageRole
 
 
 class SkillReferenceRead(BaseModel):
@@ -84,7 +84,11 @@ class ExperienceSkillUsageRead(BaseModel):
     skill_ref_id: UUID
     skill_ref: SkillReferenceRead
     usage_role: UsageRole
-    intensity: UsageIntensity
+    intensity: UsageIntensity | None
+    source: EvidenceSource
+    review_status: ReviewStatus
+    confidence: float | None
+    validated_at: datetime | None
     created_at: datetime
 
 
@@ -100,6 +104,10 @@ class AchievementSkillTagRead(BaseModel):
 
     skill_ref_id: UUID
     skill_ref: SkillReferenceRead
+    source: EvidenceSource
+    review_status: ReviewStatus
+    confidence: float | None
+    validated_at: datetime | None
     created_at: datetime
 
 
