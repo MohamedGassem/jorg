@@ -76,6 +76,11 @@ class ExperienceSkillUsageCreate(BaseModel):
     intensity: UsageIntensity = UsageIntensity.secondary
 
 
+class ExperienceSkillUsageConfirm(BaseModel):
+    # La confirmation candidat (régime B) EST le choix d'intensité : pending -> accepted.
+    intensity: UsageIntensity
+
+
 class ExperienceSkillUsageRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
