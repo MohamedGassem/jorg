@@ -27,7 +27,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
-    from models.candidate_profile import Experience
+    from models.candidate_profile import Experience, Project
 
 
 class SkillKind(StrEnum):
@@ -211,6 +211,14 @@ class Achievement(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         index=True,
     )
+    # Rattachement optionnel à un projet de l'expérience ; NULL = directement au
+    # niveau expérience. SET NULL au drop du projet : la réalisation retombe sur
+    # l'expérience sans être supprimée.
+    project_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     description: Mapped[str] = mapped_column(Text, nullable=False)
     impact: Mapped[str | None] = mapped_column(Text, nullable=True)
     order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -219,6 +227,7 @@ class Achievement(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
     experience: Mapped[Experience] = relationship("Experience", back_populates="achievements")
+    project: Mapped[Project | None] = relationship("Project", back_populates="achievements")
     skill_tags: Mapped[list[AchievementSkillTag]] = relationship(
         "AchievementSkillTag",
         cascade="all, delete-orphan",
