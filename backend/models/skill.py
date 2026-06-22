@@ -244,7 +244,8 @@ class ExperienceSkillUsage(Base, UUIDPrimaryKeyMixin, ProvenanceMixin):
             name="usage_intensity",
             values_callable=lambda obj: [e.value for e in obj],
         ),
-        default=UsageIntensity.secondary,
+        # Pas de default : NULL = pré-confirmation (régime B). Les chemins de création
+        # explicitent l'intensité (schéma ExperienceSkillUsageCreate -> secondary).
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
