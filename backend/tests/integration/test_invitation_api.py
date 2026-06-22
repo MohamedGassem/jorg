@@ -173,11 +173,11 @@ async def test_accept_with_scopes_persists_choices(
     r = await client.post(
         f"/invitations/{inv['token']}/accept",
         headers=candidate_headers,
-        json={"share_finances": False, "share_contact": True},
+        json={"share_finances_internal": False, "share_contact": True},
     )
     assert r.status_code == 201
     body = r.json()
-    assert body["share_finances"] is False
+    assert body["share_finances_internal"] is False
     assert body["share_contact"] is True
 
 
@@ -189,17 +189,17 @@ async def test_update_grant_scopes(
     accept = await client.post(
         f"/invitations/{inv['token']}/accept",
         headers=candidate_headers,
-        json={"share_finances": True, "share_contact": True},
+        json={"share_finances_internal": True, "share_contact": True},
     )
     grant_id = accept.json()["id"]
     r = await client.patch(
         f"/access/me/{grant_id}",
         headers=candidate_headers,
-        json={"share_finances": False, "share_contact": True},
+        json={"share_finances_internal": False, "share_contact": True},
     )
     assert r.status_code == 200
     body = r.json()
-    assert body["share_finances"] is False
+    assert body["share_finances_internal"] is False
     assert body["share_contact"] is True
 
 
@@ -210,7 +210,7 @@ async def test_update_grant_scopes_unknown_grant_returns_404(
     r = await client.patch(
         "/access/me/00000000-0000-0000-0000-000000000000",
         headers=candidate_headers,
-        json={"share_finances": False, "share_contact": False},
+        json={"share_finances_internal": False, "share_contact": False},
     )
     assert r.status_code == 404
 

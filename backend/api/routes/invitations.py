@@ -141,7 +141,7 @@ async def accept_invitation(
         db,
         invitation,
         current_user.id,
-        share_finances=scopes.share_finances,
+        share_finances_internal=scopes.share_finances_internal,
         share_contact=scopes.share_contact,
     )
 
@@ -201,6 +201,6 @@ async def update_grant_scopes(
     return await invitation_service.update_grant_scopes(
         db,
         grant,
-        share_finances=payload.share_finances,
+        share_finances_internal=payload.share_finances_internal,
         share_contact=payload.share_contact,
     )

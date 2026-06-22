@@ -27,6 +27,7 @@ from models.candidate_profile import (
 )
 from models.dossier import Dossier, DossierExperienceSelection, DossierSkillSelection
 from models.generated_document import GeneratedDocument
+from models.invitation import AccessGrantExclusion, ExclusionTargetType
 from models.recruiter import Organization
 from models.skill import Achievement, AchievementSkillTag, CandidateSkill, ExperienceSkillUsage
 from models.template import Template
@@ -132,6 +133,25 @@ async def _load_profile_by_id(db: AsyncSession, profile_id: UUID) -> CandidatePr
     return profile
 
 
+async def _excluded_experience_ids(db: AsyncSession, access_grant_id: UUID | None) -> set[UUID]:
+    """Experience ids the candidate excluded on the dossier's grant (invariant #6)."""
+    if access_grant_id is None:
+        return set()
+    rows = (
+        (
+            await db.execute(
+                select(AccessGrantExclusion.target_id).where(
+                    AccessGrantExclusion.grant_id == access_grant_id,
+                    AccessGrantExclusion.target_type == ExclusionTargetType.EXPERIENCE,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return set(rows)
+
+
 async def resolve_dossier(db: AsyncSession, dossier: Dossier) -> DossierRenderModel:
     """Resolve a Dossier (L3) into the typed render model.
 
@@ -168,10 +188,15 @@ async def resolve_dossier(db: AsyncSession, dossier: Dossier) -> DossierRenderMo
         .all()
     )
 
-    arranged_experiences = arrange_by_selection(
-        experiences,
-        [SelectionSpec(s.experience_id, s.position, s.is_featured) for s in exp_sels],
-        id_of=lambda exp: exp.id,
+    excluded_experience_ids = await _excluded_experience_ids(db, dossier.access_grant_id)
+    arranged_experiences = tuple(
+        exp
+        for exp in arrange_by_selection(
+            experiences,
+            [SelectionSpec(s.experience_id, s.position, s.is_featured) for s in exp_sels],
+            id_of=lambda exp: exp.id,
+        )
+        if exp.id not in excluded_experience_ids
     )
     arranged_skills = arrange_skills(
         skills,
@@ -329,7 +354,7 @@ async def generate_for_candidate(
         fmt=fmt,
         access_grant_id=grant.id,
         generated_by_user_id=generated_by_user_id,
-        share_finances=grant.share_finances,
+        share_finances=grant.share_finances_internal,
         share_contact=grant.share_contact,
     )
     logger.info(

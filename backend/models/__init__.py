@@ -24,7 +24,15 @@ from models.dossier import (
     DossierSkillSelection,
 )
 from models.generated_document import GeneratedDocument
-from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
+from models.invitation import (
+    AccessGrant,
+    AccessGrantExclusion,
+    AccessGrantStatus,
+    ExclusionTargetType,
+    Invitation,
+    InvitationStatus,
+    TemporalPrecision,
+)
 from models.oauth_state import OAuthState
 from models.opportunity import (
     Opportunity,
@@ -49,6 +57,7 @@ from models.user import OAuthProvider, User, UserRole
 
 __all__ = [
     "AccessGrant",
+    "AccessGrantExclusion",
     "AccessGrantStatus",
     "Achievement",
     "AlphaInviteCode",
@@ -66,6 +75,7 @@ __all__ = [
     "DossierSkillSelection",
     "Education",
     "EvidenceSource",
+    "ExclusionTargetType",
     "Experience",
     "ExperienceSkillUsage",
     "GeneratedDocument",
@@ -89,6 +99,7 @@ __all__ = [
     "SkillKind",
     "SkillReference",
     "Template",
+    "TemporalPrecision",
     "UsageIntensity",
     "User",
     "UserRole",

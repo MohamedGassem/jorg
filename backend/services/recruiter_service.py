@@ -489,6 +489,6 @@ async def get_accessible_candidate_detail(
         certifications=certifications,
         languages=languages,
         candidate_skills=candidate_skills,
-        share_finances=grant.share_finances,
+        share_finances=grant.share_finances_internal,
         share_contact=grant.share_contact,
     )
