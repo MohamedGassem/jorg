@@ -17,6 +17,13 @@ class GeneratedDocument(Base, UUIDPrimaryKeyMixin):
         index=True,
         nullable=True,
     )
+    # The frozen snapshot this DOCX renders (#67). Nullable: legacy documents and
+    # the grant-based pipeline predate dossier snapshots.
+    snapshot_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("generated_dossier_snapshots.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
     # Nullable — kept for audit even if template is deleted
     template_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("templates.id", ondelete="SET NULL"),

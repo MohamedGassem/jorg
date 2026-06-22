@@ -23,6 +23,7 @@ from models.dossier import (
     DossierOwnerType,
     DossierSkillSelection,
 )
+from models.dossier_snapshot import GeneratedDossierSnapshot
 from models.generated_document import GeneratedDocument
 from models.invitation import (
     AccessGrant,
@@ -79,6 +80,7 @@ __all__ = [
     "Experience",
     "ExperienceSkillUsage",
     "GeneratedDocument",
+    "GeneratedDossierSnapshot",
     "Invitation",
     "InvitationStatus",
     "Language",

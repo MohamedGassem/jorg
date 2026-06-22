@@ -1,12 +1,14 @@
 # backend/models/dossier.py
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    DateTime,
     ForeignKey,
     Integer,
     Text,
@@ -63,6 +65,12 @@ class Dossier(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         ForeignKey("opportunities.id", ondelete="SET NULL"), nullable=True, index=True
     )
     accroche: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Optional per-dossier validation, at the recruiter's initiative: a
+    # reassurance tool before sending, not a consent gate (ADR-0002).
+    validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    validated_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     share_contact: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true", nullable=False
     )
