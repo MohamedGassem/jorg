@@ -6,7 +6,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from models.skill import EvidenceSource, ReviewStatus, SkillKind, UsageIntensity, UsageRole
+from models.skill import (
+    EvidenceSource,
+    ReviewStatus,
+    SkillKind,
+    SkillStatus,
+    UsageIntensity,
+    UsageRole,
+)
 
 
 class SkillReferenceRead(BaseModel):
@@ -158,3 +165,16 @@ class SkillMetricsRead(BaseModel):
     last_used: date | None
     distinct_contexts: int
     validated: bool
+
+
+class CandidateSkillProjectionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    skill_ref_id: UUID
+    skill_name: str
+    skill_kind: SkillKind
+    status: SkillStatus
+    evidence_count: int
+    first_used: date | None
+    last_used: date | None
+    is_profile_highlighted: bool

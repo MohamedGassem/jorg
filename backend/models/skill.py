@@ -67,6 +67,15 @@ class ReviewStatus(StrEnum):
     rejected = "rejected"
 
 
+class SkillStatus(StrEnum):
+    """Rollup dérivé d'une compétence candidat (projection des preuves). Ordre croissant."""
+
+    declared_only = "declared_only"
+    inferred = "inferred"
+    evidenced = "evidenced"
+    validated = "validated"
+
+
 # Types Enum partagés : le même objet sur les deux tables de preuve, sinon create_all
 # (tests d'intégration) tente de créer deux fois le type PG de même nom.
 _EVIDENCE_SOURCE_ENUM = Enum(
@@ -163,6 +172,10 @@ class CandidateSkill(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     self_assessed_level: Mapped[str | None] = mapped_column(String(50), nullable=True)
     featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Highlight profil candidat (L2), distinct du featured commercial par dossier (L3).
+    is_profile_highlighted: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # No lazy="joined" — use explicit selectinload in list endpoints

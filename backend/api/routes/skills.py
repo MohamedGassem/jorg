@@ -35,6 +35,7 @@ from schemas.skill import (
     AchievementSkillTagRead,
     AchievementUpdate,
     CandidateSkillCreate,
+    CandidateSkillProjectionRead,
     CandidateSkillRead,
     CandidateSkillUpdate,
     ExperienceSkillUsageConfirm,
@@ -48,6 +49,10 @@ from services.cv.skill_matching import (
     build_candidate_skill_index,
     build_skill_index,
     merge_skill_indexes,
+)
+from services.references.candidate_skill_projection import (
+    CandidateSkillProjection,
+    compute_candidate_skill_projection,
 )
 from services.skill_usage_linker import propose_skill_usages
 
@@ -389,6 +394,16 @@ async def confirm_skill_usage(
 @router.get("/candidates/me/skill-metrics", response_model=list[SkillMetricsRead])
 async def get_my_skill_metrics(profile: CandidateProfile_dep, db: DB) -> list[SkillMetricsRead]:
     return await skill_metrics_service.compute_skill_metrics(profile.id, db)
+
+
+@router.get(
+    "/candidates/me/skill-projection",
+    response_model=list[CandidateSkillProjectionRead],
+)
+async def get_my_skill_projection(
+    profile: CandidateProfile_dep, db: DB
+) -> list[CandidateSkillProjection]:
+    return await compute_candidate_skill_projection(profile.id, db)
 
 
 # ---- Achievements ------------------------------------------------------------
