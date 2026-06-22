@@ -287,7 +287,7 @@ async def test_export_includes_nested_candidate_skills(
     await client.post(
         f"/candidates/me/experiences/{exp_id}/skill-usages",
         headers=candidate_headers,
-        json={"skill_ref_id": ref1_id, "usage_role": "implementer", "intensity": "primary"},
+        json={"skill_ref_id": ref1_id, "intensity": "primary"},
     )
 
     r = await client.get("/candidates/me/export", headers=candidate_headers)

@@ -30,11 +30,12 @@ from models.refresh_token import RefreshToken as RefreshToken
 from models.skill import (
     Achievement,
     CandidateSkill,
+    EvidenceSource,
     ExperienceSkillUsage,
+    ReviewStatus,
     SkillKind,
     SkillReference,
     UsageIntensity,
-    UsageRole,
 )
 from models.template import Template
 from models.user import OAuthProvider, User, UserRole
@@ -53,6 +54,7 @@ __all__ = [
     "Certification",
     "ContractType",
     "Education",
+    "EvidenceSource",
     "Experience",
     "ExperienceSkillUsage",
     "GeneratedDocument",
@@ -70,12 +72,12 @@ __all__ = [
     "Organization",
     "RecruiterProfile",
     "RefreshToken",
+    "ReviewStatus",
     "ShortlistEntry",
     "SkillKind",
     "SkillReference",
     "Template",
     "UsageIntensity",
-    "UsageRole",
     "User",
     "UserRole",
     "WorkMode",

@@ -598,7 +598,6 @@ function AddSkillToBouquet({
         `/candidates/me/experiences/${expId}/skill-usages`,
         {
           skill_ref_id: skillRefId,
-          usage_role: "implementer",
           intensity: "secondary",
         },
       );
@@ -629,7 +628,6 @@ function AddSkillToBouquet({
         `/candidates/me/experiences/${expId}/skill-usages`,
         {
           skill_ref_id: ref.id,
-          usage_role: "implementer",
           intensity: "secondary",
         },
       );
@@ -876,7 +874,6 @@ function AchievementSkillAdder({
           `/candidates/me/experiences/${expId}/skill-usages`,
           {
             skill_ref_id: skillRefId,
-            usage_role: "implementer",
             intensity: "secondary",
           },
         );
@@ -906,7 +903,6 @@ function AchievementSkillAdder({
         `/candidates/me/experiences/${expId}/skill-usages`,
         {
           skill_ref_id: ref.id,
-          usage_role: "implementer",
           intensity: "secondary",
         },
       );

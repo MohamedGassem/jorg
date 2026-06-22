@@ -75,7 +75,6 @@ export function SkillContextualizationDialog({
         api
           .post(`/candidates/me/experiences/${expId}/skill-usages`, {
             skill_ref_id: currentSkill.skill_ref_id,
-            usage_role: "implementer",
             intensity: "secondary",
           })
           .then(() => expId),

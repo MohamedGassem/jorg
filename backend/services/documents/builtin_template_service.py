@@ -12,7 +12,7 @@ from models.candidate_profile import (
     MissionDuration,
     WorkMode,
 )
-from models.skill import SkillKind, UsageIntensity, UsageRole
+from models.skill import SkillKind, UsageIntensity
 from services.documents.docx_engine import (
     CertificationProtocol,
     EducationProtocol,
@@ -129,7 +129,6 @@ class _MockSkill:
 @dataclass
 class _MockExperienceSkillUsage:
     skill_ref: _MockSkillRef
-    usage_role: Any = field(default_factory=lambda: _MockEnum(UsageRole.implementer.value))
     intensity: Any = field(default_factory=lambda: _MockEnum(UsageIntensity.secondary.value))
 
 

@@ -24,7 +24,7 @@ async def _add_skill_usage(client: AsyncClient, headers: dict, exp_id: str, ref_
     r = await client.post(
         f"/candidates/me/experiences/{exp_id}/skill-usages",
         headers=headers,
-        json={"skill_ref_id": ref_id, "usage_role": "implementer", "intensity": "primary"},
+        json={"skill_ref_id": ref_id, "intensity": "primary"},
     )
     assert r.status_code == 201
 

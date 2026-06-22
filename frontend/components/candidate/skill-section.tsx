@@ -673,7 +673,6 @@ export function SkillSection() {
                           experience_id: exp.id,
                           skill_ref_id: associatedSkill.skill_ref_id,
                           skill_ref: associatedSkill.skill_ref,
-                          usage_role: "implementer" as const,
                           intensity: "secondary" as const,
                           created_at: new Date().toISOString(),
                         },

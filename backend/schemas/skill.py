@@ -6,7 +6,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from models.skill import SkillKind, UsageIntensity, UsageRole
+from models.skill import (
+    EvidenceSource,
+    ReviewStatus,
+    SkillKind,
+    SkillStatus,
+    UsageIntensity,
+)
 
 
 class SkillReferenceRead(BaseModel):
@@ -72,8 +78,12 @@ class CandidateSkillRead(BaseModel):
 
 class ExperienceSkillUsageCreate(BaseModel):
     skill_ref_id: UUID
-    usage_role: UsageRole
     intensity: UsageIntensity = UsageIntensity.secondary
+
+
+class ExperienceSkillUsageConfirm(BaseModel):
+    # La confirmation candidat (régime B) EST le choix d'intensité : pending -> accepted.
+    intensity: UsageIntensity
 
 
 class ExperienceSkillUsageRead(BaseModel):
@@ -83,8 +93,11 @@ class ExperienceSkillUsageRead(BaseModel):
     experience_id: UUID
     skill_ref_id: UUID
     skill_ref: SkillReferenceRead
-    usage_role: UsageRole
-    intensity: UsageIntensity
+    intensity: UsageIntensity | None
+    source: EvidenceSource
+    review_status: ReviewStatus
+    confidence: float | None
+    validated_at: datetime | None
     created_at: datetime
 
 
@@ -100,6 +113,10 @@ class AchievementSkillTagRead(BaseModel):
 
     skill_ref_id: UUID
     skill_ref: SkillReferenceRead
+    source: EvidenceSource
+    review_status: ReviewStatus
+    confidence: float | None
+    validated_at: datetime | None
     created_at: datetime
 
 
@@ -145,3 +162,16 @@ class SkillMetricsRead(BaseModel):
     last_used: date | None
     distinct_contexts: int
     validated: bool
+
+
+class CandidateSkillProjectionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    skill_ref_id: UUID
+    skill_name: str
+    skill_kind: SkillKind
+    status: SkillStatus
+    evidence_count: int
+    first_used: date | None
+    last_used: date | None
+    is_profile_highlighted: bool

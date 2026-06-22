@@ -12,6 +12,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -38,18 +39,66 @@ class SkillKind(StrEnum):
     soft = "soft"
 
 
-class UsageRole(StrEnum):
-    lead = "lead"
-    implementer = "implementer"
-    contributor = "contributor"
-    user = "user"
-    exposed_to = "exposed_to"
-
-
 class UsageIntensity(StrEnum):
     primary = "primary"
     secondary = "secondary"
     incidental = "incidental"
+
+
+class EvidenceSource(StrEnum):
+    cv_import = "cv_import"
+    manual_candidate = "manual_candidate"
+    llm_inferred = "llm_inferred"
+    recruiter_curated = "recruiter_curated"
+
+
+class ReviewStatus(StrEnum):
+    pending = "pending"
+    accepted = "accepted"
+    edited = "edited"
+    rejected = "rejected"
+
+
+class SkillStatus(StrEnum):
+    """Rollup dérivé d'une compétence candidat (projection des preuves). Ordre croissant."""
+
+    declared_only = "declared_only"
+    inferred = "inferred"
+    evidenced = "evidenced"
+    validated = "validated"
+
+
+# Types Enum partagés : le même objet sur les deux tables de preuve, sinon create_all
+# (tests d'intégration) tente de créer deux fois le type PG de même nom.
+_EVIDENCE_SOURCE_ENUM = Enum(
+    EvidenceSource, name="evidence_source", values_callable=lambda obj: [e.value for e in obj]
+)
+_REVIEW_STATUS_ENUM = Enum(
+    ReviewStatus, name="review_status", values_callable=lambda obj: [e.value for e in obj]
+)
+
+
+class ProvenanceMixin:
+    """Provenance et état de revue d'une preuve L2 (tag expérience ou réalisation).
+
+    Backfill et création par les chemins actuels : manual_candidate / accepted.
+    Le linker (régime B) crée des preuves cv_import|llm_inferred en review_status pending.
+    """
+
+    source: Mapped[EvidenceSource] = mapped_column(
+        _EVIDENCE_SOURCE_ENUM,
+        default=EvidenceSource.manual_candidate,
+        server_default=EvidenceSource.manual_candidate.value,
+        nullable=False,
+    )
+    review_status: Mapped[ReviewStatus] = mapped_column(
+        _REVIEW_STATUS_ENUM,
+        default=ReviewStatus.accepted,
+        server_default=ReviewStatus.accepted.value,
+        nullable=False,
+    )
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class SkillReference(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -115,6 +164,10 @@ class CandidateSkill(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     self_assessed_level: Mapped[str | None] = mapped_column(String(50), nullable=True)
     featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Highlight profil candidat (L2), distinct du featured commercial par dossier (L3).
+    is_profile_highlighted: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # No lazy="joined" — use explicit selectinload in list endpoints
@@ -123,7 +176,7 @@ class CandidateSkill(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __table_args__ = (UniqueConstraint("candidate_id", "skill_ref_id", name="uq_candidate_skill"),)
 
 
-class AchievementSkillTag(Base):
+class AchievementSkillTag(Base, ProvenanceMixin):
     __tablename__ = "achievement_skill_tags"
 
     achievement_id: Mapped[UUID] = mapped_column(
@@ -173,7 +226,7 @@ class Achievement(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
 
-class ExperienceSkillUsage(Base, UUIDPrimaryKeyMixin):
+class ExperienceSkillUsage(Base, UUIDPrimaryKeyMixin, ProvenanceMixin):
     __tablename__ = "experience_skill_usages"
 
     experience_id: Mapped[UUID] = mapped_column(
@@ -186,18 +239,15 @@ class ExperienceSkillUsage(Base, UUIDPrimaryKeyMixin):
         nullable=False,
         index=True,
     )
-    usage_role: Mapped[UsageRole] = mapped_column(
-        Enum(UsageRole, name="usage_role", values_callable=lambda obj: [e.value for e in obj]),
-        nullable=False,
-    )
-    intensity: Mapped[UsageIntensity] = mapped_column(
+    intensity: Mapped[UsageIntensity | None] = mapped_column(
         Enum(
             UsageIntensity,
             name="usage_intensity",
             values_callable=lambda obj: [e.value for e in obj],
         ),
-        default=UsageIntensity.secondary,
-        nullable=False,
+        # Pas de default : NULL = pré-confirmation (régime B). Les chemins de création
+        # explicitent l'intensité (schéma ExperienceSkillUsageCreate -> secondary).
+        nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
