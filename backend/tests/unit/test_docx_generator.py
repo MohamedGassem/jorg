@@ -298,15 +298,16 @@ def test_complete_dossier_context_uses_per_experience_skills_and_extra_sections(
 
 
 def test_build_context_hides_finances_and_contact_when_scoped_out() -> None:
-    from services.documents.docx_engine import build_context
+    from services.documents.docx_engine import build_context, build_render_model
 
-    ctx = build_context(
-        profile=_mock_profile(daily_rate=600, annual_salary=55000),
-        experiences=[],
-        skills=[],
+    model = build_render_model(
+        _mock_profile(daily_rate=600, annual_salary=55000),
+        [],
+        [],
         share_finances=False,
         share_contact=False,
     )
+    ctx = build_context(model)
     assert ctx["phone"] == ""
     assert ctx["email_contact"] == ""
     assert ctx["linkedin_url"] == ""
@@ -315,9 +316,9 @@ def test_build_context_hides_finances_and_contact_when_scoped_out() -> None:
 
 
 def test_build_context_exposes_known_top_level_keys() -> None:
-    from services.documents.docx_engine import build_context
+    from services.documents.docx_engine import build_context, build_render_model
 
-    context = build_context(profile=_mock_profile(), experiences=[], skills=[])
+    context = build_context(build_render_model(_mock_profile(), [], []))
     for key in (
         "first_name",
         "availability_label",

@@ -19,6 +19,7 @@ from services.documents.docx_engine import (
     LanguageProtocol,
     SkillProtocol,
     build_context,
+    build_render_model,
     generate_document,
 )
 
@@ -291,13 +292,12 @@ def render_mock_preview(template: BuiltinTemplate) -> bytes:
 def mock_context_keys() -> frozenset[str]:
     """Top-level context keys known to the rendering engine."""
     profile, experiences, skills, education, certifications, languages = _mock_render_inputs()
-    return frozenset(
-        build_context(
-            profile,
-            experiences,
-            cast("list[SkillProtocol]", skills),
-            cast("list[EducationProtocol]", education),
-            cast("list[CertificationProtocol]", certifications),
-            cast("list[LanguageProtocol]", languages),
-        ).keys()
+    model = build_render_model(
+        profile,
+        experiences,
+        cast("list[SkillProtocol]", skills),
+        cast("list[EducationProtocol]", education),
+        cast("list[CertificationProtocol]", certifications),
+        cast("list[LanguageProtocol]", languages),
     )
+    return frozenset(build_context(model).keys())
