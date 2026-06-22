@@ -73,7 +73,7 @@ async def test_suggest_excludes_already_used_skill(
     await client.post(
         f"/candidates/me/experiences/{exp_id}/skill-usages",
         headers=candidate_headers,
-        json={"skill_ref_id": ref_id, "usage_role": "implementer", "intensity": "primary"},
+        json={"skill_ref_id": ref_id, "intensity": "primary"},
     )
 
     suggest = await client.post(

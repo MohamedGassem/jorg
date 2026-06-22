@@ -12,7 +12,6 @@ from models.skill import (
     SkillKind,
     SkillStatus,
     UsageIntensity,
-    UsageRole,
 )
 
 
@@ -79,7 +78,6 @@ class CandidateSkillRead(BaseModel):
 
 class ExperienceSkillUsageCreate(BaseModel):
     skill_ref_id: UUID
-    usage_role: UsageRole
     intensity: UsageIntensity = UsageIntensity.secondary
 
 
@@ -95,7 +93,6 @@ class ExperienceSkillUsageRead(BaseModel):
     experience_id: UUID
     skill_ref_id: UUID
     skill_ref: SkillReferenceRead
-    usage_role: UsageRole
     intensity: UsageIntensity | None
     source: EvidenceSource
     review_status: ReviewStatus

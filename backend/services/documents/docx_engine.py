@@ -227,7 +227,6 @@ def usage_flat(usage: Any) -> dict[str, str]:
         "name": skill_ref.name or "",
         "kind": _enum_value(skill_ref.kind),
         "kind_label": _label(skill_ref.kind, SKILL_KIND_LABELS),
-        "usage_role": _enum_value(getattr(usage, "usage_role", None)),
         "intensity": _enum_value(getattr(usage, "intensity", None)),
     }
 

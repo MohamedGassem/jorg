@@ -36,7 +36,6 @@ from models.skill import (
     SkillKind,
     SkillReference,
     UsageIntensity,
-    UsageRole,
 )
 from models.template import Template
 from models.user import OAuthProvider, User, UserRole
@@ -79,7 +78,6 @@ __all__ = [
     "SkillReference",
     "Template",
     "UsageIntensity",
-    "UsageRole",
     "User",
     "UserRole",
     "WorkMode",

@@ -39,14 +39,6 @@ class SkillKind(StrEnum):
     soft = "soft"
 
 
-class UsageRole(StrEnum):
-    lead = "lead"
-    implementer = "implementer"
-    contributor = "contributor"
-    user = "user"
-    exposed_to = "exposed_to"
-
-
 class UsageIntensity(StrEnum):
     primary = "primary"
     secondary = "secondary"
@@ -246,10 +238,6 @@ class ExperienceSkillUsage(Base, UUIDPrimaryKeyMixin, ProvenanceMixin):
         ForeignKey("skill_references.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
-    )
-    usage_role: Mapped[UsageRole] = mapped_column(
-        Enum(UsageRole, name="usage_role", values_callable=lambda obj: [e.value for e in obj]),
-        nullable=False,
     )
     intensity: Mapped[UsageIntensity | None] = mapped_column(
         Enum(

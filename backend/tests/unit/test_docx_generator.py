@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 from docx import Document
 
 from models.candidate_profile import LanguageLevel
-from models.skill import SkillKind, UsageIntensity, UsageRole
+from models.skill import SkillKind, UsageIntensity
 from services.documents.docx_engine import generate_document
 
 
@@ -86,7 +86,6 @@ def _mock_skill(name: str, kind: SkillKind, level: str = "", featured: bool = Fa
 def _mock_usage(name: str, kind: SkillKind) -> MagicMock:
     usage = MagicMock()
     usage.skill_ref = _mock_skill_ref(name, kind)
-    usage.usage_role = UsageRole.implementer
     usage.intensity = UsageIntensity.primary
     return usage
 

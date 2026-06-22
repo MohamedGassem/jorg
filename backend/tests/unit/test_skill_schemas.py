@@ -3,7 +3,7 @@
 
 from uuid import uuid4
 
-from models.skill import SkillKind, UsageIntensity, UsageRole
+from models.skill import SkillKind, UsageIntensity
 from schemas.skill import (
     AchievementCreate,
     CandidateSkillCreate,
@@ -30,10 +30,9 @@ def test_experience_skill_usage_create_round_trip():
     ref_id = uuid4()
     obj = ExperienceSkillUsageCreate(
         skill_ref_id=ref_id,
-        usage_role=UsageRole.implementer,
         intensity=UsageIntensity.primary,
     )
-    assert obj.usage_role == UsageRole.implementer
+    assert obj.intensity == UsageIntensity.primary
 
 
 def test_achievement_create_round_trip():

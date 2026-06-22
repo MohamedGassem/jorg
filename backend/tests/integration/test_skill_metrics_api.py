@@ -35,7 +35,7 @@ async def test_metrics_computed_from_usages(
     await client.post(
         f"/candidates/me/experiences/{exp_id}/skill-usages",
         headers=candidate_headers,
-        json={"skill_ref_id": ref_id, "usage_role": "implementer", "intensity": "primary"},
+        json={"skill_ref_id": ref_id, "intensity": "primary"},
     )
 
     r = await client.get("/candidates/me/skill-metrics", headers=candidate_headers)
@@ -72,7 +72,7 @@ async def test_metrics_secondary_weight(
     await client.post(
         f"/candidates/me/experiences/{exp_id}/skill-usages",
         headers=candidate_headers,
-        json={"skill_ref_id": ref_id, "usage_role": "user", "intensity": "secondary"},
+        json={"skill_ref_id": ref_id, "intensity": "secondary"},
     )
     r = await client.get("/candidates/me/skill-metrics", headers=candidate_headers)
     metric = next(m for m in r.json() if m["skill_name"] == "SecondarySkill")

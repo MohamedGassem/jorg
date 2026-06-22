@@ -26,12 +26,11 @@ async def test_add_skill_usage_to_experience(
     r = await client.post(
         f"/candidates/me/experiences/{exp_id}/skill-usages",
         headers=candidate_headers,
-        json={"skill_ref_id": ref_id, "usage_role": "implementer", "intensity": "primary"},
+        json={"skill_ref_id": ref_id, "intensity": "primary"},
     )
     assert r.status_code == 201
     data = r.json()
     assert data["skill_ref"]["name"] == "FastAPI"
-    assert data["usage_role"] == "implementer"
     assert data["intensity"] == "primary"
 
 
@@ -41,7 +40,7 @@ async def test_delete_skill_usage(client: AsyncClient, candidate_headers: dict[s
     create = await client.post(
         f"/candidates/me/experiences/{exp_id}/skill-usages",
         headers=candidate_headers,
-        json={"skill_ref_id": ref_id, "usage_role": "user", "intensity": "incidental"},
+        json={"skill_ref_id": ref_id, "intensity": "incidental"},
     )
     usage_id = create.json()["id"]
     r = await client.delete(
@@ -56,7 +55,7 @@ async def test_duplicate_usage_returns_409(
 ) -> None:
     exp_id = await _create_experience(client, candidate_headers)
     ref_id = await _create_skill_ref(client, candidate_headers, "UniqueUsage99")
-    payload = {"skill_ref_id": ref_id, "usage_role": "contributor", "intensity": "secondary"}
+    payload = {"skill_ref_id": ref_id, "intensity": "secondary"}
     await client.post(
         f"/candidates/me/experiences/{exp_id}/skill-usages", headers=candidate_headers, json=payload
     )
@@ -73,7 +72,7 @@ async def test_add_usage_to_nonexistent_experience_returns_404(
     r = await client.post(
         "/candidates/me/experiences/00000000-0000-0000-0000-000000000000/skill-usages",
         headers=candidate_headers,
-        json={"skill_ref_id": ref_id, "usage_role": "user", "intensity": "incidental"},
+        json={"skill_ref_id": ref_id, "intensity": "incidental"},
     )
     assert r.status_code == 404
 
@@ -105,7 +104,7 @@ async def test_experience_read_returns_nested_achievements_and_usages(
     usage_r = await client.post(
         f"/candidates/me/experiences/{exp_id}/skill-usages",
         headers=candidate_headers,
-        json={"skill_ref_id": ref_id, "usage_role": "implementer", "intensity": "primary"},
+        json={"skill_ref_id": ref_id, "intensity": "primary"},
     )
     assert usage_r.status_code == 201
 
@@ -120,4 +119,3 @@ async def test_experience_read_returns_nested_achievements_and_usages(
 
     assert len(target["skill_usages"]) == 1
     assert target["skill_usages"][0]["skill_ref"]["name"] == "NestedSkill"
-    assert target["skill_usages"][0]["usage_role"] == "implementer"

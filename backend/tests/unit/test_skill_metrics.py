@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from models.skill import SkillKind, UsageIntensity, UsageRole
+from models.skill import SkillKind, UsageIntensity
 from services.references.skill_metrics_service import (
     INTENSITY_WEIGHTS,
     NULL_INTENSITY_WEIGHT,
@@ -24,13 +24,11 @@ def make_exp(start: date, end: date | None, is_current: bool = False) -> Any:
 def make_usage(
     exp: Any,
     skill_ref_id: UUID,
-    usage_role: UsageRole = UsageRole.implementer,
     intensity: UsageIntensity | None = UsageIntensity.primary,
 ) -> Any:
     return SimpleNamespace(
         experience_id=exp.id,
         skill_ref_id=skill_ref_id,
-        usage_role=usage_role,
         intensity=intensity,
     )
 

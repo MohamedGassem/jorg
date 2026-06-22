@@ -26,7 +26,6 @@ from models.skill import (
     ReviewStatus,
     SkillKind,
     SkillReference,
-    UsageRole,
 )
 from schemas.skill import (
     AchievementCreate,
@@ -257,7 +256,6 @@ async def add_skill_usage(
     usage = ExperienceSkillUsage(
         experience_id=exp_id,
         skill_ref_id=data.skill_ref_id,
-        usage_role=data.usage_role,
         intensity=data.intensity,
     )
     try:
@@ -331,7 +329,6 @@ async def suggest_skill_usages(
             ExperienceSkillUsage(
                 experience_id=exp_id,
                 skill_ref_id=proposal.skill_ref_id,
-                usage_role=UsageRole.user,  # placeholder : usage_role est déprécié (#62)
                 intensity=None,  # NULL = pré-confirmation
                 source=EvidenceSource.cv_import,
                 review_status=ReviewStatus.pending,
