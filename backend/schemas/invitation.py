@@ -46,7 +46,7 @@ class RecruiterInvitationRead(BaseModel):
 
 
 class AcceptInvitationRequest(BaseModel):
-    share_finances: bool = True
+    share_finances_internal: bool = True
     share_contact: bool = True
 
 
@@ -67,5 +67,5 @@ class AccessGrantRead(BaseModel):
     granted_at: datetime
     revoked_at: datetime | None
     created_at: datetime
-    share_finances: bool
+    share_finances_internal: bool
     share_contact: bool
