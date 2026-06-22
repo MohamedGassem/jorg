@@ -12,6 +12,7 @@ from __future__ import annotations
 import io
 import zipfile
 from collections.abc import Iterable, Sequence
+from dataclasses import asdict
 from datetime import date
 from enum import StrEnum
 from typing import Any, Protocol
@@ -21,6 +22,12 @@ from docxtpl import DocxTemplate
 from jinja2 import ChainableUndefined, Environment, TemplateSyntaxError
 
 from models.skill import SkillKind
+from services.documents.render_model import (
+    AnonymizationPolicy,
+    AssetsBlock,
+    DossierRenderModel,
+    HeaderBlock,
+)
 
 # Re-used across every render call - Environment construction is not free.
 _JINJA_ENV = Environment(undefined=ChainableUndefined)
@@ -398,7 +405,7 @@ def exp_flat(exp: ExperienceProtocol) -> dict[str, Any]:
     }
 
 
-def build_context(
+def build_render_model(
     profile: CandidateProfileProtocol,
     experiences: Sequence[ExperienceProtocol],
     skills: Sequence[SkillProtocol],
@@ -408,34 +415,54 @@ def build_context(
     *,
     share_finances: bool = True,
     share_contact: bool = True,
-) -> dict[str, Any]:
-    """Build the full docxtpl rendering context (used for rendering and validation)."""
-    education_items = [education_flat(edu) for edu in education or []]
-    certification_items = [certification_flat(cert) for cert in certifications or []]
-    language_items = [language_flat(language) for language in languages or []]
-    context = {
-        **profile_flat(profile),
-        "experiences": [exp_flat(exp) for exp in experiences],
-        "years_of_experience": str(
-            profile.years_of_experience or derive_years_of_experience(experiences) or ""
+) -> DossierRenderModel:
+    """Map the raw ORM inputs to the typed render contract.
+
+    This is the only place that reads the profile attribute by attribute and that
+    applies the anonymization policy and the years-of-experience fallback, so the
+    engine downstream renders from typed blocks alone.
+    """
+    flat = profile_flat(profile)
+    flat["years_of_experience"] = str(
+        profile.years_of_experience or derive_years_of_experience(experiences) or ""
+    )
+    if not share_contact:
+        flat["phone"] = ""
+        flat["email_contact"] = ""
+        flat["linkedin_url"] = ""
+    if not share_finances:
+        flat["daily_rate"] = ""
+        flat["annual_salary"] = ""
+    return DossierRenderModel(
+        header=HeaderBlock(**flat),
+        anonymization=AnonymizationPolicy(
+            share_contact=share_contact, share_finances=share_finances
         ),
-        "skills": [skill_flat(sk) for sk in skills],
+        experience_blocks=tuple(experiences),
+        skills=tuple(skills),
+        education_blocks=tuple(education or ()),
+        language_blocks=tuple(languages or ()),
+        assets=AssetsBlock(certifications=tuple(certifications or ())),
+    )
+
+
+def build_context(model: DossierRenderModel) -> dict[str, Any]:
+    """Build the full docxtpl rendering context from the typed render model."""
+    education_items = [education_flat(edu) for edu in model.education_blocks]
+    certification_items = [certification_flat(cert) for cert in model.assets.certifications]
+    language_items = [language_flat(language) for language in model.language_blocks]
+    return {
+        **asdict(model.header),
+        "experiences": [exp_flat(exp) for exp in model.experience_blocks],
+        "skills": [skill_flat(sk) for sk in model.skills],
         "education": education_items,
         "educations": education_items,
         "certifications": certification_items,
         "languages": language_items,
-        "featured_achievements": featured_highlights(experiences),
-        "skill_groups": skill_groups(skills),
-        **_group_skills_by_kind(skills),
+        "featured_achievements": featured_highlights(model.experience_blocks),
+        "skill_groups": skill_groups(model.skills),
+        **_group_skills_by_kind(model.skills),
     }
-    if not share_contact:
-        context["phone"] = ""
-        context["email_contact"] = ""
-        context["linkedin_url"] = ""
-    if not share_finances:
-        context["daily_rate"] = ""
-        context["annual_salary"] = ""
-    return context
 
 
 def generate_document(
@@ -452,7 +479,7 @@ def generate_document(
 ) -> bytes:
     """Render a docxtpl (Jinja2) Word template and return the result as bytes."""
     tpl = DocxTemplate(template_path)
-    context = build_context(
+    model = build_render_model(
         profile,
         experiences,
         skills,
@@ -462,6 +489,7 @@ def generate_document(
         share_finances=share_finances,
         share_contact=share_contact,
     )
+    context = build_context(model)
     try:
         tpl.render(context, jinja_env=_JINJA_ENV)
     except (FileNotFoundError, zipfile.BadZipFile, PackageNotFoundError) as exc:
