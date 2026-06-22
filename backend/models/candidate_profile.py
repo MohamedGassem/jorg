@@ -156,6 +156,38 @@ class Experience(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         cascade="all, delete-orphan",
         back_populates="experience",
     )
+    projects: Mapped[list[Project]] = relationship(
+        "Project",
+        cascade="all, delete-orphan",
+        order_by="Project.order_index",
+        back_populates="experience",
+    )
+
+
+class Project(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Engagement nommé et distinct au sein d'une expérience (POC, livrable).
+
+    Optionnel : une réalisation se rattache directement à l'expérience ou, quand
+    l'expérience contient des engagements distincts, à un projet. Un projet se
+    justifie par l'engagement, pas par un simple thème de regroupement (L3).
+    """
+
+    __tablename__ = "projects"
+
+    experience_id: Mapped[UUID] = mapped_column(
+        ForeignKey("experiences.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    context: Mapped[str | None] = mapped_column(Text, nullable=True)
+    order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    experience: Mapped[Experience] = relationship("Experience", back_populates="projects")
+    achievements: Mapped[list[Achievement]] = relationship(
+        "Achievement",
+        back_populates="project",
+    )
 
 
 class Education(Base, UUIDPrimaryKeyMixin, TimestampMixin):

@@ -14,6 +14,7 @@ from models.candidate_profile import (
     LanguageLevel,
     LanguageReference,
     MissionDuration,
+    Project,
     WorkMode,
 )
 from models.generated_document import GeneratedDocument
@@ -70,6 +71,7 @@ __all__ = [
     "OpportunitySkillRequirement",
     "OpportunityStatus",
     "Organization",
+    "Project",
     "RecruiterProfile",
     "RefreshToken",
     "ReviewStatus",
