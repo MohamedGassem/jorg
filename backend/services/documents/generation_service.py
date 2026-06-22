@@ -25,13 +25,20 @@ from models.candidate_profile import (
     Experience,
     Language,
 )
+from models.dossier import Dossier, DossierExperienceSelection, DossierSkillSelection
 from models.generated_document import GeneratedDocument
 from models.recruiter import Organization
 from models.skill import Achievement, AchievementSkillTag, CandidateSkill, ExperienceSkillUsage
 from models.template import Template
 from schemas.generation import GeneratedDocumentCandidateView, GeneratedDocumentRecruiterView
 from services import access_policy
-from services.documents.docx_engine import generate_document
+from services.documents.docx_engine import build_render_model, generate_document
+from services.documents.dossier_resolution import (
+    SelectionSpec,
+    arrange_by_selection,
+    arrange_skills,
+)
+from services.documents.render_model import DossierRenderModel
 
 logger = structlog.get_logger()
 
@@ -115,6 +122,73 @@ async def _load_certifications(db: AsyncSession, profile_id: UUID) -> list[Certi
 async def _load_languages(db: AsyncSession, profile_id: UUID) -> list[Language]:
     result = await db.execute(select(Language).where(Language.profile_id == profile_id))
     return list(result.scalars().all())
+
+
+async def _load_profile_by_id(db: AsyncSession, profile_id: UUID) -> CandidateProfile:
+    result = await db.execute(select(CandidateProfile).where(CandidateProfile.id == profile_id))
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise NotFoundError("Candidate profile not found")
+    return profile
+
+
+async def resolve_dossier(db: AsyncSession, dossier: Dossier) -> DossierRenderModel:
+    """Resolve a Dossier (L3) into the typed render model.
+
+    Loads the candidate's L2 evidence, then keeps only the items the dossier
+    selects, in ``position`` order, applying the per-dossier highlight and the
+    dossier's anonymization. The render model is built from the arranged L2 facts
+    verbatim — the recruiter arranges, never rewrites (ADR-0002).
+    """
+    profile = await _load_profile_by_id(db, dossier.candidate_profile_id)
+    experiences = await _load_experiences(db, profile.id)
+    skills = await _load_skills(db, profile.id)
+    education = await _load_education(db, profile.id)
+    certifications = await _load_certifications(db, profile.id)
+    languages = await _load_languages(db, profile.id)
+
+    exp_sels = (
+        (
+            await db.execute(
+                select(DossierExperienceSelection).where(
+                    DossierExperienceSelection.dossier_id == dossier.id
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    skill_sels = (
+        (
+            await db.execute(
+                select(DossierSkillSelection).where(DossierSkillSelection.dossier_id == dossier.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    arranged_experiences = arrange_by_selection(
+        experiences,
+        [SelectionSpec(s.experience_id, s.position, s.is_featured) for s in exp_sels],
+        id_of=lambda exp: exp.id,
+    )
+    arranged_skills = arrange_skills(
+        skills,
+        [SelectionSpec(s.candidate_skill_id, s.position, s.is_featured) for s in skill_sels],
+        id_of=lambda sk: sk.id,
+    )
+
+    return build_render_model(
+        profile,  # type: ignore[arg-type]
+        arranged_experiences,  # type: ignore[arg-type]
+        arranged_skills,  # type: ignore[arg-type]
+        education,  # type: ignore[arg-type]
+        certifications,  # type: ignore[arg-type]
+        languages,  # type: ignore[arg-type]
+        share_contact=dossier.share_contact,
+        share_finances=dossier.share_finances,
+    )
 
 
 @dataclass(frozen=True)
