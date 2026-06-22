@@ -17,6 +17,12 @@ from models.candidate_profile import (
     Project,
     WorkMode,
 )
+from models.dossier import (
+    Dossier,
+    DossierExperienceSelection,
+    DossierOwnerType,
+    DossierSkillSelection,
+)
 from models.generated_document import GeneratedDocument
 from models.invitation import AccessGrant, AccessGrantStatus, Invitation, InvitationStatus
 from models.oauth_state import OAuthState
@@ -54,6 +60,10 @@ __all__ = [
     "CandidateSkill",
     "Certification",
     "ContractType",
+    "Dossier",
+    "DossierExperienceSelection",
+    "DossierOwnerType",
+    "DossierSkillSelection",
     "Education",
     "EvidenceSource",
     "Experience",
