@@ -19,6 +19,10 @@ INTENSITY_WEIGHTS: dict[UsageIntensity, float] = {
     UsageIntensity.incidental: 0.2,
 }
 
+# Poids plancher d'une preuve dont l'intensité n'est pas (encore) confirmée (intensity NULL).
+# Sous incidental : "utilisée, centralité inconnue" pèse moins qu'une intensité observée.
+NULL_INTENSITY_WEIGHT = 0.1
+
 VALIDATED_INTENSITIES = {UsageIntensity.primary, UsageIntensity.secondary}
 
 
@@ -44,7 +48,7 @@ def compute_metrics_from_usages(
         sid = ref.id
         end_date = exp.end_date if (not exp.is_current and exp.end_date) else date.today()
         months = _compute_months(exp.start_date, end_date)
-        weight = INTENSITY_WEIGHTS[usage.intensity]
+        weight = INTENSITY_WEIGHTS.get(usage.intensity, NULL_INTENSITY_WEIGHT)
 
         agg = by_skill[sid]
         agg["months_weighted"] += months * weight

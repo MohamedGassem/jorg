@@ -38,3 +38,38 @@ words as defined here; do not drift to synonyms.
   (`frontend/components/recruiter-workspace.tsx`) and consumed via
   `useRecruiterWorkspace()` (or its narrow view `useRecruiterOrg()`).
   Pages never re-fetch this context; page-specific data stays in pages.
+
+## Skills and evidence
+
+- **Skill usage**: a row (`ExperienceSkillUsage`) recording that a candidate used
+  a skill in a specific experience, with an optional role and intensity. Proof at
+  the experience level. _Avoid_: "technology", "skill on the CV".
+- **Skill tag**: a row (`AchievementSkillTag`) recording that one achievement
+  evidences one skill. Proof at the finest level.
+- **Proof**: a skill usage or a skill tag, an observed link between a skill and
+  real work. A skill becomes _evidenced_ once it has at least one accepted proof.
+  _Avoid_: "mention", "reference".
+- **Candidate skill**: the per-candidate standing of a skill (`CandidateSkill`),
+  a projection rolled up from its proofs rather than an independently authored
+  field. Its `status` is _derived_: `declared_only` (listed only) <
+  `inferred` (machine-proposed, unconfirmed) < `evidenced` (at least one accepted
+  proof) < `validated`. _Avoid_: treating `CandidateSkill` as a hand-entered list.
+- **Declared vs evidenced**: a _declared_ skill comes from the flat skill list of
+  a CV import with no link to any experience; an _evidenced_ skill is backed by at
+  least one proof. Only evidenced or validated skills drive ranking;
+  `self_assessed_level` never does.
+
+## Dossier
+
+- **Dossier**: the persisted, first-class presentation artifact (L3) a recruiter
+  uses to present a candidate. It is _thin_: it references a subset of L2 proofs
+  and carries arrangement (selection, order, per-dossier featuring, grouping,
+  anonymization) plus its own framing text, never the candidate's facts. _Avoid_:
+  "export", "generated document" (that is the frozen output, not the Dossier).
+- **L3a vs L3b**: an _L3a_ dossier is a generic angle owned by the candidate; an
+  _L3b_ dossier is targeted at a private opportunity and owned by the recruiter.
+- **Dossier headline**: the dossier-specific framing text (accroche/summary) the
+  recruiter writes for one dossier. Presentation native to L3, with no L2 source.
+  _Avoid_: "summary" when you mean `achievements_summary`, which is an L2 field.
+- **Generated dossier snapshot**: the immutable freeze of a dossier at send time
+  (render model plus consent policy), distinct from the living, editable Dossier.

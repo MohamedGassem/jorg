@@ -11,6 +11,7 @@ import pytest
 from models.skill import SkillKind, UsageIntensity, UsageRole
 from services.references.skill_metrics_service import (
     INTENSITY_WEIGHTS,
+    NULL_INTENSITY_WEIGHT,
     _compute_months,
     compute_metrics_from_usages,
 )
@@ -24,7 +25,7 @@ def make_usage(
     exp: Any,
     skill_ref_id: UUID,
     usage_role: UsageRole = UsageRole.implementer,
-    intensity: UsageIntensity = UsageIntensity.primary,
+    intensity: UsageIntensity | None = UsageIntensity.primary,
 ) -> Any:
     return SimpleNamespace(
         experience_id=exp.id,
@@ -95,6 +96,17 @@ def test_compute_metrics_incidental_not_validated():
 
     metrics = compute_metrics_from_usages([(usage, exp, ref)])
     assert metrics[0].months_weighted == pytest.approx(12 * 0.2)
+    assert metrics[0].validated is False
+
+
+def test_compute_metrics_null_intensity_uses_floor_and_not_validated():
+    skill_id = uuid4()
+    exp = make_exp(date(2022, 1, 1), date(2023, 1, 1))
+    usage = make_usage(exp, skill_id, intensity=None)
+    ref = make_ref(skill_id)
+
+    metrics = compute_metrics_from_usages([(usage, exp, ref)])
+    assert metrics[0].months_weighted == pytest.approx(12 * NULL_INTENSITY_WEIGHT)
     assert metrics[0].validated is False
 
 
