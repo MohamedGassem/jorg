@@ -355,6 +355,48 @@ export interface AccessibleCandidateDetail extends AccessibleCandidateRead {
   candidate_skills: Skill[];
 }
 
+export type DossierOwnerType = "candidate" | "recruiter";
+
+export interface ExperienceSelectionRead {
+  experience_id: string;
+  position: number;
+  is_featured: boolean;
+}
+
+export interface SkillSelectionRead {
+  candidate_skill_id: string;
+  position: number;
+  is_featured: boolean;
+}
+
+export interface Dossier {
+  id: string;
+  owner_type: DossierOwnerType;
+  candidate_profile_id: string;
+  organization_id: string | null;
+  access_grant_id: string | null;
+  is_general: boolean;
+  name: string | null;
+  objectif: string | null;
+  accroche: string | null;
+  share_contact: boolean;
+  share_finances: boolean;
+  validated_at: string | null;
+  created_at: string;
+  experience_selections: ExperienceSelectionRead[];
+  skill_selections: SkillSelectionRead[];
+}
+
+export interface CompositionPoolItem {
+  experience_id: string;
+  role: string;
+  client_name: string;
+  start_date: string;
+  end_date: string | null;
+  is_current: boolean;
+  hidden_by_default: boolean;
+}
+
 export interface ApiError {
   detail: string;
 }

@@ -26,6 +26,7 @@ import { EducationSection } from "@/components/candidate/education-section";
 import { CertificationSection } from "@/components/candidate/certification-section";
 import { LanguageSection } from "@/components/candidate/language-section";
 import { DossierGenerationDialog } from "@/components/dossier-generation-dialog";
+import { DossierAdaptedEditor } from "@/components/dossier-adapted-editor";
 import {
   Dialog,
   DialogContent,
@@ -87,6 +88,11 @@ function ProfileHero({
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [adaptedOpen, setAdaptedOpen] = useState(false);
+  const [adaptedPool, setAdaptedPool] = useState<{
+    experiences: Experience[];
+    skills: Skill[];
+  } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewData, setPreviewData] = useState<{
     profile: CandidateProfile | null;
@@ -128,6 +134,20 @@ function ProfileHero({
       // show partial data on error
     } finally {
       setPreviewLoading(false);
+    }
+  }
+
+  async function openAdaptedEditor() {
+    setAdaptedOpen(true);
+    if (adaptedPool) return;
+    try {
+      const [experiences, skills] = await Promise.all([
+        api.get<Experience[]>("/candidates/me/experiences"),
+        api.get<Skill[]>("/candidates/me/skills"),
+      ]);
+      setAdaptedPool({ experiences, skills });
+    } catch {
+      // the editor stays empty if the pool fails to load
     }
   }
 
@@ -183,6 +203,9 @@ function ProfileHero({
           <Button onClick={() => setGenerateOpen(true)}>
             <FolderOpen className="size-4" strokeWidth={1.6} />
             Générer un dossier
+          </Button>
+          <Button variant="outline" onClick={openAdaptedEditor}>
+            Créer une version adaptée
           </Button>
         </div>
       </header>
@@ -378,6 +401,22 @@ function ProfileHero({
         onOpenChange={setGenerateOpen}
         target={{ kind: "self" }}
       />
+      {adaptedPool && (
+        <DossierAdaptedEditor
+          open={adaptedOpen}
+          onOpenChange={setAdaptedOpen}
+          target={{ kind: "self" }}
+          experiences={adaptedPool.experiences.map((e) => ({
+            id: e.id,
+            role: e.role,
+            client_name: e.client_name,
+          }))}
+          skills={adaptedPool.skills.map((s) => ({
+            id: s.id,
+            name: s.skill_ref.name,
+          }))}
+        />
+      )}
     </>
   );
 }
