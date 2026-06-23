@@ -65,6 +65,7 @@ async def create_dossier_snapshot(
     *,
     template_id: UUID | None = None,
     generated_by_user_id: UUID | None = None,
+    generated_document_id: UUID | None = None,
     recipient_context: str | None = None,
 ) -> GeneratedDossierSnapshot:
     """Resolve the dossier and freeze its render model and consent policy."""
@@ -75,6 +76,7 @@ async def create_dossier_snapshot(
         consent_policy_snapshot_json=_json_safe(await _consent_policy(db, dossier)),
         template_id=template_id,
         generated_by_user_id=generated_by_user_id,
+        generated_document_id=generated_document_id,
         recipient_context=recipient_context,
     )
     db.add(snapshot)
