@@ -12,14 +12,37 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from models.candidate_profile import CandidateProfile
-from models.dossier import Dossier, DossierOwnerType
+from core.exceptions import BusinessRuleError
+from models.candidate_profile import CandidateProfile, Experience
+from models.dossier import (
+    Dossier,
+    DossierExperienceSelection,
+    DossierOwnerType,
+    DossierSkillSelection,
+)
 from models.dossier_snapshot import GeneratedDossierSnapshot
 from models.invitation import AccessGrantExclusion, ExclusionTargetType
+from models.skill import CandidateSkill
+
+
+async def _excluded_experience_ids(db: AsyncSession, access_grant_id: UUID | None) -> set[UUID]:
+    """Experience ids the candidate excluded on the dossier's grant (decision #7)."""
+    if access_grant_id is None:
+        return set()
+    rows = (
+        await db.execute(
+            select(AccessGrantExclusion.target_id).where(
+                AccessGrantExclusion.grant_id == access_grant_id,
+                AccessGrantExclusion.target_type == ExclusionTargetType.EXPERIENCE,
+            )
+        )
+    ).scalars()
+    return set(rows.all())
 
 
 async def _get_or_create_general(
@@ -90,6 +113,231 @@ async def get_or_create_general_recruiter(
             is_general=True,
         ),
     )
+
+
+async def load_with_selections(db: AsyncSession, dossier_id: UUID) -> Dossier | None:
+    """Load a dossier with its selections eager-loaded for serialization."""
+    result = await db.execute(
+        select(Dossier)
+        .where(Dossier.id == dossier_id)
+        .options(
+            selectinload(Dossier.experience_selections),
+            selectinload(Dossier.skill_selections),
+        )
+        # Refresh collections on an already-identity-mapped Dossier; otherwise a
+        # collection loaded earlier (e.g. empty at create) would shadow new rows.
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_candidate_dossier(
+    db: AsyncSession,
+    *,
+    candidate_profile_id: UUID,
+    candidate_owner_id: UUID,
+    name: str | None,
+    objectif: str | None,
+    accroche: str | None,
+    share_contact: bool,
+    share_finances: bool,
+) -> Dossier:
+    """Create a candidate-owned adapted dossier (is_general stays false)."""
+    dossier = Dossier(
+        candidate_profile_id=candidate_profile_id,
+        owner_type=DossierOwnerType.CANDIDATE,
+        candidate_owner_id=candidate_owner_id,
+        name=name,
+        objectif=objectif,
+        accroche=accroche,
+        share_contact=share_contact,
+        share_finances=share_finances,
+    )
+    db.add(dossier)
+    await db.flush()
+    loaded = await load_with_selections(db, dossier.id)
+    assert loaded is not None
+    return loaded
+
+
+async def create_recruiter_dossier(
+    db: AsyncSession,
+    *,
+    candidate_profile_id: UUID,
+    organization_id: UUID,
+    access_grant_id: UUID,
+    recruiter_owner_id: UUID,
+    name: str | None,
+    objectif: str | None,
+    accroche: str | None,
+    share_contact: bool,
+    share_finances: bool,
+) -> Dossier:
+    """Create a recruiter-owned adapted dossier bound to a live grant (decision #6)."""
+    dossier = Dossier(
+        candidate_profile_id=candidate_profile_id,
+        organization_id=organization_id,
+        access_grant_id=access_grant_id,
+        owner_type=DossierOwnerType.RECRUITER,
+        recruiter_owner_id=recruiter_owner_id,
+        name=name,
+        objectif=objectif,
+        accroche=accroche,
+        share_contact=share_contact,
+        share_finances=share_finances,
+    )
+    db.add(dossier)
+    await db.flush()
+    loaded = await load_with_selections(db, dossier.id)
+    assert loaded is not None
+    return loaded
+
+
+async def list_candidate_dossiers(db: AsyncSession, candidate_profile_id: UUID) -> list[Dossier]:
+    """The candidate's own dossiers (general + adapted), newest first."""
+    result = await db.execute(
+        select(Dossier)
+        .where(
+            Dossier.owner_type == DossierOwnerType.CANDIDATE,
+            Dossier.candidate_profile_id == candidate_profile_id,
+        )
+        .options(
+            selectinload(Dossier.experience_selections),
+            selectinload(Dossier.skill_selections),
+        )
+        .order_by(Dossier.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def list_recruiter_dossiers(db: AsyncSession, access_grant_id: UUID) -> list[Dossier]:
+    """The recruiter's dossiers for one grant (general + adapted), newest first."""
+    result = await db.execute(
+        select(Dossier)
+        .where(
+            Dossier.owner_type == DossierOwnerType.RECRUITER,
+            Dossier.access_grant_id == access_grant_id,
+        )
+        .options(
+            selectinload(Dossier.experience_selections),
+            selectinload(Dossier.skill_selections),
+        )
+        .order_by(Dossier.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def update_metadata(
+    db: AsyncSession,
+    dossier: Dossier,
+    *,
+    fields: dict[str, object],
+) -> Dossier:
+    """Apply only the provided metadata fields (PATCH semantics)."""
+    for key, value in fields.items():
+        setattr(dossier, key, value)
+    await db.flush()
+    loaded = await load_with_selections(db, dossier.id)
+    assert loaded is not None
+    return loaded
+
+
+async def _profile_experience_ids(db: AsyncSession, candidate_profile_id: UUID) -> set[UUID]:
+    rows = (
+        await db.execute(select(Experience.id).where(Experience.profile_id == candidate_profile_id))
+    ).scalars()
+    return set(rows.all())
+
+
+async def _profile_skill_ids(db: AsyncSession, candidate_profile_id: UUID) -> set[UUID]:
+    rows = (
+        await db.execute(
+            select(CandidateSkill.id).where(CandidateSkill.candidate_id == candidate_profile_id)
+        )
+    ).scalars()
+    return set(rows.all())
+
+
+async def replace_experience_selections(
+    db: AsyncSession,
+    dossier: Dossier,
+    items: list[tuple[UUID, bool]],
+) -> Dossier:
+    """Replace the whole experience selection list, ordered by array index.
+
+    Rejects (422) any id not belonging to the dossier's candidate profile, or any
+    experience the candidate vetoed on the grant (decision #7). The opposable veto
+    is never composable by the recruiter.
+    """
+    owned = await _profile_experience_ids(db, dossier.candidate_profile_id)
+    vetoed = await _excluded_experience_ids(db, dossier.access_grant_id)
+    for exp_id, _ in items:
+        if exp_id not in owned:
+            raise BusinessRuleError("experience does not belong to this candidate")
+        if exp_id in vetoed:
+            raise BusinessRuleError("experience was excluded by the candidate")
+
+    await db.execute(
+        delete(DossierExperienceSelection).where(
+            DossierExperienceSelection.dossier_id == dossier.id
+        )
+    )
+    for position, (exp_id, is_featured) in enumerate(items):
+        db.add(
+            DossierExperienceSelection(
+                dossier_id=dossier.id,
+                experience_id=exp_id,
+                position=position,
+                is_featured=is_featured,
+            )
+        )
+    await db.flush()
+    loaded = await load_with_selections(db, dossier.id)
+    assert loaded is not None
+    return loaded
+
+
+async def replace_skill_selections(
+    db: AsyncSession,
+    dossier: Dossier,
+    items: list[tuple[UUID, bool]],
+) -> Dossier:
+    """Replace the whole skill selection list, ordered by array index.
+
+    Rejects (422) any candidate_skill id not belonging to the dossier's profile.
+    """
+    owned = await _profile_skill_ids(db, dossier.candidate_profile_id)
+    for skill_id, _ in items:
+        if skill_id not in owned:
+            raise BusinessRuleError("skill does not belong to this candidate")
+
+    await db.execute(
+        delete(DossierSkillSelection).where(DossierSkillSelection.dossier_id == dossier.id)
+    )
+    for position, (skill_id, is_featured) in enumerate(items):
+        db.add(
+            DossierSkillSelection(
+                dossier_id=dossier.id,
+                candidate_skill_id=skill_id,
+                position=position,
+                is_featured=is_featured,
+            )
+        )
+    await db.flush()
+    loaded = await load_with_selections(db, dossier.id)
+    assert loaded is not None
+    return loaded
+
+
+async def composition_pool(db: AsyncSession, dossier: Dossier) -> list[Experience]:
+    """Non-vetoed experiences offered for composition (decision #7), date desc."""
+    vetoed = await _excluded_experience_ids(db, dossier.access_grant_id)
+    result = await db.execute(
+        select(Experience)
+        .where(Experience.profile_id == dossier.candidate_profile_id)
+        .order_by(Experience.start_date.desc())
+    )
+    return [exp for exp in result.scalars().all() if exp.id not in vetoed]
 
 
 async def validate_dossier(db: AsyncSession, dossier: Dossier, *, user_id: UUID) -> Dossier:

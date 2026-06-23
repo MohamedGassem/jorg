@@ -66,6 +66,10 @@ class Dossier(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     opportunity_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("opportunities.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    # Adapted-dossier metadata (L3 framing). The recruiter/candidate names the
+    # version and states the objective it targets; neither touches L2 facts.
+    name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    objectif: Mapped[str | None] = mapped_column(Text, nullable=True)
     accroche: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Optional per-dossier validation, at the recruiter's initiative: a
     # reassurance tool before sending, not a consent gate (ADR-0002).
