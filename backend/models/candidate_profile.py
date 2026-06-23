@@ -164,6 +164,14 @@ class Experience(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
 
+def effective_end_date(exp: Experience) -> date:
+    """Date de fin effective d'une expérience : sa fin réelle, ou aujourd'hui si
+    l'expérience est en cours (ou clôturée sans date de fin renseignée)."""
+    if not exp.is_current and exp.end_date:
+        return exp.end_date
+    return date.today()
+
+
 class Project(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     """Engagement nommé et distinct au sein d'une expérience (POC, livrable).
 

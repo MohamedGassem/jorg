@@ -145,8 +145,19 @@ LANGUAGE_LEVEL_LABELS = {
 }
 
 
-def fmt_date(d: date | None) -> str:
-    return d.strftime("%m/%Y") if isinstance(d, date) else ""
+MASKED_CLIENT_NAME = "Client confidentiel"
+
+
+def fmt_date(d: date | None, precision: str = "exact") -> str:
+    if not isinstance(d, date):
+        return ""
+    # Les dates ne portent jamais le jour ; "year" rabote au millésime.
+    return d.strftime("%Y") if precision == "year" else d.strftime("%m/%Y")
+
+
+def _initial(value: str | None) -> str:
+    value = (value or "").strip()
+    return f"{value[0].upper()}." if value else ""
 
 
 def derive_years_of_experience(experiences: Sequence[ExperienceProtocol]) -> int | None:
@@ -295,7 +306,11 @@ def language_flat(language: LanguageProtocol) -> dict[str, str]:
 FEATURED_HIGHLIGHTS_CAP = 3
 
 
-def featured_highlights(experiences: Sequence[ExperienceProtocol]) -> list[dict[str, str]]:
+def featured_highlights(
+    experiences: Sequence[ExperienceProtocol],
+    *,
+    mask_client_names: bool = False,
+) -> list[dict[str, str]]:
     """Réalisations featured avec impact chiffré, pour l'encart "Faits marquants".
 
     Les expériences arrivent triées par récence ; seules les réalisations featured
@@ -311,7 +326,8 @@ def featured_highlights(experiences: Sequence[ExperienceProtocol]) -> list[dict[
             year = str(exp.start_date.year)
         else:
             year = ""
-        ref = ", ".join(part for part in (exp.client_name or "", year) if part)
+        client_name = MASKED_CLIENT_NAME if mask_client_names else (exp.client_name or "")
+        ref = ", ".join(part for part in (client_name, year) if part)
         for achievement in _safe_sequence(getattr(exp, "achievements", [])):
             impact = (achievement.impact or "").strip()
             if not achievement.featured or not impact:
@@ -377,8 +393,13 @@ def _group_skills_by_kind(
     return result
 
 
-def exp_flat(exp: ExperienceProtocol) -> dict[str, Any]:
-    end = fmt_date(exp.end_date) if not exp.is_current else "présent"
+def exp_flat(
+    exp: ExperienceProtocol,
+    *,
+    mask_client_names: bool = False,
+    precision: str = "exact",
+) -> dict[str, Any]:
+    end = fmt_date(exp.end_date, precision) if not exp.is_current else "présent"
     summary = exp.achievements_summary or ""
     skill_usages = [usage_flat(usage) for usage in _safe_sequence(getattr(exp, "skill_usages", []))]
     achievement_items = [
@@ -388,10 +409,11 @@ def exp_flat(exp: ExperienceProtocol) -> dict[str, Any]:
             key=lambda achievement: 0 if achievement.featured else 1,
         )
     ]
+    client_name = MASKED_CLIENT_NAME if mask_client_names else (exp.client_name or "")
     return {
-        "client_name": exp.client_name or "",
+        "client_name": client_name,
         "role": exp.role or "",
-        "start_date": fmt_date(exp.start_date),
+        "start_date": fmt_date(exp.start_date, precision),
         "end_date": end,
         "description": exp.description or "",
         "context": exp.context or "",
@@ -415,6 +437,9 @@ def build_render_model(
     *,
     share_finances: bool = True,
     share_contact: bool = True,
+    identity_anonymized: bool = False,
+    mask_client_names: bool = False,
+    temporal_precision: str = "exact",
 ) -> DossierRenderModel:
     """Map the raw ORM inputs to the typed render contract.
 
@@ -433,10 +458,20 @@ def build_render_model(
     if not share_finances:
         flat["daily_rate"] = ""
         flat["annual_salary"] = ""
+    if identity_anonymized:
+        # Réduit l'identité à des initiales et retire ce qui la trahit directement.
+        flat["first_name"] = _initial(flat["first_name"])
+        flat["last_name"] = _initial(flat["last_name"])
+        flat["email_contact"] = ""
+        flat["linkedin_url"] = ""
     return DossierRenderModel(
         header=HeaderBlock(**flat),
         anonymization=AnonymizationPolicy(
-            share_contact=share_contact, share_finances=share_finances
+            share_contact=share_contact,
+            share_finances=share_finances,
+            anonymize_identity=identity_anonymized,
+            mask_client_names=mask_client_names,
+            temporal_precision=temporal_precision,
         ),
         experience_blocks=tuple(experiences),
         skills=tuple(skills),
@@ -451,15 +486,22 @@ def build_context(model: DossierRenderModel) -> dict[str, Any]:
     education_items = [education_flat(edu) for edu in model.education_blocks]
     certification_items = [certification_flat(cert) for cert in model.assets.certifications]
     language_items = [language_flat(language) for language in model.language_blocks]
+    mask_clients = model.anonymization.mask_client_names
+    precision = model.anonymization.temporal_precision
     return {
         **asdict(model.header),
-        "experiences": [exp_flat(exp) for exp in model.experience_blocks],
+        "experiences": [
+            exp_flat(exp, mask_client_names=mask_clients, precision=precision)
+            for exp in model.experience_blocks
+        ],
         "skills": [skill_flat(sk) for sk in model.skills],
         "education": education_items,
         "educations": education_items,
         "certifications": certification_items,
         "languages": language_items,
-        "featured_achievements": featured_highlights(model.experience_blocks),
+        "featured_achievements": featured_highlights(
+            model.experience_blocks, mask_client_names=mask_clients
+        ),
         "skill_groups": skill_groups(model.skills),
         **_group_skills_by_kind(model.skills),
     }
@@ -476,6 +518,9 @@ def generate_document(
     *,
     share_finances: bool = True,
     share_contact: bool = True,
+    identity_anonymized: bool = False,
+    mask_client_names: bool = False,
+    temporal_precision: str = "exact",
 ) -> bytes:
     """Render a docxtpl (Jinja2) Word template and return the result as bytes."""
     tpl = DocxTemplate(template_path)
@@ -488,6 +533,9 @@ def generate_document(
         languages,
         share_finances=share_finances,
         share_contact=share_contact,
+        identity_anonymized=identity_anonymized,
+        mask_client_names=mask_client_names,
+        temporal_precision=temporal_precision,
     )
     context = build_context(model)
     try:

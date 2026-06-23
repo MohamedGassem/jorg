@@ -324,28 +324,24 @@ async def suggest_skill_usages(
         part for part in (exp.description, exp.context, exp.achievements_summary) if part
     )
     proposals = propose_skill_usages(text, index, existing_ids)
-    for proposal in proposals:
-        db.add(
-            ExperienceSkillUsage(
-                experience_id=exp_id,
-                skill_ref_id=proposal.skill_ref_id,
-                intensity=None,  # NULL = pré-confirmation
-                source=EvidenceSource.cv_import,
-                review_status=ReviewStatus.pending,
-                confidence=proposal.confidence,
-            )
-        )
-    await db.flush()
-    proposed_ids = [p.skill_ref_id for p in proposals]
-    if not proposed_ids:
+    if not proposals:
         return []
+    created = [
+        ExperienceSkillUsage(
+            experience_id=exp_id,
+            skill_ref_id=proposal.skill_ref_id,
+            intensity=None,  # NULL = pré-confirmation
+            source=EvidenceSource.cv_import,
+            review_status=ReviewStatus.pending,
+            confidence=proposal.confidence,
+        )
+        for proposal in proposals
+    ]
+    db.add_all(created)
+    await db.flush()
     result = await db.execute(
         select(ExperienceSkillUsage)
-        .where(
-            ExperienceSkillUsage.experience_id == exp_id,
-            ExperienceSkillUsage.skill_ref_id.in_(proposed_ids),
-            ExperienceSkillUsage.review_status == ReviewStatus.pending,
-        )
+        .where(ExperienceSkillUsage.id.in_([u.id for u in created]))
         .options(selectinload(ExperienceSkillUsage.skill_ref))
     )
     return list(result.scalars().all())
@@ -373,6 +369,11 @@ async def confirm_skill_usage(
     usage = result.scalar_one_or_none()
     if usage is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="usage not found")
+    if usage.review_status != ReviewStatus.pending:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"usage is {usage.review_status.value}, only a pending usage can be confirmed",
+        )
     usage.review_status = ReviewStatus.accepted
     usage.intensity = data.intensity
     usage.validated_at = datetime.now(UTC)

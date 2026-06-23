@@ -22,6 +22,7 @@ from models.invitation import (
     ExclusionTargetType,
 )
 from models.recruiter import Organization
+from services.documents.docx_engine import build_context
 from services.documents.generation_service import resolve_dossier
 
 
@@ -83,3 +84,45 @@ async def test_excluded_experience_never_appears_in_resolved_dossier(
     names = [e.client_name for e in model.experience_blocks]
     assert "CurrentEmployer" not in names
     assert names == ["KeptClient"]
+
+
+async def test_grant_consent_envelope_is_enforced_in_rendered_model(
+    client: AsyncClient, candidate_headers: dict[str, str], db_session: AsyncSession
+) -> None:
+    """A grant-backed dossier renders under the grant's enriched consent envelope (#66)."""
+    exp = await _create_experience(client, candidate_headers, "AcmeCorp")
+    await db_session.commit()
+
+    profile = (await db_session.execute(select(CandidateProfile))).scalar_one()
+    org = Organization(name="ESN", slug="esn")
+    db_session.add(org)
+    await db_session.flush()
+    grant = AccessGrant(
+        candidate_id=profile.user_id,
+        organization_id=org.id,
+        status=AccessGrantStatus.ACTIVE,
+        granted_at=datetime.now(UTC),
+        identity_anonymized_to_client=True,
+        mask_client_names=True,
+    )
+    db_session.add(grant)
+    await db_session.flush()
+
+    dossier = Dossier(
+        candidate_profile_id=profile.id,
+        owner_type=DossierOwnerType.CANDIDATE,
+        candidate_owner_id=profile.user_id,
+        access_grant_id=grant.id,
+        experience_selections=[DossierExperienceSelection(experience_id=exp, position=0)],
+    )
+    db_session.add(dossier)
+    await db_session.flush()
+
+    context = build_context(await resolve_dossier(db_session, dossier))
+
+    # Client names masked, candidate identity reduced to initials in the outgoing dossier.
+    assert {e["client_name"] for e in context["experiences"]} == {"Client confidentiel"}
+    assert len(context["first_name"]) <= 2  # initiale "X." ou vide
+    assert len(context["last_name"]) <= 2
+    assert context["email_contact"] == ""
+    assert context["linkedin_url"] == ""

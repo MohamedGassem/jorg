@@ -27,7 +27,7 @@ from models.candidate_profile import (
 )
 from models.dossier import Dossier, DossierExperienceSelection, DossierSkillSelection
 from models.generated_document import GeneratedDocument
-from models.invitation import AccessGrantExclusion, ExclusionTargetType
+from models.invitation import AccessGrant, AccessGrantExclusion, ExclusionTargetType
 from models.recruiter import Organization
 from models.skill import Achievement, AchievementSkillTag, CandidateSkill, ExperienceSkillUsage
 from models.template import Template
@@ -204,6 +204,25 @@ async def resolve_dossier(db: AsyncSession, dossier: Dossier) -> DossierRenderMo
         id_of=lambda sk: sk.id,
     )
 
+    if dossier.access_grant_id is not None:
+        # Grant-backed (L3b) : la borne opposable est l'enveloppe de consentement du
+        # grant (#66), pas les booléens par dossier. Le snapshot fige cette même policy.
+        grant = (
+            await db.execute(select(AccessGrant).where(AccessGrant.id == dossier.access_grant_id))
+        ).scalar_one()
+        share_contact = grant.share_contact
+        share_finances = grant.share_finances_internal
+        identity_anonymized = grant.identity_anonymized_to_client
+        mask_client_names = grant.mask_client_names
+        temporal_precision = grant.temporal_precision.value
+    else:
+        # Candidate-owned (L3a) : seule l'anonymisation par dossier s'applique.
+        share_contact = dossier.share_contact
+        share_finances = dossier.share_finances
+        identity_anonymized = False
+        mask_client_names = False
+        temporal_precision = "exact"
+
     return build_render_model(
         profile,  # type: ignore[arg-type]
         arranged_experiences,  # type: ignore[arg-type]
@@ -211,8 +230,11 @@ async def resolve_dossier(db: AsyncSession, dossier: Dossier) -> DossierRenderMo
         education,  # type: ignore[arg-type]
         certifications,  # type: ignore[arg-type]
         languages,  # type: ignore[arg-type]
-        share_contact=dossier.share_contact,
-        share_finances=dossier.share_finances,
+        share_contact=share_contact,
+        share_finances=share_finances,
+        identity_anonymized=identity_anonymized,
+        mask_client_names=mask_client_names,
+        temporal_precision=temporal_precision,
     )
 
 
@@ -272,6 +294,9 @@ async def _render_and_store(
     generated_by_user_id: UUID | None,
     share_finances: bool = True,
     share_contact: bool = True,
+    identity_anonymized: bool = False,
+    mask_client_names: bool = False,
+    temporal_precision: str = "exact",
 ) -> GeneratedDocument:
     """Pipeline commun : chargements -> rendu -> (PDF) -> stockage -> enregistrement."""
     profile = await _load_profile(db, candidate_id)
@@ -292,6 +317,9 @@ async def _render_and_store(
             languages,  # type: ignore[arg-type]
             share_finances=share_finances,
             share_contact=share_contact,
+            identity_anonymized=identity_anonymized,
+            mask_client_names=mask_client_names,
+            temporal_precision=temporal_precision,
         )
     except ValueError as exc:
         raise BusinessRuleError(str(exc)) from exc
@@ -356,6 +384,9 @@ async def generate_for_candidate(
         generated_by_user_id=generated_by_user_id,
         share_finances=grant.share_finances_internal,
         share_contact=grant.share_contact,
+        identity_anonymized=grant.identity_anonymized_to_client,
+        mask_client_names=grant.mask_client_names,
+        temporal_precision=grant.temporal_precision.value,
     )
     logger.info(
         "document.generated",
@@ -398,7 +429,6 @@ async def generate_for_self(
 async def list_candidate_documents_view(
     db: AsyncSession, candidate_id: UUID
 ) -> list[GeneratedDocumentCandidateView]:
-    from models.invitation import AccessGrant
     from models.recruiter import RecruiterProfile
 
     rows = await db.execute(
@@ -446,7 +476,6 @@ async def list_candidate_documents_view(
 
 
 async def list_candidate_documents(db: AsyncSession, candidate_id: UUID) -> list[GeneratedDocument]:
-    from models.invitation import AccessGrant
 
     result = await db.execute(
         select(GeneratedDocument)
@@ -469,7 +498,6 @@ async def list_org_documents_view(
     db: AsyncSession, organization_id: UUID
 ) -> list[GeneratedDocumentRecruiterView]:
     from models.candidate_profile import CandidateProfile
-    from models.invitation import AccessGrant
     from models.opportunity import Opportunity, ShortlistEntry
 
     opportunity_subq = (
@@ -513,7 +541,6 @@ async def list_org_documents_view(
 
 
 async def list_org_documents(db: AsyncSession, organization_id: UUID) -> list[GeneratedDocument]:
-    from models.invitation import AccessGrant
 
     result = await db.execute(
         select(GeneratedDocument)

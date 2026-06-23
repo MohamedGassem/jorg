@@ -61,10 +61,19 @@ class HeaderBlock:
 
 @dataclass(frozen=True)
 class AnonymizationPolicy:
-    """Sharing scope applied to the header when building the model."""
+    """Sharing scope applied to the dossier when building the model.
+
+    ``share_contact``/``share_finances`` gate the header fields; the three axes
+    below carry the enriched consent envelope (AccessGrant) into the rendered
+    document: anonymise the candidate identity, mask the mission client names and
+    coarsen the dates shown to the end client.
+    """
 
     share_contact: bool = True
     share_finances: bool = True
+    anonymize_identity: bool = False
+    mask_client_names: bool = False
+    temporal_precision: str = "exact"
 
 
 @dataclass(frozen=True)

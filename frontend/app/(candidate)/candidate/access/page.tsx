@@ -67,7 +67,9 @@ export default function AccessPage() {
   >({});
 
   function invitationConsent(id: string): AcceptInvitationRequest {
-    return consent[id] ?? { share_finances: true, share_contact: true };
+    return (
+      consent[id] ?? { share_finances_internal: true, share_contact: true }
+    );
   }
 
   function setConsentField(
@@ -111,7 +113,7 @@ export default function AccessPage() {
   }
   const [editingGrant, setEditingGrant] = useState<string | null>(null);
   const [scopeDraft, setScopeDraft] = useState<AcceptInvitationRequest>({
-    share_finances: true,
+    share_finances_internal: true,
     share_contact: true,
   });
   const [savingScopes, setSavingScopes] = useState(false);
@@ -119,7 +121,7 @@ export default function AccessPage() {
   function startEditScopes(grant: AccessGrant) {
     setEditingGrant(grant.id);
     setScopeDraft({
-      share_finances: grant.share_finances,
+      share_finances_internal: grant.share_finances_internal,
       share_contact: grant.share_contact,
     });
   }
@@ -259,9 +261,9 @@ export default function AccessPage() {
               <div className="mt-3 flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[13px] text-ink-2">
                   <Checkbox
-                    checked={invitationConsent(inv.id).share_finances}
+                    checked={invitationConsent(inv.id).share_finances_internal}
                     onCheckedChange={(v) =>
-                      setConsentField(inv.id, "share_finances", v)
+                      setConsentField(inv.id, "share_finances_internal", v)
                     }
                   />
                   Partager mon TJM / ma rémunération
@@ -429,11 +431,11 @@ export default function AccessPage() {
                               </p>
                               <label className="flex items-center gap-2 text-[13px] text-ink-2">
                                 <Checkbox
-                                  checked={scopeDraft.share_finances}
+                                  checked={scopeDraft.share_finances_internal}
                                   onCheckedChange={(v) =>
                                     setScopeDraft((d) => ({
                                       ...d,
-                                      share_finances: v,
+                                      share_finances_internal: v,
                                     }))
                                   }
                                 />

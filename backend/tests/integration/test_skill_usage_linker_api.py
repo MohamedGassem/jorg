@@ -43,10 +43,9 @@ async def test_suggest_then_confirm_moves_skill_into_metrics(
     assert usage["source"] == "cv_import"
     assert usage["intensity"] is None
 
-    # Avant confirmation : non validated (intensite NULL)
+    # Avant confirmation : une proposition pending ne pese pas dans le ranking.
     before = await client.get("/candidates/me/skill-metrics", headers=candidate_headers)
-    py_before = next(m for m in before.json() if m["skill_name"] == "Python")
-    assert py_before["validated"] is False
+    assert all(m["skill_name"] != "Python" for m in before.json())
 
     # Confirmation candidat : pending -> accepted, porte l'intensite
     confirm = await client.post(
@@ -58,11 +57,11 @@ async def test_suggest_then_confirm_moves_skill_into_metrics(
     assert confirm.json()["review_status"] == "accepted"
     assert confirm.json()["intensity"] == "primary"
 
-    # Apres confirmation : evidenced -> validated et poids plein
+    # Apres confirmation : la competence entre dans les metrics, validated et poids plein.
     after = await client.get("/candidates/me/skill-metrics", headers=candidate_headers)
     py_after = next(m for m in after.json() if m["skill_name"] == "Python")
     assert py_after["validated"] is True
-    assert py_after["months_weighted"] > py_before["months_weighted"]
+    assert py_after["months_weighted"] > 0
 
 
 async def test_suggest_excludes_already_used_skill(
