@@ -1,11 +1,9 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  // JSX is transformed by esbuild (React 19 automatic runtime); no React plugin
-  // needed for unit tests, which keeps native SWC binaries out of the lock file.
-  esbuild: {
-    jsx: "automatic",
-  },
+  // No React plugin: JSX is transformed by esbuild using the tsconfig `jsx`
+  // setting (react-jsx / automatic runtime), which keeps native SWC binaries
+  // out of the lock file. Fast Refresh is not needed for unit tests.
   resolve: {
     tsconfigPaths: true,
   },
