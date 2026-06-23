@@ -356,6 +356,35 @@ async def _render_dossier_and_store(
     return doc
 
 
+async def generate_from_dossier(
+    db: AsyncSession,
+    *,
+    dossier: Dossier,
+    template_id: UUID | None,
+    system_template_key: str | None,
+    fmt: Literal["docx", "pdf"],
+    generated_by_user_id: UUID,
+) -> GeneratedDocument:
+    """Canonical generator (decision #8): render a given dossier and store it.
+
+    The dossier's organization scopes which templates are reachable; a candidate
+    dossier (no org) can only use a builtin system template.
+    """
+    resolved = await resolve_template(
+        db,
+        organization_id=dossier.organization_id,
+        template_id=template_id,
+        system_template_key=system_template_key,
+    )
+    return await _render_dossier_and_store(
+        db,
+        dossier=dossier,
+        resolved=resolved,
+        fmt=fmt,
+        generated_by_user_id=generated_by_user_id,
+    )
+
+
 async def generate_for_candidate(
     db: AsyncSession,
     organization_id: UUID,
