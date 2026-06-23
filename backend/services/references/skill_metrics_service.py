@@ -9,9 +9,14 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.candidate_profile import Experience
-from models.skill import ExperienceSkillUsage, SkillReference, UsageIntensity
+from models.candidate_profile import Experience, effective_end_date
+from models.skill import ExperienceSkillUsage, ReviewStatus, SkillReference, UsageIntensity
 from schemas.skill import SkillMetricsRead
+
+# Seules les preuves confirmées (ou éditées) par le candidat alimentent le ranking.
+# Une proposition du linker (review_status pending) ne pèse pas tant qu'elle n'est
+# pas confirmée, sinon une compétence inférée par la machine gonflerait le classement.
+USABLE_REVIEW_STATUSES = (ReviewStatus.accepted, ReviewStatus.edited)
 
 INTENSITY_WEIGHTS: dict[UsageIntensity, float] = {
     UsageIntensity.primary: 1.0,
@@ -46,7 +51,7 @@ def compute_metrics_from_usages(
 
     for usage, exp, ref in rows:
         sid = ref.id
-        end_date = exp.end_date if (not exp.is_current and exp.end_date) else date.today()
+        end_date = effective_end_date(exp)
         months = _compute_months(exp.start_date, end_date)
         weight = INTENSITY_WEIGHTS.get(usage.intensity, NULL_INTENSITY_WEIGHT)
 
@@ -82,7 +87,10 @@ async def compute_skill_metrics(
         select(ExperienceSkillUsage, Experience, SkillReference)
         .join(Experience, Experience.id == ExperienceSkillUsage.experience_id)
         .join(SkillReference, SkillReference.id == ExperienceSkillUsage.skill_ref_id)
-        .where(Experience.profile_id == profile_id)
+        .where(
+            Experience.profile_id == profile_id,
+            ExperienceSkillUsage.review_status.in_(USABLE_REVIEW_STATUSES),
+        )
     )
     result = await db.execute(stmt)
     rows = [(usage, exp, ref) for usage, exp, ref in result.all()]

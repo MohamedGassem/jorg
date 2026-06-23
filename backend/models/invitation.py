@@ -74,7 +74,8 @@ class AccessGrant(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Consent envelope: the opposable ceiling the recruiter composes within.
-    # Visibility of the candidate's finances internally to the ESN.
+    # Whether the candidate's finances (TJM / salary) are shown in the rendered
+    # dossier; when false they are stripped from the outgoing document.
     share_finances_internal: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true", nullable=False
     )

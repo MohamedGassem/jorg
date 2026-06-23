@@ -74,7 +74,10 @@ export default function PublicInvitationPage() {
       await api.post(
         `/invitations/${token}/${action}`,
         action === "accept"
-          ? { share_finances: shareFinances, share_contact: shareContact }
+          ? {
+              share_finances_internal: shareFinances,
+              share_contact: shareContact,
+            }
           : undefined,
       );
       const refreshed = await api.get<PublicInvitationRead>(

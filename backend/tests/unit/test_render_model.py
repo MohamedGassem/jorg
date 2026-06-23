@@ -80,6 +80,59 @@ def test_build_render_model_applies_anonymization_to_header() -> None:
     assert model.header.annual_salary == ""
 
 
+def test_build_render_model_anonymizes_identity_to_initials() -> None:
+    profile, experiences, skills, education, certifications, languages = _mock_render_inputs()
+    model = build_render_model(
+        profile,
+        experiences,
+        skills,
+        education,
+        certifications,
+        languages,
+        identity_anonymized=True,
+    )
+    # "Joris Martin" -> initiales, et on retire ce qui trahit directement l'identité.
+    assert model.header.first_name == "J."
+    assert model.header.last_name == "M."
+    assert model.header.email_contact == ""
+    assert model.header.linkedin_url == ""
+    assert model.anonymization.anonymize_identity is True
+
+
+def test_build_context_masks_client_names() -> None:
+    profile, experiences, skills, education, certifications, languages = _mock_render_inputs()
+    model = build_render_model(
+        profile,
+        experiences,
+        skills,
+        education,
+        certifications,
+        languages,
+        mask_client_names=True,
+    )
+    context = build_context(model)
+    assert {exp["client_name"] for exp in context["experiences"]} == {"Client confidentiel"}
+    assert all("FlowUp" not in item["ref"] for item in context["featured_achievements"])
+
+
+def test_temporal_precision_year_collapses_experience_dates() -> None:
+    profile, experiences, skills, education, certifications, languages = _mock_render_inputs()
+    model = build_render_model(
+        profile,
+        experiences,
+        skills,
+        education,
+        certifications,
+        languages,
+        temporal_precision="year",
+    )
+    context = build_context(model)
+    # Nova Consulting : 03/2020 - 12/2022 -> rabote au millésime.
+    nova = next(exp for exp in context["experiences"] if exp["role"] == "Data Engineer")
+    assert nova["start_date"] == "2020"
+    assert nova["end_date"] == "2022"
+
+
 def test_competency_and_sector_blocks_partition_skills_in_order() -> None:
     tech = SimpleNamespace(skill_ref=SimpleNamespace(kind="technical"), featured=False)
     sect = SimpleNamespace(skill_ref=SimpleNamespace(kind="sectoral"), featured=False)

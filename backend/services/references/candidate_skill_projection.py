@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models.candidate_profile import Experience
+from models.candidate_profile import Experience, effective_end_date
 from models.skill import (
     Achievement,
     AchievementSkillTag,
@@ -143,7 +143,7 @@ def assemble_projections(
 
 
 def _proof_record(ref: SkillReference, proof: ProvenanceMixin, exp: Experience) -> ProofRecord:
-    end = exp.end_date if (not exp.is_current and exp.end_date) else date.today()
+    end = effective_end_date(exp)
     return ProofRecord(
         skill_ref_id=ref.id,
         skill_name=ref.name,

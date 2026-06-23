@@ -14,6 +14,12 @@ export type SkillKind =
 export type LanguageLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | "native";
 export type UsageIntensity = "primary" | "secondary" | "incidental";
 export type ContractType = "freelance" | "cdi" | "both";
+export type EvidenceSource =
+  | "cv_import"
+  | "manual_candidate"
+  | "llm_inferred"
+  | "recruiter_curated";
+export type ReviewStatus = "pending" | "accepted" | "edited" | "rejected";
 
 export interface AchievementSkillTag {
   skill_ref_id: string;
@@ -38,7 +44,11 @@ export interface ExperienceSkillUsage {
   experience_id: string;
   skill_ref_id: string;
   skill_ref: SkillReference;
-  intensity: UsageIntensity;
+  intensity: UsageIntensity | null;
+  source: EvidenceSource;
+  review_status: ReviewStatus;
+  confidence: number | null;
+  validated_at: string | null;
   created_at: string;
 }
 
@@ -262,12 +272,12 @@ export interface AccessGrant {
   granted_at: string;
   revoked_at: string | null;
   created_at: string;
-  share_finances: boolean;
+  share_finances_internal: boolean;
   share_contact: boolean;
 }
 
 export interface AcceptInvitationRequest {
-  share_finances: boolean;
+  share_finances_internal: boolean;
   share_contact: boolean;
 }
 
