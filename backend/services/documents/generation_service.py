@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 
 import services.documents.builtin_template_service as builtin_template_service
 import services.documents.template_service as template_service
+import services.dossier_service as dossier_service
 from core.config import get_settings
 from core.exceptions import BusinessRuleError, NotFoundError
 from core.storage import get_storage
@@ -33,7 +34,7 @@ from models.skill import Achievement, AchievementSkillTag, CandidateSkill, Exper
 from models.template import Template
 from schemas.generation import GeneratedDocumentCandidateView, GeneratedDocumentRecruiterView
 from services import access_policy
-from services.documents.docx_engine import build_render_model, generate_document
+from services.documents.docx_engine import build_render_model, render_model_to_bytes
 from services.documents.dossier_resolution import (
     SelectionSpec,
     arrange_by_selection,
@@ -189,20 +190,27 @@ async def resolve_dossier(db: AsyncSession, dossier: Dossier) -> DossierRenderMo
     )
 
     excluded_experience_ids = await _excluded_experience_ids(db, dossier.access_grant_id)
-    arranged_experiences = tuple(
-        exp
-        for exp in arrange_by_selection(
+    # Per-axis "all" fallback (locked decision #1): an axis with selections is
+    # curated; an axis without is a live mirror of the profile in default order.
+    if exp_sels:
+        ordered_experiences: tuple[Experience, ...] = arrange_by_selection(
             experiences,
             [SelectionSpec(s.experience_id, s.position, s.is_featured) for s in exp_sels],
             id_of=lambda exp: exp.id,
         )
-        if exp.id not in excluded_experience_ids
+    else:
+        ordered_experiences = tuple(experiences)
+    arranged_experiences = tuple(
+        exp for exp in ordered_experiences if exp.id not in excluded_experience_ids
     )
-    arranged_skills = arrange_skills(
-        skills,
-        [SelectionSpec(s.candidate_skill_id, s.position, s.is_featured) for s in skill_sels],
-        id_of=lambda sk: sk.id,
-    )
+    if skill_sels:
+        arranged_skills = arrange_skills(
+            skills,
+            [SelectionSpec(s.candidate_skill_id, s.position, s.is_featured) for s in skill_sels],
+            id_of=lambda sk: sk.id,
+        )
+    else:
+        arranged_skills = tuple(skills)
 
     if dossier.access_grant_id is not None:
         # Grant-backed (L3b) : la borne opposable est l'enveloppe de consentement du
@@ -284,48 +292,30 @@ async def resolve_template(
     raise BusinessRuleError("Template is required")
 
 
-async def _render_and_store(
+async def _render_dossier_and_store(
     db: AsyncSession,
     *,
-    candidate_id: UUID,
+    dossier: Dossier,
     resolved: ResolvedTemplate,
     fmt: Literal["docx", "pdf"],
-    access_grant_id: UUID | None,
     generated_by_user_id: UUID | None,
-    share_finances: bool = True,
-    share_contact: bool = True,
-    identity_anonymized: bool = False,
-    mask_client_names: bool = False,
-    temporal_precision: str = "exact",
 ) -> GeneratedDocument:
-    """Pipeline commun : chargements -> rendu -> (PDF) -> stockage -> enregistrement."""
-    profile = await _load_profile(db, candidate_id)
-    experiences = await _load_experiences(db, profile.id)
-    skills = await _load_skills(db, profile.id)
-    education = await _load_education(db, profile.id)
-    certifications = await _load_certifications(db, profile.id)
-    languages = await _load_languages(db, profile.id)
+    """L3 pipeline: resolve dossier -> render -> (PDF) -> store -> freeze snapshot.
 
+    The document and its snapshot are built from the same resolved model, so the
+    frozen record never diverges from what was rendered (locked decision #10). The
+    snapshot points back at the document it froze (decision #2/#9).
+    """
+    import services.documents.snapshot_service as snapshot_service
+
+    model = await resolve_dossier(db, dossier)
     try:
-        docx_bytes = generate_document(
-            resolved.path,
-            profile,  # type: ignore[arg-type]
-            experiences,  # type: ignore[arg-type]
-            skills,  # type: ignore[arg-type]
-            education,  # type: ignore[arg-type]
-            certifications,  # type: ignore[arg-type]
-            languages,  # type: ignore[arg-type]
-            share_finances=share_finances,
-            share_contact=share_contact,
-            identity_anonymized=identity_anonymized,
-            mask_client_names=mask_client_names,
-            temporal_precision=temporal_precision,
-        )
+        docx_bytes = render_model_to_bytes(resolved.path, model)
     except ValueError as exc:
         raise BusinessRuleError(str(exc)) from exc
 
     storage = get_storage()
-    base_filename = f"doc_{candidate_id}_{resolved.filename_token}"
+    base_filename = f"doc_{dossier.candidate_profile_id}_{resolved.filename_token}"
     actual_format: str = "docx"
     if fmt == "pdf":
         try:
@@ -336,7 +326,7 @@ async def _render_and_store(
             # Gotenberg unavailable — fall back to docx and record actual format
             logger.warning(
                 "pdf_conversion_unavailable",
-                candidate_id=str(candidate_id),
+                dossier_id=str(dossier.id),
                 fallback="docx",
                 reason=exc.detail,
             )
@@ -345,7 +335,7 @@ async def _render_and_store(
         storage_key = await storage.save(docx_bytes, f"{base_filename}.docx")
 
     doc = GeneratedDocument(
-        access_grant_id=access_grant_id,
+        access_grant_id=dossier.access_grant_id,
         template_id=resolved.template_id,
         generated_by_user_id=generated_by_user_id,
         file_path=storage_key,
@@ -355,6 +345,14 @@ async def _render_and_store(
     db.add(doc)
     await db.flush()
     await db.refresh(doc)
+
+    await snapshot_service.create_dossier_snapshot(
+        db,
+        dossier,
+        template_id=resolved.template_id,
+        generated_by_user_id=generated_by_user_id,
+        generated_document_id=doc.id,
+    )
     return doc
 
 
@@ -367,7 +365,7 @@ async def generate_for_candidate(
     generated_by_user_id: UUID,
     fmt: Literal["docx", "pdf"],
 ) -> GeneratedDocument:
-    """Full pipeline: verify grant → resolve template → render and store."""
+    """Full pipeline: verify grant → resolve template → general dossier → render and store."""
     grant = await access_policy.require_live_access(db, organization_id, candidate_id)
     resolved = await resolve_template(
         db,
@@ -375,18 +373,20 @@ async def generate_for_candidate(
         template_id=template_id,
         system_template_key=system_template_key,
     )
-    doc = await _render_and_store(
+    profile = await _load_profile(db, candidate_id)
+    dossier = await dossier_service.get_or_create_general_recruiter(
         db,
-        candidate_id=candidate_id,
+        candidate_profile_id=profile.id,
+        organization_id=organization_id,
+        access_grant_id=grant.id,
+        recruiter_owner_id=generated_by_user_id,
+    )
+    doc = await _render_dossier_and_store(
+        db,
+        dossier=dossier,
         resolved=resolved,
         fmt=fmt,
-        access_grant_id=grant.id,
         generated_by_user_id=generated_by_user_id,
-        share_finances=grant.share_finances_internal,
-        share_contact=grant.share_contact,
-        identity_anonymized=grant.identity_anonymized_to_client,
-        mask_client_names=grant.mask_client_names,
-        temporal_precision=grant.temporal_precision.value,
     )
     logger.info(
         "document.generated",
@@ -409,12 +409,15 @@ async def generate_for_self(
     resolved = await resolve_template(
         db, organization_id=None, template_id=None, system_template_key=system_template_key
     )
-    doc = await _render_and_store(
+    profile = await _load_profile(db, candidate_id)
+    dossier = await dossier_service.get_or_create_general_candidate(
+        db, candidate_profile_id=profile.id, candidate_owner_id=candidate_id
+    )
+    doc = await _render_dossier_and_store(
         db,
-        candidate_id=candidate_id,
+        dossier=dossier,
         resolved=resolved,
         fmt=fmt,
-        access_grant_id=None,
         generated_by_user_id=candidate_id,
     )
     logger.info(

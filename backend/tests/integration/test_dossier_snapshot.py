@@ -44,6 +44,7 @@ async def test_snapshot_is_immutable_after_dossier_edit(
     client: AsyncClient, candidate_headers: dict[str, str], db_session: AsyncSession
 ) -> None:
     exp = await _create_experience(client, candidate_headers, "FrozenClient")
+    other = await _create_experience(client, candidate_headers, "OtherClient")
     await db_session.commit()
     profile = (await db_session.execute(select(CandidateProfile))).scalar_one()
     dossier = await _dossier_with(profile, exp)
@@ -52,8 +53,12 @@ async def test_snapshot_is_immutable_after_dossier_edit(
 
     snap1 = await create_dossier_snapshot(db_session, dossier)
 
-    # The recruiter edits the dossier after the snapshot went out.
+    # The recruiter edits the dossier after the snapshot went out, re-curating to a
+    # different experience (an explicit selection, since empty now means "all").
     dossier.experience_selections.clear()
+    dossier.experience_selections.append(
+        DossierExperienceSelection(experience_id=other, position=0)
+    )
     await db_session.flush()
     snap2 = await create_dossier_snapshot(db_session, dossier)
 
@@ -61,6 +66,7 @@ async def test_snapshot_is_immutable_after_dossier_edit(
     # Regeneration is a new row; the first snapshot is untouched.
     assert snap1.id != snap2.id
     assert "FrozenClient" not in json.dumps(snap2.render_model_snapshot_json)
+    assert "OtherClient" in json.dumps(snap2.render_model_snapshot_json)
 
 
 async def test_snapshot_captures_consent_policy(

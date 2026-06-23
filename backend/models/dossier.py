@@ -10,9 +10,11 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -77,6 +79,12 @@ class Dossier(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     share_finances: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true", nullable=False
     )
+    # The single live mirror of the profile for an owner: candidate (per profile)
+    # or recruiter (per access_grant). Adapted dossiers (is_general=False) curate
+    # via explicit selections; the general one carries none (locked decision #1/#2).
+    is_general: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
 
     skill_selections: Mapped[list[DossierSkillSelection]] = relationship(
         "DossierSkillSelection",
@@ -98,6 +106,21 @@ class Dossier(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             "(owner_type = 'recruiter' AND recruiter_owner_id IS NOT NULL "
             "AND candidate_owner_id IS NULL)",
             name="ck_dossier_owner_consistency",
+        ),
+        # At most one general dossier per candidate profile, and per recruiter
+        # access_grant (locked decision #2). Partial unique indexes keep
+        # get_or_create_general race-safe.
+        Index(
+            "uq_dossier_general_candidate",
+            "candidate_profile_id",
+            unique=True,
+            postgresql_where=text("is_general AND owner_type = 'candidate'"),
+        ),
+        Index(
+            "uq_dossier_general_recruiter",
+            "access_grant_id",
+            unique=True,
+            postgresql_where=text("is_general AND owner_type = 'recruiter'"),
         ),
     )
 
