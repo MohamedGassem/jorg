@@ -1,8 +1,11 @@
 import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react-swc";
 
 export default defineConfig({
-  plugins: [react()],
+  // JSX is transformed by esbuild (React 19 automatic runtime); no React plugin
+  // needed for unit tests, which keeps native SWC binaries out of the lock file.
+  esbuild: {
+    jsx: "automatic",
+  },
   resolve: {
     tsconfigPaths: true,
   },
