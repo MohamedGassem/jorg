@@ -9,6 +9,7 @@ import { CvImport } from "@/components/cv-import";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
+import { extractErrorMessage } from "@/lib/errors";
 import { completionPercent, profileCompletionChecks } from "@/lib/completion";
 import {
   AVAILABILITY_LABELS,
@@ -93,6 +94,7 @@ function ProfileHero({
     experiences: Experience[];
     skills: Skill[];
   } | null>(null);
+  const [adaptedError, setAdaptedError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewData, setPreviewData] = useState<{
     profile: CandidateProfile | null;
@@ -138,16 +140,22 @@ function ProfileHero({
   }
 
   async function openAdaptedEditor() {
-    setAdaptedOpen(true);
-    if (adaptedPool) return;
+    setAdaptedError(null);
+    if (adaptedPool) {
+      setAdaptedOpen(true);
+      return;
+    }
     try {
       const [experiences, skills] = await Promise.all([
         api.get<Experience[]>("/candidates/me/experiences"),
         api.get<Skill[]>("/candidates/me/skills"),
       ]);
       setAdaptedPool({ experiences, skills });
-    } catch {
-      // the editor stays empty if the pool fails to load
+      setAdaptedOpen(true);
+    } catch (err) {
+      setAdaptedError(
+        extractErrorMessage(err, "Impossible de charger vos données"),
+      );
     }
   }
 
@@ -208,6 +216,7 @@ function ProfileHero({
             Créer une version adaptée
           </Button>
         </div>
+        <ErrorAlert error={adaptedError} />
       </header>
 
       <section className="rounded-lg border border-line bg-surface px-[26px] py-[22px]">

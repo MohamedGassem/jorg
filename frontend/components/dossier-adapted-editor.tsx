@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -39,11 +39,15 @@ import {
   type CompositionRow,
 } from "@/lib/dossier-composition";
 import { extractErrorMessage } from "@/lib/errors";
-import { useDownload } from "@/lib/hooks";
+import { useDownload, useTemplateChoices } from "@/lib/hooks";
 import { downloadFilename } from "@/lib/labels";
-import { templateChoiceBody, type TemplateChoice } from "@/lib/template-choice";
+import {
+  MODEL_BADGES,
+  templateChoiceBody,
+  type TemplateChoice,
+} from "@/lib/template-choice";
 import { cn } from "@/lib/utils";
-import type { BuiltinTemplate, GeneratedDocument, Template } from "@/types/api";
+import type { GeneratedDocument } from "@/types/api";
 import type { GenerationTarget } from "@/components/dossier-generation-dialog";
 
 export interface ExperiencePoolItem {
@@ -64,12 +68,6 @@ interface Props {
   experiences: ExperiencePoolItem[];
   skills: SkillPoolItem[];
 }
-
-const MODEL_BADGES: Record<string, string> = {
-  compact_esn: "Compact",
-  dossier_technique: "Technique",
-  profil_premium: "Complet",
-};
 
 function experienceLabel(items: ExperiencePoolItem[], id: string): string {
   const item = items.find((e) => e.id === id);
@@ -157,11 +155,6 @@ export function DossierAdaptedEditor({
     ),
   );
 
-  const [builtinTemplates, setBuiltinTemplates] = useState<BuiltinTemplate[]>(
-    [],
-  );
-  const [orgTemplates, setOrgTemplates] = useState<Template[]>([]);
-  const [loaded, setLoaded] = useState(false);
   const [choice, setChoice] = useState<TemplateChoice | null>(null);
   const [format, setFormat] = useState<"docx" | "pdf">("docx");
 
@@ -171,6 +164,10 @@ export function DossierAdaptedEditor({
   const { download, errors: downloadErrors } = useDownload();
 
   const orgId = target.kind === "recruiter" ? target.orgId : null;
+  const { builtinTemplates, orgTemplates, loadError } = useTemplateChoices(
+    open,
+    orgId,
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -178,28 +175,6 @@ export function DossierAdaptedEditor({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
-
-  useEffect(() => {
-    if (!open || loaded) return;
-    Promise.all([
-      api.get<BuiltinTemplate[]>("/templates/builtin"),
-      orgId
-        ? api
-            .get<Template[]>(`/organizations/${orgId}/templates`)
-            .then((list) =>
-              list.filter((t) => t.is_valid && t.status === "active"),
-            )
-        : Promise.resolve([] as Template[]),
-    ])
-      .then(([builtins, orgs]) => {
-        setBuiltinTemplates(builtins);
-        setOrgTemplates(orgs);
-        setLoaded(true);
-      })
-      .catch((err) =>
-        setError(extractErrorMessage(err, "Impossible de charger les modèles")),
-      );
-  }, [open, loaded, orgId]);
 
   function setExpInclude(id: string) {
     setExpRows((rows) =>
@@ -460,7 +435,7 @@ export function DossierAdaptedEditor({
               </div>
             </section>
 
-            <ErrorAlert error={error} />
+            <ErrorAlert error={error ?? loadError} />
 
             {result ? (
               <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">

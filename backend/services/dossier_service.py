@@ -17,7 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from core.exceptions import BusinessRuleError
+from core.exceptions import BusinessRuleError, ForbiddenError
 from models.candidate_profile import CandidateProfile, Experience
 from models.dossier import (
     Dossier,
@@ -26,8 +26,34 @@ from models.dossier import (
     DossierSkillSelection,
 )
 from models.dossier_snapshot import GeneratedDossierSnapshot
-from models.invitation import AccessGrantExclusion, ExclusionTargetType
+from models.invitation import (
+    AccessGrant,
+    AccessGrantExclusion,
+    AccessGrantStatus,
+    ExclusionTargetType,
+)
 from models.skill import CandidateSkill
+
+
+async def require_live_grant(db: AsyncSession, access_grant_id: UUID | None) -> AccessGrant:
+    """A recruiter dossier operates only through a live grant (locked decision #6).
+
+    Enforced here, in the service layer, because ``access_grant_id`` is
+    ON DELETE SET NULL: no DB constraint can express the rule, so the guard
+    travels with every recruiter write instead of living only at the API boundary.
+    """
+    if access_grant_id is None:
+        raise ForbiddenError("recruiter dossier requires a live access grant")
+    grant = (
+        await db.execute(select(AccessGrant).where(AccessGrant.id == access_grant_id))
+    ).scalar_one_or_none()
+    if grant is None or grant.status != AccessGrantStatus.ACTIVE:
+        raise ForbiddenError("recruiter dossier requires a live access grant")
+    return grant
+
+
+def _is_recruiter(dossier: Dossier) -> bool:
+    return dossier.owner_type == DossierOwnerType.RECRUITER
 
 
 async def _excluded_experience_ids(db: AsyncSession, access_grant_id: UUID | None) -> set[UUID]:
@@ -174,6 +200,7 @@ async def create_recruiter_dossier(
     share_finances: bool,
 ) -> Dossier:
     """Create a recruiter-owned adapted dossier bound to a live grant (decision #6)."""
+    await require_live_grant(db, access_grant_id)
     dossier = Dossier(
         candidate_profile_id=candidate_profile_id,
         organization_id=organization_id,
@@ -269,6 +296,8 @@ async def replace_experience_selections(
     experience the candidate vetoed on the grant (decision #7). The opposable veto
     is never composable by the recruiter.
     """
+    if _is_recruiter(dossier):
+        await require_live_grant(db, dossier.access_grant_id)
     owned = await _profile_experience_ids(db, dossier.candidate_profile_id)
     vetoed = await _excluded_experience_ids(db, dossier.access_grant_id)
     for exp_id, _ in items:
@@ -306,6 +335,8 @@ async def replace_skill_selections(
 
     Rejects (422) any candidate_skill id not belonging to the dossier's profile.
     """
+    if _is_recruiter(dossier):
+        await require_live_grant(db, dossier.access_grant_id)
     owned = await _profile_skill_ids(db, dossier.candidate_profile_id)
     for skill_id, _ in items:
         if skill_id not in owned:
@@ -342,6 +373,8 @@ async def composition_pool(db: AsyncSession, dossier: Dossier) -> list[Experienc
 
 async def validate_dossier(db: AsyncSession, dossier: Dossier, *, user_id: UUID) -> Dossier:
     """Mark a dossier validated by the recruiter. Optional, not a send gate."""
+    if _is_recruiter(dossier):
+        await require_live_grant(db, dossier.access_grant_id)
     dossier.validated_at = datetime.now(UTC)
     dossier.validated_by = user_id
     await db.flush()

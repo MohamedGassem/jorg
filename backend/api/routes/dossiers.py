@@ -10,7 +10,6 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
@@ -23,7 +22,6 @@ from core.exceptions import BusinessRuleError, ForbiddenError, NotFoundError
 from core.limiter import limiter
 from models.dossier import Dossier, DossierOwnerType
 from models.generated_document import GeneratedDocument
-from models.invitation import AccessGrant, AccessGrantStatus
 from models.user import User, UserRole
 from schemas.dossier import (
     CompositionPoolItem,
@@ -45,17 +43,16 @@ DB = Annotated[AsyncSession, Depends(get_db)]
 async def _require_recruiter_live_grant(
     db: AsyncSession, user: User, *, organization_id: UUID, access_grant_id: UUID | None
 ) -> None:
-    """A recruiter operates a dossier only through a live grant (decision #6)."""
+    """A recruiter operates a dossier only through a live grant (decision #6).
+
+    Membership (who the user is) is an API-boundary concern; grant liveness is a
+    business rule the service layer owns (``dossier_service.require_live_grant``),
+    so it holds for every caller, not only this route.
+    """
     profile = await recruiter_service.get_profile(db, user.id)
     if profile is None or not access_policy.is_member(profile, organization_id):
         raise ForbiddenError("you do not belong to this organization")
-    if access_grant_id is None:
-        raise ForbiddenError("recruiter dossier requires a live access grant")
-    grant = (
-        await db.execute(select(AccessGrant).where(AccessGrant.id == access_grant_id))
-    ).scalar_one_or_none()
-    if grant is None or grant.status != AccessGrantStatus.ACTIVE:
-        raise ForbiddenError("recruiter dossier requires a live access grant")
+    await dossier_service.require_live_grant(db, access_grant_id)
 
 
 async def _authorized_dossier(db: AsyncSession, dossier_id: UUID, user: User) -> Dossier:
