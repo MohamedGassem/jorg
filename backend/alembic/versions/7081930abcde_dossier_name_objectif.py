@@ -1,6 +1,6 @@
 """dossier name + objectif metadata columns
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: 7081930abcde
 Revises: f7081930abcd
 Create Date: 2026-06-23
 
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "a1b2c3d4e5f6"
+revision: str = "7081930abcde"
 down_revision: str | Sequence[str] | None = "f7081930abcd"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
