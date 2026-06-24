@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,16 +12,17 @@ import {
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
-import { useDownload } from "@/lib/hooks";
+import { useDownload, useTemplateChoices } from "@/lib/hooks";
 import { downloadFilename } from "@/lib/labels";
 import {
+  MODEL_BADGES,
   parseTemplateChoice,
   templateChoiceBody,
   templateChoiceValue,
   type TemplateChoice,
 } from "@/lib/template-choice";
 import { cn } from "@/lib/utils";
-import type { BuiltinTemplate, GeneratedDocument, Template } from "@/types/api";
+import type { GeneratedDocument } from "@/types/api";
 
 /** La cible détermine l'endpoint et les modèles proposés. */
 export type GenerationTarget =
@@ -39,12 +40,6 @@ interface Props {
   target: GenerationTarget;
 }
 
-const MODEL_BADGES: Record<string, string> = {
-  compact_esn: "Compact",
-  dossier_technique: "Technique",
-  profil_premium: "Complet",
-};
-
 interface GenerationOutcome {
   choiceValue: string;
   format: "docx" | "pdf";
@@ -53,49 +48,15 @@ interface GenerationOutcome {
 }
 
 export function DossierGenerationDialog({ open, onOpenChange, target }: Props) {
-  const [builtinTemplates, setBuiltinTemplates] = useState<BuiltinTemplate[]>(
-    [],
-  );
-  const [orgTemplates, setOrgTemplates] = useState<Template[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [choice, setChoice] = useState<TemplateChoice | null>(null);
   const [format, setFormat] = useState<"docx" | "pdf">("docx");
   const [generating, setGenerating] = useState(false);
   const [outcome, setOutcome] = useState<GenerationOutcome | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const { download, errors: downloadErrors } = useDownload();
 
   const orgId = target.kind === "recruiter" ? target.orgId : null;
-
-  useEffect(() => {
-    if (!open || loaded) return;
-    setLoading(true);
-    Promise.all([
-      api.get<BuiltinTemplate[]>("/templates/builtin"),
-      orgId
-        ? api
-            .get<Template[]>(`/organizations/${orgId}/templates`)
-            .then((list) =>
-              list.filter((t) => t.is_valid && t.status === "active"),
-            )
-        : Promise.resolve([] as Template[]),
-    ])
-      .then(([builtins, orgs]) => {
-        setBuiltinTemplates(builtins);
-        setOrgTemplates(orgs);
-        setLoaded(true);
-      })
-      .catch((err) =>
-        setLoadError(
-          extractErrorMessage(
-            err,
-            "Impossible de charger les modèles de dossier",
-          ),
-        ),
-      )
-      .finally(() => setLoading(false));
-  }, [open, loaded, orgId]);
+  const { builtinTemplates, orgTemplates, loading, loaded, loadError } =
+    useTemplateChoices(open, orgId);
 
   const choiceValue = choice ? templateChoiceValue(choice) : "";
   // Le résultat (ou l'erreur) n'est affiché que s'il correspond à la sélection

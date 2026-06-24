@@ -9,16 +9,22 @@ per candidate profile and one per recruiter access_grant.
 import io
 from uuid import UUID
 
+import pytest
 from docx import Document  # type: ignore[import-untyped,unused-ignore]
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.exceptions import ForbiddenError
 from models.candidate_profile import CandidateProfile
 from models.dossier import Dossier, DossierOwnerType
 from models.dossier_snapshot import GeneratedDossierSnapshot
-from models.invitation import AccessGrant
-from services.dossier_service import get_or_create_general_candidate
+from models.invitation import AccessGrant, AccessGrantStatus
+from services.dossier_service import (
+    create_recruiter_dossier,
+    get_or_create_general_candidate,
+    replace_experience_selections,
+)
 
 
 async def test_general_candidate_dossier_created_then_reused(
@@ -186,3 +192,71 @@ async def test_recruiter_generation_routes_through_grant_bound_general_dossier(
     # Grant policy preserved: the snapshot froze the grant's consent envelope, not
     # the per-dossier booleans (a grant-only key proves the dossier is grant-bound).
     assert "identity_anonymized_to_client" in snap.consent_policy_snapshot_json
+
+
+async def test_create_recruiter_dossier_requires_live_grant_in_service(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    """The live-grant rule (decision #6) holds at the service boundary, not only
+    in the route: creating a recruiter dossier on a dead grant is refused here."""
+    org_id, _ = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
+    await db_session.commit()
+    profile = (await db_session.execute(select(CandidateProfile))).scalar_one()
+    grant = (await db_session.execute(select(AccessGrant))).scalar_one()
+    recruiter = await client.get("/recruiters/me/profile", headers=recruiter_headers)
+    recruiter_user_id = UUID(recruiter.json()["user_id"])
+
+    grant.status = AccessGrantStatus.REVOKED
+    await db_session.flush()
+
+    with pytest.raises(ForbiddenError):
+        await create_recruiter_dossier(
+            db_session,
+            candidate_profile_id=profile.id,
+            organization_id=UUID(org_id),
+            access_grant_id=grant.id,
+            recruiter_owner_id=recruiter_user_id,
+            name=None,
+            objectif=None,
+            accroche=None,
+            share_contact=True,
+            share_finances=True,
+        )
+
+
+async def test_replace_selections_requires_live_grant_in_service(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    """A recruiter mutation on a dossier whose grant has gone dead is refused at
+    the service boundary (decision #6)."""
+    org_id, _ = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
+    await db_session.commit()
+    profile = (await db_session.execute(select(CandidateProfile))).scalar_one()
+    grant = (await db_session.execute(select(AccessGrant))).scalar_one()
+    recruiter = await client.get("/recruiters/me/profile", headers=recruiter_headers)
+    recruiter_user_id = UUID(recruiter.json()["user_id"])
+
+    dossier = await create_recruiter_dossier(
+        db_session,
+        candidate_profile_id=profile.id,
+        organization_id=UUID(org_id),
+        access_grant_id=grant.id,
+        recruiter_owner_id=recruiter_user_id,
+        name=None,
+        objectif=None,
+        accroche=None,
+        share_contact=True,
+        share_finances=True,
+    )
+
+    grant.status = AccessGrantStatus.REVOKED
+    await db_session.flush()
+
+    with pytest.raises(ForbiddenError):
+        await replace_experience_selections(db_session, dossier, [])
