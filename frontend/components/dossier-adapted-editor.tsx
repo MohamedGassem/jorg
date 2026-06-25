@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,7 +39,12 @@ import {
   type CompositionRow,
 } from "@/lib/dossier-composition";
 import { extractErrorMessage } from "@/lib/errors";
-import { useDownload, useTemplateChoices } from "@/lib/hooks";
+import {
+  useAdaptedDossiers,
+  useDownload,
+  useTemplateChoices,
+} from "@/lib/hooks";
+import type { DossierDetail } from "@/lib/hooks/useAdaptedDossiers";
 import { downloadFilename } from "@/lib/labels";
 import {
   MODEL_BADGES,
@@ -163,6 +168,17 @@ export function DossierAdaptedEditor({
   const [error, setError] = useState<string | null>(null);
   const { download, errors: downloadErrors } = useDownload();
 
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const {
+    versions,
+    loadError: versionsError,
+    loadDetail,
+    saveDossier,
+    deleteDossier,
+  } = useAdaptedDossiers(open, target);
+
   const orgId = target.kind === "recruiter" ? target.orgId : null;
   const { builtinTemplates, orgTemplates, loadError } = useTemplateChoices(
     open,
@@ -176,20 +192,25 @@ export function DossierAdaptedEditor({
     }),
   );
 
+  const markDirty = () => setDirty(true);
+
   function setExpInclude(id: string) {
     setExpRows((rows) =>
       rows.map((r) => (r.id === id ? { ...r, included: !r.included } : r)),
     );
+    setDirty(true);
   }
   function setExpFeatured(id: string) {
     setExpRows((rows) =>
       rows.map((r) => (r.id === id ? { ...r, featured: !r.featured } : r)),
     );
+    setDirty(true);
   }
   function setSkillFeatured(id: string) {
     setSkillRows((rows) =>
       rows.map((r) => (r.id === id ? { ...r, featured: !r.featured } : r)),
     );
+    setDirty(true);
   }
 
   function onDragEnd(event: DragEndEvent) {
@@ -201,6 +222,101 @@ export function DossierAdaptedEditor({
       if (from === -1 || to === -1) return rows;
       return reorder(rows, from, to);
     });
+    setDirty(true);
+  }
+
+  async function selectVersion(id: string) {
+    const detail: DossierDetail = await loadDetail(id);
+    setName(detail.name ?? "");
+    setObjectif(detail.objectif ?? "");
+    setAccroche(detail.accroche ?? "");
+    setShareContact(detail.share_contact);
+    setShareFinances(detail.share_finances);
+    setExpRows(
+      buildRows(
+        experiences.map((e) => e.id),
+        detail.experience_selections.map((s) => ({
+          id: s.experience_id,
+          position: s.position,
+          is_featured: s.is_featured,
+        })),
+      ),
+    );
+    setSkillRows(
+      buildRows(
+        skills.map((s) => s.id),
+        detail.skill_selections.map((s) => ({
+          id: s.candidate_skill_id,
+          position: s.position,
+          is_featured: s.is_featured,
+        })),
+      ),
+    );
+    setChoice(null);
+    setResult(null);
+    setCurrentId(id);
+    setDirty(false);
+  }
+
+  async function handleSave(): Promise<string | null> {
+    setSaving(true);
+    setError(null);
+    try {
+      const id = await saveDossier({
+        currentId,
+        metadata: {
+          name: name.trim() || null,
+          objectif: objectif.trim() || null,
+          accroche: accroche.trim() || null,
+          share_contact: shareContact,
+          share_finances: shareFinances,
+        },
+        experiences: toSelectionPayload(expRows, "experience_id"),
+        skills: toSelectionPayload(skillRows, "candidate_skill_id"),
+      });
+      setCurrentId(id);
+      setDirty(false);
+      return id;
+    } catch (err) {
+      setError(extractErrorMessage(err, "Erreur d'enregistrement"));
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function newVersion() {
+    setName("");
+    setObjectif("");
+    setAccroche("");
+    setShareContact(true);
+    setShareFinances(true);
+    setExpRows(
+      buildRows(
+        experiences.map((e) => e.id),
+        [],
+      ),
+    );
+    setSkillRows(
+      buildRows(
+        skills.map((s) => s.id),
+        [],
+      ),
+    );
+    setChoice(null);
+    setResult(null);
+    setCurrentId(null);
+    setDirty(false);
+  }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm("Supprimer cette version ?")) return;
+    try {
+      await deleteDossier(id);
+      if (currentId === id) newVersion();
+    } catch (err) {
+      setError(extractErrorMessage(err, "Erreur de suppression"));
+    }
   }
 
   async function handleGenerate() {
@@ -209,32 +325,13 @@ export function DossierAdaptedEditor({
     setError(null);
     setResult(null);
     try {
-      const metadata = {
-        name: name.trim() || null,
-        objectif: objectif.trim() || null,
-        accroche: accroche.trim() || null,
-        share_contact: shareContact,
-        share_finances: shareFinances,
-      };
-      const createBody =
-        target.kind === "recruiter"
-          ? {
-              candidate_id: target.candidateId,
-              organization_id: target.orgId,
-              ...metadata,
-            }
-          : metadata;
-      const dossier = await api.post<{ id: string }>("/dossiers", createBody);
-      await api.put(
-        `/dossiers/${dossier.id}/experiences`,
-        toSelectionPayload(expRows, "experience_id"),
-      );
-      await api.put(
-        `/dossiers/${dossier.id}/skills`,
-        toSelectionPayload(skillRows, "candidate_skill_id"),
-      );
+      let id = currentId;
+      if (id === null || dirty) {
+        id = await handleSave();
+        if (id === null) return; // save failed, error already set
+      }
       const doc = await api.post<GeneratedDocument>(
-        `/dossiers/${dossier.id}/generate`,
+        `/dossiers/${id}/generate`,
         { ...templateChoiceBody(choice), format },
       );
       setResult(doc);
@@ -271,7 +368,10 @@ export function DossierAdaptedEditor({
                 <Input
                   id="dossier-name"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    markDirty();
+                  }}
                   placeholder="Ex. Version mission data"
                 />
               </div>
@@ -280,7 +380,10 @@ export function DossierAdaptedEditor({
                 <Input
                   id="dossier-objectif"
                   value={objectif}
-                  onChange={(e) => setObjectif(e.target.value)}
+                  onChange={(e) => {
+                    setObjectif(e.target.value);
+                    markDirty();
+                  }}
                 />
               </div>
               <div className="space-y-1.5">
@@ -288,13 +391,19 @@ export function DossierAdaptedEditor({
                 <Input
                   id="dossier-accroche"
                   value={accroche}
-                  onChange={(e) => setAccroche(e.target.value)}
+                  onChange={(e) => {
+                    setAccroche(e.target.value);
+                    markDirty();
+                  }}
                 />
               </div>
               <div className="flex items-center gap-3">
                 <Toggle
                   checked={shareContact}
-                  onChange={setShareContact}
+                  onChange={(v) => {
+                    setShareContact(v);
+                    markDirty();
+                  }}
                   label="Partager les coordonnées"
                 />
                 <span className="text-sm">Partager les coordonnées</span>
@@ -302,7 +411,10 @@ export function DossierAdaptedEditor({
               <div className="flex items-center gap-3">
                 <Toggle
                   checked={shareFinances}
-                  onChange={setShareFinances}
+                  onChange={(v) => {
+                    setShareFinances(v);
+                    markDirty();
+                  }}
                   label="Partager les informations financières"
                 />
                 <span className="text-sm">
@@ -435,7 +547,7 @@ export function DossierAdaptedEditor({
               </div>
             </section>
 
-            <ErrorAlert error={error ?? loadError} />
+            <ErrorAlert error={error ?? loadError ?? versionsError} />
 
             {result ? (
               <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
@@ -511,6 +623,71 @@ export function DossierAdaptedEditor({
                 </p>
               </div>
             )}
+
+            <section
+              role="region"
+              aria-label="Versions adaptées"
+              className="space-y-2 border-t border-border pt-3"
+            >
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Versions
+              </p>
+              <button
+                type="button"
+                onClick={newVersion}
+                className="w-full rounded-md border border-dashed border-border px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted/40"
+              >
+                + Nouvelle version
+              </button>
+              <div className="space-y-1">
+                {versions.map((v) => (
+                  <div
+                    key={v.id}
+                    className={cn(
+                      "flex items-center gap-1 rounded-md px-1 transition-colors",
+                      currentId === v.id
+                        ? "bg-primary/10"
+                        : "hover:bg-muted/40",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => selectVersion(v.id)}
+                      className={cn(
+                        "flex flex-1 items-center gap-2 px-1 py-1.5 text-left text-sm",
+                        currentId === v.id ? "text-primary" : "",
+                      )}
+                    >
+                      <span className="flex-1 truncate">
+                        {v.is_general ? "Base" : v.name || "Version sans titre"}
+                      </span>
+                      {v.is_general && <Badge variant="secondary">Base</Badge>}
+                    </button>
+                    {!v.is_general && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(v.id)}
+                        aria-label={`Supprimer ${v.name || "Version sans titre"}`}
+                        className="rounded p-1 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {dirty ? "● Modifications non enregistrées" : "✓ Enregistré"}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? "Enregistrement..." : "Enregistrer"}
+              </Button>
+            </section>
           </aside>
         </div>
       </DialogContent>

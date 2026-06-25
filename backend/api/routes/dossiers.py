@@ -132,6 +132,38 @@ async def list_dossiers(
     return await dossier_service.list_recruiter_dossiers(db, grant.id)
 
 
+@router.get("/general", response_model=DossierRead)
+async def get_general_dossier(
+    current_user: CurrentUser,
+    db: DB,
+    organization_id: UUID | None = None,
+    candidate_id: UUID | None = None,
+) -> Dossier:
+    if current_user.role == UserRole.CANDIDATE:
+        profile = await candidate_service.get_or_create_profile(db, current_user.id)
+        general = await dossier_service.get_or_create_general_candidate(
+            db, candidate_profile_id=profile.id, candidate_owner_id=current_user.id
+        )
+    else:
+        if organization_id is None or candidate_id is None:
+            raise BusinessRuleError("organization_id and candidate_id are required")
+        grant = await access_policy.require_live_access(db, organization_id, candidate_id)
+        await _require_recruiter_live_grant(
+            db, current_user, organization_id=organization_id, access_grant_id=grant.id
+        )
+        profile = await candidate_service.get_or_create_profile(db, candidate_id)
+        general = await dossier_service.get_or_create_general_recruiter(
+            db,
+            candidate_profile_id=profile.id,
+            organization_id=organization_id,
+            access_grant_id=grant.id,
+            recruiter_owner_id=current_user.id,
+        )
+    loaded = await dossier_service.load_with_selections(db, general.id)
+    assert loaded is not None
+    return loaded
+
+
 @router.get("/{dossier_id}", response_model=DossierRead)
 async def get_dossier(dossier_id: UUID, current_user: CurrentUser, db: DB) -> Dossier:
     return await _authorized_dossier(db, dossier_id, current_user)
@@ -145,6 +177,12 @@ async def update_dossier_metadata(
     return await dossier_service.update_metadata(
         db, dossier, fields=data.model_dump(exclude_unset=True)
     )
+
+
+@router.delete("/{dossier_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_dossier(dossier_id: UUID, current_user: CurrentUser, db: DB) -> None:
+    dossier = await _authorized_dossier(db, dossier_id, current_user)
+    await dossier_service.delete_dossier(db, dossier)
 
 
 @router.put("/{dossier_id}/experiences", response_model=DossierRead)

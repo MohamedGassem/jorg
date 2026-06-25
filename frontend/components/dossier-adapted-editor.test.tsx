@@ -9,6 +9,7 @@ vi.mock("@/lib/api", () => ({
     post: vi.fn(),
     put: vi.fn(),
     patch: vi.fn(),
+    delete: vi.fn(),
     download: vi.fn(),
   },
 }));
@@ -159,5 +160,333 @@ describe("DossierAdaptedEditor", () => {
         }),
       ),
     );
+  });
+
+  it("lists saved versions with the base pinned first", async () => {
+    vi.mocked(api.get).mockImplementation((path: string) => {
+      if (path === "/templates/builtin")
+        return Promise.resolve([
+          { key: "compact_esn", name: "Compact", description: "Format court" },
+        ]);
+      if (path === "/dossiers/general")
+        return Promise.resolve({
+          id: "base",
+          name: null,
+          is_general: true,
+          created_at: "2020-01-01",
+        });
+      if (path === "/dossiers")
+        return Promise.resolve([
+          {
+            id: "d1",
+            name: "Version data",
+            is_general: false,
+            created_at: "2024-01-01",
+          },
+          {
+            id: "base",
+            name: null,
+            is_general: true,
+            created_at: "2020-01-01",
+          },
+        ]);
+      return Promise.resolve([]);
+    });
+    renderSelf();
+
+    const nav = await screen.findByRole("region", {
+      name: "Versions adaptées",
+    });
+    const items = within(nav).getAllByRole("button", {
+      name: /Base|Version data/,
+    });
+    expect(items[0]).toHaveTextContent("Base");
+    expect(within(nav).getByText("Version data")).toBeInTheDocument();
+  });
+
+  it("loads a version composition when selected", async () => {
+    vi.mocked(api.get).mockImplementation((path: string) => {
+      if (path === "/templates/builtin")
+        return Promise.resolve([
+          { key: "compact_esn", name: "Compact", description: "x" },
+        ]);
+      if (path === "/dossiers/general")
+        return Promise.resolve({
+          id: "base",
+          name: null,
+          is_general: true,
+          created_at: "2020-01-01",
+        });
+      if (path === "/dossiers")
+        return Promise.resolve([
+          {
+            id: "d1",
+            name: "Version data",
+            is_general: false,
+            created_at: "2024-01-01",
+          },
+          {
+            id: "base",
+            name: null,
+            is_general: true,
+            created_at: "2020-01-01",
+          },
+        ]);
+      if (path === "/dossiers/d1")
+        return Promise.resolve({
+          id: "d1",
+          name: "Version data",
+          objectif: "Obj",
+          accroche: null,
+          share_contact: true,
+          share_finances: true,
+          is_general: false,
+          experience_selections: [
+            { experience_id: "e2", position: 0, is_featured: true },
+          ],
+          skill_selections: [],
+        });
+      return Promise.resolve([]);
+    });
+    const user = userEvent.setup();
+    renderSelf();
+
+    const nav = await screen.findByRole("region", {
+      name: "Versions adaptées",
+    });
+    await user.click(within(nav).getByRole("button", { name: "Version data" }));
+
+    expect(await screen.findByDisplayValue("Version data")).toBeInTheDocument();
+    // e2 selected and featured, e1 excluded
+    const preview = screen.getByRole("region", {
+      name: "Aperçu de la structure",
+    });
+    expect(within(preview).getByText("Lead - Globex")).toBeInTheDocument();
+    expect(within(preview).queryByText("Dev - ACME")).not.toBeInTheDocument();
+  });
+
+  it("saves a new version via POST then PUT and marks it saved", async () => {
+    vi.mocked(api.get).mockImplementation((path: string) => {
+      if (path === "/templates/builtin")
+        return Promise.resolve([
+          { key: "compact_esn", name: "Compact", description: "x" },
+        ]);
+      if (path === "/dossiers/general")
+        return Promise.resolve({
+          id: "base",
+          name: null,
+          is_general: true,
+          created_at: "2020-01-01",
+        });
+      if (path === "/dossiers") return Promise.resolve([]);
+      return Promise.resolve([]);
+    });
+    vi.mocked(api.post).mockResolvedValue({ id: "dN" });
+    vi.mocked(api.put).mockResolvedValue({});
+    const user = userEvent.setup();
+    renderSelf();
+
+    await user.type(
+      await screen.findByLabelText("Nom de la version"),
+      "Ma version",
+    );
+    expect(
+      screen.getByText(/Modifications non enregistrées/),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        "/dossiers",
+        expect.objectContaining({ name: "Ma version" }),
+      ),
+    );
+    expect(api.put).toHaveBeenCalledWith(
+      "/dossiers/dN/experiences",
+      expect.any(Array),
+    );
+    expect(api.put).toHaveBeenCalledWith(
+      "/dossiers/dN/skills",
+      expect.any(Array),
+    );
+    expect(await screen.findByText(/Enregistré/)).toBeInTheDocument();
+  });
+
+  it("updates an existing version via PATCH", async () => {
+    vi.mocked(api.get).mockImplementation((path: string) => {
+      if (path === "/templates/builtin")
+        return Promise.resolve([
+          { key: "compact_esn", name: "Compact", description: "x" },
+        ]);
+      if (path === "/dossiers/general")
+        return Promise.resolve({
+          id: "base",
+          name: null,
+          is_general: true,
+          created_at: "2020-01-01",
+        });
+      if (path === "/dossiers")
+        return Promise.resolve([
+          {
+            id: "d1",
+            name: "Version data",
+            is_general: false,
+            created_at: "2024-01-01",
+          },
+          {
+            id: "base",
+            name: null,
+            is_general: true,
+            created_at: "2020-01-01",
+          },
+        ]);
+      if (path === "/dossiers/d1")
+        return Promise.resolve({
+          id: "d1",
+          name: "Version data",
+          objectif: null,
+          accroche: null,
+          share_contact: true,
+          share_finances: true,
+          is_general: false,
+          experience_selections: [],
+          skill_selections: [],
+        });
+      return Promise.resolve([]);
+    });
+    vi.mocked(api.patch).mockResolvedValue({});
+    vi.mocked(api.put).mockResolvedValue({});
+    const user = userEvent.setup();
+    renderSelf();
+
+    const nav = await screen.findByRole("region", {
+      name: "Versions adaptées",
+    });
+    await user.click(within(nav).getByRole("button", { name: "Version data" }));
+    await screen.findByDisplayValue("Version data");
+    await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+    await waitFor(() =>
+      expect(api.patch).toHaveBeenCalledWith(
+        "/dossiers/d1",
+        expect.any(Object),
+      ),
+    );
+  });
+
+  it("deletes an adapted version after confirmation and not the base", async () => {
+    vi.mocked(api.get).mockImplementation((path: string) => {
+      if (path === "/templates/builtin")
+        return Promise.resolve([
+          { key: "compact_esn", name: "Compact", description: "x" },
+        ]);
+      if (path === "/dossiers/general")
+        return Promise.resolve({
+          id: "base",
+          name: null,
+          is_general: true,
+          created_at: "2020-01-01",
+        });
+      if (path === "/dossiers")
+        return Promise.resolve([
+          {
+            id: "d1",
+            name: "Version data",
+            is_general: false,
+            created_at: "2024-01-01",
+          },
+          {
+            id: "base",
+            name: null,
+            is_general: true,
+            created_at: "2020-01-01",
+          },
+        ]);
+      return Promise.resolve([]);
+    });
+    vi.mocked(api.delete).mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    renderSelf();
+
+    const nav = await screen.findByRole("region", {
+      name: "Versions adaptées",
+    });
+    // Base has no delete control.
+    expect(
+      within(nav).queryByRole("button", { name: "Supprimer Base" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      within(nav).getByRole("button", { name: "Supprimer Version data" }),
+    );
+    await waitFor(() =>
+      expect(api.delete).toHaveBeenCalledWith("/dossiers/d1"),
+    );
+  });
+
+  it("generates a clean saved version without re-saving", async () => {
+    vi.mocked(api.get).mockImplementation((path: string) => {
+      if (path === "/templates/builtin")
+        return Promise.resolve([
+          { key: "compact_esn", name: "Compact", description: "x" },
+        ]);
+      if (path === "/dossiers/general")
+        return Promise.resolve({
+          id: "base",
+          name: null,
+          is_general: true,
+          created_at: "2020-01-01",
+        });
+      if (path === "/dossiers")
+        return Promise.resolve([
+          {
+            id: "d1",
+            name: "Version data",
+            is_general: false,
+            created_at: "2024-01-01",
+          },
+          {
+            id: "base",
+            name: null,
+            is_general: true,
+            created_at: "2020-01-01",
+          },
+        ]);
+      if (path === "/dossiers/d1")
+        return Promise.resolve({
+          id: "d1",
+          name: "Version data",
+          objectif: null,
+          accroche: null,
+          share_contact: true,
+          share_finances: true,
+          is_general: false,
+          experience_selections: [],
+          skill_selections: [],
+        });
+      return Promise.resolve([]);
+    });
+    vi.mocked(api.post).mockResolvedValue({ id: "doc1", file_format: "docx" });
+    vi.mocked(api.patch).mockResolvedValue({});
+    vi.mocked(api.put).mockResolvedValue({});
+    const user = userEvent.setup();
+    renderSelf();
+
+    const nav = await screen.findByRole("region", {
+      name: "Versions adaptées",
+    });
+    await user.click(within(nav).getByRole("button", { name: "Version data" }));
+    await screen.findByDisplayValue("Version data");
+    await user.click(screen.getByRole("button", { name: /Compact/ }));
+    await user.click(screen.getByRole("button", { name: /^Générer/ }));
+
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        "/dossiers/d1/generate",
+        expect.any(Object),
+      ),
+    );
+    expect(api.patch).not.toHaveBeenCalled(); // clean version: no re-save
   });
 });

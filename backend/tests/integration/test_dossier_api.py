@@ -348,3 +348,83 @@ async def test_generate_from_candidate_dossier_creates_document_and_snapshot(
         )
     ).scalar_one()
     assert str(snap.dossier_id) == dossier_id
+
+
+# --- general (base) -----------------------------------------------------------
+
+
+async def test_candidate_general_is_get_or_create_idempotent(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    first = await client.get("/dossiers/general", headers=candidate_headers)
+    assert first.status_code == 200, first.text
+    assert first.json()["is_general"] is True
+
+    second = await client.get("/dossiers/general", headers=candidate_headers)
+    assert second.status_code == 200
+    assert second.json()["id"] == first.json()["id"]
+
+
+async def test_general_appears_in_list(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    general = await client.get("/dossiers/general", headers=candidate_headers)
+    general_id = general.json()["id"]
+
+    listed = await client.get("/dossiers", headers=candidate_headers)
+    ids = [d["id"] for d in listed.json()]
+    assert general_id in ids
+
+
+async def test_recruiter_general_requires_grant(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+    candidate_headers: dict[str, str],
+) -> None:
+    org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
+    r = await client.get(
+        f"/dossiers/general?organization_id={org_id}&candidate_id={candidate_id}",
+        headers=recruiter_headers,
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["owner_type"] == "recruiter"
+    assert r.json()["is_general"] is True
+
+
+# --- delete -------------------------------------------------------------------
+
+
+async def test_candidate_deletes_own_adapted_dossier(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    created = await client.post("/dossiers", headers=candidate_headers, json={"name": "Jetable"})
+    dossier_id = created.json()["id"]
+
+    deleted = await client.delete(f"/dossiers/{dossier_id}", headers=candidate_headers)
+    assert deleted.status_code == 204, deleted.text
+
+    got = await client.get(f"/dossiers/{dossier_id}", headers=candidate_headers)
+    assert got.status_code == 404
+
+
+async def test_cannot_delete_general_dossier(
+    client: AsyncClient, candidate_headers: dict[str, str]
+) -> None:
+    # Materialise the general dossier, then try to delete it.
+    general = await client.get("/dossiers/general", headers=candidate_headers)
+    general_id = general.json()["id"]
+
+    deleted = await client.delete(f"/dossiers/{general_id}", headers=candidate_headers)
+    assert deleted.status_code == 422, deleted.text
+
+
+async def test_candidate_cannot_delete_foreign_dossier(
+    client: AsyncClient,
+    candidate_headers: dict[str, str],
+    second_candidate_headers: dict[str, str],
+) -> None:
+    created = await client.post("/dossiers", headers=candidate_headers, json={"name": "Secret"})
+    dossier_id = created.json()["id"]
+
+    deleted = await client.delete(f"/dossiers/{dossier_id}", headers=second_candidate_headers)
+    assert deleted.status_code == 403
