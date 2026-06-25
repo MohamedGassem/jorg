@@ -1,3 +1,4 @@
+export { useAdaptedDossiers } from "./useAdaptedDossiers";
 export { useAsyncData } from "./useAsyncData";
 export { useAsyncOp } from "./useAsyncOp";
 export { useCrudSection } from "./useCrudSection";

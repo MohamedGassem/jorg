@@ -39,7 +39,12 @@ import {
   type CompositionRow,
 } from "@/lib/dossier-composition";
 import { extractErrorMessage } from "@/lib/errors";
-import { useDownload, useTemplateChoices } from "@/lib/hooks";
+import {
+  useAdaptedDossiers,
+  useDownload,
+  useTemplateChoices,
+} from "@/lib/hooks";
+import type { DossierDetail } from "@/lib/hooks/useAdaptedDossiers";
 import { downloadFilename } from "@/lib/labels";
 import {
   MODEL_BADGES,
@@ -163,6 +168,16 @@ export function DossierAdaptedEditor({
   const [error, setError] = useState<string | null>(null);
   const { download, errors: downloadErrors } = useDownload();
 
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const {
+    versions,
+    loadError: versionsError,
+    loadDetail,
+    saveDossier,
+  } = useAdaptedDossiers(open, target);
+
   const orgId = target.kind === "recruiter" ? target.orgId : null;
   const { builtinTemplates, orgTemplates, loadError } = useTemplateChoices(
     open,
@@ -176,20 +191,25 @@ export function DossierAdaptedEditor({
     }),
   );
 
+  const markDirty = () => setDirty(true);
+
   function setExpInclude(id: string) {
     setExpRows((rows) =>
       rows.map((r) => (r.id === id ? { ...r, included: !r.included } : r)),
     );
+    setDirty(true);
   }
   function setExpFeatured(id: string) {
     setExpRows((rows) =>
       rows.map((r) => (r.id === id ? { ...r, featured: !r.featured } : r)),
     );
+    setDirty(true);
   }
   function setSkillFeatured(id: string) {
     setSkillRows((rows) =>
       rows.map((r) => (r.id === id ? { ...r, featured: !r.featured } : r)),
     );
+    setDirty(true);
   }
 
   function onDragEnd(event: DragEndEvent) {
@@ -201,6 +221,91 @@ export function DossierAdaptedEditor({
       if (from === -1 || to === -1) return rows;
       return reorder(rows, from, to);
     });
+    setDirty(true);
+  }
+
+  async function selectVersion(id: string) {
+    const detail: DossierDetail = await loadDetail(id);
+    setName(detail.name ?? "");
+    setObjectif(detail.objectif ?? "");
+    setAccroche(detail.accroche ?? "");
+    setShareContact(detail.share_contact);
+    setShareFinances(detail.share_finances);
+    setExpRows(
+      buildRows(
+        experiences.map((e) => e.id),
+        detail.experience_selections.map((s) => ({
+          id: s.experience_id,
+          position: s.position,
+          is_featured: s.is_featured,
+        })),
+      ),
+    );
+    setSkillRows(
+      buildRows(
+        skills.map((s) => s.id),
+        detail.skill_selections.map((s) => ({
+          id: s.candidate_skill_id,
+          position: s.position,
+          is_featured: s.is_featured,
+        })),
+      ),
+    );
+    setChoice(null);
+    setResult(null);
+    setCurrentId(id);
+    setDirty(false);
+  }
+
+  async function handleSave(): Promise<string | null> {
+    setSaving(true);
+    setError(null);
+    try {
+      const id = await saveDossier({
+        currentId,
+        metadata: {
+          name: name.trim() || null,
+          objectif: objectif.trim() || null,
+          accroche: accroche.trim() || null,
+          share_contact: shareContact,
+          share_finances: shareFinances,
+        },
+        experiences: toSelectionPayload(expRows, "experience_id"),
+        skills: toSelectionPayload(skillRows, "candidate_skill_id"),
+      });
+      setCurrentId(id);
+      setDirty(false);
+      return id;
+    } catch (err) {
+      setError(extractErrorMessage(err, "Erreur d'enregistrement"));
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function newVersion() {
+    setName("");
+    setObjectif("");
+    setAccroche("");
+    setShareContact(true);
+    setShareFinances(true);
+    setExpRows(
+      buildRows(
+        experiences.map((e) => e.id),
+        [],
+      ),
+    );
+    setSkillRows(
+      buildRows(
+        skills.map((s) => s.id),
+        [],
+      ),
+    );
+    setChoice(null);
+    setResult(null);
+    setCurrentId(null);
+    setDirty(false);
   }
 
   async function handleGenerate() {
@@ -271,7 +376,10 @@ export function DossierAdaptedEditor({
                 <Input
                   id="dossier-name"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    markDirty();
+                  }}
                   placeholder="Ex. Version mission data"
                 />
               </div>
@@ -280,7 +388,10 @@ export function DossierAdaptedEditor({
                 <Input
                   id="dossier-objectif"
                   value={objectif}
-                  onChange={(e) => setObjectif(e.target.value)}
+                  onChange={(e) => {
+                    setObjectif(e.target.value);
+                    markDirty();
+                  }}
                 />
               </div>
               <div className="space-y-1.5">
@@ -288,13 +399,19 @@ export function DossierAdaptedEditor({
                 <Input
                   id="dossier-accroche"
                   value={accroche}
-                  onChange={(e) => setAccroche(e.target.value)}
+                  onChange={(e) => {
+                    setAccroche(e.target.value);
+                    markDirty();
+                  }}
                 />
               </div>
               <div className="flex items-center gap-3">
                 <Toggle
                   checked={shareContact}
-                  onChange={setShareContact}
+                  onChange={(v) => {
+                    setShareContact(v);
+                    markDirty();
+                  }}
                   label="Partager les coordonnées"
                 />
                 <span className="text-sm">Partager les coordonnées</span>
@@ -302,7 +419,10 @@ export function DossierAdaptedEditor({
               <div className="flex items-center gap-3">
                 <Toggle
                   checked={shareFinances}
-                  onChange={setShareFinances}
+                  onChange={(v) => {
+                    setShareFinances(v);
+                    markDirty();
+                  }}
                   label="Partager les informations financières"
                 />
                 <span className="text-sm">
@@ -435,7 +555,7 @@ export function DossierAdaptedEditor({
               </div>
             </section>
 
-            <ErrorAlert error={error ?? loadError} />
+            <ErrorAlert error={error ?? loadError ?? versionsError} />
 
             {result ? (
               <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
@@ -511,6 +631,54 @@ export function DossierAdaptedEditor({
                 </p>
               </div>
             )}
+
+            <section
+              role="region"
+              aria-label="Versions adaptées"
+              className="space-y-2 border-t border-border pt-3"
+            >
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Versions
+              </p>
+              <button
+                type="button"
+                onClick={newVersion}
+                className="w-full rounded-md border border-dashed border-border px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted/40"
+              >
+                + Nouvelle version
+              </button>
+              <div className="space-y-1">
+                {versions.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => selectVersion(v.id)}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+                      currentId === v.id
+                        ? "bg-primary/10 text-primary"
+                        : "hover:bg-muted/40",
+                    )}
+                  >
+                    <span className="flex-1 truncate">
+                      {v.is_general ? "Base" : v.name || "Version sans titre"}
+                    </span>
+                    {v.is_general && <Badge variant="secondary">Base</Badge>}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {dirty ? "● Modifications non enregistrées" : "✓ Enregistré"}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? "Enregistrement..." : "Enregistrer"}
+              </Button>
+            </section>
           </aside>
         </div>
       </DialogContent>
