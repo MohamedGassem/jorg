@@ -254,7 +254,7 @@ describe("DossierAdaptedEditor", () => {
     const nav = await screen.findByRole("region", {
       name: "Versions adaptées",
     });
-    await user.click(within(nav).getByRole("button", { name: /Version data/ }));
+    await user.click(within(nav).getByRole("button", { name: "Version data" }));
 
     expect(await screen.findByDisplayValue("Version data")).toBeInTheDocument();
     // e2 selected and featured, e1 excluded
@@ -362,7 +362,7 @@ describe("DossierAdaptedEditor", () => {
     const nav = await screen.findByRole("region", {
       name: "Versions adaptées",
     });
-    await user.click(within(nav).getByRole("button", { name: /Version data/ }));
+    await user.click(within(nav).getByRole("button", { name: "Version data" }));
     await screen.findByDisplayValue("Version data");
     await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
@@ -371,6 +371,57 @@ describe("DossierAdaptedEditor", () => {
         "/dossiers/d1",
         expect.any(Object),
       ),
+    );
+  });
+
+  it("deletes an adapted version after confirmation and not the base", async () => {
+    vi.mocked(api.get).mockImplementation((path: string) => {
+      if (path === "/templates/builtin")
+        return Promise.resolve([
+          { key: "compact_esn", name: "Compact", description: "x" },
+        ]);
+      if (path === "/dossiers/general")
+        return Promise.resolve({
+          id: "base",
+          name: null,
+          is_general: true,
+          created_at: "2020-01-01",
+        });
+      if (path === "/dossiers")
+        return Promise.resolve([
+          {
+            id: "d1",
+            name: "Version data",
+            is_general: false,
+            created_at: "2024-01-01",
+          },
+          {
+            id: "base",
+            name: null,
+            is_general: true,
+            created_at: "2020-01-01",
+          },
+        ]);
+      return Promise.resolve([]);
+    });
+    vi.mocked(api.delete).mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    renderSelf();
+
+    const nav = await screen.findByRole("region", {
+      name: "Versions adaptées",
+    });
+    // Base has no delete control.
+    expect(
+      within(nav).queryByRole("button", { name: "Supprimer Base" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      within(nav).getByRole("button", { name: "Supprimer Version data" }),
+    );
+    await waitFor(() =>
+      expect(api.delete).toHaveBeenCalledWith("/dossiers/d1"),
     );
   });
 });

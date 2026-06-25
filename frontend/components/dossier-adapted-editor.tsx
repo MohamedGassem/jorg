@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -176,6 +176,7 @@ export function DossierAdaptedEditor({
     loadError: versionsError,
     loadDetail,
     saveDossier,
+    deleteDossier,
   } = useAdaptedDossiers(open, target);
 
   const orgId = target.kind === "recruiter" ? target.orgId : null;
@@ -306,6 +307,16 @@ export function DossierAdaptedEditor({
     setResult(null);
     setCurrentId(null);
     setDirty(false);
+  }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm("Supprimer cette version ?")) return;
+    try {
+      await deleteDossier(id);
+      if (currentId === id) newVersion();
+    } catch (err) {
+      setError(extractErrorMessage(err, "Erreur de suppression"));
+    }
   }
 
   async function handleGenerate() {
@@ -649,22 +660,39 @@ export function DossierAdaptedEditor({
               </button>
               <div className="space-y-1">
                 {versions.map((v) => (
-                  <button
+                  <div
                     key={v.id}
-                    type="button"
-                    onClick={() => selectVersion(v.id)}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+                      "flex items-center gap-1 rounded-md px-1 transition-colors",
                       currentId === v.id
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-primary/10"
                         : "hover:bg-muted/40",
                     )}
                   >
-                    <span className="flex-1 truncate">
-                      {v.is_general ? "Base" : v.name || "Version sans titre"}
-                    </span>
-                    {v.is_general && <Badge variant="secondary">Base</Badge>}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => selectVersion(v.id)}
+                      className={cn(
+                        "flex flex-1 items-center gap-2 px-1 py-1.5 text-left text-sm",
+                        currentId === v.id ? "text-primary" : "",
+                      )}
+                    >
+                      <span className="flex-1 truncate">
+                        {v.is_general ? "Base" : v.name || "Version sans titre"}
+                      </span>
+                      {v.is_general && <Badge variant="secondary">Base</Badge>}
+                    </button>
+                    {!v.is_general && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(v.id)}
+                        aria-label={`Supprimer ${v.name || "Version sans titre"}`}
+                        className="rounded p-1 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">
