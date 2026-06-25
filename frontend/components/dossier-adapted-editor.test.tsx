@@ -424,4 +424,69 @@ describe("DossierAdaptedEditor", () => {
       expect(api.delete).toHaveBeenCalledWith("/dossiers/d1"),
     );
   });
+
+  it("generates a clean saved version without re-saving", async () => {
+    vi.mocked(api.get).mockImplementation((path: string) => {
+      if (path === "/templates/builtin")
+        return Promise.resolve([
+          { key: "compact_esn", name: "Compact", description: "x" },
+        ]);
+      if (path === "/dossiers/general")
+        return Promise.resolve({
+          id: "base",
+          name: null,
+          is_general: true,
+          created_at: "2020-01-01",
+        });
+      if (path === "/dossiers")
+        return Promise.resolve([
+          {
+            id: "d1",
+            name: "Version data",
+            is_general: false,
+            created_at: "2024-01-01",
+          },
+          {
+            id: "base",
+            name: null,
+            is_general: true,
+            created_at: "2020-01-01",
+          },
+        ]);
+      if (path === "/dossiers/d1")
+        return Promise.resolve({
+          id: "d1",
+          name: "Version data",
+          objectif: null,
+          accroche: null,
+          share_contact: true,
+          share_finances: true,
+          is_general: false,
+          experience_selections: [],
+          skill_selections: [],
+        });
+      return Promise.resolve([]);
+    });
+    vi.mocked(api.post).mockResolvedValue({ id: "doc1", file_format: "docx" });
+    vi.mocked(api.patch).mockResolvedValue({});
+    vi.mocked(api.put).mockResolvedValue({});
+    const user = userEvent.setup();
+    renderSelf();
+
+    const nav = await screen.findByRole("region", {
+      name: "Versions adaptées",
+    });
+    await user.click(within(nav).getByRole("button", { name: "Version data" }));
+    await screen.findByDisplayValue("Version data");
+    await user.click(screen.getByRole("button", { name: /Compact/ }));
+    await user.click(screen.getByRole("button", { name: /^Générer/ }));
+
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        "/dossiers/d1/generate",
+        expect.any(Object),
+      ),
+    );
+    expect(api.patch).not.toHaveBeenCalled(); // clean version: no re-save
+  });
 });

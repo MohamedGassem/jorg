@@ -325,32 +325,13 @@ export function DossierAdaptedEditor({
     setError(null);
     setResult(null);
     try {
-      const metadata = {
-        name: name.trim() || null,
-        objectif: objectif.trim() || null,
-        accroche: accroche.trim() || null,
-        share_contact: shareContact,
-        share_finances: shareFinances,
-      };
-      const createBody =
-        target.kind === "recruiter"
-          ? {
-              candidate_id: target.candidateId,
-              organization_id: target.orgId,
-              ...metadata,
-            }
-          : metadata;
-      const dossier = await api.post<{ id: string }>("/dossiers", createBody);
-      await api.put(
-        `/dossiers/${dossier.id}/experiences`,
-        toSelectionPayload(expRows, "experience_id"),
-      );
-      await api.put(
-        `/dossiers/${dossier.id}/skills`,
-        toSelectionPayload(skillRows, "candidate_skill_id"),
-      );
+      let id = currentId;
+      if (id === null || dirty) {
+        id = await handleSave();
+        if (id === null) return; // save failed, error already set
+      }
       const doc = await api.post<GeneratedDocument>(
-        `/dossiers/${dossier.id}/generate`,
+        `/dossiers/${id}/generate`,
         { ...templateChoiceBody(choice), format },
       );
       setResult(doc);
