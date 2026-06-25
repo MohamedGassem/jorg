@@ -157,6 +157,17 @@ async def load_with_selections(db: AsyncSession, dossier_id: UUID) -> Dossier | 
     return result.scalar_one_or_none()
 
 
+async def delete_dossier(db: AsyncSession, dossier: Dossier) -> None:
+    """Delete an adapted dossier. The general dossier (the base) is not deletable.
+
+    Child rows (selections, snapshots) are removed by the ON DELETE CASCADE FKs.
+    """
+    if dossier.is_general:
+        raise BusinessRuleError("the base dossier cannot be deleted")
+    await db.delete(dossier)
+    await db.flush()
+
+
 async def create_candidate_dossier(
     db: AsyncSession,
     *,
