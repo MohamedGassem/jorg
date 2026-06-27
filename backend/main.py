@@ -65,6 +65,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
 app = FastAPI(title="Jorg API", version="0.1.0", lifespan=lifespan)
 app.state.limiter = limiter
+# Disable rate limiting under the E2E smoke seam: the browser test replays the
+# auth flow several times from localhost and would otherwise trip the limiter.
+if settings.e2e_test_mode:
+    limiter.enabled = False
 
 
 @app.exception_handler(RateLimitExceeded)
