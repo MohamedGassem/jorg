@@ -485,6 +485,7 @@ export function DossierAdaptedEditor({
                     <button
                       key={template.key}
                       type="button"
+                      data-testid="template-card"
                       onClick={() =>
                         setChoice({ source: "jorg", key: template.key })
                       }

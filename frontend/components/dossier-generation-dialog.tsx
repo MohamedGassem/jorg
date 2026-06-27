@@ -174,6 +174,7 @@ export function DossierGenerationDialog({ open, onOpenChange, target }: Props) {
                         >
                           <button
                             type="button"
+                            data-testid="template-card"
                             onClick={() => selectValue(value)}
                             className="w-full text-left"
                           >

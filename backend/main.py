@@ -25,6 +25,7 @@ from api.routes.organizations import router as organizations_router
 from api.routes.recruiters import router as recruiters_router
 from api.routes.skills import router as skills_router
 from api.routes.templates import router as templates_router
+from api.routes.test_support import router as test_support_router
 from core.config import get_settings
 from core.exceptions import JorgError
 from core.limiter import limiter
@@ -64,6 +65,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
 app = FastAPI(title="Jorg API", version="0.1.0", lifespan=lifespan)
 app.state.limiter = limiter
+# Disable rate limiting under the E2E smoke seam: the browser test replays the
+# auth flow several times from localhost and would otherwise trip the limiter.
+if settings.e2e_test_mode:
+    limiter.enabled = False
 
 
 @app.exception_handler(RateLimitExceeded)
@@ -122,6 +127,7 @@ app.include_router(dossiers_router)
 app.include_router(opportunities_router)
 app.include_router(skills_router)
 app.include_router(templates_router)
+app.include_router(test_support_router)
 
 
 @app.get("/health")
