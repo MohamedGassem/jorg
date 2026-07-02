@@ -17,6 +17,11 @@ def active_grant_clause() -> ColumnElement[bool]:
     return AccessGrant.status == AccessGrantStatus.ACTIVE
 
 
+def is_live(grant: AccessGrant) -> bool:
+    """The object-form twin of ``active_grant_clause``: is this grant live?"""
+    return grant.status == AccessGrantStatus.ACTIVE
+
+
 async def get_live_access_grant(
     db: AsyncSession, organization_id: UUID, candidate_id: UUID
 ) -> AccessGrant | None:
