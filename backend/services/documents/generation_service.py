@@ -28,7 +28,7 @@ from models.candidate_profile import (
 )
 from models.dossier import Dossier, DossierExperienceSelection, DossierSkillSelection
 from models.generated_document import GeneratedDocument
-from models.invitation import AccessGrant, AccessGrantExclusion, ExclusionTargetType
+from models.invitation import AccessGrant
 from models.recruiter import Organization
 from models.skill import Achievement, AchievementSkillTag, CandidateSkill, ExperienceSkillUsage
 from models.template import Template
@@ -134,25 +134,6 @@ async def _load_profile_by_id(db: AsyncSession, profile_id: UUID) -> CandidatePr
     return profile
 
 
-async def _excluded_experience_ids(db: AsyncSession, access_grant_id: UUID | None) -> set[UUID]:
-    """Experience ids the candidate excluded on the dossier's grant (invariant #6)."""
-    if access_grant_id is None:
-        return set()
-    rows = (
-        (
-            await db.execute(
-                select(AccessGrantExclusion.target_id).where(
-                    AccessGrantExclusion.grant_id == access_grant_id,
-                    AccessGrantExclusion.target_type == ExclusionTargetType.EXPERIENCE,
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    return set(rows)
-
-
 async def resolve_dossier(db: AsyncSession, dossier: Dossier) -> DossierRenderModel:
     """Resolve a Dossier (L3) into the typed render model.
 
@@ -189,7 +170,10 @@ async def resolve_dossier(db: AsyncSession, dossier: Dossier) -> DossierRenderMo
         .all()
     )
 
-    excluded_experience_ids = await _excluded_experience_ids(db, dossier.access_grant_id)
+    # The opposable ceiling is the grant's consent envelope for L3b (#66) or the
+    # per-dossier booleans for L3a; the snapshot freezes this same policy.
+    policy = await dossier_service.load_consent_policy(db, dossier)
+    excluded_experience_ids = policy.excluded_experience_ids
     # Per-axis "all" fallback (locked decision #1): an axis with selections is
     # curated; an axis without is a live mirror of the profile in default order.
     if exp_sels:
@@ -212,25 +196,6 @@ async def resolve_dossier(db: AsyncSession, dossier: Dossier) -> DossierRenderMo
     else:
         arranged_skills = tuple(skills)
 
-    if dossier.access_grant_id is not None:
-        # Grant-backed (L3b) : la borne opposable est l'enveloppe de consentement du
-        # grant (#66), pas les booléens par dossier. Le snapshot fige cette même policy.
-        grant = (
-            await db.execute(select(AccessGrant).where(AccessGrant.id == dossier.access_grant_id))
-        ).scalar_one()
-        share_contact = grant.share_contact
-        share_finances = grant.share_finances_internal
-        identity_anonymized = grant.identity_anonymized_to_client
-        mask_client_names = grant.mask_client_names
-        temporal_precision = grant.temporal_precision.value
-    else:
-        # Candidate-owned (L3a) : seule l'anonymisation par dossier s'applique.
-        share_contact = dossier.share_contact
-        share_finances = dossier.share_finances
-        identity_anonymized = False
-        mask_client_names = False
-        temporal_precision = "exact"
-
     return build_render_model(
         profile,  # type: ignore[arg-type]
         arranged_experiences,  # type: ignore[arg-type]
@@ -238,11 +203,7 @@ async def resolve_dossier(db: AsyncSession, dossier: Dossier) -> DossierRenderMo
         education,  # type: ignore[arg-type]
         certifications,  # type: ignore[arg-type]
         languages,  # type: ignore[arg-type]
-        share_contact=share_contact,
-        share_finances=share_finances,
-        identity_anonymized=identity_anonymized,
-        mask_client_names=mask_client_names,
-        temporal_precision=temporal_precision,
+        **policy.render_params(),
     )
 
 

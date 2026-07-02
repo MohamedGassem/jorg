@@ -13,50 +13,18 @@ import json
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.dossier import Dossier
 from models.dossier_snapshot import GeneratedDossierSnapshot
-from models.invitation import AccessGrant, AccessGrantExclusion
 from services.documents.docx_engine import build_context
 from services.documents.generation_service import resolve_dossier
+from services.dossier_service import load_consent_policy
 
 
 def _json_safe(value: Any) -> Any:
     """Round-trip through JSON so the stored blob holds only primitives."""
     return json.loads(json.dumps(value, default=str))
-
-
-async def _consent_policy(db: AsyncSession, dossier: Dossier) -> dict[str, Any]:
-    """The opposable policy in force for this dossier, frozen as a plain dict."""
-    if dossier.access_grant_id is None:
-        # Candidate-owned dossier (L3a): only the per-dossier anonymization applies.
-        return {
-            "share_contact": dossier.share_contact,
-            "share_finances": dossier.share_finances,
-        }
-    grant = (
-        await db.execute(select(AccessGrant).where(AccessGrant.id == dossier.access_grant_id))
-    ).scalar_one()
-    exclusions = (
-        await db.execute(
-            select(AccessGrantExclusion.target_type, AccessGrantExclusion.target_id).where(
-                AccessGrantExclusion.grant_id == grant.id
-            )
-        )
-    ).all()
-    return {
-        "share_contact": grant.share_contact,
-        "share_finances_internal": grant.share_finances_internal,
-        "identity_anonymized_to_client": grant.identity_anonymized_to_client,
-        "mask_client_names": grant.mask_client_names,
-        "reachable": grant.reachable,
-        "temporal_precision": grant.temporal_precision.value,
-        "purpose": grant.purpose,
-        "retention_until": grant.retention_until,
-        "exclusions": [{"target_type": t.value, "target_id": str(tid)} for t, tid in exclusions],
-    }
 
 
 async def create_dossier_snapshot(
@@ -73,7 +41,9 @@ async def create_dossier_snapshot(
     snapshot = GeneratedDossierSnapshot(
         dossier_id=dossier.id,
         render_model_snapshot_json=_json_safe(build_context(render_model)),
-        consent_policy_snapshot_json=_json_safe(await _consent_policy(db, dossier)),
+        consent_policy_snapshot_json=_json_safe(
+            (await load_consent_policy(db, dossier)).to_frozen_dict()
+        ),
         template_id=template_id,
         generated_by_user_id=generated_by_user_id,
         generated_document_id=generated_document_id,
