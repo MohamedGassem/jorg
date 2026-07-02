@@ -8,6 +8,7 @@ a new snapshot rather than mutating the old one.
 """
 
 import json
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 from httpx import AsyncClient
@@ -16,6 +17,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.candidate_profile import CandidateProfile
 from models.dossier import Dossier, DossierExperienceSelection, DossierOwnerType
+from models.invitation import (
+    AccessGrant,
+    AccessGrantExclusion,
+    AccessGrantStatus,
+    ExclusionTargetType,
+    TemporalPrecision,
+)
+from models.recruiter import Organization
 from services.documents.snapshot_service import create_dossier_snapshot
 
 
@@ -83,3 +92,67 @@ async def test_snapshot_captures_consent_policy(
 
     # The consent policy at generation time is frozen alongside the render model.
     assert "share_contact" in snap.consent_policy_snapshot_json
+
+
+async def test_grant_snapshot_freezes_the_full_consent_envelope(
+    client: AsyncClient, candidate_headers: dict[str, str], db_session: AsyncSession
+) -> None:
+    """Freeze parity (ADR-0002): the grant-backed snapshot records every axis.
+
+    The frozen dict is pinned byte-for-byte so the opposable record can never
+    silently under-record an axis that shaped the outgoing document.
+    """
+    exp = await _create_experience(client, candidate_headers, "AcmeCorp")
+    excluded = await _create_experience(client, candidate_headers, "CurrentEmployer")
+    await db_session.commit()
+
+    profile = (await db_session.execute(select(CandidateProfile))).scalar_one()
+    org = Organization(name="ESN", slug="esn")
+    db_session.add(org)
+    await db_session.flush()
+    grant = AccessGrant(
+        candidate_id=profile.user_id,
+        organization_id=org.id,
+        status=AccessGrantStatus.ACTIVE,
+        granted_at=datetime.now(UTC),
+        share_finances_internal=False,
+        identity_anonymized_to_client=True,
+        mask_client_names=True,
+        reachable=False,
+        temporal_precision=TemporalPrecision.MONTH,
+        purpose="mission staffing",
+        retention_until=date(2027, 1, 1),
+    )
+    db_session.add(grant)
+    await db_session.flush()
+    db_session.add(
+        AccessGrantExclusion(
+            grant_id=grant.id,
+            target_type=ExclusionTargetType.EXPERIENCE,
+            target_id=excluded,
+        )
+    )
+
+    dossier = Dossier(
+        candidate_profile_id=profile.id,
+        owner_type=DossierOwnerType.CANDIDATE,
+        candidate_owner_id=profile.user_id,
+        access_grant_id=grant.id,
+        experience_selections=[DossierExperienceSelection(experience_id=exp, position=0)],
+    )
+    db_session.add(dossier)
+    await db_session.flush()
+
+    snap = await create_dossier_snapshot(db_session, dossier)
+
+    assert snap.consent_policy_snapshot_json == {
+        "share_contact": True,
+        "share_finances_internal": False,
+        "identity_anonymized_to_client": True,
+        "mask_client_names": True,
+        "reachable": False,
+        "temporal_precision": "month",
+        "purpose": "mission staffing",
+        "retention_until": "2027-01-01",
+        "exclusions": [{"target_type": "experience", "target_id": str(excluded)}],
+    }

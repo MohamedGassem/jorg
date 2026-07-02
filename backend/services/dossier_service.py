@@ -33,6 +33,7 @@ from models.invitation import (
 )
 from models.skill import CandidateSkill
 from services import access_policy
+from services.documents.consent_policy import ConsentPolicy
 
 
 async def require_live_grant(db: AsyncSession, access_grant_id: UUID | None) -> AccessGrant:
@@ -56,19 +57,28 @@ def _is_recruiter(dossier: Dossier) -> bool:
     return dossier.owner_type == DossierOwnerType.RECRUITER
 
 
-async def _excluded_experience_ids(db: AsyncSession, access_grant_id: UUID | None) -> set[UUID]:
-    """Experience ids the candidate excluded on the dossier's grant (decision #7)."""
-    if access_grant_id is None:
-        return set()
-    rows = (
-        await db.execute(
-            select(AccessGrantExclusion.target_id).where(
-                AccessGrantExclusion.grant_id == access_grant_id,
-                AccessGrantExclusion.target_type == ExclusionTargetType.EXPERIENCE,
+async def load_consent_policy(db: AsyncSession, dossier: Dossier) -> ConsentPolicy:
+    """The opposable consent envelope for a dossier (decision #7).
+
+    The single loader for the envelope: the render, freeze, and composition
+    paths all read their projection from the value object it returns, so a
+    candidate veto is enforced identically wherever it is consulted.
+    """
+    if dossier.access_grant_id is None:
+        return ConsentPolicy.from_candidate_dossier(dossier)
+    grant = (
+        await db.execute(select(AccessGrant).where(AccessGrant.id == dossier.access_grant_id))
+    ).scalar_one()
+    exclusions = (
+        (
+            await db.execute(
+                select(AccessGrantExclusion).where(AccessGrantExclusion.grant_id == grant.id)
             )
         )
-    ).scalars()
-    return set(rows.all())
+        .scalars()
+        .all()
+    )
+    return ConsentPolicy.from_grant(grant, exclusions)
 
 
 async def _get_or_create_general(
@@ -310,7 +320,7 @@ async def replace_experience_selections(
     if _is_recruiter(dossier):
         await require_live_grant(db, dossier.access_grant_id)
     owned = await _profile_experience_ids(db, dossier.candidate_profile_id)
-    vetoed = await _excluded_experience_ids(db, dossier.access_grant_id)
+    vetoed = (await load_consent_policy(db, dossier)).excluded_experience_ids
     for exp_id, _ in items:
         if exp_id not in owned:
             raise BusinessRuleError("experience does not belong to this candidate")
@@ -373,7 +383,7 @@ async def replace_skill_selections(
 
 async def composition_pool(db: AsyncSession, dossier: Dossier) -> list[Experience]:
     """Non-vetoed experiences offered for composition (decision #7), date desc."""
-    vetoed = await _excluded_experience_ids(db, dossier.access_grant_id)
+    vetoed = (await load_consent_policy(db, dossier)).excluded_experience_ids
     result = await db.execute(
         select(Experience)
         .where(Experience.profile_id == dossier.candidate_profile_id)
