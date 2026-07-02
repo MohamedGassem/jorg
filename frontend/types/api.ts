@@ -95,6 +95,26 @@ export interface Skill {
   updated_at: string;
 }
 
+// Derived skill status rolled up from L2 proofs (see
+// backend/services/references/candidate_skill_projection.py). Not a candidate
+// input: computed at read time from ExperienceSkillUsage / AchievementSkillTag.
+export type SkillStatus =
+  | "declared_only"
+  | "inferred"
+  | "evidenced"
+  | "validated";
+
+export interface CandidateSkillProjection {
+  skill_ref_id: string;
+  skill_name: string;
+  skill_kind: SkillKind;
+  status: SkillStatus;
+  evidence_count: number;
+  first_used: string | null;
+  last_used: string | null;
+  is_profile_highlighted: boolean;
+}
+
 export interface Education {
   id: string;
   profile_id: string;
