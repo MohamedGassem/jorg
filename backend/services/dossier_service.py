@@ -29,10 +29,10 @@ from models.dossier_snapshot import GeneratedDossierSnapshot
 from models.invitation import (
     AccessGrant,
     AccessGrantExclusion,
-    AccessGrantStatus,
     ExclusionTargetType,
 )
 from models.skill import CandidateSkill
+from services import access_policy
 
 
 async def require_live_grant(db: AsyncSession, access_grant_id: UUID | None) -> AccessGrant:
@@ -47,7 +47,7 @@ async def require_live_grant(db: AsyncSession, access_grant_id: UUID | None) -> 
     grant = (
         await db.execute(select(AccessGrant).where(AccessGrant.id == access_grant_id))
     ).scalar_one_or_none()
-    if grant is None or grant.status != AccessGrantStatus.ACTIVE:
+    if grant is None or not access_policy.is_live(grant):
         raise ForbiddenError("recruiter dossier requires a live access grant")
     return grant
 
