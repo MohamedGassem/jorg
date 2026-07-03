@@ -215,17 +215,27 @@ function AchievementRow({
           "Certains tags n'ont pas pu être synchronisés. Réessayez.",
         );
       }
-      const newTags: AchievementSkillTag[] = skillUsages
-        .filter(
-          (u) =>
-            successfulAdds.has(u.skill_ref_id) ||
-            syncedTagsRef.current.has(u.skill_ref_id),
-        )
-        .map((u) => ({
-          skill_ref_id: u.skill_ref_id,
-          skill_ref: u.skill_ref,
-          created_at: new Date().toISOString(),
-        }));
+      // Reconstruire les tags depuis l'ensemble synchronisé (source de vérité),
+      // pas depuis le bouquet : un tag encore présent dont l'usage a été retiré
+      // du bouquet doit être conservé. On résout le libellé via le bouquet ou,
+      // à défaut, via les tags existants de la réalisation.
+      const refById = new Map<string, SkillReference>();
+      for (const u of skillUsages) refById.set(u.skill_ref_id, u.skill_ref);
+      for (const t of ach.skill_tags) refById.set(t.skill_ref_id, t.skill_ref);
+      const newTags: AchievementSkillTag[] = [...syncedTagsRef.current].flatMap(
+        (id) => {
+          const skill_ref = refById.get(id);
+          return skill_ref
+            ? [
+                {
+                  skill_ref_id: id,
+                  skill_ref,
+                  created_at: new Date().toISOString(),
+                },
+              ]
+            : [];
+        },
+      );
       onSaved({ ...updated, skill_tags: newTags });
       setOpen(false);
     });
@@ -1417,7 +1427,11 @@ function DetailedNControl({
 
 // ---- Exported section --------------------------------------------------------
 
-export function ExperienceSection() {
+export function ExperienceSection({
+  onExperiencesChange,
+}: {
+  onExperiencesChange?: (items: Experience[]) => void;
+} = {}) {
   const [items, setItems] = useState<Experience[]>([]);
   const [candidateSkills, setCandidateSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1433,6 +1447,13 @@ export function ExperienceSection() {
   useEffect(() => {
     setDetailedN(loadDetailedN());
   }, []);
+
+  // Tenir le rail "Mon profil" à jour après chaque édition. On ne remonte pas
+  // l'état initial vide (loading) pour ne pas écraser le chargement du parent.
+  useEffect(() => {
+    if (loading) return;
+    onExperiencesChange?.(items);
+  }, [items, loading, onExperiencesChange]);
 
   function changeDetailedN(v: DetailedN) {
     setDetailedN(v);

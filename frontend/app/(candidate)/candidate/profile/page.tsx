@@ -47,38 +47,42 @@ export default function ProfilePage() {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [projection, setProjection] = useState<CandidateSkillProjection[]>([]);
+  const [formationCount, setFormationCount] = useState(0);
+  const [languesCount, setLanguesCount] = useState(0);
   const [showImport, setShowImport] = useState(false);
-  const [counts, setCounts] = useState<SommaireCounts>({
-    parcours: 0,
-    competences: 0,
-    formation: 0,
-    langues: 0,
-  });
 
+  // Chaque source du rail est chargée indépendamment : l'échec d'un endpoint
+  // (ex. skill-projection) ne doit pas vider les compteurs ni la lisibilité.
+  // Le parcours et les compétences sont ensuite tenus à jour en direct par les
+  // sections éditables via onExperiencesChange / onSkillsChange.
   useEffect(() => {
     api
       .get<CandidateProfile>("/candidates/me/profile")
       .then(setProfile)
       .catch(console.error);
+    api
+      .get<Experience[]>("/candidates/me/experiences")
+      .then(setExperiences)
+      .catch(() => {});
+    api
+      .get<Skill[]>("/candidates/me/skills")
+      .then(setSkills)
+      .catch(() => {});
+    api
+      .get<CandidateSkillProjection[]>("/candidates/me/skill-projection")
+      .then(setProjection)
+      .catch(() => {});
     Promise.all([
-      api.get<Experience[]>("/candidates/me/experiences"),
-      api.get<Skill[]>("/candidates/me/skills"),
-      api.get<CandidateSkillProjection[]>("/candidates/me/skill-projection"),
       api.get<Education[]>("/candidates/me/education"),
       api.get<Certification[]>("/candidates/me/certifications"),
-      api.get<Language[]>("/candidates/me/languages"),
     ])
-      .then(([exps, sks, proj, education, certifications, languages]) => {
-        setExperiences(exps);
-        setSkills(sks);
-        setProjection(proj);
-        setCounts({
-          parcours: exps.length,
-          competences: sks.length,
-          formation: education.length + certifications.length,
-          langues: languages.length,
-        });
-      })
+      .then(([education, certifications]) =>
+        setFormationCount(education.length + certifications.length),
+      )
+      .catch(() => {});
+    api
+      .get<Language[]>("/candidates/me/languages")
+      .then((languages) => setLanguesCount(languages.length))
       .catch(() => {});
   }, []);
 
@@ -114,6 +118,12 @@ export default function ProfilePage() {
   }
 
   const isEmpty = experiences.length === 0 && skills.length === 0;
+  const counts: SommaireCounts = {
+    parcours: experiences.length,
+    competences: skills.length,
+    formation: formationCount,
+    langues: languesCount,
+  };
 
   return (
     <div className="mx-auto w-full max-w-[1000px]">
@@ -127,12 +137,12 @@ export default function ProfilePage() {
 
           <section id="parcours" className={SCROLL_MARGIN}>
             <SectionHeader label="Parcours" count={counts.parcours} />
-            <ExperienceSection />
+            <ExperienceSection onExperiencesChange={setExperiences} />
           </section>
 
           <section id="competences" className={SCROLL_MARGIN}>
             <SectionHeader label="Compétences" count={counts.competences} />
-            <SkillSection />
+            <SkillSection onSkillsChange={setSkills} />
           </section>
 
           <section id="formation" className={SCROLL_MARGIN}>

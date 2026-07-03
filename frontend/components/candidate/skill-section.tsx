@@ -101,7 +101,11 @@ function skillToForm(skill: Skill): SkillForm {
 
 // ---- Exported section --------------------------------------------------------
 
-export function SkillSection() {
+export function SkillSection({
+  onSkillsChange,
+}: {
+  onSkillsChange?: (items: Skill[]) => void;
+} = {}) {
   const [items, setItems] = useState<Skill[]>([]);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [projection, setProjection] = useState<CandidateSkillProjection[]>([]);
@@ -137,6 +141,13 @@ export function SkillSection() {
       )
       .finally(() => setLoading(false));
   }, []);
+
+  // Tenir le rail "Mon profil" à jour après chaque édition. On ne remonte pas
+  // l'état initial vide (loading) pour ne pas écraser le chargement du parent.
+  useEffect(() => {
+    if (loading) return;
+    onSkillsChange?.(items);
+  }, [items, loading, onSkillsChange]);
 
   function set<K extends keyof SkillForm>(k: K, v: SkillForm[K]) {
     setForm((prev) => ({ ...prev, [k]: v }));
