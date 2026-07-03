@@ -22,6 +22,11 @@ import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { DossierGenerationDialog } from "@/components/dossier-generation-dialog";
 import { DossierAdaptedEditor } from "@/components/dossier-adapted-editor";
 import {
+  ProfileEditDrawer,
+  type ProfileEditSection,
+} from "@/components/candidate/profile-edit-drawers";
+import { safeUrl } from "@/components/candidate/profile-shared";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -29,13 +34,39 @@ import {
 } from "@/components/ui/dialog";
 import type { CandidateProfile, Experience, Skill } from "@/types/api";
 
+function EditAffordance({
+  label,
+  onClick,
+  group,
+}: {
+  label: string;
+  onClick: () => void;
+  group: string;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`shrink-0 text-ink-3 opacity-0 transition-opacity hover:text-ink focus-visible:opacity-100 ${group}`}
+    >
+      <Pencil className="size-3.5" strokeWidth={1.6} />
+    </Button>
+  );
+}
+
 export function ProfileCover({
   profile,
-  onEdit,
+  onProfileUpdate,
 }: {
   profile: CandidateProfile;
-  onEdit: () => void;
+  onProfileUpdate: (updated: CandidateProfile) => void;
 }) {
+  const [editSection, setEditSection] = useState<ProfileEditSection | null>(
+    null,
+  );
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [adaptedOpen, setAdaptedOpen] = useState(false);
@@ -84,51 +115,103 @@ export function ProfileCover({
     profile.years_of_experience ? `${profile.years_of_experience} ans` : null,
   ].filter(Boolean);
 
-  return (
-    <section className="group/cover border-b border-line pb-7">
-      <div className="flex items-start justify-between gap-4">
-        <p className="j-overline">
-          Mon profil
-          {profile.updated_at
-            ? ` · mis à jour ${relativeDate(profile.updated_at)}`
-            : ""}
-        </p>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={onEdit}
-          aria-label="Modifier l'identité"
-          title="Modifier l'identité"
-          className="-mt-1 shrink-0 text-ink-3 opacity-0 transition-opacity hover:text-ink group-hover/cover:opacity-100 focus-visible:opacity-100"
-        >
-          <Pencil className="size-3.5" strokeWidth={1.6} />
-        </Button>
-      </div>
+  const linkedin = safeUrl(profile.linkedin_url);
+  const hasContact = Boolean(
+    profile.phone || profile.email_contact || linkedin,
+  );
 
-      <h1 className="mt-3 font-heading text-[30px] font-semibold leading-[1.1]">
-        {fullName}
-      </h1>
-      <p className="mt-1.5 font-heading text-[18px] font-medium text-ink-2">
-        {[profile.title, profile.location].filter(Boolean).join(" · ") ||
-          "Titre et localisation à compléter"}
+  return (
+    <section className="border-b border-line pb-7">
+      <p className="j-overline">
+        Mon profil
+        {profile.updated_at
+          ? ` · mis à jour ${relativeDate(profile.updated_at)}`
+          : ""}
       </p>
 
-      {meta.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[12px] text-ink-2">
-          {meta.map((item, i) => (
-            <span key={i} className="flex items-center gap-3">
-              {i > 0 && <span className="text-ink-4">·</span>}
-              {item}
-            </span>
-          ))}
+      {/* Zone Identité (survol/focus → tiroir Identité) */}
+      <div className="group/identity mt-3 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="font-heading text-[30px] font-semibold leading-[1.1]">
+            {fullName}
+          </h1>
+          <p className="mt-1.5 font-heading text-[18px] font-medium text-ink-2">
+            {[profile.title, profile.location].filter(Boolean).join(" · ") ||
+              "Titre et localisation à compléter"}
+          </p>
         </div>
-      )}
+        <EditAffordance
+          label="Modifier l'identité"
+          onClick={() => setEditSection("identity")}
+          group="group-hover/identity:opacity-100"
+        />
+      </div>
+
+      {/* Zone Conditions (survol/focus → tiroir Conditions) */}
+      <div className="group/conditions mt-3 flex items-start justify-between gap-4">
+        {meta.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[12px] text-ink-2">
+            {meta.map((item, i) => (
+              <span key={i} className="flex items-center gap-3">
+                {i > 0 && <span className="text-ink-4">·</span>}
+                {item}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="font-mono text-[12px] text-ink-3">
+            Conditions à compléter
+          </p>
+        )}
+        <EditAffordance
+          label="Modifier les conditions"
+          onClick={() => setEditSection("conditions")}
+          group="group-hover/conditions:opacity-100"
+        />
+      </div>
 
       {profile.summary && (
         <p className="mt-4 max-w-[60ch] text-[15px] leading-relaxed text-ink">
           {profile.summary}
         </p>
       )}
+
+      {/* Zone Contact (survol/focus → tiroir Contact) */}
+      <div className="group/contact mt-4 flex items-center justify-between gap-4">
+        {hasContact ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[12px] text-ink-2">
+            {profile.phone && <span>{profile.phone}</span>}
+            {profile.email_contact && (
+              <span className="flex items-center gap-3">
+                <span className="text-ink-4">·</span>
+                {profile.email_contact}
+              </span>
+            )}
+            {linkedin && (
+              <span className="flex items-center gap-3">
+                <span className="text-ink-4">·</span>
+                <a
+                  href={linkedin}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  LinkedIn
+                </a>
+              </span>
+            )}
+          </div>
+        ) : (
+          <p className="font-mono text-[12px] text-ink-3">
+            Coordonnées à compléter
+          </p>
+        )}
+        <EditAffordance
+          label="Modifier les coordonnées"
+          onClick={() => setEditSection("contact")}
+          group="group-hover/contact:opacity-100"
+        />
+      </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <Button onClick={() => setChoiceOpen(true)}>Générer un dossier</Button>
@@ -140,6 +223,16 @@ export function ProfileCover({
         </Link>
       </div>
       <ErrorAlert error={adaptedError} />
+
+      <ProfileEditDrawer
+        section={editSection ?? "identity"}
+        open={editSection !== null}
+        profile={profile}
+        onOpenChange={(o) => {
+          if (!o) setEditSection(null);
+        }}
+        onSave={onProfileUpdate}
+      />
 
       {/* Choix du chemin de génération (décision 9) */}
       <Dialog open={choiceOpen} onOpenChange={setChoiceOpen}>

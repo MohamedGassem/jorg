@@ -20,6 +20,12 @@ import {
   yearRange,
 } from "@/lib/timeline";
 import { Textarea } from "@/components/candidate/profile-shared";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+} from "@/components/ui/drawer";
 import type {
   Achievement,
   AchievementSkillTag,
@@ -1116,8 +1122,8 @@ function ExperienceCard({
           <button
             type="button"
             onClick={() => {
-              setEditingExp(!editingExp);
               setForm(expToForm(exp));
+              setEditingExp(true);
             }}
             className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
             title="Éditer l'expérience"
@@ -1135,124 +1141,117 @@ function ExperienceCard({
         </div>
       </div>
 
-      {editingExp && (
-        <form
-          onSubmit={handleSaveExp}
-          className="space-y-3 border-b border-border/40 bg-muted/10 px-4 py-3"
-        >
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor={`exp-client-${exp.id}`} className="text-xs">
-                Client *
+      <Drawer open={editingExp} onOpenChange={setEditingExp}>
+        <DrawerContent>
+          <DrawerHeader overline="Édition" title="Modifier l'expérience" />
+          <form onSubmit={handleSaveExp} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor={`exp-client-${exp.id}`} className="text-xs">
+                  Client *
+                </Label>
+                <Input
+                  id={`exp-client-${exp.id}`}
+                  value={form.client_name}
+                  onChange={(e) => set("client_name", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`exp-role-${exp.id}`} className="text-xs">
+                  Rôle *
+                </Label>
+                <Input
+                  id={`exp-role-${exp.id}`}
+                  value={form.role}
+                  onChange={(e) => set("role", e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor={`exp-start-${exp.id}`} className="text-xs">
+                  Date début *
+                </Label>
+                <Input
+                  id={`exp-start-${exp.id}`}
+                  type="date"
+                  value={form.start_date}
+                  onChange={(e) => set("start_date", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`exp-end-${exp.id}`} className="text-xs">
+                  Date fin
+                </Label>
+                <Input
+                  id={`exp-end-${exp.id}`}
+                  type="date"
+                  value={form.end_date}
+                  onChange={(e) => set("end_date", e.target.value)}
+                  disabled={form.is_current}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id={`exp-current-${exp.id}`}
+                type="checkbox"
+                checked={form.is_current}
+                onChange={(e) => {
+                  set("is_current", e.target.checked);
+                  if (e.target.checked) set("end_date", "");
+                }}
+                className="h-4 w-4 cursor-pointer accent-primary"
+              />
+              <Label
+                htmlFor={`exp-current-${exp.id}`}
+                className="cursor-pointer font-normal text-xs"
+              >
+                Poste actuel
               </Label>
-              <Input
-                id={`exp-client-${exp.id}`}
-                value={form.client_name}
-                onChange={(e) => set("client_name", e.target.value)}
-                required
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`exp-desc-${exp.id}`} className="text-xs">
+                Description
+              </Label>
+              <Textarea
+                id={`exp-desc-${exp.id}`}
+                value={form.description}
+                onChange={(v) => set("description", v)}
+                rows={2}
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor={`exp-role-${exp.id}`} className="text-xs">
-                Rôle *
+              <Label htmlFor={`exp-context-${exp.id}`} className="text-xs">
+                Contexte
               </Label>
-              <Input
-                id={`exp-role-${exp.id}`}
-                value={form.role}
-                onChange={(e) => set("role", e.target.value)}
-                required
+              <Textarea
+                id={`exp-context-${exp.id}`}
+                value={form.context}
+                onChange={(v) => set("context", v)}
+                rows={2}
+                placeholder="Contexte de la mission, secteur, équipe…"
               />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor={`exp-start-${exp.id}`} className="text-xs">
-                Date début *
-              </Label>
-              <Input
-                id={`exp-start-${exp.id}`}
-                type="date"
-                value={form.start_date}
-                onChange={(e) => set("start_date", e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor={`exp-end-${exp.id}`} className="text-xs">
-                Date fin
-              </Label>
-              <Input
-                id={`exp-end-${exp.id}`}
-                type="date"
-                value={form.end_date}
-                onChange={(e) => set("end_date", e.target.value)}
-                disabled={form.is_current}
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              id={`exp-current-${exp.id}`}
-              type="checkbox"
-              checked={form.is_current}
-              onChange={(e) => {
-                set("is_current", e.target.checked);
-                if (e.target.checked) set("end_date", "");
-              }}
-              className="h-4 w-4 cursor-pointer accent-primary"
-            />
-            <Label
-              htmlFor={`exp-current-${exp.id}`}
-              className="cursor-pointer font-normal text-xs"
-            >
-              Poste actuel
-            </Label>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor={`exp-desc-${exp.id}`} className="text-xs">
-              Description
-            </Label>
-            <Textarea
-              id={`exp-desc-${exp.id}`}
-              value={form.description}
-              onChange={(v) => set("description", v)}
-              rows={2}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor={`exp-context-${exp.id}`} className="text-xs">
-              Contexte
-            </Label>
-            <Textarea
-              id={`exp-context-${exp.id}`}
-              value={form.context}
-              onChange={(v) => set("context", v)}
-              rows={2}
-              placeholder="Contexte de la mission, secteur, équipe…"
-            />
-          </div>
-          {op.error && <p className="text-xs text-destructive">{op.error}</p>}
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => setEditingExp(false)}
-              className="h-7 text-xs"
-            >
-              Annuler
-            </Button>
-            <Button
-              size="sm"
-              type="submit"
-              disabled={op.saving}
-              className="h-7 text-xs"
-            >
-              {op.saving ? "…" : "Sauvegarder"}
-            </Button>
-          </div>
-        </form>
-      )}
+            {op.error && <p className="text-xs text-destructive">{op.error}</p>}
+            <DrawerFooter>
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => setEditingExp(false)}
+              >
+                Annuler
+              </Button>
+              <Button type="submit" disabled={op.saving}>
+                {op.saving ? "Enregistrement…" : "Sauvegarder"}
+              </Button>
+            </DrawerFooter>
+          </form>
+        </DrawerContent>
+      </Drawer>
 
       {/* Compétences utilisées - always visible */}
       <div className="border-b border-border/40 px-4 py-3">
