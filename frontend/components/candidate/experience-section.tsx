@@ -1024,12 +1024,14 @@ function ExperienceCard({
   onUpdated,
   onDeleted,
   onNewSkill,
+  hideClient = false,
 }: {
   exp: Experience;
   candidateSkills: Skill[];
   onUpdated: (updated: Experience) => void;
   onDeleted: (id: string) => void;
   onNewSkill?: (skill: Skill) => void;
+  hideClient?: boolean;
 }) {
   const [editingExp, setEditingExp] = useState(false);
   const [form, setForm] = useState<ExpForm>(expToForm(exp));
@@ -1094,7 +1096,7 @@ function ExperienceCard({
       <div className="flex items-start justify-between gap-4 border-b border-border/40 px-4 py-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">
-            {exp.client_name} - {exp.role}
+            {hideClient ? exp.role : `${exp.client_name} — ${exp.role}`}
           </p>
           <p className="text-xs text-muted-foreground">{dates}</p>
           {exp.description && (
@@ -1335,6 +1337,109 @@ function ExperienceCard({
   );
 }
 
+// ---- Timeline condensation (garde-fou n°2) ----------------------------------
+
+const TIMELINE_N_KEY = "jorg.timeline.detailed";
+type DetailedN = 3 | 5 | 10 | "all";
+const N_OPTIONS: { value: DetailedN; label: string }[] = [
+  { value: 3, label: "3" },
+  { value: 5, label: "5" },
+  { value: 10, label: "10" },
+  { value: "all", label: "Toutes" },
+];
+
+// Réglage utilisateur persisté (défaut 5), lu après montage pour rester
+// compatible SSR. Partagé avec le mode lecture (tranche 5) via cette clé.
+function loadDetailedN(): DetailedN {
+  if (typeof window === "undefined") return 5;
+  const raw = window.localStorage.getItem(TIMELINE_N_KEY);
+  if (raw === "all") return "all";
+  const n = raw ? Number(raw) : NaN;
+  return n === 3 || n === 5 || n === 10 ? n : 5;
+}
+
+// Tri éditorial : le poste actuel d'abord, puis fin de mission décroissante.
+function sortExperiences(items: Experience[]): Experience[] {
+  return [...items].sort((a, b) => {
+    if (a.is_current !== b.is_current) return a.is_current ? -1 : 1;
+    const aEnd = a.end_date ?? "";
+    const bEnd = b.end_date ?? "";
+    if (aEnd !== bEnd) return bEnd.localeCompare(aEnd);
+    return b.start_date.localeCompare(a.start_date);
+  });
+}
+
+function yearRange(exp: Experience): string {
+  const start = exp.start_date.slice(0, 4);
+  if (exp.is_current) return `${start}—présent`;
+  const end = exp.end_date?.slice(0, 4) ?? "";
+  if (!end || end === start) return start;
+  return `${start}—${end.slice(2)}`;
+}
+
+function ClientHeader({ name }: { name: string }) {
+  return (
+    <p className="mb-1.5 font-heading text-[15px] font-semibold text-ink-2">
+      {name}
+    </p>
+  );
+}
+
+function CondensedRow({
+  exp,
+  onExpand,
+}: {
+  exp: Experience;
+  onExpand: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      className="flex w-full items-baseline gap-3 border-t border-line px-1 py-2 text-left transition-colors hover:bg-accent-soft-2"
+    >
+      <span className="w-[92px] shrink-0 font-mono text-[12px] tabular-nums text-ink-3">
+        {yearRange(exp)}
+      </span>
+      <span className="min-w-0 text-[13.5px] text-ink-2">
+        <span className="font-medium text-ink">{exp.client_name}</span>{" "}
+        {exp.role}
+      </span>
+    </button>
+  );
+}
+
+function DetailedNControl({
+  value,
+  onChange,
+}: {
+  value: DetailedN;
+  onChange: (v: DetailedN) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="j-meta">Détaillées</span>
+      <div className="flex items-center gap-0.5 rounded-[6px] border border-line bg-paper-2 p-0.5">
+        {N_OPTIONS.map((opt) => (
+          <button
+            key={String(opt.value)}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              "rounded-[4px] px-2 py-0.5 font-mono text-[11.5px] transition-colors",
+              value === opt.value
+                ? "bg-surface font-medium text-ink shadow-sm"
+                : "text-ink-3 hover:text-ink",
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ---- Exported section --------------------------------------------------------
 
 export function ExperienceSection() {
@@ -1345,7 +1450,23 @@ export function ExperienceSection() {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState<ExpForm>(EMPTY_EXP);
   const [achievementDrafts, setAchievementDrafts] = useState<string[]>([]);
+  const [detailedN, setDetailedN] = useState<DetailedN>(5);
+  const [expandAll, setExpandAll] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const op = useAsyncOp("Erreur lors de la création");
+
+  useEffect(() => {
+    setDetailedN(loadDetailedN());
+  }, []);
+
+  function changeDetailedN(v: DetailedN) {
+    setDetailedN(v);
+    setExpandAll(false);
+    setExpandedIds(new Set());
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(TIMELINE_N_KEY, String(v));
+    }
+  }
 
   useEffect(() => {
     Promise.all([
@@ -1408,14 +1529,19 @@ export function ExperienceSection() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
           {items.length} expérience{items.length !== 1 ? "s" : ""}
         </p>
-        <Button size="sm" onClick={() => setAdding(true)} disabled={adding}>
-          <Plus className="mr-1.5 h-3.5 w-3.5" />
-          Ajouter une expérience
-        </Button>
+        <div className="flex items-center gap-3">
+          {items.length > 3 && (
+            <DetailedNControl value={detailedN} onChange={changeDetailedN} />
+          )}
+          <Button size="sm" onClick={() => setAdding(true)} disabled={adding}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Ajouter une expérience
+          </Button>
+        </div>
       </div>
 
       {adding && (
@@ -1551,22 +1677,90 @@ export function ExperienceSection() {
         </form>
       )}
 
-      {items.map((exp) => (
-        <ExperienceCard
-          key={exp.id}
-          exp={exp}
-          candidateSkills={candidateSkills}
-          onUpdated={(updated) =>
-            setItems((prev) =>
-              prev.map((i) => (i.id === updated.id ? updated : i)),
-            )
-          }
-          onDeleted={(id) =>
-            setItems((prev) => prev.filter((i) => i.id !== id))
-          }
-          onNewSkill={(skill) => setCandidateSkills((prev) => [...prev, skill])}
-        />
-      ))}
+      {(() => {
+        const sorted = sortExperiences(items);
+        const limit = detailedN === "all" ? Infinity : detailedN;
+        // Classer chaque expérience, puis dériver les en-têtes client par
+        // simple regard arrière (pas de mutation en cours de rendu).
+        const classified = sorted.map((exp, index) => ({
+          exp,
+          detailed: expandAll || index < limit || expandedIds.has(exp.id),
+        }));
+        const rows = classified.map((row, idx) => {
+          const prev = classified[idx - 1];
+          const showClientHeader =
+            row.detailed &&
+            (!prev ||
+              !prev.detailed ||
+              prev.exp.client_name !== row.exp.client_name);
+          return { ...row, showClientHeader };
+        });
+        const collapsedCount = rows.filter((r) => !r.detailed).length;
+        const anyCollapsed = collapsedCount > 0;
+
+        return (
+          <>
+            {rows.map(({ exp, detailed, showClientHeader }) => {
+              if (!detailed) {
+                return (
+                  <CondensedRow
+                    key={exp.id}
+                    exp={exp}
+                    onExpand={() =>
+                      setExpandedIds((prev) => new Set(prev).add(exp.id))
+                    }
+                  />
+                );
+              }
+              return (
+                <div key={exp.id} className="mt-3 first:mt-0">
+                  {showClientHeader && <ClientHeader name={exp.client_name} />}
+                  <ExperienceCard
+                    exp={exp}
+                    hideClient
+                    candidateSkills={candidateSkills}
+                    onUpdated={(updated) =>
+                      setItems((prev) =>
+                        prev.map((it) => (it.id === updated.id ? updated : it)),
+                      )
+                    }
+                    onDeleted={(id) =>
+                      setItems((prev) => prev.filter((it) => it.id !== id))
+                    }
+                    onNewSkill={(skill) =>
+                      setCandidateSkills((prev) => [...prev, skill])
+                    }
+                  />
+                </div>
+              );
+            })}
+            {(anyCollapsed || expandAll || expandedIds.size > 0) && (
+              <div className="flex justify-center pt-2">
+                {anyCollapsed ? (
+                  <button
+                    type="button"
+                    onClick={() => setExpandAll(true)}
+                    className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    + Tout déplier ({collapsedCount})
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExpandAll(false);
+                      setExpandedIds(new Set());
+                    }}
+                    className="text-xs font-medium text-ink-3 underline-offset-2 hover:text-ink hover:underline"
+                  >
+                    Replier
+                  </button>
+                )}
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }

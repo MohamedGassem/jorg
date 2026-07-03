@@ -1,33 +1,26 @@
 // frontend/app/(candidate)/profile/page.tsx
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, FolderOpen, Pencil, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CvImport } from "@/components/cv-import";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
-import { extractErrorMessage } from "@/lib/errors";
-import { completionPercent, profileCompletionChecks } from "@/lib/completion";
 import {
   AVAILABILITY_LABELS,
   CONTRACT_TYPE_LABELS,
   WORK_MODE_LABELS,
-  frDate,
-  labelFor,
-  relativeDate,
 } from "@/lib/labels";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
-import { TabBar } from "@/components/ui/TabBar";
 import { ExperienceSection } from "@/components/candidate/experience-section";
 import { SkillSection } from "@/components/candidate/skill-section";
 import { EducationSection } from "@/components/candidate/education-section";
 import { CertificationSection } from "@/components/candidate/certification-section";
 import { LanguageSection } from "@/components/candidate/language-section";
-import { DossierGenerationDialog } from "@/components/dossier-generation-dialog";
-import { DossierAdaptedEditor } from "@/components/dossier-adapted-editor";
+import { ProfileCover } from "@/components/candidate/profile-cover";
+import { ProfileRail } from "@/components/candidate/profile-rail";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +51,8 @@ const WORK_MODE_ITEMS: Record<string, string> = {
   ...WORK_MODE_LABELS,
 };
 
+const SCROLL_MARGIN = "scroll-mt-[calc(var(--app-bar-h)+1.5rem)]";
+
 function deriveYearsOfExperience(experiences: Experience[]): number | null {
   const startTimes = experiences
     .map((e) => new Date(e.start_date).getTime())
@@ -74,360 +69,6 @@ function deriveYearsOfExperience(experiences: Experience[]): number | null {
     (latest - Math.min(...startTimes)) / (365 * 24 * 3600 * 1000),
   );
   return Math.max(years, 0);
-}
-
-function ProfileHero({
-  profile,
-  hasExperience,
-  hasSkill,
-  onEdit,
-}: {
-  profile: CandidateProfile;
-  hasExperience: boolean;
-  hasSkill: boolean;
-  onEdit: () => void;
-}) {
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [generateOpen, setGenerateOpen] = useState(false);
-  const [adaptedOpen, setAdaptedOpen] = useState(false);
-  const [adaptedPool, setAdaptedPool] = useState<{
-    experiences: Experience[];
-    skills: Skill[];
-  } | null>(null);
-  const [adaptedError, setAdaptedError] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewData, setPreviewData] = useState<{
-    profile: CandidateProfile | null;
-    experiences: Experience[];
-    skills: Skill[];
-    education: Education[];
-    certifications: Certification[];
-    languages: Language[];
-  } | null>(null);
-
-  async function loadPreview() {
-    setPreviewLoading(true);
-    setPreviewOpen(true);
-    try {
-      const [
-        profileData,
-        experiences,
-        skills,
-        education,
-        certifications,
-        languages,
-      ] = await Promise.all([
-        api.get<CandidateProfile>("/candidates/me/profile"),
-        api.get<Experience[]>("/candidates/me/experiences"),
-        api.get<Skill[]>("/candidates/me/skills"),
-        api.get<Education[]>("/candidates/me/education"),
-        api.get<Certification[]>("/candidates/me/certifications"),
-        api.get<Language[]>("/candidates/me/languages"),
-      ]);
-      setPreviewData({
-        profile: profileData,
-        experiences,
-        skills,
-        education,
-        certifications,
-        languages,
-      });
-    } catch {
-      // show partial data on error
-    } finally {
-      setPreviewLoading(false);
-    }
-  }
-
-  async function openAdaptedEditor() {
-    setAdaptedError(null);
-    if (adaptedPool) {
-      setAdaptedOpen(true);
-      return;
-    }
-    try {
-      const [experiences, skills] = await Promise.all([
-        api.get<Experience[]>("/candidates/me/experiences"),
-        api.get<Skill[]>("/candidates/me/skills"),
-      ]);
-      setAdaptedPool({ experiences, skills });
-      setAdaptedOpen(true);
-    } catch (err) {
-      setAdaptedError(
-        extractErrorMessage(err, "Impossible de charger vos données"),
-      );
-    }
-  }
-
-  const checks = profileCompletionChecks(profile, { hasExperience, hasSkill });
-  const completion = completionPercent(checks);
-  const missing = checks.filter((c) => !c.done);
-  const fullName =
-    [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "-";
-  const availabilityLabel =
-    profile.availability_status === "available_from" &&
-    profile.availability_date
-      ? `Disponible le ${frDate(profile.availability_date)}`
-      : labelFor(AVAILABILITY_LABELS, profile.availability_status);
-  const conditions = [
-    availabilityLabel,
-    labelFor(CONTRACT_TYPE_LABELS, profile.contract_type),
-    profile.daily_rate ? `${profile.daily_rate} €/j` : null,
-    profile.annual_salary
-      ? `${profile.annual_salary.toLocaleString("fr-FR")} €/an`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const initials =
-    [profile.first_name?.[0], profile.last_name?.[0]]
-      .filter(Boolean)
-      .join("")
-      .toUpperCase() || "?";
-
-  return (
-    <>
-      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="j-overline">
-            Profil structuré
-            {profile.updated_at
-              ? ` · mis à jour ${relativeDate(profile.updated_at)}`
-              : ""}
-          </p>
-          <h1 className="mt-2 font-heading text-[27px] font-semibold leading-tight">
-            Mon dossier
-          </h1>
-          <p className="mt-1 max-w-[520px] text-[15px] text-ink-2">
-            Les informations qui rendent votre profil exploitable par les
-            organisations autorisées et les dossiers générés.
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap gap-3">
-          <Button variant="outline" onClick={loadPreview}>
-            <Eye className="size-4" strokeWidth={1.6} />
-            Voir ce qu&apos;un recruteur verra
-          </Button>
-          <Button onClick={() => setGenerateOpen(true)}>
-            <FolderOpen className="size-4" strokeWidth={1.6} />
-            Générer un dossier
-          </Button>
-          <Button variant="outline" onClick={openAdaptedEditor}>
-            Créer une version adaptée
-          </Button>
-        </div>
-        <ErrorAlert error={adaptedError} />
-      </header>
-
-      <section className="rounded-lg border border-line bg-surface px-[26px] py-[22px]">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <div className="grid size-[46px] shrink-0 place-items-center overflow-hidden rounded-[10px] border border-accent-line bg-accent-soft font-heading text-[19px] font-semibold text-primary">
-            {profile.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={profile.avatar_url}
-                alt={fullName}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              initials
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h2 className="font-heading text-[22px] font-semibold leading-tight">
-                {fullName}
-              </h2>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={onEdit}
-                aria-label="Modifier l'identité"
-                title="Modifier l'identité"
-                className="shrink-0 text-muted-foreground hover:text-foreground"
-              >
-                <Pencil className="size-3.5" strokeWidth={1.6} />
-              </Button>
-            </div>
-            <p className="mt-0.5 text-[14.5px] text-ink-2">
-              {[profile.title, profile.location].filter(Boolean).join(" · ") ||
-                "Titre et localisation à compléter"}
-            </p>
-            {conditions && (
-              <p className="mt-0.5 text-[13.5px] text-ink-3">{conditions}</p>
-            )}
-            {profile.updated_at && (
-              <p className="j-meta mt-1.5">
-                Mis à jour {relativeDate(profile.updated_at)}
-              </p>
-            )}
-          </div>
-          <div className="w-full shrink-0 sm:w-[220px]">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="j-overline text-[10.5px]">Complétude</span>
-              <span className="font-mono text-sm font-medium tabular-nums">
-                {completion}%
-              </span>
-            </div>
-            <div className="h-[7px] overflow-hidden rounded border border-line bg-paper-3">
-              <i
-                className="block h-full rounded bg-primary transition-all"
-                style={{ width: `${completion}%` }}
-              />
-            </div>
-            <p className="mt-2 text-xs text-ink-3">
-              {missing.length > 0
-                ? `À compléter : ${missing.map((c) => c.label).join(", ")}`
-                : "Profil complet"}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Aperçu recruteur dialog */}
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Aperçu recruteur</DialogTitle>
-          </DialogHeader>
-          {previewLoading ? (
-            <p className="text-sm text-muted-foreground">Chargement…</p>
-          ) : previewData ? (
-            <div className="space-y-4 text-sm">
-              {previewData.profile && (
-                <div>
-                  <p className="text-base font-semibold">
-                    {previewData.profile.first_name}{" "}
-                    {previewData.profile.last_name}
-                  </p>
-                  {previewData.profile.title && (
-                    <p className="text-muted-foreground">
-                      {previewData.profile.title}
-                    </p>
-                  )}
-                  {previewData.profile.summary && (
-                    <p className="mt-2">{previewData.profile.summary}</p>
-                  )}
-                </div>
-              )}
-              {previewData.skills.filter((s) => s.featured).length > 0 && (
-                <div>
-                  <p className="mb-1 font-medium">Compétences clés</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {previewData.skills
-                      .filter((s) => s.featured)
-                      .map((s) => (
-                        <span
-                          key={s.id}
-                          className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary"
-                        >
-                          {s.skill_ref.name}
-                        </span>
-                      ))}
-                  </div>
-                </div>
-              )}
-              {previewData.experiences.length > 0 && (
-                <div>
-                  <p className="mb-2 font-medium">Expériences</p>
-                  <div className="space-y-3">
-                    {previewData.experiences.map((exp) => (
-                      <div
-                        key={exp.id}
-                        className="rounded border border-border/40 p-3"
-                      >
-                        <p className="font-medium">
-                          {exp.client_name} - {exp.role}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {exp.start_date}
-                          {exp.end_date
-                            ? ` → ${exp.end_date}`
-                            : exp.is_current
-                              ? " → présent"
-                              : ""}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {previewData.education.length > 0 && (
-                <div>
-                  <p className="mb-2 font-medium">Formations</p>
-                  <div className="space-y-2">
-                    {previewData.education.map((edu) => (
-                      <div key={edu.id}>
-                        <p className="font-medium">
-                          {[edu.degree, edu.field_of_study]
-                            .filter(Boolean)
-                            .join(" · ") || edu.school}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {edu.school}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {previewData.certifications.length > 0 && (
-                <div>
-                  <p className="mb-2 font-medium">Certifications</p>
-                  <div className="space-y-2">
-                    {previewData.certifications.map((cert) => (
-                      <div key={cert.id}>
-                        <p className="font-medium">{cert.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {cert.issuer}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {previewData.languages.length > 0 && (
-                <div>
-                  <p className="mb-1 font-medium">Langues</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {previewData.languages.map((lang) => (
-                      <span
-                        key={lang.id}
-                        className="rounded-full border border-border/60 px-2.5 py-0.5 text-xs"
-                      >
-                        {lang.name} · {lang.level}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-      <DossierGenerationDialog
-        open={generateOpen}
-        onOpenChange={setGenerateOpen}
-        target={{ kind: "self" }}
-      />
-      {adaptedPool && (
-        <DossierAdaptedEditor
-          open={adaptedOpen}
-          onOpenChange={setAdaptedOpen}
-          target={{ kind: "self" }}
-          experiences={adaptedPool.experiences.map((e) => ({
-            id: e.id,
-            role: e.role,
-            client_name: e.client_name,
-          }))}
-          skills={adaptedPool.skills.map((s) => ({
-            id: s.id,
-            name: s.skill_ref.name,
-          }))}
-        />
-      )}
-    </>
-  );
 }
 
 function EditProfileDrawer({
@@ -767,48 +408,22 @@ function EditProfileDrawer({
   );
 }
 
-const TABS = [
-  { key: "experiences", label: "Expériences" },
-  { key: "competences", label: "Compétences" },
-  { key: "formation", label: "Formation" },
-  { key: "langues", label: "Langues" },
-] as const;
-type TabKey = (typeof TABS)[number]["key"];
-
-const VALID_TABS = new Set<TabKey>(TABS.map((t) => t.key));
-
-function ProfileTabs() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const rawTab = searchParams.get("tab") as TabKey | null;
-  const initialTab: TabKey =
-    rawTab && VALID_TABS.has(rawTab) ? rawTab : "experiences";
-  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
-
-  function setTab(key: TabKey) {
-    setActiveTab(key);
-    router.replace(`?tab=${key}`, { scroll: false });
-  }
-
+function SectionHeader({ label, count }: { label: string; count?: number }) {
   return (
-    <div className="space-y-6">
-      {/* Sticky tab bar (offset = hauteur de l'app bar) */}
-      <div className="sticky top-[var(--app-bar-h)] z-10 -mx-7 bg-background px-7 py-1.5">
-        <TabBar tabs={[...TABS]} activeTab={activeTab} onChange={setTab} />
-      </div>
-
-      {/* Tab content - only mounts active section */}
-      {activeTab === "experiences" && <ExperienceSection />}
-      {activeTab === "competences" && <SkillSection />}
-      {activeTab === "formation" && (
-        <>
-          <EducationSection />
-          <CertificationSection />
-        </>
-      )}
-      {activeTab === "langues" && <LanguageSection />}
+    <div className="mb-4 flex items-baseline gap-3 border-b border-line pb-2">
+      <h2 className="font-heading text-[19px] font-semibold leading-tight">
+        {label}
+      </h2>
+      {count !== undefined && <span className="j-meta">{count}</span>}
     </div>
   );
+}
+
+interface SommaireCounts {
+  parcours: number;
+  competences: number;
+  formation: number;
+  langues: number;
 }
 
 export default function ProfilePage() {
@@ -816,19 +431,36 @@ export default function ProfilePage() {
   const [editOpen, setEditOpen] = useState(false);
   const [hasExperience, setHasExperience] = useState(false);
   const [hasSkill, setHasSkill] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [counts, setCounts] = useState<SommaireCounts>({
+    parcours: 0,
+    competences: 0,
+    formation: 0,
+    langues: 0,
+  });
 
   useEffect(() => {
     api
       .get<CandidateProfile>("/candidates/me/profile")
       .then(setProfile)
       .catch(console.error);
-    api
-      .get<Experience[]>("/candidates/me/experiences")
-      .then((experiences) => setHasExperience(experiences.length > 0))
-      .catch(() => {});
-    api
-      .get<Skill[]>("/candidates/me/skills")
-      .then((skills) => setHasSkill(skills.length > 0))
+    Promise.all([
+      api.get<Experience[]>("/candidates/me/experiences"),
+      api.get<Skill[]>("/candidates/me/skills"),
+      api.get<Education[]>("/candidates/me/education"),
+      api.get<Certification[]>("/candidates/me/certifications"),
+      api.get<Language[]>("/candidates/me/languages"),
+    ])
+      .then(([experiences, skills, education, certifications, languages]) => {
+        setHasExperience(experiences.length > 0);
+        setHasSkill(skills.length > 0);
+        setCounts({
+          parcours: experiences.length,
+          competences: skills.length,
+          formation: education.length + certifications.length,
+          langues: languages.length,
+        });
+      })
       .catch(() => {});
   }, []);
 
@@ -855,7 +487,7 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="mx-auto w-full max-w-[920px] space-y-[18px]">
+      <div className="mx-auto w-full max-w-[1000px] space-y-[18px]">
         <div className="h-24 animate-pulse rounded-lg bg-muted" />
         <div className="h-28 animate-pulse rounded-lg bg-muted" />
         <div className="h-10 animate-pulse rounded-lg bg-muted" />
@@ -863,24 +495,59 @@ export default function ProfilePage() {
     );
   }
 
+  const isEmpty = !hasExperience && !hasSkill;
+
   return (
-    <div className="mx-auto w-full max-w-[920px] space-y-[18px]">
-      <ProfileHero
-        profile={profile}
-        hasExperience={hasExperience}
-        hasSkill={hasSkill}
-        onEdit={() => setEditOpen(true)}
-      />
-      <CvImport onContactDetected={handleContactDetected} />
-      <Suspense
-        fallback={<div className="h-10 animate-pulse rounded-lg bg-muted" />}
-      >
-        <ProfileTabs />
-      </Suspense>
-      <p className="j-meta flex items-center gap-2">
-        <ShieldCheck className="size-3.5" strokeWidth={1.6} />
-        Chaque modification est historisée dans votre journal d&apos;activité.
-      </p>
+    <div className="mx-auto w-full max-w-[1000px]">
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1 space-y-10 lg:max-w-[680px]">
+          <ProfileCover profile={profile} onEdit={() => setEditOpen(true)} />
+
+          {(isEmpty || showImport) && (
+            <CvImport onContactDetected={handleContactDetected} />
+          )}
+
+          <section id="parcours" className={SCROLL_MARGIN}>
+            <SectionHeader label="Parcours" count={counts.parcours} />
+            <ExperienceSection />
+          </section>
+
+          <section id="competences" className={SCROLL_MARGIN}>
+            <SectionHeader label="Compétences" count={counts.competences} />
+            <SkillSection />
+          </section>
+
+          <section id="formation" className={SCROLL_MARGIN}>
+            <SectionHeader label="Formation" count={counts.formation} />
+            <div className="space-y-6">
+              <EducationSection />
+              <CertificationSection />
+            </div>
+          </section>
+
+          <section id="langues" className={SCROLL_MARGIN}>
+            <SectionHeader label="Langues" count={counts.langues} />
+            <LanguageSection />
+          </section>
+
+          <p className="j-meta flex items-center gap-2">
+            <ShieldCheck className="size-3.5" strokeWidth={1.6} />
+            Chaque modification est historisée dans votre journal
+            d&apos;activité.
+          </p>
+        </div>
+
+        <ProfileRail
+          profile={profile}
+          hasExperience={hasExperience}
+          hasSkill={hasSkill}
+          counts={counts}
+          isEmpty={isEmpty}
+          importVisible={showImport}
+          onToggleImport={() => setShowImport((v) => !v)}
+        />
+      </div>
+
       <EditProfileDrawer
         open={editOpen}
         profile={profile}
