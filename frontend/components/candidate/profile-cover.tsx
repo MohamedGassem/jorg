@@ -6,8 +6,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Pencil } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import {
@@ -26,14 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type {
-  CandidateProfile,
-  Certification,
-  Education,
-  Experience,
-  Language,
-  Skill,
-} from "@/types/api";
+import type { CandidateProfile, Experience, Skill } from "@/types/api";
 
 export function ProfileCover({
   profile,
@@ -42,7 +36,6 @@ export function ProfileCover({
   profile: CandidateProfile;
   onEdit: () => void;
 }) {
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [adaptedOpen, setAdaptedOpen] = useState(false);
@@ -51,49 +44,6 @@ export function ProfileCover({
     skills: Skill[];
   } | null>(null);
   const [adaptedError, setAdaptedError] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewData, setPreviewData] = useState<{
-    profile: CandidateProfile | null;
-    experiences: Experience[];
-    skills: Skill[];
-    education: Education[];
-    certifications: Certification[];
-    languages: Language[];
-  } | null>(null);
-
-  async function loadPreview() {
-    setPreviewLoading(true);
-    setPreviewOpen(true);
-    try {
-      const [
-        profileData,
-        experiences,
-        skills,
-        education,
-        certifications,
-        languages,
-      ] = await Promise.all([
-        api.get<CandidateProfile>("/candidates/me/profile"),
-        api.get<Experience[]>("/candidates/me/experiences"),
-        api.get<Skill[]>("/candidates/me/skills"),
-        api.get<Education[]>("/candidates/me/education"),
-        api.get<Certification[]>("/candidates/me/certifications"),
-        api.get<Language[]>("/candidates/me/languages"),
-      ]);
-      setPreviewData({
-        profile: profileData,
-        experiences,
-        skills,
-        education,
-        certifications,
-        languages,
-      });
-    } catch {
-      // show partial data on error
-    } finally {
-      setPreviewLoading(false);
-    }
-  }
 
   async function openAdaptedEditor() {
     setAdaptedError(null);
@@ -182,9 +132,12 @@ export function ProfileCover({
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <Button onClick={() => setChoiceOpen(true)}>Générer un dossier</Button>
-        <Button variant="outline" onClick={loadPreview}>
+        <Link
+          href="/candidate/profile/read"
+          className={buttonVariants({ variant: "outline" })}
+        >
           Mode lecture
-        </Button>
+        </Link>
       </div>
       <ErrorAlert error={adaptedError} />
 
@@ -220,129 +173,6 @@ export function ProfileCover({
               </p>
             </button>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Aperçu recruteur (modale conservée en tranche 3 ; remplacée par le
-          mode lecture pleine page en tranche 5) */}
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Mode lecture</DialogTitle>
-          </DialogHeader>
-          {previewLoading ? (
-            <p className="text-sm text-muted-foreground">Chargement…</p>
-          ) : previewData ? (
-            <div className="space-y-4 text-sm">
-              {previewData.profile && (
-                <div>
-                  <p className="text-base font-semibold">
-                    {previewData.profile.first_name}{" "}
-                    {previewData.profile.last_name}
-                  </p>
-                  {previewData.profile.title && (
-                    <p className="text-muted-foreground">
-                      {previewData.profile.title}
-                    </p>
-                  )}
-                  {previewData.profile.summary && (
-                    <p className="mt-2">{previewData.profile.summary}</p>
-                  )}
-                </div>
-              )}
-              {previewData.skills.filter((s) => s.featured).length > 0 && (
-                <div>
-                  <p className="mb-1 font-medium">Compétences clés</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {previewData.skills
-                      .filter((s) => s.featured)
-                      .map((s) => (
-                        <span
-                          key={s.id}
-                          className="rounded-[5px] border border-accent-line bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-primary"
-                        >
-                          {s.skill_ref.name}
-                        </span>
-                      ))}
-                  </div>
-                </div>
-              )}
-              {previewData.experiences.length > 0 && (
-                <div>
-                  <p className="mb-2 font-medium">Expériences</p>
-                  <div className="space-y-3">
-                    {previewData.experiences.map((exp) => (
-                      <div
-                        key={exp.id}
-                        className="rounded border border-border/40 p-3"
-                      >
-                        <p className="font-medium">
-                          {exp.client_name} — {exp.role}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {exp.start_date}
-                          {exp.end_date
-                            ? ` → ${exp.end_date}`
-                            : exp.is_current
-                              ? " → présent"
-                              : ""}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {previewData.education.length > 0 && (
-                <div>
-                  <p className="mb-2 font-medium">Formations</p>
-                  <div className="space-y-2">
-                    {previewData.education.map((edu) => (
-                      <div key={edu.id}>
-                        <p className="font-medium">
-                          {[edu.degree, edu.field_of_study]
-                            .filter(Boolean)
-                            .join(" · ") || edu.school}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {edu.school}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {previewData.certifications.length > 0 && (
-                <div>
-                  <p className="mb-2 font-medium">Certifications</p>
-                  <div className="space-y-2">
-                    {previewData.certifications.map((cert) => (
-                      <div key={cert.id}>
-                        <p className="font-medium">{cert.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {cert.issuer}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {previewData.languages.length > 0 && (
-                <div>
-                  <p className="mb-1 font-medium">Langues</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {previewData.languages.map((lang) => (
-                      <span
-                        key={lang.id}
-                        className="rounded-[5px] border border-border/60 px-2.5 py-0.5 text-xs"
-                      >
-                        {lang.name} · {lang.level}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : null}
         </DialogContent>
       </Dialog>
 
