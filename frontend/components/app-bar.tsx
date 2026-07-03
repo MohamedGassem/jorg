@@ -106,7 +106,7 @@ export function AppBar({
 
 const CANDIDATE_TABS: AppBarTab[] = [
   { href: "/candidate/dashboard", label: "Tableau de bord", icon: LayoutGrid },
-  { href: "/candidate/profile", label: "Mon dossier", icon: FileText },
+  { href: "/candidate/profile", label: "Mon profil", icon: FileText },
   { href: "/candidate/access", label: "Accès & partages", icon: Shield },
   { href: "/candidate/settings", label: "Paramètres", icon: Settings },
 ];
