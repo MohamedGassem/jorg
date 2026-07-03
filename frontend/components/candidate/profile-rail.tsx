@@ -1,14 +1,26 @@
 // Rail droit collant de "Mon profil" (plan refonte-ui-mon-dossier.md, tranche 3,
-// décision 4). Sommaire avec compteurs + ancres de saut, complétude (remplacée
-// par la lisibilité recruteur en tranche 4), résumé visibilité / consentement,
+// décision 4). Sommaire avec compteurs + ancres de saut, lisibilité recruteur
+// (tranche 4, remplace la complétude en %), résumé visibilité / consentement,
 // et l'entrée repliée d'import de CV (le flux complet se déploie dans la colonne
 // de lecture).
 "use client";
 
 import Link from "next/link";
 import { Upload } from "lucide-react";
-import { completionPercent, profileCompletionChecks } from "@/lib/completion";
-import type { CandidateProfile } from "@/types/api";
+import { profileReadability } from "@/lib/completion";
+import { cn } from "@/lib/utils";
+import type {
+  CandidateProfile,
+  CandidateSkillProjection,
+  Experience,
+  Skill,
+} from "@/types/api";
+
+const READABILITY_DOT: Record<string, string> = {
+  ready: "bg-positive",
+  good: "bg-warn",
+  hard: "bg-warn",
+};
 
 interface SommaireCounts {
   parcours: number;
@@ -45,24 +57,29 @@ function RailBlock({
 
 export function ProfileRail({
   profile,
-  hasExperience,
-  hasSkill,
+  experiences,
+  skills,
+  projection,
   counts,
   isEmpty,
   importVisible,
   onToggleImport,
 }: {
   profile: CandidateProfile;
-  hasExperience: boolean;
-  hasSkill: boolean;
+  experiences: Experience[];
+  skills: Skill[];
+  projection: CandidateSkillProjection[];
   counts: SommaireCounts;
   isEmpty: boolean;
   importVisible: boolean;
   onToggleImport: () => void;
 }) {
-  const checks = profileCompletionChecks(profile, { hasExperience, hasSkill });
-  const completion = completionPercent(checks);
-  const missing = checks.filter((c) => !c.done);
+  const readability = profileReadability(
+    profile,
+    experiences,
+    skills,
+    projection,
+  );
 
   return (
     <aside className="w-full shrink-0 lg:sticky lg:top-[calc(var(--app-bar-h)+1.5rem)] lg:w-[264px]">
@@ -86,25 +103,36 @@ export function ProfileRail({
       </nav>
 
       <div className="mt-4 space-y-4">
-        <RailBlock label="Complétude">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[13px] text-ink-2">
-              {completion === 100 ? "Profil complet" : "En cours"}
-            </span>
-            <span className="font-mono text-[13px] font-medium tabular-nums">
-              {completion}%
-            </span>
-          </div>
-          <div className="h-[6px] overflow-hidden rounded-[3px] border border-line bg-paper-3">
-            <i
-              className="block h-full bg-primary transition-all"
-              style={{ width: `${completion}%` }}
+        <RailBlock label="Lisibilité recruteur">
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "size-2 shrink-0 rounded-full",
+                READABILITY_DOT[readability.level],
+              )}
+              aria-hidden
             />
+            <span className="text-[13px] font-medium text-ink">
+              {readability.statusLabel}
+            </span>
           </div>
-          {missing.length > 0 && (
-            <p className="mt-2 text-[12px] leading-snug text-ink-3">
-              À compléter : {missing.map((c) => c.label).join(", ")}
-            </p>
+          {readability.actions.length > 0 && (
+            <>
+              <p className="j-overline mb-1.5 mt-3">À améliorer</p>
+              <ul className="space-y-1.5">
+                {readability.actions.map((action) => (
+                  <li
+                    key={action}
+                    className="flex gap-1.5 text-[12.5px] leading-snug text-ink-2"
+                  >
+                    <span className="mt-0.5 text-ink-3" aria-hidden>
+                      ·
+                    </span>
+                    <span>{action}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </RailBlock>
 

@@ -37,6 +37,7 @@ import {
 import {
   type AvailabilityStatus,
   type CandidateProfile,
+  type CandidateSkillProjection,
   type Certification,
   type ContractType,
   type Education,
@@ -429,8 +430,9 @@ interface SommaireCounts {
 export default function ProfilePage() {
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [hasExperience, setHasExperience] = useState(false);
-  const [hasSkill, setHasSkill] = useState(false);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [projection, setProjection] = useState<CandidateSkillProjection[]>([]);
   const [showImport, setShowImport] = useState(false);
   const [counts, setCounts] = useState<SommaireCounts>({
     parcours: 0,
@@ -447,16 +449,18 @@ export default function ProfilePage() {
     Promise.all([
       api.get<Experience[]>("/candidates/me/experiences"),
       api.get<Skill[]>("/candidates/me/skills"),
+      api.get<CandidateSkillProjection[]>("/candidates/me/skill-projection"),
       api.get<Education[]>("/candidates/me/education"),
       api.get<Certification[]>("/candidates/me/certifications"),
       api.get<Language[]>("/candidates/me/languages"),
     ])
-      .then(([experiences, skills, education, certifications, languages]) => {
-        setHasExperience(experiences.length > 0);
-        setHasSkill(skills.length > 0);
+      .then(([exps, sks, proj, education, certifications, languages]) => {
+        setExperiences(exps);
+        setSkills(sks);
+        setProjection(proj);
         setCounts({
-          parcours: experiences.length,
-          competences: skills.length,
+          parcours: exps.length,
+          competences: sks.length,
           formation: education.length + certifications.length,
           langues: languages.length,
         });
@@ -495,7 +499,7 @@ export default function ProfilePage() {
     );
   }
 
-  const isEmpty = !hasExperience && !hasSkill;
+  const isEmpty = experiences.length === 0 && skills.length === 0;
 
   return (
     <div className="mx-auto w-full max-w-[1000px]">
@@ -539,8 +543,9 @@ export default function ProfilePage() {
 
         <ProfileRail
           profile={profile}
-          hasExperience={hasExperience}
-          hasSkill={hasSkill}
+          experiences={experiences}
+          skills={skills}
+          projection={projection}
           counts={counts}
           isEmpty={isEmpty}
           importVisible={showImport}
