@@ -338,6 +338,7 @@ export interface GeneratedDocumentRecruiterView {
   candidate_first_name: string | null;
   candidate_last_name: string | null;
   opportunity_title: string | null;
+  generated_by_user_id: string | null;
 }
 
 export interface AccessibleCandidate {

@@ -371,6 +371,10 @@ async def test_org_documents_include_candidate_name(
     doc = docs[0]
     assert doc["candidate_first_name"] == "Bob"
     assert doc["candidate_last_name"] == "Jones"
+    # The view attributes the document to the recruiter who generated it, so the
+    # dashboard can scope the "Premiers pas" milestone to this recruiter's own work.
+    me = await client.get("/auth/me", headers=recruiter_headers)
+    assert doc["generated_by_user_id"] == me.json()["id"]
 
 
 # ---- download ---------------------------------------------------------------

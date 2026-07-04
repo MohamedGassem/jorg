@@ -8,7 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { StatCell } from "@/components/ui/StatCell";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
-import { completionPercent, profileCompletionChecks } from "@/lib/completion";
+import { profileReadability } from "@/lib/completion";
 import {
   EVENT_ICON_COMPONENTS,
   EVENT_LABELS,
@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import type {
   CandidateProfile,
+  CandidateSkillProjection,
   Experience,
   InteractionEvent,
   Invitation,
@@ -77,6 +78,14 @@ const ACTIVITY_ACCENT: InteractionEvent["type"][] = [
   "document_generated",
 ];
 
+// Libellé court de la lisibilité pour la tuile de stat (le libellé complet et
+// les actions nominatives vivent dans le bloc "Lisibilité recruteur" du rail).
+const READABILITY_SHORT: Record<string, string> = {
+  ready: "Lisible",
+  good: "Correct",
+  hard: "À affiner",
+};
+
 function grantedDate(org: OrganizationInteractionCard): string | null {
   const granted = org.events
     .filter((event) => event.type === "access_granted")
@@ -90,8 +99,9 @@ function grantedDate(org: OrganizationInteractionCard): string | null {
 export default function CandidateDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
-  const [hasSkill, setHasSkill] = useState(false);
-  const [hasExperience, setHasExperience] = useState(false);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [projection, setProjection] = useState<CandidateSkillProjection[]>([]);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [pendingInvitations, setPendingInvitations] = useState<
     Invitation[] | null
@@ -116,6 +126,10 @@ export default function CandidateDashboardPage() {
       .get<Experience[]>("/candidates/me/experiences")
       .catch(() => null);
 
+    const projectionPromise = api
+      .get<CandidateSkillProjection[]>("/candidates/me/skill-projection")
+      .catch(() => null);
+
     const invitationsPromise = api
       .get<Invitation[]>("/invitations/me")
       .catch(() => null);
@@ -128,45 +142,56 @@ export default function CandidateDashboardPage() {
       profilePromise,
       skillsPromise,
       experiencesPromise,
+      projectionPromise,
       invitationsPromise,
       orgsPromise,
-    ]).then(([prof, skills, experiences, invitations, orgs]) => {
-      if (!mounted) return;
+    ]).then(
+      ([
+        prof,
+        skillsData,
+        experiencesData,
+        projectionData,
+        invitations,
+        orgs,
+      ]) => {
+        if (!mounted) return;
 
-      setHasSkill(Array.isArray(skills) && skills.length > 0);
-      setHasExperience(Array.isArray(experiences) && experiences.length > 0);
+        if (Array.isArray(skillsData)) setSkills(skillsData);
+        if (Array.isArray(experiencesData)) setExperiences(experiencesData);
+        if (Array.isArray(projectionData)) setProjection(projectionData);
 
-      if (prof) {
-        setProfile(prof);
-      }
+        if (prof) {
+          setProfile(prof);
+        }
 
-      if (invitations !== null) {
-        setPendingInvitations(
-          invitations.filter((inv) => inv.status === "pending"),
-        );
-      }
+        if (invitations !== null) {
+          setPendingInvitations(
+            invitations.filter((inv) => inv.status === "pending"),
+          );
+        }
 
-      if (orgs !== null) {
-        setOrganizations(orgs);
-        const allEvents: ActivityEvent[] = orgs
-          .flatMap((o) =>
-            o.events.map((event) => ({
-              ...event,
-              organizationId: o.organization_id,
-              organizationName: o.organization_name,
-            })),
-          )
-          .sort(
-            (a, b) =>
-              new Date(b.occurred_at).getTime() -
-              new Date(a.occurred_at).getTime(),
-          )
-          .slice(0, 6);
-        setRecentEvents(allEvents);
-      }
+        if (orgs !== null) {
+          setOrganizations(orgs);
+          const allEvents: ActivityEvent[] = orgs
+            .flatMap((o) =>
+              o.events.map((event) => ({
+                ...event,
+                organizationId: o.organization_id,
+                organizationName: o.organization_name,
+              })),
+            )
+            .sort(
+              (a, b) =>
+                new Date(b.occurred_at).getTime() -
+                new Date(a.occurred_at).getTime(),
+            )
+            .slice(0, 6);
+          setRecentEvents(allEvents);
+        }
 
-      setLoading(false);
-    });
+        setLoading(false);
+      },
+    );
 
     return () => {
       mounted = false;
@@ -195,9 +220,12 @@ export default function CandidateDashboardPage() {
   }
 
   const firstName = profile?.first_name ?? "";
-  const checks = profileCompletionChecks(profile, { hasExperience, hasSkill });
-  const completedCount = checks.filter((c) => c.done).length;
-  const completionPct = completionPercent(checks);
+  const readability = profileReadability(
+    profile,
+    experiences,
+    skills,
+    projection,
+  );
   const pendingCount = pendingInvitations?.length ?? 0;
   const orgs = organizations ?? [];
   const activeCount = orgs.filter((o) => o.current_status === "active").length;
@@ -216,8 +244,8 @@ export default function CandidateDashboardPage() {
   const primaryCta =
     pendingCount > 0
       ? { href: "/candidate/access", label: "Voir les invitations" }
-      : completionPct < 100
-        ? { href: "/candidate/profile", label: "Compléter mon dossier" }
+      : readability.level !== "ready"
+        ? { href: "/candidate/profile", label: "Compléter mon profil" }
         : { href: "/candidate/access", label: "Gérer les accès" };
 
   return (
@@ -249,9 +277,13 @@ export default function CandidateDashboardPage() {
       >
         <StatCell
           icon={User}
-          label="Complétude"
-          value={`${completionPct}%`}
-          foot={`${completedCount} / ${checks.length} sections`}
+          label="Lisibilité recruteur"
+          value={READABILITY_SHORT[readability.level]}
+          foot={
+            readability.failureCount === 0
+              ? "prêt pour un recruteur"
+              : `${readability.failureCount} point${readability.failureCount > 1 ? "s" : ""} à améliorer`
+          }
         />
         <StatCell
           icon={Shield}
@@ -370,6 +402,30 @@ export default function CandidateDashboardPage() {
 
         {/* Rail droit */}
         <div className="flex min-w-0 flex-col gap-5">
+          {readability.actions.length > 0 && (
+            <article className="rounded-lg border border-line bg-surface px-[22px] py-5">
+              <p className="j-overline">Lisibilité recruteur</p>
+              <p className="mt-1.5 text-[14px] font-medium">
+                {readability.statusLabel}
+              </p>
+              <p className="j-overline mb-2 mt-3.5">À améliorer</p>
+              <ul className="space-y-2">
+                {readability.actions.map((action) => (
+                  <li key={action}>
+                    <Link
+                      href="/candidate/profile"
+                      className="flex gap-2 text-[13px] leading-snug text-ink-2 transition-colors hover:text-primary"
+                    >
+                      <span className="mt-0.5 text-ink-3" aria-hidden>
+                        ·
+                      </span>
+                      <span>{action}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          )}
           <article className="rounded-lg border border-accent-line bg-accent-soft-2 px-[22px] py-5">
             <div className="mb-2.5 flex items-center gap-2">
               <span className="grid size-8 place-items-center rounded-lg border border-accent-line bg-accent-soft text-primary">
