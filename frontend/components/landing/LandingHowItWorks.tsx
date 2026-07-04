@@ -2,19 +2,19 @@
 
 const STEPS = [
   {
-    title: "Le candidat structure son dossier",
+    title: "Le candidat remplit son profil",
     detail:
-      "Expériences, compétences, réalisations : une seule source, maintenue à jour par son propriétaire.",
+      "Expériences, compétences, réalisations : une seule saisie, maintenue à jour par son propriétaire.",
   },
   {
-    title: "Il accorde l'accès",
+    title: "Il accorde l'accès, à ses conditions",
     detail:
-      "Rien n'est partagé sans son accord. Chaque accès est journalisé et révocable à tout moment.",
+      "Rien n'est partagé sans accord explicite. Le candidat fixe ce qui sort et peut révoquer à tout moment.",
   },
   {
-    title: "Le recruteur génère",
+    title: "L'ESN génère le dossier",
     detail:
-      "Un dossier client-ready en quelques secondes, adapté au poste et au format voulu.",
+      "Un dossier de compétences prêt à envoyer en 30 secondes, adapté au poste et au client.",
   },
 ];
 
@@ -25,7 +25,7 @@ export function LandingHowItWorks() {
         <div className="text-center">
           <p className="j-overline">Comment ça marche</p>
           <h2 className="mt-3 font-heading text-2xl font-semibold sm:text-3xl">
-            Un modèle fondé sur le consentement
+            Trois étapes, aucun partage sans accord
           </h2>
         </div>
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
