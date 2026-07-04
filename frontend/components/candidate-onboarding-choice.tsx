@@ -5,7 +5,7 @@
 // side before landing the candidate. No step numbering (decided 2026-07-03).
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FileText, PenLine, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,7 @@ import {
 import { CvImport } from "@/components/cv-import";
 import { api, ApiError } from "@/lib/api";
 import { CONTRACT_TYPE_LABELS } from "@/lib/labels";
+import { safeInternalPath } from "@/lib/safe-path";
 import type { ContractType } from "@/types/api";
 
 type View = "choice" | "manual" | "cv";
@@ -37,6 +38,10 @@ async function completeOnboarding() {
 
 export function CandidateOnboardingChoice() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Parcours invitation (C9) : renvoyer le candidat vers son point de départ
+  // à la sortie du tunnel, quel que soit le chemin choisi.
+  const next = safeInternalPath(searchParams.get("next"));
   const [view, setView] = useState<View>("choice");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +55,7 @@ export function CandidateOnboardingChoice() {
     setError(null);
     try {
       await completeOnboarding();
-      router.push("/candidate/dashboard");
+      router.push(next ?? "/candidate/dashboard");
     } catch (err) {
       setError(
         err instanceof ApiError ? err.detail : "Une erreur est survenue",
@@ -70,7 +75,7 @@ export function CandidateOnboardingChoice() {
         contract_type: contractType,
       });
       await completeOnboarding();
-      router.push("/candidate/profile?welcome=1");
+      router.push(next ?? "/candidate/profile?welcome=1");
     } catch (err) {
       setError(
         err instanceof ApiError ? err.detail : "Une erreur est survenue",
@@ -103,7 +108,7 @@ export function CandidateOnboardingChoice() {
     setError(null);
     try {
       await completeOnboarding();
-      router.push("/candidate/profile?welcome=1");
+      router.push(next ?? "/candidate/profile?welcome=1");
     } catch (err) {
       setError(
         err instanceof ApiError ? err.detail : "Une erreur est survenue",

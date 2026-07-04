@@ -508,6 +508,7 @@ async def list_org_documents_view(
             GeneratedDocument.id,
             GeneratedDocument.generated_at,
             GeneratedDocument.file_format,
+            GeneratedDocument.generated_by_user_id,
             func.coalesce(Template.name, GeneratedDocument.template_name).label("template_name"),
             CandidateProfile.first_name.label("candidate_first_name"),
             CandidateProfile.last_name.label("candidate_last_name"),
@@ -528,6 +529,7 @@ async def list_org_documents_view(
             candidate_first_name=row.candidate_first_name,
             candidate_last_name=row.candidate_last_name,
             opportunity_title=row.opportunity_title,
+            generated_by_user_id=row.generated_by_user_id,
         )
         for row in rows.all()
     ]

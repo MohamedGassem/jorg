@@ -68,3 +68,4 @@ class GeneratedDocumentRecruiterView(BaseModel):
     candidate_first_name: str | None
     candidate_last_name: str | None
     opportunity_title: str | None
+    generated_by_user_id: UUID | None
