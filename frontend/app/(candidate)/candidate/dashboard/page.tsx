@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Eye, FolderOpen, Mail, Plus, Shield, User } from "lucide-react";
 import { DossierGenerationDialog } from "@/components/dossier-generation-dialog";
 import { buttonVariants } from "@/components/ui/button";
@@ -89,7 +88,6 @@ function grantedDate(org: OrganizationInteractionCard): string | null {
 }
 
 export default function CandidateDashboardPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [hasSkill, setHasSkill] = useState(false);
@@ -135,11 +133,6 @@ export default function CandidateDashboardPage() {
     ]).then(([prof, skills, experiences, invitations, orgs]) => {
       if (!mounted) return;
 
-      if (prof && !prof.onboarding_completed) {
-        router.replace("/onboarding/candidate/profile");
-        return;
-      }
-
       setHasSkill(Array.isArray(skills) && skills.length > 0);
       setHasExperience(Array.isArray(experiences) && experiences.length > 0);
 
@@ -178,7 +171,7 @@ export default function CandidateDashboardPage() {
     return () => {
       mounted = false;
     };
-  }, [router]);
+  }, []);
 
   if (loading) {
     return (
