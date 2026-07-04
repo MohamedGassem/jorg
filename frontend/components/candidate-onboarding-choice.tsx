@@ -70,7 +70,7 @@ export function CandidateOnboardingChoice() {
         contract_type: contractType,
       });
       await completeOnboarding();
-      router.push("/candidate/profile");
+      router.push("/candidate/profile?welcome=1");
     } catch (err) {
       setError(
         err instanceof ApiError ? err.detail : "Une erreur est survenue",
@@ -96,12 +96,14 @@ export function CandidateOnboardingChoice() {
     }
   }
 
-  async function handleCvFinish() {
+  // Applying the import (the single CTA in CvImport) is the CV path's exit:
+  // record completion server side and land on the profile with a welcome flag.
+  async function handleImportApplied() {
     setBusy(true);
     setError(null);
     try {
       await completeOnboarding();
-      router.push("/candidate/profile");
+      router.push("/candidate/profile?welcome=1");
     } catch (err) {
       setError(
         err instanceof ApiError ? err.detail : "Une erreur est survenue",
@@ -112,32 +114,30 @@ export function CandidateOnboardingChoice() {
 
   if (view === "cv") {
     return (
-      <div className="mx-auto w-full max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>Importer mon CV</CardTitle>
-            <CardDescription>
-              Rien n&apos;est ajouté à votre profil sans votre accord.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <CvImport onContactDetected={handleContactDetected} />
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <div className="flex flex-col gap-2">
-              <Button onClick={handleCvFinish} disabled={busy}>
-                {busy ? "Un instant…" : "Voir mon profil"}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setView("choice")}
-                disabled={busy}
-              >
-                ← Retour
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="mx-auto w-full max-w-3xl space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-semibold">
+            Importer mon CV
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Vérifiez ce que nous avons détecté. Rien n&apos;est ajouté à votre
+            profil sans votre accord.
+          </p>
+        </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <CvImport
+          collectIdentity
+          onContactDetected={handleContactDetected}
+          onApplied={handleImportApplied}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => setView("choice")}
+          disabled={busy}
+        >
+          ← Retour
+        </Button>
       </div>
     );
   }

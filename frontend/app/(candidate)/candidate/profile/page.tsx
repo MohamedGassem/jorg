@@ -1,7 +1,7 @@
 // frontend/app/(candidate)/profile/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { CvImport } from "@/components/cv-import";
 import { api } from "@/lib/api";
@@ -12,6 +12,7 @@ import { CertificationSection } from "@/components/candidate/certification-secti
 import { LanguageSection } from "@/components/candidate/language-section";
 import { ProfileCover } from "@/components/candidate/profile-cover";
 import { ProfileRail } from "@/components/candidate/profile-rail";
+import { WelcomeBanner } from "@/components/candidate/welcome-banner";
 import {
   type CandidateProfile,
   type CandidateSkillProjection,
@@ -129,6 +130,9 @@ export default function ProfilePage() {
     <div className="mx-auto w-full max-w-[1000px]">
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-10 lg:max-w-[680px]">
+          <Suspense fallback={null}>
+            <WelcomeBanner />
+          </Suspense>
           <ProfileCover profile={profile} onProfileUpdate={setProfile} />
 
           {(isEmpty || showImport) && (

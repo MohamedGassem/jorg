@@ -1,15 +1,21 @@
 "use client";
 
-// CvImport - upload a CV (PDF/DOCX) and review profile suggestions.
+// CvImport - upload a CV (PDF/DOCX) and review profile suggestions on a single
+// full-page screen shared by the onboarding CV path and "Mon profil".
 // The backend stores a pending proposal; nothing is applied to the profile
-// until the candidate confirms here.
+// until the candidate confirms here. Agreement is given at the screen level:
+// every proposed item is checked by default and expanding a section serves to
+// exclude, not to include (decided 2026-07-03).
 
 import { useRef, useState } from "react";
-import { Check, FileText, Loader2, Upload, X } from "lucide-react";
+import { Check, ChevronDown, FileText, Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { Experience, LanguageLevel } from "@/types/api";
+import { CONTRACT_TYPE_LABELS } from "@/lib/labels";
+import type { ContractType, Experience, LanguageLevel } from "@/types/api";
 
 interface CvExtractedField {
   value: string | null;
@@ -50,6 +56,11 @@ interface CvLanguageProposal {
   level?: CvExtractedField;
 }
 
+interface CvIdentityProposal {
+  title?: CvExtractedField;
+  location?: CvExtractedField;
+}
+
 interface CvSkillSuggestion {
   skill_ref_id: string | null;
   name: string | null;
@@ -65,6 +76,7 @@ interface CvParseResult {
   quality_score: number | null;
   warnings: string[];
   proposed_profile: {
+    identity?: CvIdentityProposal;
     experiences?: CvExperienceProposal[];
     education?: CvEducationProposal[];
     certifications?: CvCertificationProposal[];
@@ -85,6 +97,10 @@ const LANGUAGE_LEVELS: LanguageLevel[] = [
   "C2",
   "native",
 ];
+
+const CONTRACT_TYPES: ContractType[] = ["freelance", "cdi", "both"];
+
+type SectionKey = "experiences" | "education" | "languages" | "skills";
 
 function fieldValue(field?: CvExtractedField): string | null {
   return field?.value?.trim() || null;
@@ -172,10 +188,55 @@ interface CvContactPrefill {
   linkedin_url: string | null;
 }
 
+function SectionShell({
+  label,
+  count,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-md border border-border/60 bg-background">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+      >
+        <span className="text-sm font-medium text-foreground">
+          {label}
+          <span className="ml-2 text-xs text-muted-foreground">
+            {count} sélectionné{count > 1 ? "s" : ""}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+      {open && <div className="border-t border-border/60 p-3">{children}</div>}
+    </div>
+  );
+}
+
 export function CvImport({
   onContactDetected,
+  onApplied,
+  collectIdentity = false,
 }: {
   onContactDetected?: (contact: CvContactPrefill) => void;
+  onApplied?: () => void;
+  // The identity block (title/location/contract) belongs to the onboarding CV
+  // path only. On "Mon profil", ProfileCover already owns those fields, so the
+  // host leaves this false to avoid a second, overwriting editor.
+  collectIdentity?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<"idle" | "parsing" | "ready" | "adding">(
@@ -198,21 +259,23 @@ export function CvImport({
   const [languageLevels, setLanguageLevels] = useState<
     Record<number, LanguageLevel | "">
   >({});
+  const [includeIdentity, setIncludeIdentity] = useState(false);
+  const [title, setTitle] = useState("");
+  const [location, setLocation] = useState("");
+  const [contractType, setContractType] = useState<ContractType | "">("");
+  const [expanded, setExpanded] = useState<Set<SectionKey>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const [added, setAdded] = useState<number | null>(null);
-  const [addedProfileItems, setAddedProfileItems] = useState<string | null>(
-    null,
-  );
+  const [appliedSummary, setAppliedSummary] = useState<string | null>(null);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
-    setAdded(null);
-    setAddedProfileItems(null);
+    setAppliedSummary(null);
     setResult(null);
     setSelectedExperiences(new Set());
     setExperienceDrafts({});
+    setExpanded(new Set());
     setStatus("parsing");
     try {
       const formData = new FormData();
@@ -222,6 +285,13 @@ export function CvImport({
         formData,
       );
       setResult(parsed);
+      const identity = parsed.proposed_profile.identity ?? {};
+      const detectedTitle = fieldValue(identity.title) ?? "";
+      const detectedLocation = fieldValue(identity.location) ?? "";
+      setTitle(detectedTitle);
+      setLocation(detectedLocation);
+      setContractType("");
+      setIncludeIdentity(Boolean(detectedTitle || detectedLocation));
       setSelected(
         new Set(
           parsed.skills
@@ -288,6 +358,15 @@ export function CvImport({
     }
   }
 
+  function toggleSection(key: SectionKey) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -348,45 +427,28 @@ export function CvImport({
     });
   }
 
-  async function handleAddSkills() {
-    if (!result) return;
-    setStatus("adding");
-    setError(null);
-    const toAdd = result.skills.filter(
-      (s): s is CvSkillSuggestion & { skill_ref_id: string } =>
-        Boolean(s.skill_ref_id && selected.has(s.skill_ref_id)),
-    );
-    const BATCH_SIZE = 8;
-    let count = 0;
-    for (let i = 0; i < toAdd.length; i += BATCH_SIZE) {
-      const outcomes = await Promise.all(
-        toAdd.slice(i, i + BATCH_SIZE).map(async (skill) => {
-          try {
-            await api.post("/candidates/me/skills", {
-              skill_ref_id: skill.skill_ref_id,
-            });
-            return true;
-          } catch (err) {
-            // 409 = already on profile; ignore and keep going.
-            if (!(err instanceof ApiError && err.status === 409)) {
-              console.warn("Failed to add skill", skill.name, err);
-            }
-            return false;
-          }
-        }),
-      );
-      count += outcomes.filter(Boolean).length;
+  async function applyIdentity(): Promise<boolean> {
+    const payload: Record<string, string> = {};
+    if (title.trim()) payload.title = title.trim();
+    if (location.trim()) payload.location = location.trim();
+    if (contractType) payload.contract_type = contractType;
+    if (Object.keys(payload).length === 0) return false;
+    try {
+      await api.put("/candidates/me/profile", payload);
+      return true;
+    } catch (err) {
+      if (!isBenignConflict(err)) console.warn("Failed to save identity", err);
+      return false;
     }
-    setAdded(count);
-    setStatus("ready");
   }
 
-  async function handleAddProfileItems() {
+  async function handleApply() {
     if (!result) return;
     const incompleteExperience = [...selectedExperiences].find(
       (index) => !isDraftAddable(experienceDrafts[index]),
     );
     if (incompleteExperience !== undefined) {
+      setExpanded((prev) => new Set(prev).add("experiences"));
       setError(
         "Complétez au minimum client, rôle et date de début pour chaque expérience sélectionnée.",
       );
@@ -394,14 +456,18 @@ export function CvImport({
     }
     setStatus("adding");
     setError(null);
-    setAddedProfileItems(null);
+    setAppliedSummary(null);
     let experienceCount = 0;
     let achievementCount = 0;
     let educationCount = 0;
     let languageCount = 0;
+    let skillCount = 0;
     // Anything other than a 409 (already on profile) is a real failure the
     // candidate must hear about - never report a silent success.
     let failedCount = 0;
+
+    const identityApplied =
+      collectIdentity && includeIdentity ? await applyIdentity() : false;
 
     for (const index of selectedExperiences) {
       const draft = experienceDrafts[index];
@@ -489,14 +555,49 @@ export function CvImport({
       }
     }
 
-    const addedTotal =
-      experienceCount + achievementCount + educationCount + languageCount;
-    if (addedTotal > 0) {
-      setAddedProfileItems(
-        `${experienceCount} expérience${experienceCount > 1 ? "s" : ""}, ${achievementCount} réalisation${achievementCount > 1 ? "s" : ""}, ${educationCount} formation${educationCount > 1 ? "s" : ""} et ${languageCount} langue${
-          languageCount > 1 ? "s" : ""
-        } ajoutée${addedTotal > 1 ? "s" : ""}.`,
+    const skillsToAdd = result.skills.filter(
+      (s): s is CvSkillSuggestion & { skill_ref_id: string } =>
+        Boolean(s.skill_ref_id && selected.has(s.skill_ref_id)),
+    );
+    const BATCH_SIZE = 8;
+    for (let i = 0; i < skillsToAdd.length; i += BATCH_SIZE) {
+      const outcomes = await Promise.all(
+        skillsToAdd.slice(i, i + BATCH_SIZE).map(async (skill) => {
+          try {
+            await api.post("/candidates/me/skills", {
+              skill_ref_id: skill.skill_ref_id,
+            });
+            return true;
+          } catch (err) {
+            if (!isBenignConflict(err)) {
+              console.warn("Failed to add skill", skill.name, err);
+            }
+            return false;
+          }
+        }),
       );
+      skillCount += outcomes.filter(Boolean).length;
+    }
+
+    const addedTotal =
+      experienceCount +
+      achievementCount +
+      educationCount +
+      languageCount +
+      skillCount;
+    if (addedTotal > 0 || identityApplied) {
+      setAppliedSummary(
+        buildSummaryText({
+          identity: identityApplied,
+          experiences: experienceCount,
+          education: educationCount,
+          languages: languageCount,
+          skills: skillCount,
+        }),
+      );
+    } else if (failedCount === 0) {
+      // Everything selected was already on the profile (benign 409s).
+      setAppliedSummary("Ces éléments sont déjà présents sur votre profil.");
     }
     if (failedCount > 0) {
       setError(
@@ -506,6 +607,12 @@ export function CvImport({
       );
     }
     setStatus("ready");
+    // A real (non-409) failure must stay visible: never let the caller navigate
+    // away from the error. A clean apply - even one where every item was already
+    // present - advances the flow so the onboarding tunnel is not a dead-end.
+    if (failedCount === 0) {
+      onApplied?.();
+    }
   }
 
   const matchedSkills = result?.skills.filter((s) => s.skill_ref_id) ?? [];
@@ -519,43 +626,55 @@ export function CvImport({
   const addableExperienceCount = [...selectedExperiences].filter((index) =>
     isDraftAddable(experienceDrafts[index]),
   ).length;
-  const addableProfileCount =
-    addableExperienceCount + selectedEducation.size + addableLanguageCount;
+  const identityToAdd =
+    collectIdentity &&
+    includeIdentity &&
+    (title.trim() || location.trim() || contractType)
+      ? 1
+      : 0;
+  const totalToAdd =
+    addableExperienceCount +
+    selectedEducation.size +
+    addableLanguageCount +
+    selected.size +
+    identityToAdd;
 
   return (
-    <div className="rounded-lg border border-dashed border-line-strong bg-paper-2 px-[22px] py-[18px]">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <span className="grid size-[38px] shrink-0 place-items-center rounded-[10px] border border-accent-line bg-accent-soft text-primary">
-          <FileText className="size-[17px]" strokeWidth={1.6} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[14.5px] font-semibold">
-            Importer un CV pour gagner du temps
-          </p>
-          <p className="mt-px text-[13px] text-ink-2">
-            Nous en extrayons vos coordonnées et vos compétences. Vous gardez le
-            contrôle : rien n&apos;est ajouté sans votre confirmation.
-          </p>
+    <div className="space-y-4">
+      <div className="rounded-lg border border-dashed border-line-strong bg-paper-2 px-[22px] py-[18px]">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <span className="grid size-[38px] shrink-0 place-items-center rounded-[10px] border border-accent-line bg-accent-soft text-primary">
+            <FileText className="size-[17px]" strokeWidth={1.6} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[14.5px] font-semibold">
+              Importer un CV pour gagner du temps
+            </p>
+            <p className="mt-px text-[13px] text-ink-2">
+              Nous en extrayons vos coordonnées et vos compétences. Vous gardez
+              le contrôle : rien n&apos;est ajouté sans votre confirmation.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0"
+            disabled={status === "parsing" || status === "adding"}
+            onClick={() => inputRef.current?.click()}
+          >
+            {status === "parsing" ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Analyse du CV…
+              </>
+            ) : (
+              <>
+                <Upload className="size-4" strokeWidth={1.6} />
+                {result ? "Choisir un autre fichier" : "Choisir un fichier"}
+              </>
+            )}
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          className="shrink-0"
-          disabled={status === "parsing" || status === "adding"}
-          onClick={() => inputRef.current?.click()}
-        >
-          {status === "parsing" ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              Analyse du CV…
-            </>
-          ) : (
-            <>
-              <Upload className="size-4" strokeWidth={1.6} />
-              Choisir un fichier
-            </>
-          )}
-        </Button>
       </div>
 
       <input
@@ -567,13 +686,13 @@ export function CvImport({
       />
 
       {error && (
-        <p role="alert" className="mt-3 text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
 
       {result && status !== "parsing" && (
-        <div className="mt-4 space-y-3">
+        <div className="space-y-3">
           {(() => {
             const visibleWarnings = result.warnings.filter(
               (w) => !w.startsWith("Extraction structurée heuristique"),
@@ -587,320 +706,303 @@ export function CvImport({
             ) : null;
           })()}
 
-          <p className="text-xs text-muted-foreground">
-            Sections proposées :{" "}
-            {[
-              ["expériences", result.proposed_profile.experiences?.length ?? 0],
-              ["formations", result.proposed_profile.education?.length ?? 0],
-              [
-                "certifications",
-                result.proposed_profile.certifications?.length ?? 0,
-              ],
-              ["langues", result.proposed_profile.languages?.length ?? 0],
-            ]
-              .filter(([, count]) => Number(count) > 0)
-              .map(([label, count]) => `${count} ${label}`)
-              .join(" · ") || "coordonnées et compétences"}
-          </p>
-
-          {(proposedExperiences.length > 0 ||
-            proposedEducation.length > 0 ||
-            proposedCertifications.length > 0 ||
-            proposedLanguages.length > 0 ||
-            result.email ||
-            result.phone ||
-            result.linkedin_url) && (
+          {collectIdentity && (
             <div className="space-y-3 rounded-md border border-border/60 bg-background p-3">
-              <p className="text-sm font-medium text-foreground">
-                Proposition de profil structuré
-              </p>
-
-              {(result.email || result.phone || result.linkedin_url) && (
-                <div className="rounded-md border border-accent-line bg-accent-soft-2 px-3 py-2">
-                  <p className="text-xs font-medium text-foreground">
-                    Coordonnées détectées
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {[result.email, result.phone, result.linkedin_url]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
+              <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <input
+                  type="checkbox"
+                  checked={includeIdentity}
+                  onChange={(e) => setIncludeIdentity(e.target.checked)}
+                />
+                Mon titre et ma localisation
+              </label>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <Label htmlFor="cv-title">Titre / poste actuel</Label>
+                  <Input
+                    id="cv-title"
+                    value={title}
+                    placeholder="ex: Développeur Full-Stack"
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
                 </div>
-              )}
-
-              {proposedExperiences.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Expériences à relire
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Les dates partielles sont préremplies au premier jour de la
-                    période détectée. Vérifiez-les avant ajout.
-                  </p>
-                  {proposedExperiences.map((item, index) => {
-                    const draft =
-                      experienceDrafts[index] ??
-                      experienceDraftFromProposal(item);
-                    const label = draft.role || `Expérience ${index + 1}`;
-                    return (
-                      <div
-                        key={`experience-${index}-${label}`}
-                        className="space-y-2 rounded-md bg-muted/40 px-2 py-2 text-xs"
-                      >
-                        <label className="flex items-center gap-2 font-medium text-foreground">
-                          <input
-                            type="checkbox"
-                            checked={selectedExperiences.has(index)}
-                            onChange={() => toggleExperience(index)}
-                          />
-                          {label}
-                        </label>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          <input
-                            className="h-8 rounded-md border border-input bg-background px-2"
-                            value={draft.client_name}
-                            placeholder="Client ou entreprise *"
-                            onChange={(event) =>
-                              updateExperienceDraft(index, {
-                                client_name: event.target.value,
-                              })
-                            }
-                          />
-                          <input
-                            className="h-8 rounded-md border border-input bg-background px-2"
-                            value={draft.role}
-                            placeholder="Rôle *"
-                            onChange={(event) =>
-                              updateExperienceDraft(index, {
-                                role: event.target.value,
-                              })
-                            }
-                          />
-                          <input
-                            className="h-8 rounded-md border border-input bg-background px-2"
-                            type="date"
-                            value={draft.start_date}
-                            onChange={(event) =>
-                              updateExperienceDraft(index, {
-                                start_date: event.target.value,
-                              })
-                            }
-                          />
-                          <input
-                            className="h-8 rounded-md border border-input bg-background px-2"
-                            type="date"
-                            value={draft.end_date}
-                            disabled={draft.is_current}
-                            onChange={(event) =>
-                              updateExperienceDraft(index, {
-                                end_date: event.target.value,
-                              })
-                            }
-                          />
-                        </div>
-                        <label className="flex items-center gap-2 text-muted-foreground">
-                          <input
-                            type="checkbox"
-                            checked={draft.is_current}
-                            onChange={(event) =>
-                              updateExperienceDraft(index, {
-                                is_current: event.target.checked,
-                                end_date: event.target.checked
-                                  ? ""
-                                  : draft.end_date,
-                              })
-                            }
-                          />
-                          Expérience en cours
-                        </label>
-                        <textarea
-                          className="min-h-16 w-full rounded-md border border-input bg-background px-2 py-1"
-                          value={draft.description}
-                          placeholder="Description"
-                          onChange={(event) =>
-                            updateExperienceDraft(index, {
-                              description: event.target.value,
-                            })
-                          }
-                        />
-                        <div className="space-y-1">
-                          <p className="font-medium text-muted-foreground">
-                            Réalisations
-                          </p>
-                          {draft.achievements.length === 0 ? (
-                            <p className="text-muted-foreground">
-                              Aucune réalisation détectée.
-                            </p>
-                          ) : (
-                            draft.achievements.map((achievement, achIndex) => (
-                              <textarea
-                                key={`experience-${index}-achievement-${achIndex}`}
-                                className="min-h-10 w-full rounded-md border border-input bg-background px-2 py-1"
-                                value={achievement}
-                                onChange={(event) =>
-                                  updateExperienceAchievement(
-                                    index,
-                                    achIndex,
-                                    event.target.value,
-                                  )
-                                }
-                              />
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="space-y-1">
+                  <Label htmlFor="cv-contract">Contrat recherché</Label>
+                  <select
+                    id="cv-contract"
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                    value={contractType}
+                    onChange={(e) =>
+                      setContractType(e.target.value as ContractType | "")
+                    }
+                  >
+                    <option value="">À préciser</option>
+                    {CONTRACT_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {CONTRACT_TYPE_LABELS[type]}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
-
-              {proposedEducation.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Formations
-                  </p>
-                  {proposedEducation.map((item, index) => {
-                    const school = fieldValue(item.school);
-                    const degree = fieldValue(item.degree);
-                    if (!school) return null;
-                    return (
-                      <label
-                        key={`education-${index}-${school}`}
-                        className="flex items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs"
-                      >
-                        <input
-                          type="checkbox"
-                          className="mt-0.5"
-                          checked={selectedEducation.has(index)}
-                          onChange={() => toggleEducation(index)}
-                        />
-                        <span>
-                          <span className="font-medium text-foreground">
-                            {school}
-                          </span>
-                          {degree ? (
-                            <span className="text-muted-foreground">
-                              {" "}
-                              · {degree}
-                            </span>
-                          ) : null}
-                        </span>
-                      </label>
-                    );
-                  })}
+                <div className="space-y-1">
+                  <Label htmlFor="cv-location">Localisation</Label>
+                  <Input
+                    id="cv-location"
+                    value={location}
+                    placeholder="ex: Paris, France"
+                    onChange={(e) => setLocation(e.target.value)}
+                  />
                 </div>
-              )}
-
-              {proposedLanguages.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Langues
-                  </p>
-                  {proposedLanguages.map((item, index) => {
-                    const name = fieldValue(item.name);
-                    if (!name) return null;
-                    return (
-                      <div
-                        key={`language-${index}-${name}`}
-                        className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs"
-                      >
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedLanguages.has(index)}
-                            onChange={() => toggleLanguage(index)}
-                          />
-                          <span className="font-medium text-foreground">
-                            {name}
-                          </span>
-                        </label>
-                        <select
-                          className="h-7 rounded-md border border-input bg-background px-2 text-xs"
-                          value={languageLevels[index] ?? ""}
-                          onChange={(event) =>
-                            setLanguageLevels((prev) => ({
-                              ...prev,
-                              [index]: event.target.value as LanguageLevel | "",
-                            }))
-                          }
-                        >
-                          <option value="">Niveau à choisir</option>
-                          {LANGUAGE_LEVELS.map((level) => (
-                            <option key={level} value={level}>
-                              {level === "native" ? "Natif" : level}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {proposedCertifications.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Certifications détectées
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    L&apos;ajout automatique des certifications n&apos;est pas
-                    encore disponible. Vous pouvez les reprendre dans
-                    l&apos;onglet Formation.
-                  </p>
-                  {proposedCertifications.slice(0, 4).map((item, index) => {
-                    const name =
-                      fieldValue(item.name) || `Certification ${index + 1}`;
-                    const issuer = fieldValue(item.issuer);
-                    return (
-                      <p
-                        key={`certification-${index}-${name}`}
-                        className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground"
-                      >
-                        {name}
-                        {issuer ? ` · ${issuer}` : ""}
-                      </p>
-                    );
-                  })}
-                </div>
-              )}
-
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={status === "adding" || addableProfileCount === 0}
-                onClick={handleAddProfileItems}
-              >
-                {status === "adding" ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Ajout…
-                  </>
-                ) : (
-                  `Ajouter ${addableProfileCount} proposition${
-                    addableProfileCount > 1 ? "s" : ""
-                  }`
-                )}
-              </Button>
-              {selectedLanguages.size > addableLanguageCount && (
-                <p className="text-xs text-muted-foreground">
-                  Choisissez un niveau pour chaque langue à ajouter.
-                </p>
-              )}
-              {addedProfileItems && (
-                <p className="text-xs text-primary">{addedProfileItems}</p>
-              )}
+              </div>
             </div>
           )}
 
-          {matchedSkills.length > 0 ? (
-            <>
-              <p className="text-sm font-medium text-foreground">
-                {matchedSkills.length} compétence
-                {matchedSkills.length > 1 ? "s" : ""} détectée
-                {matchedSkills.length > 1 ? "s" : ""}, sélectionnez celles à
-                ajouter
+          {(result.email || result.phone || result.linkedin_url) && (
+            <div className="rounded-md border border-accent-line bg-accent-soft-2 px-3 py-2">
+              <p className="text-xs font-medium text-foreground">
+                Coordonnées détectées
               </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {[result.email, result.phone, result.linkedin_url]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
+          )}
+
+          {proposedExperiences.length > 0 && (
+            <SectionShell
+              label="Expériences"
+              count={addableExperienceCount}
+              open={expanded.has("experiences")}
+              onToggle={() => toggleSection("experiences")}
+            >
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Les dates partielles sont préremplies au premier jour de la
+                  période détectée. Vérifiez-les avant ajout.
+                </p>
+                {proposedExperiences.map((item, index) => {
+                  const draft =
+                    experienceDrafts[index] ??
+                    experienceDraftFromProposal(item);
+                  const label = draft.role || `Expérience ${index + 1}`;
+                  return (
+                    <div
+                      key={`experience-${index}-${label}`}
+                      className="space-y-2 rounded-md bg-muted/40 px-2 py-2 text-xs"
+                    >
+                      <label className="flex items-center gap-2 font-medium text-foreground">
+                        <input
+                          type="checkbox"
+                          checked={selectedExperiences.has(index)}
+                          onChange={() => toggleExperience(index)}
+                        />
+                        {label}
+                      </label>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <input
+                          className="h-8 rounded-md border border-input bg-background px-2"
+                          value={draft.client_name}
+                          placeholder="Client ou entreprise *"
+                          onChange={(event) =>
+                            updateExperienceDraft(index, {
+                              client_name: event.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          className="h-8 rounded-md border border-input bg-background px-2"
+                          value={draft.role}
+                          placeholder="Rôle *"
+                          onChange={(event) =>
+                            updateExperienceDraft(index, {
+                              role: event.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          className="h-8 rounded-md border border-input bg-background px-2"
+                          type="date"
+                          value={draft.start_date}
+                          onChange={(event) =>
+                            updateExperienceDraft(index, {
+                              start_date: event.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          className="h-8 rounded-md border border-input bg-background px-2"
+                          type="date"
+                          value={draft.end_date}
+                          disabled={draft.is_current}
+                          onChange={(event) =>
+                            updateExperienceDraft(index, {
+                              end_date: event.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <label className="flex items-center gap-2 text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          checked={draft.is_current}
+                          onChange={(event) =>
+                            updateExperienceDraft(index, {
+                              is_current: event.target.checked,
+                              end_date: event.target.checked
+                                ? ""
+                                : draft.end_date,
+                            })
+                          }
+                        />
+                        Expérience en cours
+                      </label>
+                      <textarea
+                        className="min-h-16 w-full rounded-md border border-input bg-background px-2 py-1"
+                        value={draft.description}
+                        placeholder="Description"
+                        onChange={(event) =>
+                          updateExperienceDraft(index, {
+                            description: event.target.value,
+                          })
+                        }
+                      />
+                      <div className="space-y-1">
+                        <p className="font-medium text-muted-foreground">
+                          Réalisations
+                        </p>
+                        {draft.achievements.length === 0 ? (
+                          <p className="text-muted-foreground">
+                            Aucune réalisation détectée.
+                          </p>
+                        ) : (
+                          draft.achievements.map((achievement, achIndex) => (
+                            <textarea
+                              key={`experience-${index}-achievement-${achIndex}`}
+                              className="min-h-10 w-full rounded-md border border-input bg-background px-2 py-1"
+                              value={achievement}
+                              onChange={(event) =>
+                                updateExperienceAchievement(
+                                  index,
+                                  achIndex,
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionShell>
+          )}
+
+          {proposedEducation.length > 0 && (
+            <SectionShell
+              label="Formations"
+              count={selectedEducation.size}
+              open={expanded.has("education")}
+              onToggle={() => toggleSection("education")}
+            >
+              <div className="space-y-1.5">
+                {proposedEducation.map((item, index) => {
+                  const school = fieldValue(item.school);
+                  const degree = fieldValue(item.degree);
+                  if (!school) return null;
+                  return (
+                    <label
+                      key={`education-${index}-${school}`}
+                      className="flex items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs"
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={selectedEducation.has(index)}
+                        onChange={() => toggleEducation(index)}
+                      />
+                      <span>
+                        <span className="font-medium text-foreground">
+                          {school}
+                        </span>
+                        {degree ? (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            · {degree}
+                          </span>
+                        ) : null}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </SectionShell>
+          )}
+
+          {proposedLanguages.length > 0 && (
+            <SectionShell
+              label="Langues"
+              count={addableLanguageCount}
+              open={expanded.has("languages")}
+              onToggle={() => toggleSection("languages")}
+            >
+              <div className="space-y-1.5">
+                {proposedLanguages.map((item, index) => {
+                  const name = fieldValue(item.name);
+                  if (!name) return null;
+                  return (
+                    <div
+                      key={`language-${index}-${name}`}
+                      className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs"
+                    >
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedLanguages.has(index)}
+                          onChange={() => toggleLanguage(index)}
+                        />
+                        <span className="font-medium text-foreground">
+                          {name}
+                        </span>
+                      </label>
+                      <select
+                        className="h-7 rounded-md border border-input bg-background px-2 text-xs"
+                        value={languageLevels[index] ?? ""}
+                        onChange={(event) =>
+                          setLanguageLevels((prev) => ({
+                            ...prev,
+                            [index]: event.target.value as LanguageLevel | "",
+                          }))
+                        }
+                      >
+                        <option value="">Niveau à choisir</option>
+                        {LANGUAGE_LEVELS.map((level) => (
+                          <option key={level} value={level}>
+                            {level === "native" ? "Natif" : level}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
+                {selectedLanguages.size > addableLanguageCount && (
+                  <p className="text-xs text-muted-foreground">
+                    Choisissez un niveau pour chaque langue à ajouter.
+                  </p>
+                )}
+              </div>
+            </SectionShell>
+          )}
+
+          {matchedSkills.length > 0 && (
+            <SectionShell
+              label="Compétences"
+              count={selected.size}
+              open={expanded.has("skills")}
+              onToggle={() => toggleSection("skills")}
+            >
               <div className="flex flex-wrap gap-2">
                 {result.skills.map((skill) => {
                   const id = skill.skill_ref_id;
@@ -930,36 +1032,85 @@ export function CvImport({
                   );
                 })}
               </div>
-              <Button
-                type="button"
-                size="sm"
-                disabled={status === "adding" || selected.size === 0}
-                onClick={handleAddSkills}
-              >
-                {status === "adding" ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Ajout…
-                  </>
-                ) : (
-                  `Ajouter ${selected.size} compétence${selected.size > 1 ? "s" : ""}`
-                )}
-              </Button>
-              {added !== null && (
-                <p className="text-xs text-primary">
-                  {added} compétence{added > 1 ? "s" : ""} ajoutée
-                  {added > 1 ? "s" : ""} à votre profil.
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Aucune compétence reconnue automatiquement. Vous pourrez les
-              ajouter manuellement.
-            </p>
+            </SectionShell>
+          )}
+
+          {proposedCertifications.length > 0 && (
+            <div className="space-y-1.5 rounded-md border border-border/60 bg-background p-3">
+              <p className="text-xs font-medium text-muted-foreground">
+                Certifications détectées
+              </p>
+              <p className="text-xs text-muted-foreground">
+                L&apos;ajout automatique des certifications n&apos;est pas
+                encore disponible. Vous pouvez les reprendre dans l&apos;onglet
+                Formation.
+              </p>
+              {proposedCertifications.slice(0, 4).map((item, index) => {
+                const name =
+                  fieldValue(item.name) || `Certification ${index + 1}`;
+                const issuer = fieldValue(item.issuer);
+                return (
+                  <p
+                    key={`certification-${index}-${name}`}
+                    className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground"
+                  >
+                    {name}
+                    {issuer ? ` · ${issuer}` : ""}
+                  </p>
+                );
+              })}
+            </div>
+          )}
+
+          <Button
+            type="button"
+            className="w-full"
+            disabled={status === "adding" || totalToAdd === 0}
+            onClick={handleApply}
+          >
+            {status === "adding" ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Ajout…
+              </>
+            ) : (
+              `Ajouter ${totalToAdd} élément${totalToAdd > 1 ? "s" : ""}`
+            )}
+          </Button>
+          {appliedSummary && (
+            <p className="text-xs text-primary">{appliedSummary}</p>
           )}
         </div>
       )}
     </div>
   );
+}
+
+function buildSummaryText(counts: {
+  identity: boolean;
+  experiences: number;
+  education: number;
+  languages: number;
+  skills: number;
+}): string {
+  const parts: string[] = [];
+  if (counts.experiences > 0)
+    parts.push(
+      `${counts.experiences} expérience${counts.experiences > 1 ? "s" : ""}`,
+    );
+  if (counts.education > 0)
+    parts.push(
+      `${counts.education} formation${counts.education > 1 ? "s" : ""}`,
+    );
+  if (counts.languages > 0)
+    parts.push(`${counts.languages} langue${counts.languages > 1 ? "s" : ""}`);
+  if (counts.skills > 0)
+    parts.push(`${counts.skills} compétence${counts.skills > 1 ? "s" : ""}`);
+  if (counts.identity) parts.push("votre titre et localisation");
+  if (parts.length === 0) return "Rien n'a été ajouté.";
+  const joined =
+    parts.length === 1
+      ? parts[0]
+      : `${parts.slice(0, -1).join(", ")} et ${parts[parts.length - 1]}`;
+  return `${joined} ajouté${parts.length > 1 || counts.experiences > 1 ? "s" : ""} à votre profil.`;
 }

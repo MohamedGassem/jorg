@@ -26,8 +26,13 @@ vi.mock("@/lib/api", () => ({
 }));
 
 // Stub CvImport so the CV path can be exercised without a real file upload.
+// The stub exposes a button that fires onApplied, mimicking the single CTA.
 vi.mock("@/components/cv-import", () => ({
-  CvImport: () => <div data-testid="cv-import">CvImport</div>,
+  CvImport: ({ onApplied }: { onApplied?: () => void }) => (
+    <button data-testid="cv-import" onClick={() => onApplied?.()}>
+      apply-import
+    </button>
+  ),
 }));
 
 import { api } from "@/lib/api";
@@ -87,22 +92,24 @@ describe("CandidateOnboardingChoice", () => {
     );
     expect(api.post).toHaveBeenCalledWith("/candidates/me/onboarding/complete");
     await waitFor(() =>
-      expect(push).toHaveBeenCalledWith("/candidate/profile"),
+      expect(push).toHaveBeenCalledWith("/candidate/profile?welcome=1"),
     );
   });
 
-  it("cv path reveals the importer and finishes on the profile", async () => {
+  it("cv path applies the import, completes onboarding, lands on profile with a welcome flag", async () => {
     const user = userEvent.setup();
     render(<CandidateOnboardingChoice />);
     await user.click(screen.getByRole("button", { name: /importer mon cv/i }));
-    expect(screen.getByTestId("cv-import")).toBeInTheDocument();
+    const applyButton = screen.getByTestId("cv-import");
 
-    await user.click(screen.getByRole("button", { name: /voir mon profil/i }));
+    await user.click(applyButton);
     await waitFor(() =>
       expect(api.post).toHaveBeenCalledWith(
         "/candidates/me/onboarding/complete",
       ),
     );
-    expect(push).toHaveBeenCalledWith("/candidate/profile");
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith("/candidate/profile?welcome=1"),
+    );
   });
 });
