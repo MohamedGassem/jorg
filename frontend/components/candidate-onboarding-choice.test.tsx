@@ -6,6 +6,7 @@ import { CandidateOnboardingChoice } from "@/components/candidate-onboarding-cho
 const push = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/api", () => ({

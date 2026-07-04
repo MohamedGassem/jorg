@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { JorgWordmark } from "@/components/ui/JorgWordmark";
 import { AuthLegalFooter } from "@/components/AuthLegalFooter";
 import { api, ApiError } from "@/lib/api";
+import { safeInternalPath } from "@/lib/safe-path";
 import { cn } from "@/lib/utils";
 import type { AuthResponse } from "@/types/api";
 
@@ -88,9 +89,12 @@ function LoginForm() {
         password,
       });
       const { role } = jwtDecode<JwtPayload>(data.access_token);
-      router.push(
-        role === "candidate" ? "/candidate/dashboard" : "/recruiter/dashboard",
-      );
+      const dest =
+        safeInternalPath(searchParams.get("next")) ??
+        (role === "candidate"
+          ? "/candidate/dashboard"
+          : "/recruiter/dashboard");
+      router.push(dest);
     } catch (err) {
       console.error("[login]", err);
       if (err instanceof ApiError) {
