@@ -349,7 +349,7 @@ export default function RecruiterSettingsPage() {
                     key={m.user_id}
                     className="flex items-center gap-3 border-t border-line px-[26px] py-3"
                   >
-                    <span className="grid size-[34px] shrink-0 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[13px] font-semibold text-primary">
+                    <span className="grid size-[34px] shrink-0 place-items-center rounded-full bg-people-soft font-heading text-[13px] font-semibold text-people">
                       {initialsFromParts(m.first_name, m.last_name, m.email)}
                     </span>
                     <div className="min-w-0">

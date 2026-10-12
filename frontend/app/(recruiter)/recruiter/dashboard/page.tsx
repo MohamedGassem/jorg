@@ -297,7 +297,7 @@ export default function RecruiterDashboardPage() {
                     >
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-[11px]">
-                          <span className="grid size-8 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[12.5px] font-semibold text-primary">
+                          <span className="grid size-8 place-items-center rounded-full bg-people-soft font-heading text-[12.5px] font-semibold text-people">
                             {initialsFromParts(
                               candidate.first_name,
                               candidate.last_name,

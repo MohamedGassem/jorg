@@ -243,7 +243,7 @@ export default function CandidateDetailPage() {
           {/* Identité */}
           <section className="rounded-lg border border-line bg-surface px-[26px] py-[22px]">
             <div className="flex items-start gap-4">
-              <span className="grid size-[46px] shrink-0 place-items-center rounded-[10px] border border-accent-line bg-accent-soft font-heading text-[19px] font-semibold text-primary">
+              <span className="grid size-[46px] shrink-0 place-items-center rounded-full bg-people-soft font-heading text-[19px] font-semibold text-people">
                 {initialsFromName(name)}
               </span>
               <div className="min-w-0 flex-1">

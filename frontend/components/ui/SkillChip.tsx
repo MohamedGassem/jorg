@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import type { SkillProofState } from "@/lib/skill-proof";
 
 const BASE =
-  "inline-flex h-[22px] items-center gap-1 rounded-[5px] border px-2 font-mono text-[11px] font-medium transition-colors";
+  "inline-flex h-[22px] items-center gap-1 rounded-full border px-2.5 font-sans text-[12px] font-medium transition-colors";
 
 // Home-made proof seal (glyphe maison; lucide stays reserved for utilitarian
 // actions). A scalloped disc reads as a wax seal / stamp of evidence. Filled

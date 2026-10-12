@@ -370,7 +370,7 @@ export default function OpportunityDetailPage() {
                 key={c.user_id}
                 className="flex items-center gap-3 border-b border-line px-[22px] py-3 last:border-b-0"
               >
-                <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[12.5px] font-semibold text-primary">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-people-soft font-heading text-[12.5px] font-semibold text-people">
                   {initialsFromParts(c.first_name, c.last_name, c.email)}
                 </span>
                 <div className="min-w-0 flex-1">
