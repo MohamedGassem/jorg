@@ -5,6 +5,7 @@
 // de lecture).
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Upload } from "lucide-react";
 import { profileReadability } from "@/lib/completion";
@@ -40,6 +41,61 @@ const SOMMAIRE_ITEMS: {
   { anchor: "langues", label: "Langues", key: "langues" },
 ];
 
+// Section active = la dernière dont le haut a franchi la ligne de lecture
+// (`threshold` px depuis le haut du viewport). En bas de page, la dernière
+// section l'emporte même si elle est trop courte pour atteindre la ligne.
+export function pickActiveSection(
+  tops: number[],
+  threshold: number,
+  atBottom: boolean,
+): number {
+  if (tops.length === 0) return -1;
+  if (atBottom) return tops.length - 1;
+  let active = 0;
+  tops.forEach((top, i) => {
+    if (top <= threshold) active = i;
+  });
+  return active;
+}
+
+function useActiveSection(anchors: string[]): string | null {
+  const [active, setActive] = useState<string | null>(null);
+
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const sections = anchors
+        .map((id) => document.getElementById(id))
+        .filter((el): el is HTMLElement => el !== null);
+      const atBottom =
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 2;
+      const index = pickActiveSection(
+        sections.map((el) => el.getBoundingClientRect().top),
+        window.innerHeight * 0.35,
+        atBottom,
+      );
+      setActive(index >= 0 ? sections[index].id : null);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [anchors]);
+
+  return active;
+}
+
+const SOMMAIRE_ANCHORS = SOMMAIRE_ITEMS.map((item) => item.anchor);
+
 function RailBlock({
   label,
   children,
@@ -48,8 +104,8 @@ function RailBlock({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border-t border-line pt-4">
-      <p className="j-overline mb-2.5">{label}</p>
+    <div className="border-t border-line-strong pt-4">
+      <p className="j-overline mb-2.5 text-ink-2">{label}</p>
       {children}
     </div>
   );
@@ -80,25 +136,35 @@ export function ProfileRail({
     skills,
     projection,
   );
+  const activeAnchor = useActiveSection(SOMMAIRE_ANCHORS);
 
   return (
-    <aside className="w-full shrink-0 lg:sticky lg:top-[calc(var(--app-bar-h)+1.5rem)] lg:w-[264px]">
+    <aside className="w-full shrink-0 rounded-xl border border-line-strong bg-card p-4 shadow-sm lg:sticky lg:top-[calc(var(--app-bar-h)+1.5rem)] lg:w-[264px]">
       <nav aria-label="Sommaire">
-        <p className="j-overline mb-2.5">Sommaire</p>
+        <p className="j-overline mb-2.5 text-ink-2">Sommaire</p>
         <ul className="space-y-0.5">
-          {SOMMAIRE_ITEMS.map((item) => (
-            <li key={item.anchor}>
-              <Link
-                href={`#${item.anchor}`}
-                className="flex items-center justify-between rounded-[5px] px-2 py-1.5 text-[13.5px] text-ink-2 transition-colors hover:bg-accent-soft-2 hover:text-ink"
-              >
-                <span>{item.label}</span>
-                <span className="font-sans text-[11.5px] tabular-nums text-ink-3">
-                  {counts[item.key]}
-                </span>
-              </Link>
-            </li>
-          ))}
+          {SOMMAIRE_ITEMS.map((item) => {
+            const isActive = item.anchor === activeAnchor;
+            return (
+              <li key={item.anchor}>
+                <Link
+                  href={`#${item.anchor}`}
+                  aria-current={isActive ? "location" : undefined}
+                  className={cn(
+                    "flex items-center justify-between rounded-[5px] border-l-2 px-2 py-1.5 text-[13.5px] transition-colors",
+                    isActive
+                      ? "border-primary bg-accent-soft font-medium text-ink"
+                      : "border-transparent text-ink hover:bg-accent-soft-2",
+                  )}
+                >
+                  <span>{item.label}</span>
+                  <span className="rounded-full bg-accent-soft px-1.5 font-sans text-[11.5px] font-medium tabular-nums text-primary">
+                    {counts[item.key]}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 
@@ -118,7 +184,7 @@ export function ProfileRail({
           </div>
           {readability.actions.length > 0 && (
             <>
-              <p className="j-overline mb-1.5 mt-3">À améliorer</p>
+              <p className="j-overline mb-1.5 mt-3 text-ink-2">À améliorer</p>
               <ul className="space-y-1.5">
                 {readability.actions.map((action) => (
                   <li
