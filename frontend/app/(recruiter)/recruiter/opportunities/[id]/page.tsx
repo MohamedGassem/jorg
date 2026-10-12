@@ -349,7 +349,7 @@ export default function OpportunityDetailPage() {
             <h2 className="font-heading text-[17px] font-semibold">
               Shortlist
             </h2>
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-accent-line bg-accent-soft px-1.5 font-mono text-[11px] font-medium text-primary">
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-accent-line bg-accent-soft px-1.5 font-sans text-[11px] font-medium text-primary">
               {opp.shortlist.length}
             </span>
           </div>
@@ -384,7 +384,7 @@ export default function OpportunityDetailPage() {
                 {c.match_score !== null && (
                   <span
                     className={cn(
-                      "inline-flex h-[22px] items-center rounded-[5px] border px-2 font-mono text-[11px] font-medium",
+                      "inline-flex h-[22px] items-center rounded-[5px] border px-2 font-sans text-[11px] font-medium",
                       c.match_score >= 70
                         ? "border-accent-line bg-accent-soft text-primary"
                         : "border-line bg-paper-2 text-ink-2",

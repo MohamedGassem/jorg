@@ -422,7 +422,7 @@ export default function RecruiterDashboardPage() {
                         · Dossier généré
                         {doc.template_name ? ` — ${doc.template_name}` : ""}
                       </span>
-                      <span className="mt-0.5 block font-mono text-[11.5px] text-ink-4">
+                      <span className="mt-0.5 block font-sans text-[11.5px] text-ink-4">
                         {relativeDate(doc.generated_at)}
                       </span>
                     </span>

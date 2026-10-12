@@ -160,7 +160,7 @@ export function RecruiterAppBar() {
     <span className="flex items-center gap-2">
       Espace recruteur
       {org && (
-        <span className="inline-flex h-6 items-center gap-1.5 rounded-[5px] border border-line-2 bg-paper-2 px-2 font-mono text-[11.5px] font-medium text-ink-2">
+        <span className="inline-flex h-6 items-center gap-1.5 rounded-[5px] border border-line-2 bg-paper-2 px-2 font-sans text-[11.5px] font-medium text-ink-2">
           <span className="grid size-[18px] place-items-center rounded border border-line bg-surface font-heading text-[9px] font-semibold">
             {initialsFromName(org.name)}
           </span>

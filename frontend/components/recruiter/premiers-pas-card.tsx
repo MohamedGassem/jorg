@@ -75,7 +75,7 @@ export function PremiersPasCard({
             >
               <span
                 className={cn(
-                  "mt-0.5 grid size-[26px] shrink-0 place-items-center rounded-full border font-mono text-[12.5px] font-semibold",
+                  "mt-0.5 grid size-[26px] shrink-0 place-items-center rounded-full border font-sans text-[12.5px] font-semibold",
                   done
                     ? "border-positive-border bg-positive-soft text-positive"
                     : "border-line-strong bg-paper-2 text-ink-3",

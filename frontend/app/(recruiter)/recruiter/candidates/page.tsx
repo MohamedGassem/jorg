@@ -144,7 +144,7 @@ function CandidateExperiencePanel({
                 <span className="text-xs font-semibold">
                   {exp.client_name} - {exp.role}
                 </span>
-                <span className="font-mono text-[10px] text-ink-3">
+                <span className="font-sans text-[10px] text-ink-3">
                   {frMonthYear(exp.start_date)}
                   {exp.end_date
                     ? ` → ${frMonthYear(exp.end_date)}`

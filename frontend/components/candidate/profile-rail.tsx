@@ -93,7 +93,7 @@ export function ProfileRail({
                 className="flex items-center justify-between rounded-[5px] px-2 py-1.5 text-[13.5px] text-ink-2 transition-colors hover:bg-accent-soft-2 hover:text-ink"
               >
                 <span>{item.label}</span>
-                <span className="font-mono text-[11.5px] tabular-nums text-ink-3">
+                <span className="font-sans text-[11.5px] tabular-nums text-ink-3">
                   {counts[item.key]}
                 </span>
               </Link>

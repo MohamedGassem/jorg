@@ -67,7 +67,7 @@ function ReadSection({
       <div className="mb-4 flex items-baseline gap-2.5">
         <p className="j-overline">{label}</p>
         {count != null && (
-          <span className="font-mono text-[11.5px] tabular-nums text-ink-3">
+          <span className="font-sans text-[11.5px] tabular-nums text-ink-3">
             {count}
           </span>
         )}
@@ -98,7 +98,7 @@ function ReadExperience({ exp }: { exp: Experience }) {
         <p className="min-w-0 font-heading text-[15px] font-semibold">
           {exp.role}
         </p>
-        <span className="shrink-0 font-mono text-[12px] tabular-nums text-ink-3">
+        <span className="shrink-0 font-sans text-[12px] tabular-nums text-ink-3">
           {dates}
         </span>
       </div>
@@ -124,7 +124,7 @@ function ReadExperience({ exp }: { exp: Experience }) {
                     {ach.skill_tags.map((tag) => (
                       <span
                         key={tag.skill_ref_id}
-                        className="inline-flex h-[20px] items-center rounded-[5px] border border-accent-line bg-accent-soft-2 px-1.5 font-mono text-[10.5px] font-medium text-primary"
+                        className="inline-flex h-[20px] items-center rounded-[5px] border border-accent-line bg-accent-soft-2 px-1.5 font-sans text-[10.5px] font-medium text-primary"
                       >
                         {tag.skill_ref.name}
                       </span>
@@ -153,7 +153,7 @@ function CondensedReadRow({
       onClick={onExpand}
       className="flex w-full items-baseline gap-3 border-t border-line px-1 py-2 text-left transition-colors hover:bg-accent-soft-2"
     >
-      <span className="w-[92px] shrink-0 font-mono text-[12px] tabular-nums text-ink-3">
+      <span className="w-[92px] shrink-0 font-sans text-[12px] tabular-nums text-ink-3">
         {yearRange(exp)}
       </span>
       <span className="min-w-0 text-[13.5px] text-ink-2">
@@ -369,7 +369,7 @@ export function ProfileReadView({
             "Titre et localisation à compléter"}
         </p>
         {meta.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[12px] text-ink-2">
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[12px] text-ink-2">
             {meta.map((item, i) => (
               <span key={i} className="flex items-center gap-3">
                 {i > 0 && <span className="text-ink-4">·</span>}

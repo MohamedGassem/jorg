@@ -150,7 +150,7 @@ export function ProfileCover({
       {/* Zone Conditions (survol/focus → tiroir Conditions) */}
       <div className="group/conditions mt-3 flex items-start justify-between gap-4">
         {meta.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[12px] text-ink-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[12px] text-ink-2">
             {meta.map((item, i) => (
               <span key={i} className="flex items-center gap-3">
                 {i > 0 && <span className="text-ink-4">·</span>}
@@ -159,7 +159,7 @@ export function ProfileCover({
             ))}
           </div>
         ) : (
-          <p className="font-mono text-[12px] text-ink-3">
+          <p className="font-sans text-[12px] text-ink-3">
             Conditions à compléter
           </p>
         )}
@@ -179,7 +179,7 @@ export function ProfileCover({
       {/* Zone Contact (survol/focus → tiroir Contact) */}
       <div className="group/contact mt-4 flex items-center justify-between gap-4">
         {hasContact ? (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[12px] text-ink-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[12px] text-ink-2">
             {profile.phone && <span>{profile.phone}</span>}
             {profile.email_contact && (
               <span className="flex items-center gap-3">
@@ -202,7 +202,7 @@ export function ProfileCover({
             )}
           </div>
         ) : (
-          <p className="font-mono text-[12px] text-ink-3">
+          <p className="font-sans text-[12px] text-ink-3">
             Coordonnées à compléter
           </p>
         )}

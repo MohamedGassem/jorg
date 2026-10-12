@@ -45,7 +45,7 @@ function FicheSection({
       <div className="flex items-center gap-2 border-b border-line px-[22px] pb-3.5 pt-4">
         <h2 className="font-heading text-[17px] font-semibold">{title}</h2>
         {count != null && (
-          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-accent-line bg-accent-soft px-1.5 font-mono text-[11px] font-medium text-primary">
+          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-accent-line bg-accent-soft px-1.5 font-sans text-[11px] font-medium text-primary">
             {count}
           </span>
         )}
@@ -90,7 +90,7 @@ function ExperienceBlock({ exp }: { exp: Experience }) {
                 {ach.skill_tags.map((tag) => (
                   <span
                     key={tag.skill_ref_id}
-                    className="inline-flex h-[22px] items-center rounded-[5px] border border-accent-line bg-accent-soft-2 px-2 font-mono text-[11px] font-medium text-primary"
+                    className="inline-flex h-[22px] items-center rounded-[5px] border border-accent-line bg-accent-soft-2 px-2 font-sans text-[11px] font-medium text-primary"
                   >
                     {tag.skill_ref.name}
                   </span>

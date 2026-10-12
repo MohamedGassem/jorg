@@ -33,7 +33,9 @@ Dark mode keeps the same roles with re-derived values (see `[data-theme="dark"]`
 ## Typography
 
 - **Figtree** for UI and headings (`--font-sans`, `--font-heading`). No serif.
-- **IBM Plex Mono** only for data-like values (codes, identifiers).
+- **IBM Plex Mono** only for codes meant to be copied (organisation join code).
+- Headings (`font-heading`) render one step heavier than their utility weight:
+  `font-semibold` becomes 700, `font-medium` becomes 600.
 - Overlines (`.j-overline`): Figtree 600, 12.5px, sentence case.
 - Table headers (`.j-th`): Figtree 600, 11.5px, uppercase, light tracking.
 

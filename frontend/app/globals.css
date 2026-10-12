@@ -362,6 +362,18 @@
   }
 }
 
+/* Headings: one step heavier than their utility weight so Figtree titles
+   read with the weight of the "Papier & encre" specimen. */
+@layer utilities {
+  .font-heading.font-semibold {
+    font-weight: 700;
+    letter-spacing: -0.015em;
+  }
+  .font-heading.font-medium {
+    font-weight: 600;
+  }
+}
+
 @layer components {
   .j-fade-rise {
     animation: j-fade-rise 120ms ease-out;
