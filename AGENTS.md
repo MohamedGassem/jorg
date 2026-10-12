@@ -128,3 +128,13 @@ When finishing a task, report only:
 - risks or follow-up items
 
 Keep it concise.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs live in Linear (team Mohamed Gassem, project Jorg). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical triage roles map to Linear status + labels. See `docs/agents/triage-labels.md`.

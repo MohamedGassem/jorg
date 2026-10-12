@@ -507,6 +507,26 @@ def build_context(model: DossierRenderModel) -> dict[str, Any]:
     }
 
 
+def render_model_to_bytes(template_path: str, model: DossierRenderModel) -> bytes:
+    """Render a docxtpl (Jinja2) template from an already-built render model.
+
+    The seam the L3 pipeline renders through: the dossier is resolved into the
+    typed model first (consent + arrangement applied), then frozen and rendered
+    from the very same model, so the snapshot and the document never diverge.
+    """
+    tpl = DocxTemplate(template_path)
+    context = build_context(model)
+    try:
+        tpl.render(context, jinja_env=_JINJA_ENV)
+    except (FileNotFoundError, zipfile.BadZipFile, PackageNotFoundError) as exc:
+        raise ValueError(f"Template file unreadable: {template_path}") from exc
+    except TemplateSyntaxError as exc:
+        raise ValueError(f"Template contains invalid Jinja2 syntax: {exc.message}") from exc
+    buf = io.BytesIO()
+    tpl.save(buf)
+    return buf.getvalue()
+
+
 def generate_document(
     template_path: str,
     profile: CandidateProfileProtocol,
@@ -523,7 +543,6 @@ def generate_document(
     temporal_precision: str = "exact",
 ) -> bytes:
     """Render a docxtpl (Jinja2) Word template and return the result as bytes."""
-    tpl = DocxTemplate(template_path)
     model = build_render_model(
         profile,
         experiences,
@@ -537,13 +556,4 @@ def generate_document(
         mask_client_names=mask_client_names,
         temporal_precision=temporal_precision,
     )
-    context = build_context(model)
-    try:
-        tpl.render(context, jinja_env=_JINJA_ENV)
-    except (FileNotFoundError, zipfile.BadZipFile, PackageNotFoundError) as exc:
-        raise ValueError(f"Template file unreadable: {template_path}") from exc
-    except TemplateSyntaxError as exc:
-        raise ValueError(f"Template contains invalid Jinja2 syntax: {exc.message}") from exc
-    buf = io.BytesIO()
-    tpl.save(buf)
-    return buf.getvalue()
+    return render_model_to_bytes(template_path, model)

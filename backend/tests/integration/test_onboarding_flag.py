@@ -65,6 +65,47 @@ async def test_onboarding_completed_can_be_set_via_profile_update(client: AsyncC
     assert resp.json()["onboarding_completed"] is True
 
 
+async def test_onboarding_complete_endpoint_sets_flag(client: AsyncClient) -> None:
+    await client.post(
+        "/auth/register",
+        json={"email": "endpoint@test.com", "password": "password123", "role": "candidate"},
+    )
+    login = await client.post(
+        "/auth/login",
+        json={"email": "endpoint@test.com", "password": "password123"},
+    )
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = await client.post("/candidates/me/onboarding/complete", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["onboarding_completed"] is True
+
+    # Idempotent: calling again keeps the flag set.
+    again = await client.post("/candidates/me/onboarding/complete", headers=headers)
+    assert again.status_code == 200
+    assert again.json()["onboarding_completed"] is True
+
+    profile_resp = await client.get("/candidates/me/profile", headers=headers)
+    assert profile_resp.json()["onboarding_completed"] is True
+
+
+async def test_onboarding_complete_endpoint_rejects_non_candidate(client: AsyncClient) -> None:
+    await client.post(
+        "/auth/register",
+        json={"email": "reco@test.com", "password": "password123", "role": "recruiter"},
+    )
+    login = await client.post(
+        "/auth/login",
+        json={"email": "reco@test.com", "password": "password123"},
+    )
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = await client.post("/candidates/me/onboarding/complete", headers=headers)
+    assert resp.status_code == 403
+
+
 @pytest.mark.asyncio
 async def test_recruiter_registration_saves_first_and_last_name(client: AsyncClient) -> None:
     await client.post(

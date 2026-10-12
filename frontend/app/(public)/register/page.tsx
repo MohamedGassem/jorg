@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { JorgWordmark } from "@/components/ui/JorgWordmark";
 import { AuthLegalFooter } from "@/components/AuthLegalFooter";
 import { api, ApiError } from "@/lib/api";
+import { safeInternalPath } from "@/lib/safe-path";
 import { cn } from "@/lib/utils";
 
 type Role = "candidate" | "recruiter";
@@ -108,11 +109,20 @@ function RegisterForm() {
           ? { alpha_invite_code: alphaCode }
           : {}),
       });
-      router.push(
-        role === "candidate"
-          ? "/onboarding/candidate/profile"
-          : "/onboarding/recruiter/organization",
-      );
+      // Recruiters have no onboarding tunnel (décision 5) : leur seul état
+      // bloquant est l'absence d'organisation, géré par le dashboard. Le `next`
+      // (parcours invitation, C9) est porté à travers l'onboarding candidat et
+      // consommé directement côté recruteur.
+      const next = safeInternalPath(searchParams.get("next"));
+      if (role === "candidate") {
+        router.push(
+          next
+            ? `/onboarding/candidate/profile?next=${encodeURIComponent(next)}`
+            : "/onboarding/candidate/profile",
+        );
+      } else {
+        router.push(next ?? "/recruiter/dashboard");
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Inscription échouée");
     } finally {

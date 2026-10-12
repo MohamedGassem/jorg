@@ -14,7 +14,7 @@ export function LandingAlpha() {
           Recruteurs : votre code d&apos;accès vous place dans une organisation
           de démonstration pour explorer les fonctionnalités, avec des profils
           d&apos;exemple et le dossier réel de Mohamed, le créateur de Jorg.
-          Candidats : créez votre dossier de compétences dès maintenant.
+          Candidats : créez votre profil dès maintenant.
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/register?role=recruiter">
@@ -24,7 +24,7 @@ export function LandingAlpha() {
           </Link>
           <Link href="/register?role=candidate">
             <Button size="lg" variant="outline" className="w-full sm:w-auto">
-              Créer mon dossier de compétences
+              Créer mon profil
             </Button>
           </Link>
         </div>

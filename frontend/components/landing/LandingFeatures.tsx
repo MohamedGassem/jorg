@@ -11,19 +11,19 @@ const FEATURES: { icon: LucideIcon; title: string; description: string }[] = [
     icon: FileText,
     title: "Profil structuré",
     description:
-      "Expériences, compétences et réalisations rangées au même endroit, prêtes à alimenter des dossiers propres.",
+      "Expériences, compétences et réalisations au même endroit. Une seule source à maintenir, qui alimente tous les dossiers.",
   },
   {
     icon: ShieldCheck,
-    title: "Accès contrôlé et tracé",
+    title: "Accès cadré par le candidat",
     description:
-      "Le candidat décide qui consulte son profil. Chaque consultation lui est visible, chaque accès est révocable, et l'historique n'est jamais effacé.",
+      "Le candidat accorde l'accès et en fixe le cadre : anonymisation, TJM masqué, clients masqués, expériences exclues. Il voit chaque dossier généré à partir de son profil et peut révoquer à tout moment.",
   },
   {
     icon: FolderOpen,
     title: "Dossiers sur mesure",
     description:
-      "Transformez un profil autorisé en dossier client-ready en trente secondes, adapté au poste et au format voulu.",
+      "Un profil autorisé devient un dossier prêt à envoyer en 30 secondes, au format attendu par le client.",
   },
 ];
 
@@ -33,7 +33,8 @@ export function LandingFeatures() {
       <div className="text-center">
         <p className="j-overline">Conçu pour la confiance</p>
         <h2 className="mt-3 font-heading text-2xl font-semibold sm:text-3xl">
-          Un outil métier qui produit des dossiers propres et traçables
+          Un profil structuré, des accès maîtrisés, des dossiers prêts pour le
+          client
         </h2>
       </div>
       <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">

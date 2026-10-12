@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     # Alpha invite gate — set to False to allow recruiter registration without a code
     alpha_invite_required: bool = True
 
+    # E2E smoke test seam: when true, exposes a read-only test-support route
+    # returning the latest invitation token so the browser test can skip email.
+    # MUST stay false in production.
+    e2e_test_mode: bool = False
+
     @field_validator("gotenberg_url")
     @classmethod
     def _validate_gotenberg_url(cls, v: str | None) -> str | None:

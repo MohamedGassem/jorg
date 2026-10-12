@@ -1,5 +1,7 @@
-/* Fonts: IBM Plex Serif (headings) + IBM Plex Sans (body) + IBM Plex Mono (meta),
-   loaded via next/font/google. Tokens from mockup/design_handoff_jorg. */
+/* Fonts: Newsreader (display/headings) + IBM Plex Sans (body) + IBM Plex Mono
+   (registre), loaded via next/font/google. Palette: "Dossier relié" refonte
+   (docs/plans/refonte-ui-mon-dossier.md, décision 2), validated on the
+   /design-preview specimen before promotion to these global tokens. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -107,29 +109,30 @@
 
 :root,
 [data-theme="light"] {
-  /* Handoff tokens (mockup/design_handoff_jorg/jorg-system.css) */
-  --paper: #ffffff;
-  --paper-2: #faf8f4;
-  --paper-3: #f3f1ec;
-  --ink: #1d1b17;
-  --ink-2: #57524a;
-  --ink-3: #8b857a;
-  --ink-4: #b4afa4;
-  --line: #e8e4db;
-  --line-2: #ded9ce;
-  --line-strong: #cfc9bc;
-  --positive: #3c7a5b;
-  --positive-soft: #e8f0ea;
-  --warn: #9a6a22;
+  /* "Dossier relié" palette — light canonique (plan décision 2, from the
+     /design-preview specimen). Neutres violacés + encre violette #4A3AA8. */
+  --paper: #f6f4ef;
+  --paper-2: #efeae1;
+  --paper-3: #e7e2d8;
+  --ink: #232029;
+  --ink-2: #57525e;
+  --ink-3: #857f8d;
+  --ink-4: #b3adba;
+  --line: #e4dfd7;
+  --line-2: #d9d3ce;
+  --line-strong: #cbc4d3;
+  --positive: #2e6b4f;
+  --positive-soft: #e5efe9;
+  --warn: #96682a;
   --warn-soft: #f4ecdd;
   --accent-soft: color-mix(in srgb, var(--brand-primary) 12%, var(--paper));
   --accent-soft-2: color-mix(in srgb, var(--brand-primary) 7%, var(--paper));
   --accent-line: color-mix(in srgb, var(--brand-primary) 30%, var(--paper));
   --accent-ink: #ffffff;
-  --shadow-sm: 0 1px 0 rgba(29, 27, 23, 0.02), 0 1px 2px rgba(29, 27, 23, 0.04);
-  --shadow-md: 0 2px 4px rgba(29, 27, 23, 0.04), 0 8px 24px rgba(29, 27, 23, 0.05);
+  --shadow-sm: 0 1px 0 rgba(35, 32, 41, 0.02), 0 1px 2px rgba(35, 32, 41, 0.04);
+  --shadow-md: 0 2px 4px rgba(35, 32, 41, 0.04), 0 8px 24px rgba(35, 32, 41, 0.05);
 
-  --bg-app: #f1efea;
+  --bg-app: #ebe7de;
   --bg-surface: var(--paper);
   --bg-surface-elevated: var(--paper-2);
   --border-subtle: var(--line);
@@ -137,8 +140,8 @@
   --text-primary: var(--ink);
   --text-secondary: var(--ink-2);
   --text-muted: var(--ink-3);
-  --brand-primary: #5b53d6;
-  --brand-primary-hover: color-mix(in srgb, #5b53d6 88%, black);
+  --brand-primary: #4a3aa8;
+  --brand-primary-hover: #3b2e88;
   --brand-primary-soft: var(--accent-soft-2);
   --brand-primary-border: var(--accent-line);
   --accent-amber: var(--warn);
@@ -182,7 +185,9 @@
   --chart-3: var(--warning);
   --chart-4: oklch(0.55 0.08 250);
   --chart-5: oklch(0.62 0.05 320);
-  --radius: 0.5rem;
+  /* Registre aesthetic (plan tell #1): tighter uniform radius. Buttons/inputs
+     land at 6px, chips/badges at 5px via explicit per-primitive values. */
+  --radius: 0.375rem;
   --sidebar: var(--bg-surface-elevated);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -195,25 +200,27 @@
 
 [data-theme="dark"],
 .dark {
-  --paper: #1a191f;
-  --paper-2: #201e26;
-  --paper-3: #16151b;
-  --ink: #f0eee8;
-  --ink-2: #aaa5ad;
-  --ink-3: #79747e;
-  --ink-4: #565160;
-  --line: #2c2a33;
-  --line-2: #353240;
-  --line-strong: #423e4d;
-  --positive: #6dae8a;
-  --positive-soft: #1b2a23;
-  --warn: #cca15f;
-  --warn-soft: #2a2419;
-  --accent-ink: #16151b;
+  /* "Dossier relié" palette — dark re-dérivé from the same hues (plan
+     décision 1: no dedicated dark design effort in V1, neutres violacés). */
+  --paper: #1e1b26;
+  --paper-2: #26222f;
+  --paper-3: #17151d;
+  --ink: #f1edf4;
+  --ink-2: #aba4b5;
+  --ink-3: #7c7587;
+  --ink-4: #565062;
+  --line: #2c2836;
+  --line-2: #363043;
+  --line-strong: #453f54;
+  --positive: #74b697;
+  --positive-soft: #1a2a22;
+  --warn: #cda264;
+  --warn-soft: #2a2318;
+  --accent-ink: #16141b;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.28);
 
-  --bg-app: #121116;
+  --bg-app: #141219;
   --bg-surface: var(--paper);
   --bg-surface-elevated: var(--paper-2);
   --border-subtle: var(--line);
@@ -221,8 +228,8 @@
   --text-primary: var(--ink);
   --text-secondary: var(--ink-2);
   --text-muted: var(--ink-3);
-  --brand-primary: #8d86ef;
-  --brand-primary-hover: color-mix(in srgb, #8d86ef 88%, white);
+  --brand-primary: #a99cf3;
+  --brand-primary-hover: #c3b9f8;
   --brand-primary-soft: var(--accent-soft-2);
   --brand-primary-border: var(--accent-line);
   --accent-amber: var(--warn);
@@ -321,5 +328,39 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--ink-4);
+  }
+}
+
+/* Home-made entry animations (plan tell #6): replace the default
+   tw-animate-css zoom/blur entries with two restrained keyframes. fade-rise
+   for centered surfaces (dialogs), slide-tiroir for lateral drawers. */
+@keyframes j-fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes j-slide-tiroir {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@layer components {
+  .j-fade-rise {
+    animation: j-fade-rise 120ms ease-out;
+  }
+  .j-slide-tiroir {
+    animation: j-slide-tiroir 160ms ease-out;
   }
 }

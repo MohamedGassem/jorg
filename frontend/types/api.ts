@@ -95,6 +95,26 @@ export interface Skill {
   updated_at: string;
 }
 
+// Derived skill status rolled up from L2 proofs (see
+// backend/services/references/candidate_skill_projection.py). Not a candidate
+// input: computed at read time from ExperienceSkillUsage / AchievementSkillTag.
+export type SkillStatus =
+  | "declared_only"
+  | "inferred"
+  | "evidenced"
+  | "validated";
+
+export interface CandidateSkillProjection {
+  skill_ref_id: string;
+  skill_name: string;
+  skill_kind: SkillKind;
+  status: SkillStatus;
+  evidence_count: number;
+  first_used: string | null;
+  last_used: string | null;
+  is_profile_highlighted: boolean;
+}
+
 export interface Education {
   id: string;
   profile_id: string;
@@ -318,6 +338,7 @@ export interface GeneratedDocumentRecruiterView {
   candidate_first_name: string | null;
   candidate_last_name: string | null;
   opportunity_title: string | null;
+  generated_by_user_id: string | null;
 }
 
 export interface AccessibleCandidate {
@@ -353,6 +374,48 @@ export interface AccessibleCandidateDetail extends AccessibleCandidateRead {
   certifications: Certification[];
   languages: Language[];
   candidate_skills: Skill[];
+}
+
+export type DossierOwnerType = "candidate" | "recruiter";
+
+export interface ExperienceSelectionRead {
+  experience_id: string;
+  position: number;
+  is_featured: boolean;
+}
+
+export interface SkillSelectionRead {
+  candidate_skill_id: string;
+  position: number;
+  is_featured: boolean;
+}
+
+export interface Dossier {
+  id: string;
+  owner_type: DossierOwnerType;
+  candidate_profile_id: string;
+  organization_id: string | null;
+  access_grant_id: string | null;
+  is_general: boolean;
+  name: string | null;
+  objectif: string | null;
+  accroche: string | null;
+  share_contact: boolean;
+  share_finances: boolean;
+  validated_at: string | null;
+  created_at: string;
+  experience_selections: ExperienceSelectionRead[];
+  skill_selections: SkillSelectionRead[];
+}
+
+export interface CompositionPoolItem {
+  experience_id: string;
+  role: string;
+  client_name: string;
+  start_date: string;
+  end_date: string | null;
+  is_current: boolean;
+  hidden_by_default: boolean;
 }
 
 export interface ApiError {

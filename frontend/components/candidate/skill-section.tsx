@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -22,12 +22,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SkillChip } from "@/components/ui/SkillChip";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useAsyncOp } from "@/lib/hooks/useAsyncOp";
 import { useSearchableSelect } from "@/lib/hooks/useSearchableSelect";
+import { assembleSkillRows, type SkillRow } from "@/lib/skill-proof";
 import { SkillContextualizationDialog } from "@/components/candidate/SkillContextualizationDialog";
-import type { Experience, Skill, SkillReference, SkillKind } from "@/types/api";
+import type {
+  CandidateSkillProjection,
+  Experience,
+  Skill,
+  SkillReference,
+  SkillKind,
+} from "@/types/api";
 
 // ---- Types & constants -------------------------------------------------------
 
@@ -93,9 +101,16 @@ function skillToForm(skill: Skill): SkillForm {
 
 // ---- Exported section --------------------------------------------------------
 
-export function SkillSection() {
+export function SkillSection({
+  onSkillsChange,
+}: {
+  onSkillsChange?: (items: Skill[]) => void;
+} = {}) {
   const [items, setItems] = useState<Skill[]>([]);
   const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [projection, setProjection] = useState<CandidateSkillProjection[]>([]);
+  const [expandedRef, setExpandedRef] = useState<string | null>(null);
+  const [declaredOpen, setDeclaredOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -112,10 +127,12 @@ export function SkillSection() {
     Promise.all([
       api.get<Skill[]>("/candidates/me/skills"),
       api.get<Experience[]>("/candidates/me/experiences"),
+      api.get<CandidateSkillProjection[]>("/candidates/me/skill-projection"),
     ])
-      .then(([skills, exps]) => {
+      .then(([skills, exps, proj]) => {
         setItems(skills);
         setExperiences(exps);
+        setProjection(proj);
       })
       .catch((err) =>
         setFetchError(
@@ -124,6 +141,13 @@ export function SkillSection() {
       )
       .finally(() => setLoading(false));
   }, []);
+
+  // Tenir le rail "Mon profil" à jour après chaque édition. On ne remonte pas
+  // l'état initial vide (loading) pour ne pas écraser le chargement du parent.
+  useEffect(() => {
+    if (loading) return;
+    onSkillsChange?.(items);
+  }, [items, loading, onSkillsChange]);
 
   function set<K extends keyof SkillForm>(k: K, v: SkillForm[K]) {
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -238,12 +262,81 @@ export function SkillSection() {
     }
   }
 
-  const featuredSkills = items.filter((s) => s.featured).slice(0, 6);
-  const skillsByKind = KIND_ORDER.map((kind) => ({
+  // Proof grouping (plan tranche 2) : proven + featured shown in full, the
+  // rest folded and grouped by type behind a "+ N autres" disclosure.
+  const { highlighted, declared } = assembleSkillRows(
+    items,
+    projection,
+    experiences,
+  );
+  const declaredByKind = KIND_ORDER.map((kind) => ({
     kind,
     label: KIND_LABELS[kind],
-    skills: items.filter((s) => s.skill_ref.kind === kind),
-  }));
+    rows: declared.filter((r) => r.kind === kind),
+  })).filter((g) => g.rows.length > 0);
+  const expandedRow =
+    expandedRef != null
+      ? (highlighted.find((r) => r.skillRefId === expandedRef) ?? null)
+      : null;
+  const itemById = new Map(items.map((s) => [s.id, s]));
+
+  // A proof chip plus its hover/focus edit affordances (garde-fou n°1: every
+  // editable datum keeps a one-click affordance). Proven chips with links
+  // toggle the proof panel on click.
+  function renderChip(row: SkillRow) {
+    const skill = itemById.get(row.id);
+    const canExpand = row.state === "proven" && row.links.length > 0;
+    return (
+      <span key={row.id} className="group inline-flex items-center gap-0.5">
+        <SkillChip
+          label={row.name}
+          proof={{ state: row.state, featured: row.featured, count: row.count }}
+          {...(canExpand
+            ? {
+                onClick: () =>
+                  setExpandedRef((cur) =>
+                    cur === row.skillRefId ? null : row.skillRefId,
+                  ),
+                expanded: expandedRef === row.skillRefId,
+              }
+            : {})}
+        />
+        {skill && (
+          <span className="flex items-center opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+            <button
+              type="button"
+              onClick={() => handleToggleFeatured(skill)}
+              className={`rounded p-0.5 text-xs transition-colors ${
+                row.featured
+                  ? "text-primary"
+                  : "text-muted-foreground/40 hover:text-muted-foreground"
+              }`}
+              title={row.featured ? "Retirer des clés" : "Mettre en avant"}
+            >
+              ★
+            </button>
+            <button
+              type="button"
+              onClick={() => startEdit(skill)}
+              className="rounded p-0.5 hover:bg-muted"
+              title="Modifier"
+            >
+              <Pencil className="h-3 w-3 text-muted-foreground" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDelete(row.id)}
+              disabled={dialogOp.saving}
+              className="rounded p-0.5 hover:bg-destructive/10"
+              title={`Supprimer ${row.name}`}
+            >
+              <Trash2 className="h-3 w-3 text-destructive" />
+            </button>
+          </span>
+        )}
+      </span>
+    );
+  }
 
   const refSelected = !!form.skill_ref_id;
 
@@ -324,108 +417,77 @@ export function SkillSection() {
         </div>
       )}
 
-      {/* ---- Featured Skills Block ---- */}
-      {featuredSkills.length > 0 && (
+      {/* ---- Proof grouping : proven & featured shown in full ---- */}
+      {!loading && !fetchError && items.length > 0 && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">
-              Compétences clés
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {featuredSkills.map((skill) => (
-                <button
-                  key={skill.id}
-                  type="button"
-                  onClick={() => handleToggleFeatured(skill)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-                  title="Retirer des compétences clés"
-                >
-                  <span>★</span>
-                  {skill.skill_ref.name}
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ---- 3x2 grid per kind ---- */}
-      {!loading && !fetchError && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {skillsByKind.map(({ kind, label, skills }) => (
-            <Card key={kind} className="flex flex-col">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">{label}</CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 space-y-0.5">
-                {skills.length === 0 ? (
-                  <p className="py-1 text-xs text-muted-foreground">
-                    Aucune compétence dans cette famille.
-                  </p>
-                ) : (
-                  [...skills]
-                    .sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
-                    .map((skill) => (
-                      <div
-                        key={skill.id}
-                        className={`group flex items-center justify-between rounded-md px-2 py-1.5 ${
-                          skill.featured ? "bg-primary/5" : "hover:bg-muted/50"
-                        }`}
-                      >
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleFeatured(skill)}
-                            className={`shrink-0 text-xs transition-colors ${
-                              skill.featured
-                                ? "text-primary"
-                                : "text-muted-foreground/30 hover:text-muted-foreground"
-                            }`}
-                            title={
-                              skill.featured
-                                ? "Retirer des clés"
-                                : "Mettre en avant"
-                            }
-                          >
-                            ★
-                          </button>
-                          <span className="truncate text-sm">
-                            {skill.skill_ref.name}
+          <CardContent className="space-y-4 py-4">
+            {highlighted.length > 0 ? (
+              <div className="space-y-2">
+                <p className="j-overline">Prouvées et clés</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {highlighted.map(renderChip)}
+                </div>
+                {expandedRow && (
+                  <div className="mt-1 space-y-1 border-l-2 border-accent-line pl-3 text-xs text-muted-foreground">
+                    <p className="j-overline">Preuves · {expandedRow.name}</p>
+                    {expandedRow.links.map((link, i) => (
+                      <p key={`${link.experienceId}-${i}`}>
+                        <span className="font-medium text-foreground">
+                          {link.client}
+                        </span>{" "}
+                        · {link.role}
+                        {link.achievement && (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            — {link.achievement}
                           </span>
-                          {skill.self_assessed_level && (
-                            <span className="shrink-0 text-xs text-muted-foreground">
-                              {skill.self_assessed_level}/5
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(skill)}
-                            className="rounded p-1 hover:bg-muted"
-                            title="Modifier"
-                          >
-                            <Pencil className="h-3 w-3 text-muted-foreground" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(skill.id)}
-                            disabled={dialogOp.saving}
-                            className="rounded p-1 hover:bg-destructive/10"
-                            title={`Supprimer ${skill.skill_ref.name}`}
-                          >
-                            <Trash2 className="h-3 w-3 text-destructive" />
-                          </button>
+                        )}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Aucune compétence prouvée pour l&apos;instant. Reliez vos
+                compétences à vos réalisations pour les faire remonter.
+              </p>
+            )}
+
+            {/* ---- Declared, folded and grouped by type ---- */}
+            {declared.length > 0 && (
+              <div className="border-t border-border pt-3">
+                <button
+                  type="button"
+                  onClick={() => setDeclaredOpen((o) => !o)}
+                  aria-expanded={declaredOpen}
+                  className="text-[12.5px] font-medium text-primary hover:underline"
+                >
+                  {declaredOpen ? "− Masquer" : "+"}{" "}
+                  {declaredOpen
+                    ? "les compétences déclarées"
+                    : `${declared.length} autre${
+                        declared.length > 1 ? "s" : ""
+                      } compétence${
+                        declared.length > 1 ? "s" : ""
+                      } déclarée${declared.length > 1 ? "s" : ""}`}
+                </button>
+                {declaredOpen && (
+                  <div className="mt-3 space-y-3">
+                    {declaredByKind.map(({ kind, label, rows }) => (
+                      <div key={kind} className="space-y-1.5">
+                        <p className="j-overline">{label}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {rows.map(renderChip)}
                         </div>
                       </div>
-                    ))
+                    ))}
+                  </div>
                 )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* ---- Add / Edit Dialog ---- */}

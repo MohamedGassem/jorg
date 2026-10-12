@@ -10,9 +10,11 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -64,6 +66,10 @@ class Dossier(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     opportunity_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("opportunities.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    # Adapted-dossier metadata (L3 framing). The recruiter/candidate names the
+    # version and states the objective it targets; neither touches L2 facts.
+    name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    objectif: Mapped[str | None] = mapped_column(Text, nullable=True)
     accroche: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Optional per-dossier validation, at the recruiter's initiative: a
     # reassurance tool before sending, not a consent gate (ADR-0002).
@@ -76,6 +82,12 @@ class Dossier(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     share_finances: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true", nullable=False
+    )
+    # The single live mirror of the profile for an owner: candidate (per profile)
+    # or recruiter (per access_grant). Adapted dossiers (is_general=False) curate
+    # via explicit selections; the general one carries none (locked decision #1/#2).
+    is_general: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
     )
 
     skill_selections: Mapped[list[DossierSkillSelection]] = relationship(
@@ -98,6 +110,21 @@ class Dossier(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             "(owner_type = 'recruiter' AND recruiter_owner_id IS NOT NULL "
             "AND candidate_owner_id IS NULL)",
             name="ck_dossier_owner_consistency",
+        ),
+        # At most one general dossier per candidate profile, and per recruiter
+        # access_grant (locked decision #2). Partial unique indexes keep
+        # get_or_create_general race-safe.
+        Index(
+            "uq_dossier_general_candidate",
+            "candidate_profile_id",
+            unique=True,
+            postgresql_where=text("is_general AND owner_type = 'candidate'"),
+        ),
+        Index(
+            "uq_dossier_general_recruiter",
+            "access_grant_id",
+            unique=True,
+            postgresql_where=text("is_general AND owner_type = 'recruiter'"),
         ),
     )
 

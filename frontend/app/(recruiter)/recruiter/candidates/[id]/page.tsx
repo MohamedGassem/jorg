@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { DossierGenerationDialog } from "@/components/dossier-generation-dialog";
+import { DossierAdaptedEditor } from "@/components/dossier-adapted-editor";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
@@ -112,6 +113,7 @@ export default function CandidateDetailPage() {
   const [opportunities, setOpportunities] = useState<OpportunityRead[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [adaptedOpen, setAdaptedOpen] = useState(false);
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [pickingOpp, setPickingOpp] = useState(false);
   const [addFeedback, setAddFeedback] = useState<string | null>(null);
@@ -213,6 +215,26 @@ export default function CandidateDetailPage() {
           candidateId,
           candidateName: name,
         }}
+      />
+
+      <DossierAdaptedEditor
+        open={adaptedOpen}
+        onOpenChange={setAdaptedOpen}
+        target={{
+          kind: "recruiter",
+          orgId: orgId!,
+          candidateId,
+          candidateName: name,
+        }}
+        experiences={candidate.experiences.map((e) => ({
+          id: e.id,
+          role: e.role,
+          client_name: e.client_name,
+        }))}
+        skills={candidate.candidate_skills.map((s) => ({
+          id: s.id,
+          name: s.skill_ref.name,
+        }))}
       />
 
       <div className="mx-auto grid w-full max-w-[1040px] grid-cols-1 items-start gap-5 pt-6 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -397,6 +419,13 @@ export default function CandidateDetailPage() {
             >
               <Plus className="size-4" strokeWidth={1.6} />
               Composer un dossier
+            </Button>
+            <Button
+              variant="outline"
+              className="mt-2 w-full justify-center"
+              onClick={() => setAdaptedOpen(true)}
+            >
+              Créer une version adaptée
             </Button>
           </section>
 

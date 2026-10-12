@@ -12,7 +12,20 @@ import { useSearchableSelect } from "@/lib/hooks/useSearchableSelect";
 import { api } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
 import { useAsyncOp } from "@/lib/hooks/useAsyncOp";
+import {
+  TIMELINE_N_KEY,
+  type DetailedN,
+  loadDetailedN,
+  sortExperiences,
+  yearRange,
+} from "@/lib/timeline";
 import { Textarea } from "@/components/candidate/profile-shared";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+} from "@/components/ui/drawer";
 import type {
   Achievement,
   AchievementSkillTag,
@@ -202,17 +215,27 @@ function AchievementRow({
           "Certains tags n'ont pas pu être synchronisés. Réessayez.",
         );
       }
-      const newTags: AchievementSkillTag[] = skillUsages
-        .filter(
-          (u) =>
-            successfulAdds.has(u.skill_ref_id) ||
-            syncedTagsRef.current.has(u.skill_ref_id),
-        )
-        .map((u) => ({
-          skill_ref_id: u.skill_ref_id,
-          skill_ref: u.skill_ref,
-          created_at: new Date().toISOString(),
-        }));
+      // Reconstruire les tags depuis l'ensemble synchronisé (source de vérité),
+      // pas depuis le bouquet : un tag encore présent dont l'usage a été retiré
+      // du bouquet doit être conservé. On résout le libellé via le bouquet ou,
+      // à défaut, via les tags existants de la réalisation.
+      const refById = new Map<string, SkillReference>();
+      for (const u of skillUsages) refById.set(u.skill_ref_id, u.skill_ref);
+      for (const t of ach.skill_tags) refById.set(t.skill_ref_id, t.skill_ref);
+      const newTags: AchievementSkillTag[] = [...syncedTagsRef.current].flatMap(
+        (id) => {
+          const skill_ref = refById.get(id);
+          return skill_ref
+            ? [
+                {
+                  skill_ref_id: id,
+                  skill_ref,
+                  created_at: new Date().toISOString(),
+                },
+              ]
+            : [];
+        },
+      );
       onSaved({ ...updated, skill_tags: newTags });
       setOpen(false);
     });
@@ -1024,12 +1047,14 @@ function ExperienceCard({
   onUpdated,
   onDeleted,
   onNewSkill,
+  hideClient = false,
 }: {
   exp: Experience;
   candidateSkills: Skill[];
   onUpdated: (updated: Experience) => void;
   onDeleted: (id: string) => void;
   onNewSkill?: (skill: Skill) => void;
+  hideClient?: boolean;
 }) {
   const [editingExp, setEditingExp] = useState(false);
   const [form, setForm] = useState<ExpForm>(expToForm(exp));
@@ -1094,7 +1119,7 @@ function ExperienceCard({
       <div className="flex items-start justify-between gap-4 border-b border-border/40 px-4 py-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">
-            {exp.client_name} - {exp.role}
+            {hideClient ? exp.role : `${exp.client_name} — ${exp.role}`}
           </p>
           <p className="text-xs text-muted-foreground">{dates}</p>
           {exp.description && (
@@ -1107,8 +1132,8 @@ function ExperienceCard({
           <button
             type="button"
             onClick={() => {
-              setEditingExp(!editingExp);
               setForm(expToForm(exp));
+              setEditingExp(true);
             }}
             className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
             title="Éditer l'expérience"
@@ -1126,124 +1151,117 @@ function ExperienceCard({
         </div>
       </div>
 
-      {editingExp && (
-        <form
-          onSubmit={handleSaveExp}
-          className="space-y-3 border-b border-border/40 bg-muted/10 px-4 py-3"
-        >
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor={`exp-client-${exp.id}`} className="text-xs">
-                Client *
+      <Drawer open={editingExp} onOpenChange={setEditingExp}>
+        <DrawerContent>
+          <DrawerHeader overline="Édition" title="Modifier l'expérience" />
+          <form onSubmit={handleSaveExp} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor={`exp-client-${exp.id}`} className="text-xs">
+                  Client *
+                </Label>
+                <Input
+                  id={`exp-client-${exp.id}`}
+                  value={form.client_name}
+                  onChange={(e) => set("client_name", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`exp-role-${exp.id}`} className="text-xs">
+                  Rôle *
+                </Label>
+                <Input
+                  id={`exp-role-${exp.id}`}
+                  value={form.role}
+                  onChange={(e) => set("role", e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor={`exp-start-${exp.id}`} className="text-xs">
+                  Date début *
+                </Label>
+                <Input
+                  id={`exp-start-${exp.id}`}
+                  type="date"
+                  value={form.start_date}
+                  onChange={(e) => set("start_date", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`exp-end-${exp.id}`} className="text-xs">
+                  Date fin
+                </Label>
+                <Input
+                  id={`exp-end-${exp.id}`}
+                  type="date"
+                  value={form.end_date}
+                  onChange={(e) => set("end_date", e.target.value)}
+                  disabled={form.is_current}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id={`exp-current-${exp.id}`}
+                type="checkbox"
+                checked={form.is_current}
+                onChange={(e) => {
+                  set("is_current", e.target.checked);
+                  if (e.target.checked) set("end_date", "");
+                }}
+                className="h-4 w-4 cursor-pointer accent-primary"
+              />
+              <Label
+                htmlFor={`exp-current-${exp.id}`}
+                className="cursor-pointer font-normal text-xs"
+              >
+                Poste actuel
               </Label>
-              <Input
-                id={`exp-client-${exp.id}`}
-                value={form.client_name}
-                onChange={(e) => set("client_name", e.target.value)}
-                required
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`exp-desc-${exp.id}`} className="text-xs">
+                Description
+              </Label>
+              <Textarea
+                id={`exp-desc-${exp.id}`}
+                value={form.description}
+                onChange={(v) => set("description", v)}
+                rows={2}
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor={`exp-role-${exp.id}`} className="text-xs">
-                Rôle *
+              <Label htmlFor={`exp-context-${exp.id}`} className="text-xs">
+                Contexte
               </Label>
-              <Input
-                id={`exp-role-${exp.id}`}
-                value={form.role}
-                onChange={(e) => set("role", e.target.value)}
-                required
+              <Textarea
+                id={`exp-context-${exp.id}`}
+                value={form.context}
+                onChange={(v) => set("context", v)}
+                rows={2}
+                placeholder="Contexte de la mission, secteur, équipe…"
               />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor={`exp-start-${exp.id}`} className="text-xs">
-                Date début *
-              </Label>
-              <Input
-                id={`exp-start-${exp.id}`}
-                type="date"
-                value={form.start_date}
-                onChange={(e) => set("start_date", e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor={`exp-end-${exp.id}`} className="text-xs">
-                Date fin
-              </Label>
-              <Input
-                id={`exp-end-${exp.id}`}
-                type="date"
-                value={form.end_date}
-                onChange={(e) => set("end_date", e.target.value)}
-                disabled={form.is_current}
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              id={`exp-current-${exp.id}`}
-              type="checkbox"
-              checked={form.is_current}
-              onChange={(e) => {
-                set("is_current", e.target.checked);
-                if (e.target.checked) set("end_date", "");
-              }}
-              className="h-4 w-4 cursor-pointer accent-primary"
-            />
-            <Label
-              htmlFor={`exp-current-${exp.id}`}
-              className="cursor-pointer font-normal text-xs"
-            >
-              Poste actuel
-            </Label>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor={`exp-desc-${exp.id}`} className="text-xs">
-              Description
-            </Label>
-            <Textarea
-              id={`exp-desc-${exp.id}`}
-              value={form.description}
-              onChange={(v) => set("description", v)}
-              rows={2}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor={`exp-context-${exp.id}`} className="text-xs">
-              Contexte
-            </Label>
-            <Textarea
-              id={`exp-context-${exp.id}`}
-              value={form.context}
-              onChange={(v) => set("context", v)}
-              rows={2}
-              placeholder="Contexte de la mission, secteur, équipe…"
-            />
-          </div>
-          {op.error && <p className="text-xs text-destructive">{op.error}</p>}
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => setEditingExp(false)}
-              className="h-7 text-xs"
-            >
-              Annuler
-            </Button>
-            <Button
-              size="sm"
-              type="submit"
-              disabled={op.saving}
-              className="h-7 text-xs"
-            >
-              {op.saving ? "…" : "Sauvegarder"}
-            </Button>
-          </div>
-        </form>
-      )}
+            {op.error && <p className="text-xs text-destructive">{op.error}</p>}
+            <DrawerFooter>
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => setEditingExp(false)}
+              >
+                Annuler
+              </Button>
+              <Button type="submit" disabled={op.saving}>
+                {op.saving ? "Enregistrement…" : "Sauvegarder"}
+              </Button>
+            </DrawerFooter>
+          </form>
+        </DrawerContent>
+      </Drawer>
 
       {/* Compétences utilisées - always visible */}
       <div className="border-b border-border/40 px-4 py-3">
@@ -1335,9 +1353,85 @@ function ExperienceCard({
   );
 }
 
+// ---- Timeline condensation (garde-fou n°2) ----------------------------------
+
+const N_OPTIONS: { value: DetailedN; label: string }[] = [
+  { value: 3, label: "3" },
+  { value: 5, label: "5" },
+  { value: 10, label: "10" },
+  { value: "all", label: "Toutes" },
+];
+
+function ClientHeader({ name }: { name: string }) {
+  return (
+    <p className="mb-1.5 font-heading text-[15px] font-semibold text-ink-2">
+      {name}
+    </p>
+  );
+}
+
+function CondensedRow({
+  exp,
+  onExpand,
+}: {
+  exp: Experience;
+  onExpand: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      className="flex w-full items-baseline gap-3 border-t border-line px-1 py-2 text-left transition-colors hover:bg-accent-soft-2"
+    >
+      <span className="w-[92px] shrink-0 font-mono text-[12px] tabular-nums text-ink-3">
+        {yearRange(exp)}
+      </span>
+      <span className="min-w-0 text-[13.5px] text-ink-2">
+        <span className="font-medium text-ink">{exp.client_name}</span>{" "}
+        {exp.role}
+      </span>
+    </button>
+  );
+}
+
+function DetailedNControl({
+  value,
+  onChange,
+}: {
+  value: DetailedN;
+  onChange: (v: DetailedN) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="j-meta">Détaillées</span>
+      <div className="flex items-center gap-0.5 rounded-[6px] border border-line bg-paper-2 p-0.5">
+        {N_OPTIONS.map((opt) => (
+          <button
+            key={String(opt.value)}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              "rounded-[4px] px-2 py-0.5 font-mono text-[11.5px] transition-colors",
+              value === opt.value
+                ? "bg-surface font-medium text-ink shadow-sm"
+                : "text-ink-3 hover:text-ink",
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ---- Exported section --------------------------------------------------------
 
-export function ExperienceSection() {
+export function ExperienceSection({
+  onExperiencesChange,
+}: {
+  onExperiencesChange?: (items: Experience[]) => void;
+} = {}) {
   const [items, setItems] = useState<Experience[]>([]);
   const [candidateSkills, setCandidateSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1345,7 +1439,30 @@ export function ExperienceSection() {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState<ExpForm>(EMPTY_EXP);
   const [achievementDrafts, setAchievementDrafts] = useState<string[]>([]);
+  const [detailedN, setDetailedN] = useState<DetailedN>(5);
+  const [expandAll, setExpandAll] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const op = useAsyncOp("Erreur lors de la création");
+
+  useEffect(() => {
+    setDetailedN(loadDetailedN());
+  }, []);
+
+  // Tenir le rail "Mon profil" à jour après chaque édition. On ne remonte pas
+  // l'état initial vide (loading) pour ne pas écraser le chargement du parent.
+  useEffect(() => {
+    if (loading) return;
+    onExperiencesChange?.(items);
+  }, [items, loading, onExperiencesChange]);
+
+  function changeDetailedN(v: DetailedN) {
+    setDetailedN(v);
+    setExpandAll(false);
+    setExpandedIds(new Set());
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(TIMELINE_N_KEY, String(v));
+    }
+  }
 
   useEffect(() => {
     Promise.all([
@@ -1408,14 +1525,19 @@ export function ExperienceSection() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
           {items.length} expérience{items.length !== 1 ? "s" : ""}
         </p>
-        <Button size="sm" onClick={() => setAdding(true)} disabled={adding}>
-          <Plus className="mr-1.5 h-3.5 w-3.5" />
-          Ajouter une expérience
-        </Button>
+        <div className="flex items-center gap-3">
+          {items.length > 3 && (
+            <DetailedNControl value={detailedN} onChange={changeDetailedN} />
+          )}
+          <Button size="sm" onClick={() => setAdding(true)} disabled={adding}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Ajouter une expérience
+          </Button>
+        </div>
       </div>
 
       {adding && (
@@ -1551,22 +1673,90 @@ export function ExperienceSection() {
         </form>
       )}
 
-      {items.map((exp) => (
-        <ExperienceCard
-          key={exp.id}
-          exp={exp}
-          candidateSkills={candidateSkills}
-          onUpdated={(updated) =>
-            setItems((prev) =>
-              prev.map((i) => (i.id === updated.id ? updated : i)),
-            )
-          }
-          onDeleted={(id) =>
-            setItems((prev) => prev.filter((i) => i.id !== id))
-          }
-          onNewSkill={(skill) => setCandidateSkills((prev) => [...prev, skill])}
-        />
-      ))}
+      {(() => {
+        const sorted = sortExperiences(items);
+        const limit = detailedN === "all" ? Infinity : detailedN;
+        // Classer chaque expérience, puis dériver les en-têtes client par
+        // simple regard arrière (pas de mutation en cours de rendu).
+        const classified = sorted.map((exp, index) => ({
+          exp,
+          detailed: expandAll || index < limit || expandedIds.has(exp.id),
+        }));
+        const rows = classified.map((row, idx) => {
+          const prev = classified[idx - 1];
+          const showClientHeader =
+            row.detailed &&
+            (!prev ||
+              !prev.detailed ||
+              prev.exp.client_name !== row.exp.client_name);
+          return { ...row, showClientHeader };
+        });
+        const collapsedCount = rows.filter((r) => !r.detailed).length;
+        const anyCollapsed = collapsedCount > 0;
+
+        return (
+          <>
+            {rows.map(({ exp, detailed, showClientHeader }) => {
+              if (!detailed) {
+                return (
+                  <CondensedRow
+                    key={exp.id}
+                    exp={exp}
+                    onExpand={() =>
+                      setExpandedIds((prev) => new Set(prev).add(exp.id))
+                    }
+                  />
+                );
+              }
+              return (
+                <div key={exp.id} className="mt-3 first:mt-0">
+                  {showClientHeader && <ClientHeader name={exp.client_name} />}
+                  <ExperienceCard
+                    exp={exp}
+                    hideClient
+                    candidateSkills={candidateSkills}
+                    onUpdated={(updated) =>
+                      setItems((prev) =>
+                        prev.map((it) => (it.id === updated.id ? updated : it)),
+                      )
+                    }
+                    onDeleted={(id) =>
+                      setItems((prev) => prev.filter((it) => it.id !== id))
+                    }
+                    onNewSkill={(skill) =>
+                      setCandidateSkills((prev) => [...prev, skill])
+                    }
+                  />
+                </div>
+              );
+            })}
+            {(anyCollapsed || expandAll || expandedIds.size > 0) && (
+              <div className="flex justify-center pt-2">
+                {anyCollapsed ? (
+                  <button
+                    type="button"
+                    onClick={() => setExpandAll(true)}
+                    className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    + Tout déplier ({collapsedCount})
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExpandAll(false);
+                      setExpandedIds(new Set());
+                    }}
+                    className="text-xs font-medium text-ink-3 underline-offset-2 hover:text-ink hover:underline"
+                  >
+                    Replier
+                  </button>
+                )}
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }

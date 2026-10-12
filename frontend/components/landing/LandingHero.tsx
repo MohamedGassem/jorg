@@ -9,17 +9,18 @@ export function LandingHero() {
       <div className="text-center lg:text-left">
         <p className="j-overline">La plateforme de dossiers de compétences</p>
         <h1 className="mt-4 font-heading text-4xl font-semibold tracking-tight text-foreground sm:text-[44px] sm:leading-[1.15]">
-          Construisez votre dossier de compétences une fois.
+          Un profil rempli une fois. Des dossiers prêts à envoyer en 30
+          secondes.
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-lg text-ink-2 lg:mx-0">
-          Partagez-le en toute sécurité : chaque accès est accordé par vous,
-          tracé et révocable. Les recruteurs en tirent des dossiers sur mesure
-          en quelques secondes.
+          Le candidat maintient un profil unique : chaque accès est accordé
+          explicitement, révocable à tout moment. L&apos;ESN en tire des
+          dossiers de compétences sur mesure, adaptés au poste et au client.
         </p>
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
           <Link href="/register?role=candidate">
             <Button size="lg" className="w-full sm:w-auto">
-              Créer mon dossier de compétences
+              Créer mon profil
             </Button>
           </Link>
           <Link href="/register?role=recruiter">

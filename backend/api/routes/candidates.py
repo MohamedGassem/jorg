@@ -86,6 +86,20 @@ async def update_my_profile(
     return await candidate_service.update_profile(db, profile, data)
 
 
+@router.post("/me/onboarding/complete", response_model=CandidateProfileRead)
+async def complete_my_onboarding(current_user: CandidateUser, db: DB) -> CandidateProfile:
+    """Record that the candidate has exited the onboarding tunnel.
+
+    Explicit server-owned fact, set on every tunnel exit (skip, manual path,
+    import). Idempotent: calling it again is a no-op.
+    """
+    profile = await candidate_service.get_or_create_profile(db, current_user.id)
+    profile.onboarding_completed = True
+    await db.flush()
+    await db.refresh(profile)
+    return profile
+
+
 @router.post("/me/parse-cv", response_model=CVParseResult)
 async def parse_my_cv(
     request: Request,

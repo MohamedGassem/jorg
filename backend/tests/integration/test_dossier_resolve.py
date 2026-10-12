@@ -89,6 +89,33 @@ async def test_resolve_keeps_only_selected_evidence_in_position_order(
     assert model.skills[0].featured is True
 
 
+async def test_resolve_empty_selections_includes_all_in_default_order(
+    client: AsyncClient, candidate_headers: dict[str, str], db_session: AsyncSession
+) -> None:
+    """A dossier with no selections per axis mirrors the profile: all evidence, default order."""
+    await _create_experience(client, candidate_headers, "Alpha", "2020-01-01")
+    await _create_experience(client, candidate_headers, "Beta", "2022-01-01")
+    await _create_experience(client, candidate_headers, "Gamma", "2023-01-01")
+    await _create_skill(client, candidate_headers, "Python")
+    await _create_skill(client, candidate_headers, "Go")
+    await db_session.commit()
+
+    profile = await _profile(db_session)
+    dossier = Dossier(
+        candidate_profile_id=profile.id,
+        owner_type=DossierOwnerType.CANDIDATE,
+        candidate_owner_id=profile.user_id,
+    )
+    db_session.add(dossier)
+    await db_session.flush()
+
+    model = await resolve_dossier(db_session, dossier)
+
+    # No selections on either axis: include all, experiences by start_date desc.
+    assert [e.client_name for e in model.experience_blocks] == ["Gamma", "Beta", "Alpha"]
+    assert len(model.skills) == 2
+
+
 async def test_resolve_does_not_rewrite_l2_facts(
     client: AsyncClient, candidate_headers: dict[str, str], db_session: AsyncSession
 ) -> None:

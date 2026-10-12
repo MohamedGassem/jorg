@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   BriefcaseBusiness,
   Clock,
@@ -12,10 +11,13 @@ import {
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { OnboardingOrg } from "@/components/onboarding-org";
+import { InviteCandidateDialog } from "@/components/invite-candidate-dialog";
+import { PremiersPasCard } from "@/components/recruiter/premiers-pas-card";
 import { StatCell } from "@/components/ui/StatCell";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
 import { useRecruiterWorkspace } from "@/components/recruiter-workspace";
+import { allMilestonesDone, recruiterMilestones } from "@/lib/premiers-pas";
 import { cn } from "@/lib/utils";
 import type {
   AccessibleCandidateRead,
@@ -31,32 +33,31 @@ import {
   relativeDate,
 } from "@/lib/labels";
 
-export default function RecruiterDashboardPage() {
-  const router = useRouter();
-  const { orgId, org, profile, loading: orgLoading } = useRecruiterWorkspace();
+const PREMIERS_PAS_DISMISSED_KEY = "jorg.recruiter.premiers-pas.dismissed";
 
-  useEffect(() => {
-    if (orgLoading) return;
-    if (profile && !profile.onboarding_completed) {
-      router.replace("/onboarding/recruiter/organization");
-    }
-  }, [profile, orgLoading, router]);
+export default function RecruiterDashboardPage() {
+  const { orgId, org, profile, loading: orgLoading } = useRecruiterWorkspace();
 
   const [candidates, setCandidates] = useState<AccessibleCandidateRead[]>([]);
   const [openOpportunityCount, setOpenOpportunityCount] = useState<
     number | null
   >(null);
-  const [pendingInvitationCount, setPendingInvitationCount] = useState<
-    number | null
-  >(null);
-  const [docCount, setDocCount] = useState<number | null>(null);
-  const [recentDocs, setRecentDocs] = useState<
-    GeneratedDocumentRecruiterView[]
-  >([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [documents, setDocuments] = useState<GeneratedDocumentRecruiterView[]>(
+    [],
+  );
   const [dataLoading, setDataLoading] = useState(true);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [premiersPasDismissed, setPremiersPasDismissed] = useState(false);
 
   useEffect(() => {
-    if (orgLoading || !profile?.onboarding_completed) return;
+    setPremiersPasDismissed(
+      localStorage.getItem(PREMIERS_PAS_DISMISSED_KEY) === "1",
+    );
+  }, []);
+
+  useEffect(() => {
+    if (orgLoading) return;
     if (!orgId) return;
 
     const candidatesPromise = api
@@ -82,32 +83,31 @@ export default function RecruiterDashboardPage() {
       opportunitiesPromise,
       invitationsPromise,
       documentsPromise,
-    ]).then(([candidatesData, opportunities, invitations, documents]) => {
-      if (candidatesData !== null) {
-        setCandidates(candidatesData);
-      }
-      if (opportunities !== null) {
-        setOpenOpportunityCount(
-          opportunities.filter((o) => o.status === "open").length,
-        );
-      }
-      if (invitations !== null) {
-        setPendingInvitationCount(
-          invitations.filter((inv) => inv.status === "pending").length,
-        );
-      }
-      if (documents !== null) {
-        setDocCount(documents.length);
-        const sorted = [...documents].sort(
-          (a, b) =>
-            new Date(b.generated_at).getTime() -
-            new Date(a.generated_at).getTime(),
-        );
-        setRecentDocs(sorted.slice(0, 4));
-      }
-      setDataLoading(false);
-    });
-  }, [orgId, orgLoading, profile, profile?.onboarding_completed]);
+    ]).then(
+      ([candidatesData, opportunities, invitationsData, documentsData]) => {
+        if (candidatesData !== null) {
+          setCandidates(candidatesData);
+        }
+        if (opportunities !== null) {
+          setOpenOpportunityCount(
+            opportunities.filter((o) => o.status === "open").length,
+          );
+        }
+        if (invitationsData !== null) {
+          setInvitations(invitationsData);
+        }
+        if (documentsData !== null) {
+          setDocuments(documentsData);
+        }
+        setDataLoading(false);
+      },
+    );
+  }, [orgId, orgLoading]);
+
+  function handleDismissPremiersPas() {
+    localStorage.setItem(PREMIERS_PAS_DISMISSED_KEY, "1");
+    setPremiersPasDismissed(true);
+  }
 
   if (orgLoading || (!!orgId && dataLoading)) {
     return (
@@ -150,7 +150,23 @@ export default function RecruiterDashboardPage() {
 
   const firstName = profile?.first_name ?? "";
   const candidateCount = candidates.length;
-  const pendingCount = pendingInvitationCount ?? 0;
+  const pendingCount = invitations.filter(
+    (inv) => inv.status === "pending",
+  ).length;
+  const docCount = documents.length;
+  const recentDocs = [...documents]
+    .sort(
+      (a, b) =>
+        new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime(),
+    )
+    .slice(0, 4);
+  const milestones = profile
+    ? recruiterMilestones(invitations, documents, profile.user_id)
+    : null;
+  const showPremiersPas =
+    milestones !== null &&
+    !allMilestonesDone(milestones) &&
+    !premiersPasDismissed;
   const lead =
     candidateCount > 0
       ? `${candidateCount} candidat${candidateCount > 1 ? "s" : ""} vous ${candidateCount > 1 ? "ont" : "a"} accordé l'accès.${
@@ -172,13 +188,31 @@ export default function RecruiterDashboardPage() {
           </h1>
           <p className="mt-1 max-w-[560px] text-[15px] text-ink-2">{lead}</p>
         </div>
-        <Link
-          href="/recruiter/candidates"
-          className={cn(buttonVariants({ variant: "default" }), "w-fit")}
-        >
-          {candidateCount > 0 ? "Générer un dossier" : "Inviter un candidat"}
-        </Link>
+        {candidateCount > 0 ? (
+          <Link
+            href="/recruiter/candidates"
+            className={cn(buttonVariants({ variant: "default" }), "w-fit")}
+          >
+            Générer un dossier
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setInviteOpen(true)}
+            className={cn(buttonVariants({ variant: "default" }), "w-fit")}
+          >
+            Inviter un candidat
+          </button>
+        )}
       </header>
+
+      {showPremiersPas && milestones && (
+        <PremiersPasCard
+          milestones={milestones}
+          onInvite={() => setInviteOpen(true)}
+          onDismiss={handleDismissPremiersPas}
+        />
+      )}
 
       <section
         className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2 xl:grid-cols-4"
@@ -199,7 +233,7 @@ export default function RecruiterDashboardPage() {
         <StatCell
           icon={FolderOpen}
           label="Dossiers générés"
-          value={String(docCount ?? 0)}
+          value={String(docCount)}
           foot="par votre organisation"
         />
         <StatCell
@@ -402,6 +436,15 @@ export default function RecruiterDashboardPage() {
           </article>
         </div>
       </section>
+
+      {orgId && (
+        <InviteCandidateDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          orgId={orgId}
+          onInvited={(inv) => setInvitations((prev) => [inv, ...prev])}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { CandidateAppBar } from "@/components/app-bar";
 import { AppLegalFooter } from "@/components/AppLegalFooter";
+import { CandidateOnboardingGate } from "@/components/candidate-onboarding-gate";
 
 export default function CandidateLayout({
   children,
@@ -13,7 +14,7 @@ export default function CandidateLayout({
         className="mx-auto w-full min-w-0 max-w-[var(--shell)] flex-1 px-7 py-[26px]"
         id="main-content"
       >
-        {children}
+        <CandidateOnboardingGate>{children}</CandidateOnboardingGate>
       </main>
       <AppLegalFooter />
     </div>
