@@ -556,11 +556,11 @@ export default function AccessPage() {
                     </p>
                     <p className="text-xs text-ink-3">
                       {recruiter ? `généré par ${recruiter} · ` : ""}
-                      <span className="font-mono">
+                      <span className="font-sans">
                         {frDate(doc.generated_at)}
                       </span>
                       {" · "}
-                      <span className="font-mono uppercase">
+                      <span className="font-sans uppercase">
                         {doc.file_format}
                       </span>
                     </p>
@@ -632,7 +632,7 @@ export default function AccessPage() {
                         <b className="font-semibold">{orgName}</b> ·{" "}
                         {EVENT_LABELS[event.type] ?? event.type}
                       </p>
-                      <p className="mt-0.5 font-mono text-[11.5px] text-ink-4">
+                      <p className="mt-0.5 font-sans text-[11.5px] text-ink-4">
                         {relativeDate(event.occurred_at)}
                       </p>
                     </div>

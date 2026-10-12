@@ -20,7 +20,7 @@ export function StatCell({
           <Icon className="size-[15px]" strokeWidth={1.6} />
         </span>
       </div>
-      <div className="font-mono text-[28px] font-medium leading-none tracking-tight tabular-nums">
+      <div className="font-sans text-[28px] font-medium leading-none tracking-tight tabular-nums">
         {value}
       </div>
       <div className="text-[12.5px] text-ink-3">{foot}</div>

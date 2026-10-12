@@ -1383,7 +1383,7 @@ function CondensedRow({
       onClick={onExpand}
       className="flex w-full items-baseline gap-3 border-t border-line px-1 py-2 text-left transition-colors hover:bg-accent-soft-2"
     >
-      <span className="w-[92px] shrink-0 font-mono text-[12px] tabular-nums text-ink-3">
+      <span className="w-[92px] shrink-0 font-sans text-[12px] tabular-nums text-ink-3">
         {yearRange(exp)}
       </span>
       <span className="min-w-0 text-[13.5px] text-ink-2">
@@ -1411,7 +1411,7 @@ function DetailedNControl({
             type="button"
             onClick={() => onChange(opt.value)}
             className={cn(
-              "rounded-[4px] px-2 py-0.5 font-mono text-[11.5px] transition-colors",
+              "rounded-[4px] px-2 py-0.5 font-sans text-[11.5px] transition-colors",
               value === opt.value
                 ? "bg-surface font-medium text-ink shadow-sm"
                 : "text-ink-3 hover:text-ink",

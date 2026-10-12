@@ -333,7 +333,7 @@ export default function RecruiterSettingsPage() {
             <section className="overflow-hidden rounded-lg border border-line bg-surface">
               <div className="flex items-center gap-2 px-[26px] pb-3.5 pt-[22px]">
                 <h2 className="text-[15px] font-semibold">Membres</h2>
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-accent-line bg-accent-soft px-1.5 font-mono text-[11px] font-medium text-primary">
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-accent-line bg-accent-soft px-1.5 font-sans text-[11px] font-medium text-primary">
                   {members.length}
                 </span>
               </div>
@@ -349,7 +349,7 @@ export default function RecruiterSettingsPage() {
                     key={m.user_id}
                     className="flex items-center gap-3 border-t border-line px-[26px] py-3"
                   >
-                    <span className="grid size-[34px] shrink-0 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[13px] font-semibold text-primary">
+                    <span className="grid size-[34px] shrink-0 place-items-center rounded-full bg-people-soft font-heading text-[13px] font-semibold text-people">
                       {initialsFromParts(m.first_name, m.last_name, m.email)}
                     </span>
                     <div className="min-w-0">

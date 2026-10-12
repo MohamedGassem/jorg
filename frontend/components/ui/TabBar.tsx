@@ -81,7 +81,7 @@ export function TabBar<K extends string>({
             {t.count != null && (
               <span
                 className={cn(
-                  "inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1.5 font-mono text-[11px] font-medium",
+                  "inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1.5 font-sans text-[11px] font-medium",
                   active
                     ? "border-accent-line bg-accent-soft text-primary"
                     : "border-line-2 text-ink-4",

@@ -503,7 +503,7 @@ export default function CandidateDashboardPage() {
                           · {EVENT_LABELS[group.type] ?? group.type}
                           {group.count > 1 ? ` (${group.count})` : ""}
                         </span>
-                        <span className="mt-0.5 block font-mono text-[11.5px] text-ink-4">
+                        <span className="mt-0.5 block font-sans text-[11.5px] text-ink-4">
                           {relativeDate(group.latestAt)}
                         </span>
                       </span>

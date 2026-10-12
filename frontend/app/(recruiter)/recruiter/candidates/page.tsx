@@ -144,7 +144,7 @@ function CandidateExperiencePanel({
                 <span className="text-xs font-semibold">
                   {exp.client_name} - {exp.role}
                 </span>
-                <span className="font-mono text-[10px] text-ink-3">
+                <span className="font-sans text-[10px] text-ink-3">
                   {frMonthYear(exp.start_date)}
                   {exp.end_date
                     ? ` → ${frMonthYear(exp.end_date)}`
@@ -828,7 +828,7 @@ function CandidateRows({
       <tr className="border-b border-line last:border-b-0 hover:bg-paper-2">
         <td className="px-4 py-3.5">
           <div className="flex items-center gap-[11px]">
-            <span className="grid size-[34px] shrink-0 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[13px] font-semibold text-primary">
+            <span className="grid size-[34px] shrink-0 place-items-center rounded-full bg-people-soft font-heading text-[13px] font-semibold text-people">
               {initialsFromParts(c.first_name, c.last_name, c.email)}
             </span>
             <div className="min-w-0">

@@ -297,7 +297,7 @@ export default function RecruiterDashboardPage() {
                     >
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-[11px]">
-                          <span className="grid size-8 place-items-center rounded-lg border border-accent-line bg-accent-soft font-heading text-[12.5px] font-semibold text-primary">
+                          <span className="grid size-8 place-items-center rounded-full bg-people-soft font-heading text-[12.5px] font-semibold text-people">
                             {initialsFromParts(
                               candidate.first_name,
                               candidate.last_name,
@@ -422,7 +422,7 @@ export default function RecruiterDashboardPage() {
                         · Dossier généré
                         {doc.template_name ? ` — ${doc.template_name}` : ""}
                       </span>
-                      <span className="mt-0.5 block font-mono text-[11.5px] text-ink-4">
+                      <span className="mt-0.5 block font-sans text-[11.5px] text-ink-4">
                         {relativeDate(doc.generated_at)}
                       </span>
                     </span>
