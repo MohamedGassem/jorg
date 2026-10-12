@@ -110,7 +110,7 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="mx-auto w-full max-w-[1000px] space-y-[18px]">
+      <div className="w-full space-y-[18px]">
         <div className="h-24 animate-pulse rounded-lg bg-muted" />
         <div className="h-28 animate-pulse rounded-lg bg-muted" />
         <div className="h-10 animate-pulse rounded-lg bg-muted" />
@@ -127,9 +127,9 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1000px]">
+    <div className="w-full">
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-        <div className="min-w-0 flex-1 space-y-10 lg:max-w-[680px]">
+        <div className="min-w-0 flex-1 space-y-10">
           <Suspense fallback={null}>
             <WelcomeBanner />
           </Suspense>
