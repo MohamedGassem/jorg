@@ -13,6 +13,9 @@ updates:
         applies-to: version-updates
         patterns:
           - "*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: npm
     directory: /frontend
@@ -27,6 +30,9 @@ updates:
         applies-to: version-updates
         patterns:
           - "*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: github-actions
     directory: /
