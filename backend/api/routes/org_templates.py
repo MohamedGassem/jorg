@@ -16,7 +16,6 @@ import services.documents.templatize_service as templatize_service
 import services.llm.client as llm_client
 from api.deps import RecruiterOrgMember, get_db
 from api.routes.organizations import _get_org_or_404
-from core.config import get_settings
 from core.limiter import limiter
 from models.template import Template
 from schemas.template import TemplateRead
@@ -167,8 +166,8 @@ async def templatize_template(
     if tmpl is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="template not found")
 
-    anthropic_client = llm_client.get_anthropic_client()
-    if anthropic_client is None:
+    llm_model = llm_client.get_llm_model()
+    if llm_model is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="assisted templating is not configured",
@@ -180,9 +179,7 @@ async def templatize_template(
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="file no longer available")
 
     try:
-        outcome = await templatize_service.run_templatize_pipeline(
-            anthropic_client, get_settings().llm_model, str(source_path)
-        )
+        outcome = await templatize_service.run_templatize_pipeline(llm_model, str(source_path))
     except TemplatizeLLMError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

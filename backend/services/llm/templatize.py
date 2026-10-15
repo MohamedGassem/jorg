@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from pydantic_ai.models import Model
+
 from services.documents.templatize_ops import TemplatizePlan
 from services.llm.client import LLMRefusalError, parse_structured
 
@@ -67,17 +69,14 @@ class TemplatizeLLMError(Exception):
 
 
 async def request_plan(
-    client: Any,
+    model: Model,
     *,
-    model: str,
     structure: dict[str, Any],
     known_keys: list[str],
     render_errors: str | None,
 ) -> TemplatizePlan:
     prompt = build_prompt(structure, known_keys, render_errors)
     try:
-        return await parse_structured(
-            client, model=model, prompt=prompt, output_format=TemplatizePlan
-        )
+        return await parse_structured(model, prompt=prompt, output_format=TemplatizePlan)
     except LLMRefusalError as exc:
         raise TemplatizeLLMError(str(exc)) from exc

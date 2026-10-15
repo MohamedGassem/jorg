@@ -497,7 +497,7 @@ async def test_activate_draft_template(
 ) -> None:
     from services.documents.templatize_service import TemplatizeOutcome
 
-    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+    async def fake_pipeline(model: Any, path: str) -> TemplatizeOutcome:
         doc = Document()
         doc.add_paragraph("{{first_name}}")
         buf = io.BytesIO()
@@ -511,9 +511,7 @@ async def test_activate_draft_template(
     monkeypatch.setattr(
         "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
     )
-    monkeypatch.setattr(
-        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
-    )
+    monkeypatch.setattr("api.routes.org_templates.llm_client.get_llm_model", lambda: object())
 
     org_id = await _setup_org_and_link(client, recruiter_headers)
     docx_bytes = _make_docx_bytes(["Jean Dupont"])
@@ -558,7 +556,7 @@ async def test_templatize_always_runs_from_source(
 
     seen_paths: list[str] = []
 
-    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+    async def fake_pipeline(model: Any, path: str) -> TemplatizeOutcome:
         seen_paths.append(path)
         doc = Document()
         doc.add_paragraph("{{first_name}}")
@@ -573,9 +571,7 @@ async def test_templatize_always_runs_from_source(
     monkeypatch.setattr(
         "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
     )
-    monkeypatch.setattr(
-        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
-    )
+    monkeypatch.setattr("api.routes.org_templates.llm_client.get_llm_model", lambda: object())
 
     org_id = await _setup_org_and_link(client, recruiter_headers)
     up = await client.post(
@@ -1046,7 +1042,7 @@ async def test_templatize_is_rate_limited(
 ) -> None:
     from services.documents.templatize_service import TemplatizeOutcome
 
-    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+    async def fake_pipeline(model: Any, path: str) -> TemplatizeOutcome:
         doc = Document()
         doc.add_paragraph("{{first_name}}")
         buf = io.BytesIO()
@@ -1060,9 +1056,7 @@ async def test_templatize_is_rate_limited(
     monkeypatch.setattr(
         "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
     )
-    monkeypatch.setattr(
-        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
-    )
+    monkeypatch.setattr("api.routes.org_templates.llm_client.get_llm_model", lambda: object())
 
     org_id = await _setup_org_and_link(client, recruiter_headers)
     docx_bytes = _make_docx_bytes(["Jean Dupont"])
@@ -1144,7 +1138,7 @@ async def test_templatize_cleans_orphan_file_when_persistence_fails(
     import core.storage as storage
     from services.documents.templatize_service import TemplatizeOutcome
 
-    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+    async def fake_pipeline(model: Any, path: str) -> TemplatizeOutcome:
         doc = Document()
         doc.add_paragraph("{{first_name}}")
         buf = io.BytesIO()
@@ -1158,9 +1152,7 @@ async def test_templatize_cleans_orphan_file_when_persistence_fails(
     monkeypatch.setattr(
         "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
     )
-    monkeypatch.setattr(
-        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
-    )
+    monkeypatch.setattr("api.routes.org_templates.llm_client.get_llm_model", lambda: object())
 
     deleted: list[str] = []
     real_delete = storage.delete_file

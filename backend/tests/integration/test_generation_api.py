@@ -520,7 +520,7 @@ async def test_cannot_generate_with_draft_template(
 
     from services.documents.templatize_service import TemplatizeOutcome
 
-    async def fake_pipeline(client_: Any, model: str, path: str) -> TemplatizeOutcome:
+    async def fake_pipeline(model: Any, path: str) -> TemplatizeOutcome:
         doc = Document()
         doc.add_paragraph("{{first_name}}")
         buf = io.BytesIO()
@@ -534,9 +534,7 @@ async def test_cannot_generate_with_draft_template(
     monkeypatch.setattr(
         "api.routes.org_templates.templatize_service.run_templatize_pipeline", fake_pipeline
     )
-    monkeypatch.setattr(
-        "api.routes.org_templates.llm_client.get_anthropic_client", lambda: object()
-    )
+    monkeypatch.setattr("api.routes.org_templates.llm_client.get_llm_model", lambda: object())
 
     org_id, candidate_id = await _setup_org_with_grant(client, recruiter_headers, candidate_headers)
     template_id = await _upload_valid_template(client, recruiter_headers, org_id)

@@ -24,7 +24,7 @@ dependencies = [
     "boto3>=1.35",
     "pymupdf>=1.26.0",
     "pypdf>=6.12.2",
-    "anthropic>=0.109.1",
+    "pydantic-ai-slim[anthropic]>=2.56.0",
 ]
 
 [dependency-groups]

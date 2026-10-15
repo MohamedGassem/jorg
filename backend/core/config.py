@@ -2,7 +2,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -54,9 +54,14 @@ class Settings(BaseSettings):
     # Gotenberg PDF service (empty = disabled)
     gotenberg_url: str | None = None
 
-    # LLM (assisted templating - empty = feature disabled)
-    anthropic_api_key: str | None = None
-    llm_model: str = "claude-opus-4-8"
+    # LLM (assisted templating - no key = feature disabled)
+    # llm_model uses the Pydantic AI "provider:model" format: switching provider
+    # (e.g. "mistral:mistral-large-latest") only needs the matching extra installed.
+    # ANTHROPIC_API_KEY is still accepted for existing deployments.
+    llm_api_key: str | None = Field(
+        default=None, validation_alias=AliasChoices("llm_api_key", "anthropic_api_key")
+    )
+    llm_model: str = "anthropic:claude-opus-4-8"
 
     # Admin secret for privileged endpoints (e.g. alpha code generation)
     admin_secret: str | None = None
