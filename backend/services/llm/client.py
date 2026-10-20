@@ -47,7 +47,7 @@ async def parse_structured[T: BaseModel](
     agent = Agent(
         model,
         output_type=output_format,
-        model_settings={"max_tokens": max_tokens, "thinking": True},
+        model_settings={"max_tokens": max_tokens, "thinking": get_settings().llm_effort},
     )
     try:
         result = await agent.run(prompt)

@@ -3,6 +3,7 @@ from functools import lru_cache
 from typing import Literal
 
 from pydantic import AliasChoices, Field, field_validator
+from pydantic_ai.settings import ThinkingEffort
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -61,7 +62,10 @@ class Settings(BaseSettings):
     llm_api_key: str | None = Field(
         default=None, validation_alias=AliasChoices("llm_api_key", "anthropic_api_key")
     )
-    llm_model: str = "anthropic:claude-opus-4-8"
+    llm_model: str = "anthropic:claude-opus-5-5"
+    # Reasoning depth, mapped by Pydantic AI to the provider setting (output_config.effort
+    # on Anthropic). Set explicitly: Opus 5.5 would otherwise default to "medium".
+    llm_effort: ThinkingEffort = "high"
 
     # Admin secret for privileged endpoints (e.g. alpha code generation)
     admin_secret: str | None = None

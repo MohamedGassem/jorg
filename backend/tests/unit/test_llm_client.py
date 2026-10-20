@@ -20,7 +20,7 @@ from services.llm.client import LLMRefusalError, parse_structured
 class _FakeSettings:
     def __init__(self, key: str | None) -> None:
         self.llm_api_key = key
-        self.llm_model = "anthropic:claude-opus-4-8"
+        self.llm_model = "anthropic:claude-opus-5-5"
 
 
 def _patch_settings(monkeypatch: Any, key: str | None) -> None:
@@ -38,7 +38,7 @@ def test_enabled_with_api_key_builds_configured_model(monkeypatch: Any) -> None:
     assert llm_client.assisted_templating_enabled() is True
     model = llm_client.get_llm_model()
     assert isinstance(model, AnthropicModel)
-    assert model.model_name == "claude-opus-4-8"
+    assert model.model_name == "claude-opus-5-5"
 
 
 class _Out(BaseModel):
@@ -67,7 +67,7 @@ async def test_parse_structured_raises_when_output_never_valid() -> None:
         await parse_structured(FunctionModel(bad_output), prompt="x", output_format=_Out)
 
 
-async def test_anthropic_request_uses_native_output_and_adaptive_thinking() -> None:
+async def test_anthropic_request_uses_native_output_adaptive_thinking_and_effort() -> None:
     sent: list[dict[str, Any]] = []
 
     def handler(request: httpx2.Request) -> httpx2.Response:
@@ -79,7 +79,7 @@ async def test_anthropic_request_uses_native_output_and_adaptive_thinking() -> N
                 "id": "msg_1",
                 "type": "message",
                 "role": "assistant",
-                "model": "claude-opus-4-8",
+                "model": "claude-opus-5-5",
                 "content": [{"type": "text", "text": '{"value": "ok"}'}],
                 "stop_reason": "end_turn",
                 "stop_sequence": None,
@@ -90,11 +90,12 @@ async def test_anthropic_request_uses_native_output_and_adaptive_thinking() -> N
     provider = AnthropicProvider(
         api_key="sk-test", http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
     )
-    model = AnthropicModel("claude-opus-4-8", provider=provider)
+    model = AnthropicModel("claude-opus-5-5", provider=provider)
 
     result = await parse_structured(model, prompt="hello", output_format=_Out)
 
     assert result == _Out(value="ok")
     assert sent[0]["output_config"]["format"]["type"] == "json_schema"
     assert sent[0]["thinking"]["type"] == "adaptive"
+    assert sent[0]["output_config"]["effort"] == "high"
     assert sent[0]["max_tokens"] == 16000
