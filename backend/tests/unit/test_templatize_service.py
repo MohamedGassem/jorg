@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from docx import Document
+from pydantic_ai.models.test import TestModel
 
 from services.documents.templatize_ops import ReplaceTextOp, TemplatizePlan
 from services.documents.templatize_service import TemplatizeOutcome, run_templatize_pipeline
@@ -29,11 +30,11 @@ async def test_pipeline_applies_plan_and_renders(tmp_path: Path, monkeypatch: An
         ]
     )
 
-    async def fake_request_plan(client: Any, **kwargs: Any) -> TemplatizePlan:
+    async def fake_request_plan(model: Any, **kwargs: Any) -> TemplatizePlan:
         return plan
 
     monkeypatch.setattr("services.documents.templatize_service.request_plan", fake_request_plan)
-    outcome = await run_templatize_pipeline(object(), "claude-opus-4-8", _example_docx(tmp_path))
+    outcome = await run_templatize_pipeline(TestModel(), _example_docx(tmp_path))
     assert isinstance(outcome, TemplatizeOutcome)
     assert outcome.render_error is None
     assert outcome.report["mappings"] == [
@@ -56,13 +57,13 @@ async def test_pipeline_retries_once_on_render_failure(tmp_path: Path, monkeypat
     calls: list[str | None] = []
 
     async def fake_request_plan(
-        client: Any, *, render_errors: str | None, **kwargs: Any
+        model: Any, *, render_errors: str | None, **kwargs: Any
     ) -> TemplatizePlan:
         calls.append(render_errors)
         return bad_plan
 
     monkeypatch.setattr("services.documents.templatize_service.request_plan", fake_request_plan)
-    outcome = await run_templatize_pipeline(object(), "claude-opus-4-8", _example_docx(tmp_path))
+    outcome = await run_templatize_pipeline(TestModel(), _example_docx(tmp_path))
     assert len(calls) == 2  # tentative initiale + 1 retry
     assert calls[0] is None and calls[1] is not None
     assert outcome.render_error is not None  # brouillon conserve avec rapport d'echec

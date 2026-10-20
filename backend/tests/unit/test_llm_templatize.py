@@ -1,5 +1,5 @@
 # backend/tests/unit/test_llm_templatize.py
-from typing import Any
+from pydantic_ai.models.test import TestModel
 
 from services.documents.templatize_ops import ReplaceTextOp, TemplatizePlan
 from services.llm.templatize import build_prompt, request_plan
@@ -30,20 +30,8 @@ async def test_request_plan_returns_parsed_output() -> None:
         ]
     )
 
-    class _FakeResponse:
-        parsed_output = expected
-        stop_reason = "end_turn"
-
-    class _FakeMessages:
-        async def parse(self, **kwargs: Any) -> _FakeResponse:
-            return _FakeResponse()
-
-    class _FakeClient:
-        messages = _FakeMessages()
-
     plan = await request_plan(
-        _FakeClient(),
-        model="claude-opus-4-8",
+        TestModel(custom_output_args=expected.model_dump()),
         structure={"paragraphs": [], "tables": []},
         known_keys=["first_name"],
         render_errors=None,

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import structlog
+from pydantic_ai.models import Model
 
 from services.documents.builtin_template_service import (
     mock_context_keys,
@@ -46,9 +47,7 @@ def _try_render(docx_bytes: bytes) -> str | None:
         Path(tmp_path).unlink(missing_ok=True)
 
 
-async def run_templatize_pipeline(
-    client: Any, model: str, word_file_path: str
-) -> TemplatizeOutcome:
+async def run_templatize_pipeline(model: Model, word_file_path: str) -> TemplatizeOutcome:
     structure = extract_structure(word_file_path)
     known_keys = sorted(mock_context_keys())
 
@@ -57,8 +56,7 @@ async def run_templatize_pipeline(
     report: dict[str, Any] = {}
     for _attempt in range(2):  # tentative initiale + 1 retry avec les erreurs
         plan = await request_plan(
-            client,
-            model=model,
+            model,
             structure=structure,
             known_keys=known_keys,
             render_errors=render_errors,
